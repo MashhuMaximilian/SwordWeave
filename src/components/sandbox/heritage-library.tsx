@@ -633,6 +633,7 @@ export function HeritageLibrary({
             stack.clear();
           }}
           currentUser={currentUser}
+          currentUserInternalId={currentUserInternalId}
           onFork={onFork}
           onSubLinkClick={(link) => {
             // Resolve the sub-entity to its full row and push a real
@@ -842,6 +843,7 @@ function BlueprintPreviewBody({
   onSubLinkClick,
   onFork,
   currentUser,
+  currentUserInternalId,
 }: {
   item: SandboxPreviewItem;
   libraryItem: LibraryItem | null;
@@ -862,6 +864,7 @@ function BlueprintPreviewBody({
   onSubLinkClick: (link: PreviewSubLink) => void;
   onFork: ((targetType: string, targetId: string) => void) | undefined;
   currentUser: { username: string; displayName: string | null; avatarUrl: string | null } | null;
+  currentUserInternalId: string | null;
 }) {
   // Preview actions may focus the inline split workspace, but the
   // persistent Build & Preview drawer is reserved for its FAB action.
@@ -881,6 +884,16 @@ function BlueprintPreviewBody({
 
   const stack = useModalStack();
   const { engagement } = useSandboxEngagement(libraryItem);
+  const previewEngagement = engagement ?? {
+    likes: 0,
+    dislikes: 0,
+    forks: 0,
+    userReaction: null,
+    authorId: libraryItem?.authorId ?? null,
+    authorUsername: libraryItem?.authorUsername ?? null,
+    authorIsAdmin: libraryItem?.authorIsAdmin ?? null,
+    currentUserInternalId,
+  };
 
   function slotIntoBuild() {
     if (item.kind !== "primitive" && item.kind !== "effect" && item.kind !== "capability") return;
@@ -1236,7 +1249,7 @@ function BlueprintPreviewBody({
     forkMap: (
       <ForkMapButton
         targetType={(libraryItem?.targetType ?? item.kind.toUpperCase()) as ForkTargetType}
-        targetId={compositeId}
+        targetId={String(item.row.id)}
         targetName={item.row.name}
         className="min-w-0 flex-1 justify-center px-1.5 py-2 text-xs"
       />
@@ -1250,24 +1263,13 @@ function BlueprintPreviewBody({
         item={item}
         variant="read"
         owner={owner}
-        {...(engagement
-          ? {
-              callbacks: {
-                onSubLinkClick,
-                engagement,
-                openSourceHref: `/library/item/${compositeId}`,
-                sandboxPath: "/atelier",
-                onFork,
-              },
-            }
-          : {
-              callbacks: {
-                onSubLinkClick,
-                openSourceHref: `/library/item/${compositeId}`,
-                sandboxPath: "/atelier",
-                onFork,
-              },
-            })}
+        callbacks={{
+          onSubLinkClick,
+          engagement: previewEngagement,
+          openSourceHref: `/library/item/${compositeId}`,
+          sandboxPath: "/atelier",
+          onFork,
+        }}
         actionBar={actionBar}
       />
     </div>

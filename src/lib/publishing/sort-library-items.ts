@@ -38,11 +38,14 @@ export function sortLibraryItems(
       return arr.sort((a, b) => b.forkCount - a.forkCount);
     case "ENGAGEMENT":
     default:
-      return arr.sort(
-        (a, b) =>
-          b.netReactions - a.netReactions ||
+      return arr.sort((a, b) => {
+        const aScore = a.likesCount * 2 + a.forkCount * 3;
+        const bScore = b.likesCount * 2 + b.forkCount * 3;
+        return (
+          bScore - aScore ||
           b.likesCount - a.likesCount ||
-          b.forkCount - a.forkCount,
-      );
+          (b.publishedAt?.getTime() ?? 0) - (a.publishedAt?.getTime() ?? 0)
+        );
+      });
   }
 }

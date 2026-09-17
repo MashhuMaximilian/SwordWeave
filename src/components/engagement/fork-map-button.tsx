@@ -114,8 +114,15 @@ export function ForkMapButton({
   targetName?: string | null;
   className?: string;
 }) {
+  // Callers commonly also have the route key (`TYPE:id`) at hand. Accept it
+  // defensively, but never send that composite value to the lineage API,
+  // whose targetId parameter is the raw database identifier.
+  const compositePrefix = `${targetType}:`;
+  const canonicalTargetId = targetId.startsWith(compositePrefix)
+    ? targetId.slice(compositePrefix.length)
+    : targetId;
   const requestRef = useRef(0);
-  const [focus, setFocus] = useState({ targetType, targetId });
+  const [focus, setFocus] = useState({ targetType, targetId: canonicalTargetId });
   const [open, setOpen] = useState(false);
   const [session, setSession] = useState<ForkMapSession>({nodes:[],edges:[]});
   const [data, setData] = useState<ForkMapResult | null>(null);
@@ -197,7 +204,7 @@ export function ForkMapButton({
         ) : data ? (
           <div className="v12-fork-explorer" aria-busy={loading}>
             {error ? <p role="alert">{error} The loaded graph is still available; select the node again to retry.</p> : null}
-            <div className="v12-fork-toolbar"><button className="v12-metal-button" type="button" disabled={loading} onClick={() => void load(null, { targetType, targetId })}>Return to starting entry</button><Link className="v12-metal-button" href={nodeHref(data.selected)}>Open selected source ↗</Link></div>
+            <div className="v12-fork-toolbar"><button className="v12-metal-button" type="button" disabled={loading} onClick={() => void load(null, { targetType, targetId: canonicalTargetId })}>Return to starting entry</button><Link className="v12-metal-button" href={nodeHref(data.selected)}>Open selected source ↗</Link></div>
             <p className="text-muted-foreground">The complete lineage is loaded from its root. Choose any node to focus its ancestry, descendants, and versions.</p>
             <ForkGraph data={data} session={session} explore={explore} />
             {data.totalChildren === 0 ? <p className="text-muted-foreground">No direct descendants yet.</p> : null}

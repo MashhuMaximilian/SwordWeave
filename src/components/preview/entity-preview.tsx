@@ -23,6 +23,8 @@ import { Markdown } from "@/components/ui/markdown";
 import { IconDisplay } from "@/components/icons/icon-display";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
 import { PreviewFlagSummary } from "@/components/engagement/flags-section";
+import { ForkMapButton } from "@/components/engagement/fork-map-button";
+import type { ForkTargetType } from "@/lib/publishing/forks-query";
 import { ChevronRight, History } from "lucide-react";
 import { useModalStack } from "@/components/ui/modal-stack";
 import { computeTransitiveBu } from "@/lib/engine/transitive-bu";
@@ -104,6 +106,8 @@ export interface EntityPreviewProps {
    * surface (creations, library, sandbox, atelier).
    */
   owner?: EntityPreviewOwner | undefined;
+  /** Hide the owner strip when the surrounding page already renders authorship. */
+  showOwner?: boolean;
   /**
    * Action bar (Edit / Open source / Version history / Delete). Every
    * preview surface renders the SAME row in the SAME order so the modal
@@ -531,6 +535,7 @@ export function EntityPreview({
   isDirty = false,
   buildModifiers,
   owner,
+  showOwner = true,
   actions,
   actionBar,
 }: EntityPreviewProps) {
@@ -675,7 +680,7 @@ export function EntityPreview({
             the user in preview to be lower not above the picture, low,
             above the like for bar'. */}
       </div>
-      {resolvedOwner ? <OwnerBar owner={resolvedOwner} /> : null}
+      {showOwner && resolvedOwner ? <OwnerBar owner={resolvedOwner} /> : null}
       {footer}
     </div>
   );
@@ -735,7 +740,7 @@ function OwnerBar({ owner }: { owner: NonNullable<EntityPreviewProps["owner"]> }
     // a containing wrapper class so the gap is unambiguous. The
     // mb on the previous section was implicit; making it pt-6 +
     // mt-3 leaves room between the last content line and the rule.
-    <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-6 text-xs text-muted-foreground">
+    <div className="mt-3 flex items-center justify-between gap-2 border-t border-border px-1 pb-4 pt-6 text-xs text-muted-foreground">
       {profileHref ? (
         <a href={profileHref} className="flex items-center gap-2 hover:underline">
           {inner}
@@ -1473,23 +1478,58 @@ function rarityClass(rarity: string): string {
 /** Loads the same complete record used by the author and source page. */
 export function FetchedEntityPreview({ targetType, targetId, owner }: { targetType: string; targetId: string; owner?: EntityPreviewOwner }) {
   const [result, setResult] = useState<{ key: string; item?: SandboxPreviewItem; error?: string } | null>(null);
+  const [engagement, setEngagement] = useState<PreviewCallbacks["engagement"] | null>(null);
   const key = `${targetType}:${targetId}`;
   useEffect(() => {
     const controller = new AbortController();
     const kind = targetType.endsWith("_TEMPLATE") || ["LINEAGE", "UPBRINGING", "MANIFEST"].includes(targetType) ? "heritage" : targetType.toLowerCase();
     const endpoint = ({ primitive: "primitives", effect: "effects", capability: "capabilities", heritage: "heritage", item: "items" } as Record<string, string>)[kind];
     if (!endpoint) return;
-    fetch(`/api/${endpoint}/${encodeURIComponent(targetId)}`, { signal: controller.signal })
-      .then(async response => { if (!response.ok) throw new Error("Unable to load this record."); return response.json(); })
-      .then(data => {
+    Promise.all([
+      fetch(`/api/${endpoint}/${encodeURIComponent(targetId)}`, { signal: controller.signal })
+        .then(async response => { if (!response.ok) throw new Error("Unable to load this record."); return response.json(); }),
+      fetch(`/api/engagement/lookup?targetType=${encodeURIComponent(targetType)}&targetId=${encodeURIComponent(targetId)}`, { signal: controller.signal })
+        .then(async response => response.ok ? response.json() : null),
+    ])
+      .then(([data, engagementData]) => {
         const row = data[kind === "heritage" ? "template" : kind];
         if (!row) throw new Error("The record is unavailable.");
         setResult({ key, item: { kind, row } as SandboxPreviewItem });
+        setEngagement({
+          likes: Number(engagementData?.likes ?? 0),
+          dislikes: Number(engagementData?.dislikes ?? 0),
+          forks: Number(engagementData?.forks ?? 0),
+          userReaction: engagementData?.userReaction ?? null,
+          authorId: owner?.authorId ?? null,
+          authorUsername: owner?.authorUsername ?? null,
+          authorIsAdmin: null,
+          currentUserInternalId: engagementData?.currentUserInternalId ?? null,
+        });
       }).catch(error => { if (!controller.signal.aborted) setResult({ key, error: String(error.message) }); });
     return () => controller.abort();
-  }, [key, targetId, targetType]);
+  }, [key, owner?.authorId, owner?.authorUsername, targetId, targetType]);
   return <div className="v12-fetched-preview">
-    {result?.key === key ? result.item ? <EntityPreview item={result.item} {...(owner ? { owner } : {})} /> : <p role="alert">{result.error}</p> : <p role="status">Loading the complete record…</p>}
-    <a className="v12-metal-button" href={`/library/item/${key}`}>Open source page</a>
+    {result?.key === key ? result.item ? (
+      <EntityPreview
+        item={result.item}
+        {...(owner ? { owner } : {})}
+        callbacks={{
+          ...(engagement ? { engagement } : {}),
+          openSourceHref: `/library/item/${key}`,
+        }}
+        actionBar={{
+          openSourceHref: `/library/item/${key}`,
+          forkMap: (
+            <ForkMapButton
+              targetType={targetType as ForkTargetType}
+              targetId={targetId}
+              targetName={result.item.row.name}
+              className="min-w-0 flex-1 justify-center px-1.5 py-2 text-xs"
+            />
+          ),
+          versionHistoryHref: `/library/item/${key}/versions`,
+        }}
+      />
+    ) : <p role="alert">{result.error}</p> : <p role="status">Loading the complete record…</p>}
   </div>;
 }

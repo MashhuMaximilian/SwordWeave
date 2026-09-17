@@ -128,6 +128,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
   } | null>(null);
   const [flagReason, setFlagReason] = useState<FlagReason | null>(null);
   const [flagNote, setFlagNote] = useState("");
+  const [flagCount, setFlagCount] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   /**
    * After a successful fork, hold the result here so the
@@ -146,6 +147,42 @@ export function LikeForkBar(props: LikeForkBarProps) {
   const isOwnContent =
     props.authorId != null && props.authorId === props.currentUserId;
   const showFollow = !isOwnContent && props.authorId != null;
+
+  useEffect(() => {
+    if (props.compact) return;
+    const controller = new AbortController();
+    const loadFlagCount = async () => {
+      const query = new URLSearchParams({
+        targetType: props.targetType,
+        targetId: props.targetId,
+      });
+      if (props.versionId) query.set("versionId", props.versionId);
+      try {
+        const response = await fetch(`/api/flags?${query}`, { signal: controller.signal });
+        if (!response.ok) return;
+        const data = (await response.json()) as { distribution?: Record<string, number> };
+        setFlagCount(
+          Object.values(data.distribution ?? {}).reduce((total, count) => total + Number(count), 0),
+        );
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          setFlagCount(null);
+        }
+      }
+    };
+    void loadFlagCount();
+    const onFlagsChanged = (event: Event) => {
+      const detail = (event as CustomEvent<{ targetType?: string; targetId?: string }>).detail;
+      if (detail?.targetType === props.targetType && detail.targetId === props.targetId) {
+        void loadFlagCount();
+      }
+    };
+    window.addEventListener("sw-flags-changed", onFlagsChanged);
+    return () => {
+      controller.abort();
+      window.removeEventListener("sw-flags-changed", onFlagsChanged);
+    };
+  }, [props.compact, props.targetId, props.targetType, props.versionId]);
 
   // ---------- handlers ----------
 
@@ -497,6 +534,9 @@ export function LikeForkBar(props: LikeForkBarProps) {
       >
         <Flag className={iconClass} aria-hidden="true" />
         {!props.compact && <span>Flag</span>}
+        {!props.compact && flagCount !== null ? (
+          <span className="tabular-nums" aria-label={`${flagCount} reports`}>{flagCount}</span>
+        ) : null}
       </button>
       <FlagPopover
         anchor={flagAnchor}

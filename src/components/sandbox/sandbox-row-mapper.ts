@@ -206,7 +206,6 @@ const EMPTY_ENGAGEMENT = {
   likesCount: 0,
   dislikesCount: 0,
   forkCount: 0,
-  netReactions: 0,
   // publishedAt is intentionally OMITTED here. Each mapper below
   // overrides it with `row.createdAt ?? null` so the RECENT sort
   // orders by true creation time. Phase 9.1 follow-up (Mashu

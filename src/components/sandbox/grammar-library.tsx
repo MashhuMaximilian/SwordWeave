@@ -696,6 +696,7 @@ export function GrammarLibrary({
             stack.clear();
           }}
           currentUser={currentUser}
+          currentUserInternalId={currentUserInternalId}
           onSubLinkClick={(link) => {
             // Look up the full row and push it onto the stack.
             if (link.targetType === "PRIMITIVE") {
@@ -866,6 +867,7 @@ function SandboxPreviewBody({
   onSubLinkClick,
   onFork,
   currentUser,
+  currentUserInternalId,
 }: {
   item: SandboxPreviewItem;
   libraryItem: LibraryItem | null;
@@ -880,6 +882,7 @@ function SandboxPreviewBody({
   onSubLinkClick: (link: PreviewSubLink) => void;
   onFork: ((targetType: string, targetId: string) => void) | undefined;
   currentUser: { username: string; displayName: string | null; avatarUrl: string | null } | null;
+  currentUserInternalId: string | null;
 }) {
   // Preview actions may focus the inline split workspace, but the
   // persistent Build & Preview drawer is reserved for its FAB action.
@@ -993,6 +996,16 @@ function SandboxPreviewBody({
   // active state) on first open. Counts + author info come from the
   // LibraryItem we passed in.
   const { engagement } = useSandboxEngagement(libraryItem);
+  const previewEngagement = engagement ?? {
+    likes: 0,
+    dislikes: 0,
+    forks: 0,
+    userReaction: null,
+    authorId: libraryItem?.authorId ?? null,
+    authorUsername: libraryItem?.authorUsername ?? null,
+    authorIsAdmin: libraryItem?.authorIsAdmin ?? null,
+    currentUserInternalId,
+  };
 
   function slotIntoBuild() {
     // Phase 8 rev 9: capabilities can also slot into build (per the
@@ -1282,7 +1295,7 @@ function SandboxPreviewBody({
     forkMap: (
       <ForkMapButton
         targetType={(libraryItem?.targetType ?? item.kind.toUpperCase()) as ForkTargetType}
-        targetId={compositeId}
+        targetId={String(item.row.id)}
         targetName={item.row.name}
         className="min-w-0 flex-1 justify-center px-1.5 py-2 text-xs"
       />
@@ -1296,24 +1309,13 @@ function SandboxPreviewBody({
         item={item}
         variant="read"
         owner={owner}
-        {...(engagement
-          ? {
-              callbacks: {
-                onSubLinkClick,
-                engagement,
-                openSourceHref: `/library/item/${compositeId}`,
-                sandboxPath: "/atelier",
-                onFork,
-              },
-            }
-          : {
-              callbacks: {
-                onSubLinkClick,
-                openSourceHref: `/library/item/${compositeId}`,
-                sandboxPath: "/atelier",
-                onFork,
-              },
-            })}
+        callbacks={{
+          onSubLinkClick,
+          engagement: previewEngagement,
+          openSourceHref: `/library/item/${compositeId}`,
+          sandboxPath: "/atelier",
+          onFork,
+        }}
         actionBar={actionBar}
       />
     </div>

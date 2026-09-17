@@ -39,7 +39,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <GlobalControls>
           <div className="flex min-h-dvh flex-col">
           <main className="flex min-h-0 min-w-0 flex-1 flex-col pb-2">{children}</main>
-          <footer className="v12-section-head mt-auto shrink-0 border-t border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
+          <footer className="v12-site-footer v12-section-head mt-auto shrink-0 border-t border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
             <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2">
               <span>
                 SwordWeave · Open-source TTRPG engine

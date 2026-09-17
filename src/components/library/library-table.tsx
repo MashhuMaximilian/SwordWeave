@@ -261,7 +261,7 @@ function ListItem({
         )}
         <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
           <span>♥ {item.likesCount}</span>
-          <span>★ {item.forkCount}</span>
+          <span>⑂ {item.forkCount}</span>
           {authorDisplayUsername(item) && (
             // Phase 9 follow-up: mask admin authors to "by System"
             // via the unified helper. The condition also masks so

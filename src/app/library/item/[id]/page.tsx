@@ -222,7 +222,6 @@ interface EngagementData {
   likes: number;
   dislikes: number;
   forks: number;
-  net: number;
   userReaction: "LIKE" | "DISLIKE" | null;
 }
 
@@ -237,7 +236,6 @@ async function loadEngagement(
     likes: 0,
     dislikes: 0,
     forks: 0,
-    net: 0,
     userReaction: null,
   };
 
@@ -303,7 +301,6 @@ async function loadEngagement(
     likes: rxAgg.likes,
     dislikes: rxAgg.dislikes,
     forks: fkAgg,
-    net: rxAgg.likes - rxAgg.dislikes,
     userReaction: userRx as "LIKE" | "DISLIKE" | null,
   };
   } catch (err) {
@@ -631,7 +628,7 @@ function DetailShell({
     currentUserId !== null &&
     ownerId === currentUserId;
   return (
-    <div className="mx-auto w-full max-w-5xl px-5 py-8" data-library-surface>
+    <div className="mx-auto w-full max-w-6xl px-3 py-6 sm:px-5 sm:py-8" data-library-surface>
       <Link
         href={backHref}
         className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -639,7 +636,7 @@ function DetailShell({
         <ArrowLeft className="size-3.5" /> Back to library
       </Link>
 
-      <article className="v12-instrument rounded-md border border-border bg-card p-6">
+      <article className="v12-instrument rounded-xl border border-border bg-card/95 p-4 shadow-2xl sm:p-6">
         <header className="v12-section-head -mx-6 -mt-6 border-b border-border px-6 pb-4 pt-6">
           <p className="v12-kicker text-xs text-muted-foreground">
             {typeLabel}
@@ -733,16 +730,6 @@ function DetailShell({
               <span className="font-semibold">System</span>
             </span>
           )}
-          {!author && (
-            <span
-              data-testid="system-author-label"
-              className="mt-3 inline-flex items-center gap-2 text-sm text-muted-foreground"
-            >
-              <Shield className="size-4" />
-              by{" "}
-              <span className="font-semibold">System</span>
-            </span>
-          )}
         </header>
 
         {description && (
@@ -758,17 +745,20 @@ function DetailShell({
 
         <div className="mt-5">{children}</div>
 
-        <footer className="mt-6 border-t border-border pt-4">
-          <LikeForkBar
+        <footer className="mt-7 space-y-4 border-t border-border pt-5">
+          <section className="rounded-lg border border-border bg-background/40 p-4 pb-5" aria-label="Community actions">
+            <LikeForkBar
             targetType={
               targetType as
                 | "PRIMITIVE"
+                | "EFFECT"
                 | "CAPABILITY"
                 | "CHARACTER"
                 | "ITEM"
                 | "LINEAGE_TEMPLATE"
                 | "UPBRINGING_TEMPLATE"
                 | "MANIFEST_TEMPLATE"
+                | "BUILD_TEMPLATE"
             }
             targetId={targetId}
             initialLikes={engagement.likes}
@@ -779,7 +769,8 @@ function DetailShell({
             authorId={author?.isAdmin ? null : (author?.id ?? null)}
             authorUsername={author?.isAdmin ? null : (author?.username ?? null)}
             currentUserId={currentUserId}
-          />
+            />
+          </section>
           <FlagAndForkFooter
             targetType={targetType}
             targetId={targetId}
@@ -789,11 +780,18 @@ function DetailShell({
             flagNotes={flagNotes}
             forkSource={forkSource}
           />
-          <div className="mt-3 flex justify-end">
+          <div className="v12-preview-action-group flex gap-2 border-t border-border pt-4" data-preview-action-group="reference">
+            <Link
+              href={`/library/item/${targetType}:${targetId}/versions`}
+              className="v12-metal-button min-w-0 flex-1 justify-center"
+            >
+              Versions
+            </Link>
             <ForkMapButton
               targetType={targetType as ForkTargetType}
               targetId={targetId}
               targetName={name}
+              className="min-w-0 flex-1 justify-center"
             />
           </div>
           {/* ForksList rendered as a sibling (server component) — cannot be
@@ -889,6 +887,7 @@ async function PrimitiveDetail({
           },
         }}
         variant="read"
+        showOwner={false}
         owner={(() => {
           // Phase 9 round 5: mask author fields when the row is
           // system-authored. Three trigger conditions:
@@ -920,10 +919,6 @@ async function PrimitiveDetail({
                 profileHref: author?.username ? `/u/${author.username}` : null,
               };
         })()}
-        actionBar={{
-          openSourceHref: `/library/item/PRIMITIVE:${row.id}`,
-          versionHistoryHref: `/library/item/PRIMITIVE:${row.id}/versions`,
-        }}
       />
     </DetailShell>
   );

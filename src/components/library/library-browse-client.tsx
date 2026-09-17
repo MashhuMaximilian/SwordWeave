@@ -549,12 +549,6 @@ export function LibraryBrowseClient({
                   >
                     {selectedItem.definitionKind === "TEMPLATE" ? "Specialize" : "Use exact entry"}
                   </a>
-                  <a
-                    href={`/library/item/${selectedItem.id}`}
-                    className="v12-metal-button"
-                  >
-                    Source page
-                  </a>
                   {selectedForkTarget ? (
                     <a
                       href={`${selectedForkTarget.sandboxPath}${selectedForkTarget.search}`}
@@ -563,15 +557,30 @@ export function LibraryBrowseClient({
                       {selectedItem.definitionKind === "TEMPLATE" ? "Specialize this version" : "Fork this entry"}
                     </a>
                   ) : null}
+                </div>
+                <div className="v12-inspector-engagement space-y-3 pb-4">
+                  <LikeForkBar
+                    targetType={selectedItem.targetType}
+                    targetId={selectedItem.targetId}
+                    initialLikes={selectedItem.likesCount}
+                    initialDislikes={selectedItem.dislikesCount}
+                    initialForks={selectedItem.forkCount}
+                    initialUserReaction={engagement.reactions[selectedItem.id] ?? null}
+                    initialFollowing={engagement.following[selectedItem.id] ?? false}
+                    authorId={selectedItem.authorId}
+                    authorUsername={libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorUsername}
+                    currentUserId={currentUserInternalId}
+                  />
+                  <PreviewFlagSummary targetType={selectedItem.targetType} targetId={selectedItem.targetId} />
+                </div>
+                <div className="v12-inspector-actions border-t border-border pt-3">
+                  <a href={`/library/item/${selectedItem.id}`} className="v12-metal-button">Source</a>
                   <ForkMapButton key={selectedItem.id}
                     targetType={selectedItem.targetType}
                     targetId={selectedItem.targetId}
                     targetName={selectedItem.name}
                   />
-                </div>
-                <div className="v12-inspector-engagement">
-                  <span>♡ {selectedItem.likesCount}</span>
-                  <span>⑂ {selectedItem.forkCount}</span>
+                  <a className="v12-metal-button" href={`/library/item/${selectedItem.id}/versions`}>Versions</a>
                 </div>
               </>
             ) : (
@@ -593,13 +602,7 @@ export function LibraryBrowseClient({
         size="xl"
       >
         {selectedItem ? (
-          <div className="v12-library-modal-layout"><FetchedEntityPreview key={selectedItem.id} targetType={selectedItem.targetType} targetId={selectedItem.targetId} owner={{ authorId:selectedItem.authorId, authorUsername:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorUsername, authorDisplayName:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorDisplayName, isOwner:selectedItem.authorId === currentUserInternalId, sourceOrigin:libraryOrigin(selectedItem) === "system" ? "system" : selectedItem.sourceOrigin }} />
-          <div className="v12-modal-actions">
-            <a className="v12-metal-button" href={`/library/item/${selectedItem.id}/versions`}>Versions</a>
-            <ForkMapButton targetType={selectedItem.targetType} targetId={selectedItem.targetId} targetName={selectedItem.name} />
-            <LikeForkBar targetType={selectedItem.targetType} targetId={selectedItem.targetId} initialLikes={selectedItem.likesCount} initialDislikes={selectedItem.dislikesCount} initialForks={selectedItem.forkCount} authorId={selectedItem.authorId} authorUsername={libraryOrigin(selectedItem)==="system"?null:selectedItem.authorUsername} currentUserId={currentUserInternalId} />
-            <PreviewFlagSummary targetType={selectedItem.targetType} targetId={selectedItem.targetId} />
-          </div></div>
+          <div className="v12-library-modal-layout"><FetchedEntityPreview key={selectedItem.id} targetType={selectedItem.targetType} targetId={selectedItem.targetId} owner={{ authorId:selectedItem.authorId, authorUsername:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorUsername, authorDisplayName:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorDisplayName, isOwner:selectedItem.authorId === currentUserInternalId, sourceOrigin:libraryOrigin(selectedItem) === "system" ? "system" : selectedItem.sourceOrigin }} /></div>
         ) : null}
       </DetailModal>
       <DetailModal
@@ -611,7 +614,6 @@ export function LibraryBrowseClient({
         {nestedPreview ? (
           <div className="v12-nested-preview">
             <FetchedEntityPreview targetType={nestedPreview.targetType} targetId={nestedPreview.targetId} />
-            <div className="v12-modal-actions"><a className="v12-metal-button" href={`/library/item/${nestedPreview.targetType}:${nestedPreview.targetId}/versions`}>Versions</a><ForkMapButton targetType={nestedPreview.targetType as LibraryItem["targetType"]} targetId={nestedPreview.targetId} targetName={nestedPreview.name} /><LikeForkBar targetType={nestedPreview.targetType as LibraryItem["targetType"]} targetId={nestedPreview.targetId} initialLikes={0} initialDislikes={0} initialForks={0} currentUserId={currentUserInternalId} /><PreviewFlagSummary targetType={nestedPreview.targetType as LibraryItem["targetType"]} targetId={nestedPreview.targetId} /></div>
           </div>
         ) : null}
       </DetailModal>

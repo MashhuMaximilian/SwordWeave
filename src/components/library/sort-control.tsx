@@ -33,8 +33,8 @@ interface Props {
 }
 
 const SORT_OPTIONS: { key: LibrarySort; label: string; hint: string }[] = [
-  { key: "ENGAGEMENT", label: "Engagement", hint: "likes + forks − dislikes" },
-  { key: "LIKES", label: "Most liked", hint: "net reactions" },
+  { key: "ENGAGEMENT", label: "Engagement", hint: "likes + forks" },
+  { key: "LIKES", label: "Most liked", hint: "like count" },
   { key: "FORKS", label: "Most forked", hint: "fork count" },
   { key: "RECENT", label: "Recent", hint: "newest first" },
   { key: "ALPHABETICAL", label: "A → Z", hint: "by name" },

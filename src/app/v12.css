@@ -1196,8 +1196,8 @@ body[data-ui="v12"]:has([data-library-surface]) > div > main {
   width: 100%;
 }
 
-body[data-ui="v12"]:has([data-atelier-surface]) footer,
-body[data-ui="v12"]:has([data-library-surface]) footer { display: none; }
+body[data-ui="v12"]:has([data-atelier-surface]) .v12-site-footer,
+body[data-ui="v12"]:has([data-library-surface]) .v12-site-footer { display: none; }
 
 body[data-ui="v12"] .v12-atelier-shell {
   min-height: 100dvh;

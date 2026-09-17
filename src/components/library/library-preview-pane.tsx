@@ -170,13 +170,6 @@ export function LibraryPreviewPane({
               authorUsername={item.authorUsername}
               currentUserId={currentUserInternalId}
             />
-            <div className="mt-3 flex">
-              <ForkMapButton
-                targetType={item.targetType}
-                targetId={item.targetId}
-                targetName={item.name}
-              />
-            </div>
             <div className="mt-3 pb-2">
               <PreviewFlagSummary
                 targetType={item.targetType}
@@ -185,13 +178,22 @@ export function LibraryPreviewPane({
             </div>
           </section>
 
-          <section className="border-t border-border pt-4">
+          <section className="v12-preview-action-group grid grid-cols-3 gap-2 border-t border-border pt-4">
             <Link
               href={`/library/item/${item.id}`}
-              className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+              className="v12-metal-button min-w-0 justify-center"
             >
-              Open full detail page
-              <ArrowRight className="size-3.5" />
+              Source
+              <ArrowRight className="size-3.5 shrink-0" />
+            </Link>
+            <ForkMapButton
+              targetType={item.targetType}
+              targetId={item.targetId}
+              targetName={item.name}
+              className="min-w-0 justify-center"
+            />
+            <Link href={`/library/item/${item.id}/versions`} className="v12-metal-button min-w-0 justify-center">
+              Versions
             </Link>
           </section>
         </div>

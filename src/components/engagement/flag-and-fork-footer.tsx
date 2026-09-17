@@ -135,34 +135,11 @@ export function FlagAndForkFooter(props: {
       ) : null}
 
       {/* Flags section — collapsible distribution + counts. */}
-      {(() => {
-        const total = Object.values(props.flagDistribution).reduce(
-          (a, b) => a + b,
-          0,
-        );
-        // Don't render the section at all if no flags have been placed —
-        // an empty "Flags (0)" pill is noise.
-        if (total === 0) return null;
-        return (
-          <div className="mt-5">
-            <FlagsSection
-              distribution={props.flagDistribution}
-              onOpenNotes={() => setNotesOpen(true)}
-            />
-          </div>
-        );
-      })()}
-
-      {/* Version-history link only — ForksList is rendered as a sibling by
-          the page (server component) to keep DB code out of the client
-          bundle. */}
-      <div className="mt-3 flex justify-end">
-        <Link
-          href={`/library/item/${props.targetType}:${props.targetId}/versions`}
-          className="text-xs text-muted-foreground transition-colors hover:text-foreground"
-        >
-          Version history →
-        </Link>
+      <div className="mt-5">
+        <FlagsSection
+          distribution={props.flagDistribution}
+          onOpenNotes={() => setNotesOpen(true)}
+        />
       </div>
 
       <FlagNotesModal

@@ -538,34 +538,6 @@ export function PreviewActions(props: PreviewActionProps) {
         />
       ) : null}
 
-      {hasReferenceActions ? (
-        <div className="v12-preview-action-group flex gap-1.5 pb-1" data-preview-action-group="reference">
-          {onEdit ? (
-            <button
-              type="button"
-              onClick={onEdit}
-              className="inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md bg-primary px-1.5 py-2 text-[11px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-            >
-              <Pencil className="size-3.5 shrink-0" />
-              <span className="truncate">Edit</span>
-            </button>
-          ) : null}
-          {openSourceHref ? (
-            <a href={openSourceHref} className="inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-border bg-card px-1.5 py-2 text-[11px] font-medium text-foreground transition-colors hover:border-primary hover:text-primary">
-              <ExternalLink className="size-3.5 shrink-0" />
-              <span className="truncate">Source</span>
-            </a>
-          ) : null}
-          {forkMap}
-          {versionHistoryHref ? (
-            <a href={versionHistoryHref} className="inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-border bg-card px-1.5 py-2 text-[11px] font-medium text-foreground transition-colors hover:border-primary hover:text-primary">
-              <History className="size-3.5 shrink-0" />
-              <span className="truncate">Versions</span>
-            </a>
-          ) : null}
-        </div>
-      ) : null}
-
       {hasDestinationActions ? (
         <section
           className="v12-preview-action-group space-y-2"
@@ -588,6 +560,30 @@ export function PreviewActions(props: PreviewActionProps) {
             {primary ? <DestinationAction action={primary} destination="primary" emphasis={!workspace} /> : null}
           </div>
         </section>
+      ) : null}
+
+      {hasReferenceActions ? (
+        <div className="v12-preview-action-group flex gap-1.5 pt-2" data-preview-action-group="reference">
+          {onEdit ? (
+            <button type="button" onClick={onEdit} className="inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md bg-primary px-1.5 py-2 text-[11px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
+              <Pencil className="size-3.5 shrink-0" />
+              <span className="truncate">Edit</span>
+            </button>
+          ) : null}
+          {openSourceHref ? (
+            <a href={openSourceHref} className="inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-border bg-card px-1.5 py-2 text-[11px] font-medium text-foreground transition-colors hover:border-primary hover:text-primary">
+              <ExternalLink className="size-3.5 shrink-0" />
+              <span className="truncate">Source</span>
+            </a>
+          ) : null}
+          {forkMap}
+          {versionHistoryHref ? (
+            <a href={versionHistoryHref} className="inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-border bg-card px-1.5 py-2 text-[11px] font-medium text-foreground transition-colors hover:border-primary hover:text-primary">
+              <History className="size-3.5 shrink-0" />
+              <span className="truncate">Versions</span>
+            </a>
+          ) : null}
+        </div>
       ) : null}
 
       {deletable ? (

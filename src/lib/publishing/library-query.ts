@@ -21,7 +21,7 @@ import {
 // LibraryItem.id format).
 //
 // Sort modes:
-// - LIKES (default): by likes_count - dislikes_count
+// - LIKES (default): by likes_count
 // - RECENT: by created_at DESC
 // - FORKS: by fork_count DESC
 // - ALPHABETICAL: by LOWER(name) ASC
@@ -186,7 +186,6 @@ export interface LibraryItem {
   likesCount: number;
   dislikesCount: number;
   forkCount: number;
-  netReactions: number;
   tags: string[];
   /**
    * Phase 9 follow-up: whether this row's author is a Clerk admin.
@@ -386,25 +385,19 @@ function sortItems(items: LibraryItem[], sort: LibrarySort) {
     case "FORKS":
       items.sort((a, b) => {
         if (b.forkCount !== a.forkCount) return b.forkCount - a.forkCount;
-        return b.netReactions - a.netReactions;
+        return b.likesCount - a.likesCount;
       });
       break;
     case "ALPHABETICAL":
       items.sort((a, b) => a.name.localeCompare(b.name));
       break;
     case "ENGAGEMENT":
-      // Composite engagement: likes * 2 + forks * 3 - dislikes
-      // Weights forks highest (strongest signal of value), then likes,
-      // penalties for dislikes. Items with no engagement sink to bottom.
+      // Composite engagement uses the two positive community actions.
       items.sort((a, b) => {
-        const aScore =
-          a.likesCount * 2 + a.forkCount * 3 - a.dislikesCount;
-        const bScore =
-          b.likesCount * 2 + b.forkCount * 3 - b.dislikesCount;
+        const aScore = a.likesCount * 2 + a.forkCount * 3;
+        const bScore = b.likesCount * 2 + b.forkCount * 3;
         if (bScore !== aScore) return bScore - aScore;
-        // Tiebreaker: net reactions
-        if (b.netReactions !== a.netReactions)
-          return b.netReactions - a.netReactions;
+        if (b.likesCount !== a.likesCount) return b.likesCount - a.likesCount;
         // Final tiebreaker: most recent
         const aT = a.publishedAt?.getTime() ?? 0;
         const bT = b.publishedAt?.getTime() ?? 0;
@@ -414,8 +407,8 @@ function sortItems(items: LibraryItem[], sort: LibrarySort) {
     case "LIKES":
     default:
       items.sort((a, b) => {
-        if (b.netReactions !== a.netReactions) {
-          return b.netReactions - a.netReactions;
+        if (b.likesCount !== a.likesCount) {
+          return b.likesCount - a.likesCount;
         }
         const aT = a.publishedAt?.getTime() ?? 0;
         const bT = b.publishedAt?.getTime() ?? 0;
@@ -865,7 +858,6 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
       likesCount: eng.likes,
       dislikesCount: eng.dislikes,
       forkCount: eng.forks,
-      netReactions: eng.likes - eng.dislikes,
       tags: r.tags ?? [],
       sourceOrigin: r.sourceOrigin ?? null,
       // Phase 8: per-entity iconography. resolveIcon picks the live
@@ -1043,7 +1035,6 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
       likesCount: eng.likes,
       dislikesCount: eng.dislikes,
       forkCount: eng.forks,
-      netReactions: eng.likes - eng.dislikes,
       tags: r.tags,
       sourceOrigin: r.sourceOrigin ?? null,
       // Phase 8: per-entity iconography (resolved — live or proposed)
@@ -1160,7 +1151,6 @@ async function fetchCharacters(q: LibraryQuery): Promise<LibraryItem[]> {
       likesCount: eng.likes,
       dislikesCount: eng.dislikes,
       forkCount: eng.forks,
-      netReactions: eng.likes - eng.dislikes,
       tags: [],
       sourceOrigin: r.sourceOrigin ?? null,
       // Characters don't carry icon columns. portraitUrl would be the
@@ -1306,7 +1296,6 @@ async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
       likesCount: eng.likes,
       dislikesCount: eng.dislikes,
       forkCount: eng.forks,
-      netReactions: eng.likes - eng.dislikes,
       tags: r.tags ?? [],
       sourceOrigin: r.sourceOrigin ?? null,
       // Phase 8: per-entity iconography (resolved — live or proposed)
@@ -1501,7 +1490,6 @@ async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
       likesCount: eng.likes,
       dislikesCount: eng.dislikes,
       forkCount: eng.forks,
-      netReactions: eng.likes - eng.dislikes,
       tags: r.tags ?? [],
       sourceOrigin: r.sourceOrigin ?? null,
       // Phase 8: per-entity iconography (resolved — live or proposed)
@@ -1705,7 +1693,6 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
       likesCount: eng.likes,
       dislikesCount: eng.dislikes,
       forkCount: eng.forks,
-      netReactions: eng.likes - eng.dislikes,
       // Phase 8 rev 10: heritage parity — was hardcoded to []. Now
       // surfaces the real tags from the DB (added in migration 0038).
       // Same pattern as the items/capabilities/effects fetchers above.
@@ -1849,7 +1836,6 @@ async function fetchBuilds(q: LibraryQuery): Promise<LibraryItem[]> {
       likesCount: eng.likes,
       dislikesCount: eng.dislikes,
       forkCount: eng.forks,
-      netReactions: eng.likes - eng.dislikes,
       tags: [],
       sourceOrigin: r.sourceOrigin ?? null,
       iconSource: icon.iconSource,

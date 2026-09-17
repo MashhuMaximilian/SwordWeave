@@ -14,9 +14,9 @@
 
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
-import { reactions } from "@/db/schema";
+import { forkAggregates, reactionAggregates, reactions } from "@/db/schema";
 import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 
 const VALID_TARGET_TYPES = [
@@ -48,8 +48,33 @@ export async function GET(request: Request) {
   }
 
   const { userId: clerkUserId } = await auth();
+  const [reactionTotals, forkTotals] = await Promise.all([
+    db
+      .select({
+        likes: sql<number>`COALESCE(SUM(${reactionAggregates.likesCount}), 0)::int`,
+        dislikes: sql<number>`COALESCE(SUM(${reactionAggregates.dislikesCount}), 0)::int`,
+      })
+      .from(reactionAggregates)
+      .where(and(
+        eq(reactionAggregates.targetType, targetType as (typeof VALID_TARGET_TYPES)[number]),
+        eq(reactionAggregates.targetId, targetId),
+      )),
+    db
+      .select({ forks: sql<number>`COALESCE(SUM(${forkAggregates.forkCount}), 0)::int` })
+      .from(forkAggregates)
+      .where(and(
+        eq(forkAggregates.sourceTargetType, targetType as (typeof VALID_TARGET_TYPES)[number]),
+        eq(forkAggregates.sourceTargetId, targetId),
+      )),
+  ]);
+  const counts = {
+    likes: Number(reactionTotals[0]?.likes ?? 0),
+    dislikes: Number(reactionTotals[0]?.dislikes ?? 0),
+    forks: Number(forkTotals[0]?.forks ?? 0),
+  };
   if (!clerkUserId) {
     return NextResponse.json({
+      ...counts,
       userReaction: null,
       currentUserInternalId: null,
     });
@@ -58,6 +83,7 @@ export async function GET(request: Request) {
   const currentUserInternalId = await resolveUserIdByClerkId(clerkUserId);
   if (!currentUserInternalId) {
     return NextResponse.json({
+      ...counts,
       userReaction: null,
       currentUserInternalId: null,
     });
@@ -81,6 +107,7 @@ export async function GET(request: Request) {
   // If we have a reaction, also surface the user's internal id so the
   // LikeForkBar can decide whether to show the follow button.
   return NextResponse.json({
+    ...counts,
     userReaction: rows[0]?.kind ?? null,
     currentUserInternalId,
   });

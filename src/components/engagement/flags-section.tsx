@@ -97,7 +97,7 @@ export function PreviewFlagSummary(props: {
     };
   }, [props.targetId, props.targetType, props.versionId]);
 
-  if (!data || Object.values(data.distribution).every((count) => count === 0)) {
+  if (!data) {
     return null;
   }
   return (
