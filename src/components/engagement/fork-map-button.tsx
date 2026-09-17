@@ -182,6 +182,7 @@ export function ForkMapButton({
           if (!data && !loading) void load();
         }}
         className={`v12-metal-button inline-flex items-center gap-1.5 text-[11px] font-medium leading-none ${className}`}
+        style={{ fontSize: "11px", lineHeight: 1 }}
       >
         <GitFork className="size-3.5 shrink-0" />
         Fork map

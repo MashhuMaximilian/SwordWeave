@@ -7,11 +7,11 @@ import { createPortal } from "react-dom";
 import { useModalStack } from "@/components/ui/modal-stack";
 import {
   Heart,
+  ThumbsDown,
   GitFork,
   Flag,
   UserPlus,
   UserMinus,
-  type LucideIcon,
 } from "lucide-react";
 import { ForkSuccessModal } from "@/components/engagement/fork-success-modal";
 import { buildSandboxUrl } from "@/lib/publishing/fork-target";
@@ -426,7 +426,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
 
   const buttonBase = props.compact
     ? "inline-flex h-6 min-w-6 shrink-0 items-center justify-center gap-0.5 whitespace-nowrap rounded border px-1 py-0 text-[10px] leading-none transition disabled:opacity-50"
-    : "inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-sm transition disabled:opacity-50";
+    : "inline-flex items-center gap-1 rounded-md border px-2 py-2 text-sm transition disabled:opacity-50";
   const buttonGhost =
     "border-border bg-card/50 text-muted-foreground hover:border-primary hover:text-foreground";
   const buttonActive = "border-primary bg-primary/10 text-primary";
@@ -438,7 +438,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
     <>
     <div
       onClick={(e) => e.stopPropagation()}
-      className={`flex items-center gap-1.5 ${props.compact ? "overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : "flex-wrap"} ${props.className ?? ""}`}
+      className={`flex items-center gap-1 ${props.compact ? "overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : "flex-wrap"} ${props.className ?? ""}`}
       role="group"
       aria-label="Engagement"
     >
@@ -729,28 +729,3 @@ function FlagPopover(props: {
     document.body,
   );
 }
-
-// Inline icon (lucide-react doesn't export ThumbsDown as a separate import
-// path in older versions — fall back to a simple SVG if missing).
-function ThumbsDown({ className, fill }: { className?: string; fill?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill={fill === "currentColor" ? "currentColor" : "none"}
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden="true"
-    >
-      <path d="M17 14V2" />
-      <path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H17v12" />
-      <path d="M17 22a2 2 0 0 0 2-2v-3.17a2 2 0 0 0-.59-1.41L17 14H9l1 4.12A2 2 0 0 0 11.95 20.5L13 22Z" />
-    </svg>
-  );
-}
-
-// Avoid unused-import lint warning if lucide-react version differs
-export type { LucideIcon };

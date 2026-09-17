@@ -108,6 +108,8 @@ export interface EntityPreviewProps {
   owner?: EntityPreviewOwner | undefined;
   /** Hide the owner strip when the surrounding page already renders authorship. */
   showOwner?: boolean;
+  /** Hide the inner identity block when a containing source page owns it. */
+  showIdentity?: boolean;
   /**
    * Action bar (Edit / Open source / Version history / Delete). Every
    * preview surface renders the SAME row in the SAME order so the modal
@@ -487,7 +489,7 @@ function ModifierCards({
   }
   return (
     <Section heading="Mirroring">
-      <ul className="grid gap-2 sm:grid-cols-2">
+      <ul className="grid min-w-0 gap-2">
         {cards.map((c, i) => {
           const op = c.op as ModifierOperation;
           // Phase 8.I i2.5h-fix2: derive mirrorability + the
@@ -498,15 +500,15 @@ function ModifierCards({
           const mirrorable = Boolean(spec?.mirrorable) && Boolean(spec?.mirrorOp);
           const mirrorOp = spec?.mirrorOp as ModifierOperation | undefined;
           return (
-            <li key={i} className="rounded-md border border-border p-2 text-sm">
+            <li key={i} className="min-w-0 overflow-hidden rounded-md border border-border p-2 text-sm">
               {/* Phase 8.I i2.5i-fix (Mashu 2026-08-06): strip the
                   secondary-background pill — just inline text
                   + OperationBadge. The mirrored op's color comes
                   from the badge, so no background chip needed. */}
-              <div className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground">
-                <span>{c.target} mirrors to</span>
+              <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground">
+                <span className="min-w-0 break-words [overflow-wrap:anywhere]">{c.target} mirrors to</span>
                 {mirrorable && mirrorOp ? (
-                  <span className="inline-flex items-center gap-1 text-xs font-medium normal-case tracking-normal text-foreground">
+                  <span className="inline-flex min-w-0 flex-wrap items-center gap-1 text-xs font-medium normal-case tracking-normal text-foreground">
                     <OperationBadge op={mirrorOp} />
                     <span className="font-semibold">{opLabel(mirrorOp)}</span>
                   </span>
@@ -536,6 +538,7 @@ export function EntityPreview({
   buildModifiers,
   owner,
   showOwner = true,
+  showIdentity = true,
   actions,
   actionBar,
 }: EntityPreviewProps) {
@@ -557,7 +560,7 @@ export function EntityPreview({
   const body = (() => {
     switch (item.kind) {
       case "primitive":
-        return <PrimitiveBody row={item.row} onSubLink={onSubLink} buildModifiers={buildModifiers} />;
+        return <PrimitiveBody row={item.row} onSubLink={onSubLink} buildModifiers={buildModifiers} showIdentity={showIdentity} />;
       case "effect":
         return <EffectBody row={item.row} onSubLink={onSubLink} />;
       case "capability":
@@ -830,15 +833,17 @@ function PrimitiveBody({
   row,
   onSubLink,
   buildModifiers,
+  showIdentity,
 }: {
   row: SandboxPrimitiveRow;
   onSubLink: (link: PreviewSubLink) => void;
   buildModifiers?: Array<Record<string, unknown>> | undefined;
+  showIdentity: boolean;
 }) {
   return (
     <div className="v12-primitive-preview-body space-y-4">
       <div className="v12-primitive-preview-primary">
-        <Header
+        {showIdentity ? <Header
           fallback="PRI"
           iconSource={row.iconSource}
           iconKey={row.iconKey}
@@ -852,7 +857,7 @@ function PrimitiveBody({
               <VisibilityPill isPublic={row.isPublic} />
             </>
           }
-        />
+        /> : null}
         {row.tags.length > 0 ? (
           <Section heading="Tags">
             <div className="flex flex-wrap gap-1.5">

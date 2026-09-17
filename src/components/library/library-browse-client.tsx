@@ -42,6 +42,7 @@ import { PreviewFlagSummary } from "@/components/engagement/flags-section";
 import { IconDisplay } from "@/components/icons/icon-display";
 import { buildSandboxUrl } from "@/lib/publishing/fork-target";
 import { Markdown } from "@/components/ui/markdown";
+import { ExternalLink, History } from "lucide-react";
 
 const ENTITY_ICONS: Record<string, string> = {
   PRIMITIVE: "delapouite/cube",
@@ -540,7 +541,7 @@ export function LibraryBrowseClient({
                 ) : null}
                 {selectedItem.tags.length ? <section className="v12-inspector-section"><h3>Tags</h3><div className="v12-inspector-tags">{selectedItem.tags.map((tag) => <span className="v12-tag" key={tag}>{tag}</span>)}</div></section> : null}
                 <LibraryProvenance targetType={selectedItem.targetType} targetId={selectedItem.targetId} name={selectedItem.name} author={libraryAuthorLabel(selectedItem)} />
-                <div className="v12-inspector-actions">
+                <div className="v12-inspector-actions pt-3">
                   <a
                     href={selectedItem.definitionKind === "TEMPLATE"
                       ? `/atelier?build=primitive&new=1&specialize=${selectedItem.targetId}`
@@ -558,7 +559,7 @@ export function LibraryBrowseClient({
                     </a>
                   ) : null}
                 </div>
-                <div className="v12-inspector-engagement space-y-3 pb-4">
+                <div className="v12-inspector-engagement space-y-3 py-3">
                   <LikeForkBar
                     targetType={selectedItem.targetType}
                     targetId={selectedItem.targetId}
@@ -573,14 +574,14 @@ export function LibraryBrowseClient({
                   />
                   <PreviewFlagSummary targetType={selectedItem.targetType} targetId={selectedItem.targetId} />
                 </div>
-                <div className="v12-inspector-actions border-t border-border pt-3">
-                  <a href={`/library/item/${selectedItem.id}`} className="v12-metal-button">Source</a>
+                <div className="v12-inspector-actions v12-inspector-reference-actions border-t border-border pt-3">
+                  <a href={`/library/item/${selectedItem.id}`} className="v12-metal-button gap-1.5 text-[11px]"><ExternalLink className="size-3.5 shrink-0" />Source</a>
                   <ForkMapButton key={selectedItem.id}
                     targetType={selectedItem.targetType}
                     targetId={selectedItem.targetId}
                     targetName={selectedItem.name}
                   />
-                  <a className="v12-metal-button" href={`/library/item/${selectedItem.id}/versions`}>Versions</a>
+                  <a className="v12-metal-button gap-1.5 text-[11px]" href={`/library/item/${selectedItem.id}/versions`}><History className="size-3.5 shrink-0" />Versions</a>
                 </div>
               </>
             ) : (

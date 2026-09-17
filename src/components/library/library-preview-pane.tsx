@@ -12,7 +12,7 @@
 // =============================================================================
 
 import Link from "next/link";
-import { ArrowRight, ExternalLink, User as UserIcon } from "lucide-react";
+import { ArrowRight, ExternalLink, History, User as UserIcon } from "lucide-react";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
 import { ForkMapButton } from "@/components/engagement/fork-map-button";
 import { PreviewFlagSummary } from "@/components/engagement/flags-section";
@@ -192,8 +192,8 @@ export function LibraryPreviewPane({
               targetName={item.name}
               className="min-w-0 justify-center"
             />
-            <Link href={`/library/item/${item.id}/versions`} className="v12-metal-button min-w-0 justify-center">
-              Versions
+            <Link href={`/library/item/${item.id}/versions`} className="v12-metal-button min-w-0 justify-center gap-1.5 text-[11px]">
+              <History className="size-3.5 shrink-0" /> Versions
             </Link>
           </section>
         </div>

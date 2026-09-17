@@ -11,7 +11,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
-import { ArrowLeft, ChevronRight, Pencil, Shield, User as UserIcon } from "lucide-react";
+import { ArrowLeft, ChevronRight, History, Pencil, Shield, User as UserIcon } from "lucide-react";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
@@ -646,15 +646,17 @@ function DetailShell({
             <div className="flex items-start gap-3 min-w-0 flex-1">
               {/* Phase 8: entity icon in the detail header. */}
               {iconSource ? (
-                <IconDisplay
-                  iconSource={iconSource}
-                  iconKey={iconKey ?? null}
-                  iconUrl={iconUrl ?? null}
-                  iconColor={iconColor ?? "#ffffff"}
-                  size={56}
-                  className="rounded-md border border-border"
-                  alt={name}
-                />
+                <span className="grid size-12 shrink-0 place-items-center rounded-full border border-[#a97830] bg-background/70 p-2 shadow-[inset_0_0_0_3px_rgba(8,13,20,0.75)]">
+                  <IconDisplay
+                    iconSource={iconSource}
+                    iconKey={iconKey ?? null}
+                    iconUrl={iconUrl ?? null}
+                    iconColor={iconColor ?? "#ffffff"}
+                    size={32}
+                    className="border-0 shadow-none"
+                    alt={name}
+                  />
+                </span>
               ) : (
                 <div
                   aria-hidden="true"
@@ -663,7 +665,7 @@ function DetailShell({
                   {typeLabel.split(" ")[0]?.slice(0, 3) ?? "?"}
                 </div>
               )}
-              <h1 className="font-display break-words text-3xl font-semibold uppercase tracking-wide">{name}</h1>
+              <h1 className="font-display break-words text-2xl font-semibold uppercase tracking-wide sm:text-3xl">{name}</h1>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {buCost !== null && (
@@ -732,7 +734,7 @@ function DetailShell({
           )}
         </header>
 
-        <div className="mt-6 grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+        <div className="mt-6 grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
           <main className="min-w-0">
             {description && (
               <section>
@@ -747,33 +749,37 @@ function DetailShell({
             <div className="mt-5 min-w-0">{children}</div>
           </main>
 
-          <aside className="min-w-0 space-y-3 rounded-lg border border-border bg-background/35 p-3 lg:sticky lg:top-4" aria-label="Entry activity and references">
-          <section className="rounded-md border border-border bg-card/50 p-3" aria-label="Community actions">
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Community</h2>
-            <LikeForkBar
-            targetType={
-              targetType as
-                | "PRIMITIVE"
-                | "EFFECT"
-                | "CAPABILITY"
-                | "CHARACTER"
-                | "ITEM"
-                | "LINEAGE_TEMPLATE"
-                | "UPBRINGING_TEMPLATE"
-                | "MANIFEST_TEMPLATE"
-                | "BUILD_TEMPLATE"
-            }
-            targetId={targetId}
-            initialLikes={engagement.likes}
-            initialDislikes={engagement.dislikes}
-            initialForks={engagement.forks}
-            initialUserReaction={engagement.userReaction}
-            // Phase 7.10 system-user rule: hide follow button for system-authored rows
-            authorId={author?.isAdmin ? null : (author?.id ?? null)}
-            authorUsername={author?.isAdmin ? null : (author?.username ?? null)}
-            currentUserId={currentUserId}
-            />
-          </section>
+          <aside
+            className="min-w-0 space-y-3 rounded-lg border border-border bg-background/35 p-3 lg:sticky lg:top-4"
+            aria-label="Entry activity and references"
+          >
+            <section className="rounded-md border border-border bg-card/50 p-3" aria-label="Community actions">
+              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Community</h2>
+              <LikeForkBar
+                targetType={
+                  targetType as
+                    | "PRIMITIVE"
+                    | "EFFECT"
+                    | "CAPABILITY"
+                    | "CHARACTER"
+                    | "ITEM"
+                    | "LINEAGE_TEMPLATE"
+                    | "UPBRINGING_TEMPLATE"
+                    | "MANIFEST_TEMPLATE"
+                    | "BUILD_TEMPLATE"
+                }
+                targetId={targetId}
+                initialLikes={engagement.likes}
+                initialDislikes={engagement.dislikes}
+                initialForks={engagement.forks}
+                initialUserReaction={engagement.userReaction}
+                // Phase 7.10 system-user rule: hide follow button for system-authored rows
+                authorId={author?.isAdmin ? null : (author?.id ?? null)}
+                authorUsername={author?.isAdmin ? null : (author?.username ?? null)}
+                currentUserId={currentUserId}
+                className="flex-nowrap"
+              />
+            </section>
           <FlagAndForkFooter
             targetType={targetType}
             targetId={targetId}
@@ -788,7 +794,7 @@ function DetailShell({
               href={`/library/item/${targetType}:${targetId}/versions`}
               className="v12-metal-button min-w-0 justify-center px-2 py-2 text-[11px]"
             >
-              Versions
+              <History className="size-3.5 shrink-0" /> Versions
             </Link>
             <ForkMapButton
               targetType={targetType as ForkTargetType}
@@ -847,7 +853,7 @@ async function PrimitiveDetail({
       name={row.name}
       buCost={row.buCost}
       category={row.category}
-      description={row.narrativeRule || row.mechanicalOutputText || null}
+      description={null}
       author={author}
       ownerId={row.userId}
       editHref={`/atelier?build=primitive&edit=${row.id}`}
@@ -892,6 +898,7 @@ async function PrimitiveDetail({
         }}
         variant="read"
         showOwner={false}
+        showIdentity={false}
         owner={(() => {
           // Phase 9 round 5: mask author fields when the row is
           // system-authored. Three trigger conditions:
@@ -1157,7 +1164,7 @@ async function CapabilityDetail({
                     <span className="font-semibold">{link.effect.name}</span>
                     {link.slotLabel ? (
                       <span className="ml-2 text-xs italic text-muted-foreground">
-                        "{link.slotLabel}"
+                        &ldquo;{link.slotLabel}&rdquo;
                       </span>
                     ) : null}
                   </Link>
@@ -2067,7 +2074,7 @@ async function ItemDetail({
                   </Link>
                   {link.slotLabel ? (
                     <span className="shrink-0 text-xs italic text-muted-foreground">
-                      "{link.slotLabel}"
+                      &ldquo;{link.slotLabel}&rdquo;
                     </span>
                   ) : null}
                   <span className="shrink-0 font-mono text-xs text-muted-foreground">

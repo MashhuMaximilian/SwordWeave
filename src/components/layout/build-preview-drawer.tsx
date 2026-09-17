@@ -14,7 +14,7 @@
 // to open the drawer directly on the preview tab.
 // =============================================================================
 
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useGlobalControls } from "./global-controls";
 import { Wrench, Eye, RotateCcw, Save, X } from "lucide-react";
@@ -125,17 +125,6 @@ export function BuildPreviewDrawer() {
     DrawerSlotCtx.get,
     () => EMPTY_DRAWER_SLOT,
   );
-  // The module-level slot may already contain client data before hydration,
-  // while the server snapshot is deliberately empty. Keep the first client
-  // render on that same empty snapshot, then reveal the live slot after
-  // hydration so button attributes cannot disagree with the server markup.
-  const [hydrated, setHydrated] = useState(false);
-  useEffect(() => {
-    // The first client render must exactly match the empty server snapshot.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setHydrated(true);
-  }, []);
-  const visibleSlot = hydrated ? slot : EMPTY_DRAWER_SLOT;
   // NOTE: we don't compute `activeContent` here. Both panels are
   // mounted simultaneously (the inactive one is hidden via CSS) so
   // the form's local state survives tab switches.
@@ -158,26 +147,23 @@ export function BuildPreviewDrawer() {
   return (
     <DrawerShell isOpen={drawerOpen} onClose={closeDrawer}>
       <div className="flex max-h-[70vh] flex-col">
-        {/* Tab strip — disabled when only one tab has content. */}
+        {/* Tab strip stays attribute-stable during hydration. Missing slots
+            are ignored in the click handlers instead of changing `disabled`
+            between the server render and the first client render. */}
         <div
           role="tablist"
-          className={cn(
-            "v12-build-drawer-tabs sticky top-0 z-10 -mx-1 mb-2 flex shrink-0 rounded-md border border-border bg-card p-0.5",
-            visibleSlot.build === null && visibleSlot.preview === null && "opacity-60",
-          )}
+          className="v12-build-drawer-tabs sticky top-0 z-10 -mx-1 mb-2 flex shrink-0 rounded-md border border-border bg-card p-0.5"
         >
           <button
             type="button"
             role="tab"
             aria-selected={drawerTab === "build"}
-            onClick={() => setDrawerTab("build")}
-            disabled={visibleSlot.build === null}
+            onClick={() => { if (slot.build !== null) setDrawerTab("build"); }}
             className={cn(
               "v12-build-drawer-tab flex flex-1 items-center justify-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-colors",
               drawerTab === "build"
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground",
-              visibleSlot.build === null && "cursor-not-allowed opacity-50",
             )}
           >
             <Wrench className="size-3.5" />
@@ -187,14 +173,12 @@ export function BuildPreviewDrawer() {
             type="button"
             role="tab"
             aria-selected={drawerTab === "preview"}
-            onClick={() => setDrawerTab("preview")}
-            disabled={visibleSlot.preview === null}
+            onClick={() => { if (slot.preview !== null) setDrawerTab("preview"); }}
             className={cn(
               "v12-build-drawer-tab flex flex-1 items-center justify-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-colors",
               drawerTab === "preview"
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground",
-              visibleSlot.preview === null && "cursor-not-allowed opacity-50",
             )}
           >
             <Eye className="size-3.5" />

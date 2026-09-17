@@ -382,6 +382,12 @@ body[data-ui="v12"] :where(.text-muted-foreground) {
   table-layout: fixed;
 }
 
+body[data-ui="v12"] [data-preview-section="mirroring"] {
+  margin-top: 16px;
+  padding-top: 13px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+}
+
 @container (min-width: 520px) {
   .v12-flags-expanded {
     grid-template-columns: 180px minmax(0, 1fr);
@@ -1004,6 +1010,8 @@ body[data-ui="v12"] .v12-provenance-path b { font-family: var(--font-system); fo
 body[data-ui="v12"] .v12-provenance-path span { color: var(--v12-soft); }
 body[data-ui="v12"] .v12-inspector-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
 body[data-ui="v12"] .v12-inspector-actions :where(a, button) { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 8px 10px; border-radius: 7px; text-decoration: none; }
+body[data-ui="v12"] .v12-inspector-actions.v12-inspector-reference-actions { grid-template-columns:repeat(3,minmax(0,1fr)); }
+body[data-ui="v12"] .v12-inspector-reference-actions :where(a,button) { min-width:0; padding-inline:6px; white-space:nowrap; }
 
 /* Character — possibility instrument with source-oriented content below it. */
 body[data-ui="v12"] .v12-character-page {
