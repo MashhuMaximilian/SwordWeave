@@ -628,7 +628,7 @@ function DetailShell({
     currentUserId !== null &&
     ownerId === currentUserId;
   return (
-    <div className="mx-auto w-full max-w-6xl px-3 py-6 sm:px-5 sm:py-8" data-library-surface>
+    <div className="v12-source-detail mx-auto w-full max-w-6xl px-3 py-6 sm:px-5 sm:py-8" data-library-surface>
       <Link
         href={backHref}
         className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -636,8 +636,8 @@ function DetailShell({
         <ArrowLeft className="size-3.5" /> Back to library
       </Link>
 
-      <article className="v12-instrument rounded-xl border border-border bg-card/95 p-4 shadow-2xl sm:p-6">
-        <header className="v12-section-head -mx-4 -mt-4 border-b border-border px-4 pb-6 pt-5 sm:-mx-6 sm:-mt-6 sm:px-6 sm:pt-6">
+      <article className="v12-source-detail-card v12-instrument rounded-xl border border-border bg-card/95 p-4 shadow-2xl sm:p-6">
+        <header className="v12-source-detail-head v12-section-head -mx-4 -mt-4 border-b border-border px-4 pb-6 pt-5 sm:-mx-6 sm:-mt-6 sm:px-6 sm:pt-6">
           <p className="v12-kicker text-xs text-muted-foreground">
             {typeLabel}
             {category ? ` · ${category.replace(/_/g, " ")}` : ""}
@@ -735,7 +735,7 @@ function DetailShell({
         </header>
 
         <div className="mt-6 grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
-          <main className="min-w-0">
+          <main className="v12-source-detail-main min-w-0">
             {description && (
               <section>
                 <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
@@ -750,7 +750,7 @@ function DetailShell({
           </main>
 
           <aside
-            className="min-w-0 space-y-3 rounded-lg border border-border bg-background/35 p-3 lg:sticky lg:top-4"
+            className="v12-source-detail-aside min-w-0 space-y-3 rounded-lg border border-border bg-background/35 p-3 lg:sticky lg:top-4"
             aria-label="Entry activity and references"
           >
             <section className="rounded-md border border-border bg-card/50 p-3" aria-label="Community actions">

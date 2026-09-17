@@ -3629,6 +3629,53 @@ body[data-ui="v12"] .v12-source-pane-scroll {
 body[data-ui="v12"] .v12-source-families > .v12-source-pane-scroll { padding-bottom:8px; }
 body[data-ui="v12"] .v12-source-entries > .v12-source-pane-scroll { padding-top:8px; }
 
+/* Source records use the same brass hierarchy as the Library instruments. */
+body[data-ui="v12"] .v12-source-detail > a:first-child {
+  color:var(--v12-gold-hi);
+  text-decoration-color:color-mix(in srgb,var(--v12-brass) 55%,transparent);
+}
+body[data-ui="v12"] .v12-source-detail-card {
+  border-color:color-mix(in srgb,var(--v12-brass) 72%,var(--v12-silver))!important;
+  background:linear-gradient(145deg,color-mix(in srgb,var(--v12-raised) 96%,var(--v12-brass) 4%),var(--v12-inset)) padding-box,var(--v12-brass-edge) border-box!important;
+  box-shadow:0 22px 64px rgba(0,0,0,.38),inset 0 1px color-mix(in srgb,var(--v12-gold-hi) 15%,transparent)!important;
+}
+body[data-ui="v12"] .v12-source-detail-head {
+  position:relative;
+  border-bottom-color:color-mix(in srgb,var(--v12-brass) 70%,transparent)!important;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--v12-brass) 10%,transparent),transparent 60%);
+}
+body[data-ui="v12"] .v12-source-detail-head::after {
+  content:"";
+  position:absolute;
+  left:24px;
+  bottom:-1px;
+  width:min(220px,38%);
+  height:2px;
+  background:linear-gradient(90deg,var(--v12-gold-hi),var(--v12-brass),transparent);
+}
+body[data-ui="v12"] .v12-source-detail-head .v12-kicker { color:var(--v12-copper-hi)!important; }
+body[data-ui="v12"] .v12-source-detail-head h1 { color:var(--v12-paper);text-shadow:0 1px 18px color-mix(in srgb,var(--v12-brass) 18%,transparent); }
+body[data-ui="v12"] .v12-source-detail-head :is(.bg-primary\/10,.text-primary) { color:var(--v12-gold-hi)!important; }
+body[data-ui="v12"] .v12-source-detail-main :is(h2,h3) {
+  color:var(--v12-gold-hi)!important;
+  letter-spacing:.1em;
+}
+body[data-ui="v12"] .v12-source-detail-main section {
+  border-color:color-mix(in srgb,var(--v12-brass) 40%,var(--v12-silver))!important;
+}
+body[data-ui="v12"] .v12-source-detail-aside {
+  border-color:color-mix(in srgb,var(--v12-brass) 62%,var(--v12-silver))!important;
+  background:linear-gradient(155deg,color-mix(in srgb,var(--v12-brass) 7%,var(--v12-panel-deep)),var(--v12-inset))!important;
+  box-shadow:inset 0 1px color-mix(in srgb,var(--v12-gold-hi) 10%,transparent);
+}
+body[data-ui="v12"] .v12-source-detail-aside > section {
+  border-color:color-mix(in srgb,var(--v12-brass) 48%,var(--v12-silver))!important;
+}
+body[data-ui="v12"] .v12-source-detail-aside h2 { color:var(--v12-gold-hi)!important; }
+body[data-ui="v12"] .v12-source-detail-aside [data-preview-action-group="reference"] {
+  border-top-color:color-mix(in srgb,var(--v12-brass) 60%,transparent)!important;
+}
+
 /* The icon endpoint renders its requested color into the SVG. Cross-fading
    exact theme colors avoids the yellow cast produced by CSS image filters. */
 .sw-fab .sw-fab__theme-icon { position:relative; display:inline-grid; width:22px; height:22px; place-items:center; }
