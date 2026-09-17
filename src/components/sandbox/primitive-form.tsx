@@ -1627,7 +1627,7 @@ export function PrimitiveForm({
           </div>
         ) : null}
         {!ruleKind ? <p className="v12-narrative-only-note">No orange mechanical output will be shown. The verbose description remains visible in white.</p> : null}
-        <div hidden={ruleKind !== "MODIFIER"}>
+        <div className="v12-rule-instrument" hidden={ruleKind !== "MODIFIER"}>
         <div className="v12-sentence" aria-label="Mechanical rule sentence">
           {modifiers[0] ? <>
             <span>{sentenceParts?.lead} </span>

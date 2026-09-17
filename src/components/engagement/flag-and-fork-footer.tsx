@@ -65,6 +65,10 @@ export function FlagAndForkFooter(props: {
 }) {
   const [notesOpen, setNotesOpen] = useState(false);
   const [forkedFromOpen, setForkedFromOpen] = useState(false);
+  const flagTotal = Object.values(props.flagDistribution).reduce(
+    (sum, count) => sum + count,
+    0,
+  );
 
   return (
     <>
@@ -134,19 +138,19 @@ export function FlagAndForkFooter(props: {
         </section>
       ) : null}
 
-      {/* Flags section — collapsible distribution + counts. */}
-      <div>
+      {/* Entries without reports do not need an empty moderation panel. */}
+      {flagTotal > 0 ? <div>
         <FlagsSection
           distribution={props.flagDistribution}
           onOpenNotes={() => setNotesOpen(true)}
         />
-      </div>
+      </div> : null}
 
-      <FlagNotesModal
+      {flagTotal > 0 ? <FlagNotesModal
         isOpen={notesOpen}
         onClose={() => setNotesOpen(false)}
         notes={props.flagNotes}
-      />
+      /> : null}
     </>
   );
 }

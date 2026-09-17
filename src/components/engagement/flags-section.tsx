@@ -134,6 +134,8 @@ export function FlagsSection(props: {
     0,
   );
 
+  if (total === 0) return null;
+
   return (
     <section className={`v12-flags-section rounded-md border border-border bg-card ${open ? "space-y-3 p-3" : "p-2"}`}>
       <button
