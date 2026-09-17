@@ -46,6 +46,8 @@ import {
 import { EntityPreview, type PreviewActionProps, type EntityPreviewOwner } from "@/components/preview/entity-preview";
 import { type Visibility } from "@/components/library/visibility-select";
 import { useSandboxEngagement } from "@/components/library/use-sandbox-engagement";
+import { ForkMapButton } from "@/components/engagement/fork-map-button";
+import type { ForkTargetType } from "@/lib/publishing/forks-query";
 import {
   SLOT_EVENT_NAME,
   type SlotEvent,
@@ -1231,6 +1233,14 @@ function BlueprintPreviewBody({
         }
       : {}),
     openSourceHref: `/library/item/${compositeId}`,
+    forkMap: (
+      <ForkMapButton
+        targetType={(libraryItem?.targetType ?? item.kind.toUpperCase()) as ForkTargetType}
+        targetId={compositeId}
+        targetName={item.row.name}
+        className="min-w-0 flex-1 justify-center px-1.5 py-2 text-xs"
+      />
+    ),
     versionHistoryHref: `/library/item/${compositeId}/versions`,
   };
 

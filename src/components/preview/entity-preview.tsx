@@ -22,6 +22,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Markdown } from "@/components/ui/markdown";
 import { IconDisplay } from "@/components/icons/icon-display";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
+import { PreviewFlagSummary } from "@/components/engagement/flags-section";
 import { ChevronRight, History } from "lucide-react";
 import { useModalStack } from "@/components/ui/modal-stack";
 import { computeTransitiveBu } from "@/lib/engine/transitive-bu";
@@ -780,6 +781,7 @@ function PreviewFooter({
         sandboxPath={callbacks.sandboxPath}
         onFork={callbacks.onFork}
       />
+      <PreviewFlagSummary targetType={targetType} targetId={targetId} />
     </footer>
   );
 }

@@ -14,6 +14,8 @@
 import Link from "next/link";
 import { ArrowRight, ExternalLink, User as UserIcon } from "lucide-react";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
+import { ForkMapButton } from "@/components/engagement/fork-map-button";
+import { PreviewFlagSummary } from "@/components/engagement/flags-section";
 import { Markdown } from "@/components/ui/markdown";
 import {
   authorDisplayName,
@@ -168,6 +170,19 @@ export function LibraryPreviewPane({
               authorUsername={item.authorUsername}
               currentUserId={currentUserInternalId}
             />
+            <div className="mt-3 flex">
+              <ForkMapButton
+                targetType={item.targetType}
+                targetId={item.targetId}
+                targetName={item.name}
+              />
+            </div>
+            <div className="mt-3 pb-2">
+              <PreviewFlagSummary
+                targetType={item.targetType}
+                targetId={item.targetId}
+              />
+            </div>
           </section>
 
           <section className="border-t border-border pt-4">

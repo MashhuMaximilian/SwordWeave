@@ -26,6 +26,7 @@ interface DrawerSlotState {
   preview: ReactNode;
 }
 const EMPTY_DRAWER_SLOT: DrawerSlotState = { build: null, preview: null };
+const subscribeHydration = () => () => {};
 
 const DrawerSlotCtx = (() => {
   let state: DrawerSlotState = { build: null, preview: null };
@@ -125,6 +126,12 @@ export function BuildPreviewDrawer() {
     DrawerSlotCtx.get,
     () => EMPTY_DRAWER_SLOT,
   );
+  // The module-level slot may already contain client data before hydration,
+  // while the server snapshot is deliberately empty. Keep the first client
+  // render on that same empty snapshot, then reveal the live slot after
+  // hydration so button attributes cannot disagree with the server markup.
+  const hydrated = useSyncExternalStore(subscribeHydration, () => true, () => false);
+  const visibleSlot = hydrated ? slot : EMPTY_DRAWER_SLOT;
   // NOTE: we don't compute `activeContent` here. Both panels are
   // mounted simultaneously (the inactive one is hidden via CSS) so
   // the form's local state survives tab switches.
@@ -152,7 +159,7 @@ export function BuildPreviewDrawer() {
           role="tablist"
           className={cn(
             "v12-build-drawer-tabs sticky top-0 z-10 -mx-1 mb-2 flex shrink-0 rounded-md border border-border bg-card p-0.5",
-            slot.build === null && slot.preview === null && "opacity-60",
+            visibleSlot.build === null && visibleSlot.preview === null && "opacity-60",
           )}
         >
           <button
@@ -160,13 +167,13 @@ export function BuildPreviewDrawer() {
             role="tab"
             aria-selected={drawerTab === "build"}
             onClick={() => setDrawerTab("build")}
-            disabled={slot.build === null}
+            disabled={visibleSlot.build === null}
             className={cn(
               "v12-build-drawer-tab flex flex-1 items-center justify-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-colors",
               drawerTab === "build"
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground",
-              slot.build === null && "cursor-not-allowed opacity-50",
+              visibleSlot.build === null && "cursor-not-allowed opacity-50",
             )}
           >
             <Wrench className="size-3.5" />
@@ -177,13 +184,13 @@ export function BuildPreviewDrawer() {
             role="tab"
             aria-selected={drawerTab === "preview"}
             onClick={() => setDrawerTab("preview")}
-            disabled={slot.preview === null}
+            disabled={visibleSlot.preview === null}
             className={cn(
               "v12-build-drawer-tab flex flex-1 items-center justify-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-colors",
               drawerTab === "preview"
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground",
-              slot.preview === null && "cursor-not-allowed opacity-50",
+              visibleSlot.preview === null && "cursor-not-allowed opacity-50",
             )}
           >
             <Eye className="size-3.5" />

@@ -11,7 +11,6 @@ import {
   Flag,
   UserPlus,
   UserMinus,
-  Star,
   type LucideIcon,
 } from "lucide-react";
 import { ForkSuccessModal } from "@/components/engagement/fork-success-modal";
@@ -147,7 +146,6 @@ export function LikeForkBar(props: LikeForkBarProps) {
   const isOwnContent =
     props.authorId != null && props.authorId === props.currentUserId;
   const showFollow = !isOwnContent && props.authorId != null;
-  const netRating = likes - dislikes;
 
   // ---------- handlers ----------
 
@@ -379,6 +377,9 @@ export function LikeForkBar(props: LikeForkBarProps) {
         setFlagOpen(false);
         setFlagReason(null);
         setFlagNote("");
+        window.dispatchEvent(new CustomEvent("sw-flags-changed", {
+          detail: { targetType: props.targetType, targetId: props.targetId },
+        }));
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to flag");
       }
@@ -453,20 +454,6 @@ export function LikeForkBar(props: LikeForkBarProps) {
         <span className="tabular-nums" aria-hidden="true">{forks}</span>
         {!props.compact && <span>fork{forks === 1 ? "" : "s"}</span>}
       </button>
-
-      <span
-        className={`${buttonBase} border-border bg-card/50 text-muted-foreground`}
-        title="Net rating (likes − dislikes)"
-        role="status"
-        aria-label={`Net rating ${netRating > 0 ? "plus " : ""}${netRating}`}
-      >
-        <Star className={iconClass} aria-hidden="true" />
-        <span className="tabular-nums" aria-hidden="true">
-          {netRating > 0 ? "+" : ""}
-          {netRating}
-        </span>
-        {!props.compact && <span>rating</span>}
-      </span>
 
       {showFollow && props.authorUsername && (
         <button

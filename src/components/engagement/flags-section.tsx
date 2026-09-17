@@ -36,6 +36,81 @@ export interface FlagDistribution {
   OTHER: number;
 }
 
+type PreviewFlagTargetType =
+  | "PRIMITIVE"
+  | "EFFECT"
+  | "CAPABILITY"
+  | "CHARACTER"
+  | "ITEM"
+  | "LINEAGE_TEMPLATE"
+  | "UPBRINGING_TEMPLATE"
+  | "MANIFEST_TEMPLATE"
+  | "BUILD_TEMPLATE";
+
+/** Public, collapsed flag audit used by previews. It intentionally renders
+ * nothing when an entry has no flags; flagged entries expose the same reason
+ * breakdown and OTHER-note list as their canonical source page. */
+export function PreviewFlagSummary(props: {
+  targetType: PreviewFlagTargetType;
+  targetId: string;
+  versionId?: string;
+}) {
+  const [data, setData] = useState<{
+    distribution: FlagDistribution;
+    notes: Array<{ id: string; note: string; reportedAt: Date | string }>;
+  } | null>(null);
+  const [notesOpen, setNotesOpen] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const load = async () => {
+      const query = new URLSearchParams({
+        targetType: props.targetType,
+        targetId: props.targetId,
+      });
+      if (props.versionId) query.set("versionId", props.versionId);
+      try {
+        const response = await fetch(`/api/flags?${query}`, { signal: controller.signal });
+        if (!response.ok) return;
+        const next = (await response.json()) as {
+          distribution: FlagDistribution;
+          notes: Array<{ id: string; note: string; reportedAt: string }>;
+        };
+        setData(next);
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          setData(null);
+        }
+      }
+    };
+    void load();
+    const onFlagsChanged = (event: Event) => {
+      const detail = (event as CustomEvent<{ targetType?: string; targetId?: string }>).detail;
+      if (detail?.targetType === props.targetType && detail.targetId === props.targetId) {
+        void load();
+      }
+    };
+    window.addEventListener("sw-flags-changed", onFlagsChanged);
+    return () => {
+      controller.abort();
+      window.removeEventListener("sw-flags-changed", onFlagsChanged);
+    };
+  }, [props.targetId, props.targetType, props.versionId]);
+
+  if (!data || Object.values(data.distribution).every((count) => count === 0)) {
+    return null;
+  }
+  return (
+    <>
+      <FlagsSection
+        distribution={data.distribution}
+        {...(data.notes.length ? { onOpenNotes: () => setNotesOpen(true) } : {})}
+      />
+      <FlagNotesModal isOpen={notesOpen} onClose={() => setNotesOpen(false)} notes={data.notes} />
+    </>
+  );
+}
+
 const REASON_META: Array<{
   key: keyof FlagDistribution;
   label: string;
@@ -293,17 +368,18 @@ export function FlagNotesModal(props: {
   onClose: () => void;
   notes: Array<{ id: string; note: string; reportedAt: Date | string }>;
 }) {
+  const { isOpen, onClose, notes } = props;
   // Escape closes
   useEffect(() => {
-    if (!props.isOpen) return;
+    if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") props.onClose();
+      if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [props.isOpen, props.onClose]);
+  }, [isOpen, onClose]);
 
-  if (!props.isOpen || typeof document === "undefined") return null;
+  if (!isOpen || typeof document === "undefined") return null;
 
   return createPortal(
     <div
@@ -314,7 +390,7 @@ export function FlagNotesModal(props: {
     >
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={props.onClose}
+        onClick={onClose}
         aria-hidden="true"
       />
       <div className="relative z-10 max-h-[80vh] w-full max-w-lg overflow-hidden rounded-lg border border-border bg-card shadow-2xl">
@@ -322,7 +398,7 @@ export function FlagNotesModal(props: {
           <h3 className="text-sm font-semibold">Other flag notes</h3>
           <button
             type="button"
-            onClick={props.onClose}
+            onClick={onClose}
             className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
             aria-label="Close"
           >
@@ -330,12 +406,12 @@ export function FlagNotesModal(props: {
           </button>
         </header>
         <div className="max-h-[60vh] space-y-3 overflow-y-auto p-4">
-          {props.notes.length === 0 ? (
+          {notes.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No freeform notes yet.
             </p>
           ) : (
-            props.notes.map((n) => (
+            notes.map((n) => (
               <div
                 key={n.id}
                 className="rounded-md border border-border bg-background p-3 text-sm"

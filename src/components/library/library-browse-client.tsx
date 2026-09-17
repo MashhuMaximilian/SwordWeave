@@ -38,6 +38,7 @@ import {
 import { LibraryProvenance } from "./library-provenance";
 import { ForkMapButton } from "@/components/engagement/fork-map-button";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
+import { PreviewFlagSummary } from "@/components/engagement/flags-section";
 import { IconDisplay } from "@/components/icons/icon-display";
 import { buildSandboxUrl } from "@/lib/publishing/fork-target";
 import { Markdown } from "@/components/ui/markdown";
@@ -597,6 +598,7 @@ export function LibraryBrowseClient({
             <a className="v12-metal-button" href={`/library/item/${selectedItem.id}/versions`}>Versions</a>
             <ForkMapButton targetType={selectedItem.targetType} targetId={selectedItem.targetId} targetName={selectedItem.name} />
             <LikeForkBar targetType={selectedItem.targetType} targetId={selectedItem.targetId} initialLikes={selectedItem.likesCount} initialDislikes={selectedItem.dislikesCount} initialForks={selectedItem.forkCount} authorId={selectedItem.authorId} authorUsername={libraryOrigin(selectedItem)==="system"?null:selectedItem.authorUsername} currentUserId={currentUserInternalId} />
+            <PreviewFlagSummary targetType={selectedItem.targetType} targetId={selectedItem.targetId} />
           </div></div>
         ) : null}
       </DetailModal>
@@ -609,7 +611,7 @@ export function LibraryBrowseClient({
         {nestedPreview ? (
           <div className="v12-nested-preview">
             <FetchedEntityPreview targetType={nestedPreview.targetType} targetId={nestedPreview.targetId} />
-            <div className="v12-modal-actions"><a className="v12-metal-button" href={`/library/item/${nestedPreview.targetType}:${nestedPreview.targetId}/versions`}>Versions</a><ForkMapButton targetType={nestedPreview.targetType as LibraryItem["targetType"]} targetId={nestedPreview.targetId} targetName={nestedPreview.name} /><LikeForkBar targetType={nestedPreview.targetType as LibraryItem["targetType"]} targetId={nestedPreview.targetId} initialLikes={0} initialDislikes={0} initialForks={0} currentUserId={currentUserInternalId} /></div>
+            <div className="v12-modal-actions"><a className="v12-metal-button" href={`/library/item/${nestedPreview.targetType}:${nestedPreview.targetId}/versions`}>Versions</a><ForkMapButton targetType={nestedPreview.targetType as LibraryItem["targetType"]} targetId={nestedPreview.targetId} targetName={nestedPreview.name} /><LikeForkBar targetType={nestedPreview.targetType as LibraryItem["targetType"]} targetId={nestedPreview.targetId} initialLikes={0} initialDislikes={0} initialForks={0} currentUserId={currentUserInternalId} /><PreviewFlagSummary targetType={nestedPreview.targetType as LibraryItem["targetType"]} targetId={nestedPreview.targetId} /></div>
           </div>
         ) : null}
       </DetailModal>

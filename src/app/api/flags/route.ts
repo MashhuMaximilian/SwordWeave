@@ -9,7 +9,12 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { db } from "@/db/client";
-import { flagTarget, unflagTarget } from "@/lib/engagement/flags-service";
+import {
+  flagTarget,
+  getFlagAggregate,
+  listFlagNotes,
+  unflagTarget,
+} from "@/lib/engagement/flags-service";
 import {
   isUuid,
   resolveVirtualVersionId,
@@ -20,6 +25,7 @@ const TargetTypeSchema = z.enum([
   "CAPABILITY",
   "CHARACTER",
   "ITEM",
+  "EFFECT",
   "LINEAGE_TEMPLATE",
   "UPBRINGING_TEMPLATE",
   "MANIFEST_TEMPLATE",
@@ -47,6 +53,36 @@ async function resolveUser(clerkUserId: string) {
     where: (table, { eq }) => eq(table.clerkUserId, clerkUserId),
   });
   return user ?? null;
+}
+
+export async function GET(req: NextRequest) {
+  const url = new URL(req.url);
+  const parsedType = TargetTypeSchema.safeParse(url.searchParams.get("targetType"));
+  const targetId = url.searchParams.get("targetId");
+  const requestedVersionId = url.searchParams.get("versionId");
+  if (!parsedType.success || !targetId) {
+    return NextResponse.json(
+      { error: "Valid targetType and targetId are required" },
+      { status: 400 },
+    );
+  }
+  if (requestedVersionId && !isUuid(requestedVersionId)) {
+    return NextResponse.json({ error: "versionId must be a UUID" }, { status: 400 });
+  }
+  const versionId = requestedVersionId ?? resolveVirtualVersionId(parsedType.data, targetId);
+  try {
+    const [distribution, notes] = await Promise.all([
+      getFlagAggregate(parsedType.data, targetId, versionId),
+      listFlagNotes(parsedType.data, targetId, versionId),
+    ]);
+    return NextResponse.json({
+      distribution,
+      notes: notes.map(({ id, note, reportedAt }) => ({ id, note, reportedAt })),
+    });
+  } catch (err) {
+    console.error("[flags GET] error:", err);
+    return NextResponse.json({ error: "Failed to load flag details" }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
