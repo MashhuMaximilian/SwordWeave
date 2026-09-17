@@ -149,7 +149,6 @@ export function LikeForkBar(props: LikeForkBarProps) {
   const showFollow = !isOwnContent && props.authorId != null;
 
   useEffect(() => {
-    if (props.compact) return;
     const controller = new AbortController();
     const loadFlagCount = async () => {
       const query = new URLSearchParams({
@@ -182,7 +181,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
       controller.abort();
       window.removeEventListener("sw-flags-changed", onFlagsChanged);
     };
-  }, [props.compact, props.targetId, props.targetType, props.versionId]);
+  }, [props.targetId, props.targetType, props.versionId]);
 
   // ---------- handlers ----------
 
@@ -439,7 +438,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
     <>
     <div
       onClick={(e) => e.stopPropagation()}
-      className={`flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${props.className ?? ""}`}
+      className={`flex items-center gap-1.5 ${props.compact ? "overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : "flex-wrap"} ${props.className ?? ""}`}
       role="group"
       aria-label="Engagement"
     >
@@ -458,7 +457,6 @@ export function LikeForkBar(props: LikeForkBarProps) {
           aria-hidden="true"
         />
         <span className="tabular-nums" aria-hidden="true">{likes}</span>
-        {!props.compact && <span>like{likes === 1 ? "" : "s"}</span>}
       </button>
 
       <button
@@ -476,7 +474,6 @@ export function LikeForkBar(props: LikeForkBarProps) {
           aria-hidden="true"
         />
         <span className="tabular-nums" aria-hidden="true">{dislikes}</span>
-        {!props.compact && <span>dislike{dislikes === 1 ? "" : "s"}</span>}
       </button>
 
       <button
@@ -534,7 +531,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
       >
         <Flag className={iconClass} aria-hidden="true" />
         {!props.compact && <span>Flag</span>}
-        {!props.compact && flagCount !== null ? (
+        {flagCount !== null ? (
           <span className="tabular-nums" aria-label={`${flagCount} reports`}>{flagCount}</span>
         ) : null}
       </button>

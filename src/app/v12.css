@@ -365,6 +365,29 @@ body[data-ui="v12"] :where(.text-muted-foreground) {
   text-shadow: 0 1px rgb(25 15 2 / 45%);
 }
 
+.v12-flags-section {
+  container-type: inline-size;
+}
+
+.v12-flags-expanded {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.v12-flags-expanded > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.v12-flags-expanded table {
+  table-layout: fixed;
+}
+
+@container (min-width: 520px) {
+  .v12-flags-expanded {
+    grid-template-columns: 180px minmax(0, 1fr);
+  }
+}
+
 .v12-metal-divider {
   height: 1px;
   border: 0;

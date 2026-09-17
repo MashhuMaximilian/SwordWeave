@@ -70,7 +70,7 @@ export function FlagAndForkFooter(props: {
     <>
       {/* Tags row — renders only if non-empty. Pure presentational. */}
       {props.tags.length > 0 ? (
-        <div className="mt-5 flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1.5">
           {props.tags.map((tag) => (
             <span
               key={tag}
@@ -88,7 +88,7 @@ export function FlagAndForkFooter(props: {
           forking line" link opens a dedicated page with the full
           ancestry chain. */}
       {props.forkSource ? (
-        <section className="mt-5 rounded-md border border-border bg-card">
+        <section className="rounded-md border border-border bg-card">
           <button
             type="button"
             onClick={() => setForkedFromOpen((v) => !v)}
@@ -135,7 +135,7 @@ export function FlagAndForkFooter(props: {
       ) : null}
 
       {/* Flags section — collapsible distribution + counts. */}
-      <div className="mt-5">
+      <div>
         <FlagsSection
           distribution={props.flagDistribution}
           onOpenNotes={() => setNotesOpen(true)}

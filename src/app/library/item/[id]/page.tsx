@@ -637,7 +637,7 @@ function DetailShell({
       </Link>
 
       <article className="v12-instrument rounded-xl border border-border bg-card/95 p-4 shadow-2xl sm:p-6">
-        <header className="v12-section-head -mx-6 -mt-6 border-b border-border px-6 pb-4 pt-6">
+        <header className="v12-section-head -mx-4 -mt-4 border-b border-border px-4 pb-6 pt-5 sm:-mx-6 sm:-mt-6 sm:px-6 sm:pt-6">
           <p className="v12-kicker text-xs text-muted-foreground">
             {typeLabel}
             {category ? ` · ${category.replace(/_/g, " ")}` : ""}
@@ -699,7 +699,7 @@ function DetailShell({
             author && (
               <Link
                 href={`/u/${author.username}`}
-                className="mt-3 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+                className="mt-4 inline-flex items-center gap-2 pb-1 text-sm text-muted-foreground hover:text-foreground"
               >
                 {author.avatarUrl ? (
                   <img
@@ -723,7 +723,7 @@ function DetailShell({
           }) && (
             <span
               data-testid="system-author-label"
-              className="mt-3 inline-flex items-center gap-2 text-sm text-muted-foreground"
+              className="mt-4 inline-flex items-center gap-2 pb-1 text-sm text-muted-foreground"
             >
               <Shield className="size-4" />
               by{" "}
@@ -732,21 +732,24 @@ function DetailShell({
           )}
         </header>
 
-        {description && (
-          <section className="mt-5">
-            <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
-              Description
-            </h2>
-            <div className="prose prose-invert prose-sm max-w-none break-words text-sm leading-7">
-              <Markdown>{description}</Markdown>
-            </div>
-          </section>
-        )}
+        <div className="mt-6 grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+          <main className="min-w-0">
+            {description && (
+              <section>
+                <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
+                  Description
+                </h2>
+                <div className="prose prose-invert prose-sm max-w-none break-words text-sm leading-7">
+                  <Markdown>{description}</Markdown>
+                </div>
+              </section>
+            )}
+            <div className="mt-5 min-w-0">{children}</div>
+          </main>
 
-        <div className="mt-5">{children}</div>
-
-        <footer className="mt-7 space-y-4 border-t border-border pt-5">
-          <section className="rounded-lg border border-border bg-background/40 p-4 pb-5" aria-label="Community actions">
+          <aside className="min-w-0 space-y-3 rounded-lg border border-border bg-background/35 p-3 lg:sticky lg:top-4" aria-label="Entry activity and references">
+          <section className="rounded-md border border-border bg-card/50 p-3" aria-label="Community actions">
+            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Community</h2>
             <LikeForkBar
             targetType={
               targetType as
@@ -780,10 +783,10 @@ function DetailShell({
             flagNotes={flagNotes}
             forkSource={forkSource}
           />
-          <div className="v12-preview-action-group flex gap-2 border-t border-border pt-4" data-preview-action-group="reference">
+          <div className="v12-preview-action-group grid grid-cols-2 gap-2 border-t border-border pt-3" data-preview-action-group="reference">
             <Link
               href={`/library/item/${targetType}:${targetId}/versions`}
-              className="v12-metal-button min-w-0 flex-1 justify-center"
+              className="v12-metal-button min-w-0 justify-center px-2 py-2 text-[11px]"
             >
               Versions
             </Link>
@@ -791,20 +794,21 @@ function DetailShell({
               targetType={targetType as ForkTargetType}
               targetId={targetId}
               targetName={name}
-              className="min-w-0 flex-1 justify-center"
+              className="min-w-0 justify-center px-2 py-2 text-[11px]"
             />
           </div>
           {/* ForksList rendered as a sibling (server component) — cannot be
               a child of <FlagAndForkFooter> because that's a "use client"
               component and would inline the DB query into the browser
               bundle, throwing DATABASE_URL at hydration time. */}
-          <div className="mt-5">
+          <div className="pt-1">
             <ForksList
               targetType={targetType as ForkTargetType}
               targetId={targetId}
             />
           </div>
-        </footer>
+          </aside>
+        </div>
       </article>
     </div>
   );

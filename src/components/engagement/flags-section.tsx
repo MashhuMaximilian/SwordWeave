@@ -135,7 +135,7 @@ export function FlagsSection(props: {
   );
 
   return (
-    <section className="space-y-2 rounded-md border border-border bg-card p-4">
+    <section className={`v12-flags-section rounded-md border border-border bg-card ${open ? "space-y-3 p-3" : "p-2"}`}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -144,13 +144,7 @@ export function FlagsSection(props: {
       >
         <span className="flex items-center gap-2">
           <Flag className="size-4 text-muted-foreground" />
-          <span className="text-sm font-semibold">Flags</span>
-          <span
-            className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold tabular-nums text-secondary-foreground"
-            aria-label={`${total} ${total === 1 ? "flag" : "flags"}`}
-          >
-            {total}
-          </span>
+          <span className="text-xs font-semibold">Flag report</span>
         </span>
         {open ? (
           <ChevronUp className="size-4 text-muted-foreground" />
@@ -160,7 +154,7 @@ export function FlagsSection(props: {
       </button>
 
       {open ? (
-        <div className="grid gap-4 md:grid-cols-[200px_1fr]">
+        <div className="v12-flags-expanded grid min-w-0 gap-3">
           <FlagPie distribution={props.distribution} />
           <table className="w-full text-sm">
             <thead>

@@ -14,7 +14,7 @@
 // to open the drawer directly on the preview tab.
 // =============================================================================
 
-import { useEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useGlobalControls } from "./global-controls";
 import { Wrench, Eye, RotateCcw, Save, X } from "lucide-react";
@@ -26,7 +26,6 @@ interface DrawerSlotState {
   preview: ReactNode;
 }
 const EMPTY_DRAWER_SLOT: DrawerSlotState = { build: null, preview: null };
-const subscribeHydration = () => () => {};
 
 const DrawerSlotCtx = (() => {
   let state: DrawerSlotState = { build: null, preview: null };
@@ -130,7 +129,12 @@ export function BuildPreviewDrawer() {
   // while the server snapshot is deliberately empty. Keep the first client
   // render on that same empty snapshot, then reveal the live slot after
   // hydration so button attributes cannot disagree with the server markup.
-  const hydrated = useSyncExternalStore(subscribeHydration, () => true, () => false);
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    // The first client render must exactly match the empty server snapshot.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setHydrated(true);
+  }, []);
   const visibleSlot = hydrated ? slot : EMPTY_DRAWER_SLOT;
   // NOTE: we don't compute `activeContent` here. Both panels are
   // mounted simultaneously (the inactive one is hidden via CSS) so

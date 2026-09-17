@@ -181,9 +181,9 @@ export function ForkMapButton({
           setOpen(true);
           if (!data && !loading) void load();
         }}
-        className={`v12-metal-button inline-flex items-center gap-2 ${className}`}
+        className={`v12-metal-button inline-flex items-center gap-1.5 text-[11px] font-medium leading-none ${className}`}
       >
-        <GitFork className="size-4" />
+        <GitFork className="size-3.5 shrink-0" />
         Fork map
       </button>
       <DetailModal
