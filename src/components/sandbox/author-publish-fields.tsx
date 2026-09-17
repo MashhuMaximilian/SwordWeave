@@ -29,7 +29,7 @@ export function AuthorPublishFields({
   return (
     <div className="v12-author-publish">
       <section
-        className="v12-field-visibility rounded-lg border border-border bg-background p-2.5"
+        className="v12-publish-visibility"
         aria-labelledby={visibilityLabelId}
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -40,8 +40,8 @@ export function AuthorPublishFields({
           <VisibilitySelect compact value={isPublic ? "PUBLIC" : "PRIVATE"} onChange={(next) => onPublicChange(next === "PUBLIC")} />
         </div>
       </section>
-      <div className="v12-supporting-fields">
-        <label className="v12-field-market block text-sm font-medium">
+      <div className="v12-publish-supporting">
+        <label className="v12-publish-field">
           Tags
           <span className="ml-2 text-xs font-normal text-muted-foreground">
             Comma-separated
@@ -54,7 +54,7 @@ export function AuthorPublishFields({
           />
         </label>
 
-        <label className="v12-field-market block text-sm font-medium">
+        <label className="v12-publish-field">
           Source origin
           <span className="ml-2 text-xs font-normal text-muted-foreground">
             World, book, or setting
