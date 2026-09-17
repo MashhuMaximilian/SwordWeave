@@ -3242,11 +3242,11 @@ body[data-ui="v12"] .v12-authoring-guide .v12-authoring-guide-rule { margin:0 10
 
 body[data-ui="v12"] .v12-author-chapter > .v12-author-publish,
 body[data-ui="v12"] .v12-primitive-author .v12-author-chapter > .v12-author-publish { display:grid!important; width:100%; grid-column:1/-1!important; grid-template-columns:minmax(0,1fr)!important; gap:8px!important; }
-body[data-ui="v12"] .v12-author-publish .v12-field-visibility { grid-column:auto; padding:9px 10px!important; }
+body[data-ui="v12"] .v12-author-publish .v12-field-visibility { grid-column:auto; padding:9px 10px!important; background:var(--atelier-surface) padding-box,var(--v12-silver-edge) border-box!important; }
 body[data-ui="v12"] .v12-author-publish .v12-field-visibility h3 { color:var(--v12-copper-hi); font:600 11px/1.1 var(--font-system); letter-spacing:.1em; text-transform:uppercase; }
 body[data-ui="v12"] .v12-author-publish .v12-field-visibility p { margin-top:3px; color:var(--v12-soft); font:400 11px/1.3 var(--font-body); }
 body[data-ui="v12"] .v12-author-publish .v12-supporting-fields { display:grid!important; width:100%; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px!important; }
-body[data-ui="v12"] .v12-author-publish .v12-field-market { display:grid; min-width:0; align-content:start; padding:9px 10px; border:1px solid transparent; border-radius:9px; background:var(--atelier-surface) padding-box,var(--v12-silver-edge) border-box; }
+body[data-ui="v12"] .v12-author-publish .v12-field-market { display:grid; min-width:0; align-content:start; padding:9px 10px!important; border:1px solid transparent!important; border-radius:9px!important; background:var(--atelier-surface) padding-box,var(--v12-silver-edge) border-box!important; }
 body[data-ui="v12"] .v12-author-publish .v12-field-market span { display:block; margin:2px 0 0!important; }
 body[data-ui="v12"] .v12-author-publish .v12-field-market input { width:100%!important; min-width:0; }
 
@@ -3373,13 +3373,21 @@ body[data-ui="v12"] .v12-author-chapter[data-author-chapter="publish"] > * {
   grid-column:1/-1!important;
 }
 
+/* Every author uses the Primitive form's compact horizontal rhythm. The
+   shared Publish component therefore lands at the same inset for all kinds. */
+body[data-ui="v12"] :is(.v12-primitive-author,.v12-capability-author,.v12-effect-author,.v12-heritage-author,.v12-item-author) {
+  padding-inline:10px!important;
+}
+
 /* Match the gold selected treatment used by the source browser. */
 body[data-ui="v12"] .v12-author-tabs button[aria-selected="true"],
 body[data-ui="v12"] .v12-author-tabs .is-active {
   color:var(--v12-gold-hi)!important;
-  border-color:var(--v12-gold)!important;
-  background:linear-gradient(180deg,color-mix(in srgb,var(--v12-brass) 22%,var(--v12-inset)),var(--v12-inset))!important;
-  box-shadow:inset 0 1px color-mix(in srgb,var(--v12-gold-hi) 35%,transparent),inset 0 -3px var(--v12-gold)!important;
+  border:1px solid transparent!important;
+  border-bottom-width:3px!important;
+  border-radius:7px 7px 0 0!important;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--v12-brass) 20%,var(--v12-inset)),var(--v12-inset)) padding-box,var(--v12-gold-edge) border-box!important;
+  box-shadow:inset 0 1px color-mix(in srgb,var(--v12-brass-hi) 32%,transparent)!important;
 }
 body[data-ui="v12"] .v12-table-builder .v12-table-axis button[aria-pressed="true"] {
   color:var(--v12-gold-hi)!important;
@@ -3410,30 +3418,38 @@ body[data-ui="v12"] .v12-table-pin button {
   font-size:9px!important;
 }
 
-/* Each half of the mechanics rail owns and clips its own scroll content.
-   Opaque surface-matched sticky heads prevent rows from bleeding through. */
+/* Each mechanics pane owns a static header and a separate scrolling body.
+   Rows end at the header edge instead of passing behind its lettering. */
 body[data-ui="v12"] .v12-source-split { contain:paint; }
 body[data-ui="v12"] .v12-source-families,
 body[data-ui="v12"] .v12-source-entries {
-  position:relative;
-  isolation:isolate;
-  overscroll-behavior:contain;
-  clip-path:inset(0);
+  display:grid;
+  grid-template-rows:auto minmax(0,1fr);
+  overflow:hidden!important;
 }
 body[data-ui="v12"] .v12-source-pane-head {
-  z-index:20!important;
-  background:linear-gradient(90deg,color-mix(in srgb,var(--v12-silver) 7%,var(--v12-inset)),color-mix(in srgb,var(--v12-brass) 8%,var(--v12-inset)))!important;
+  position:relative!important;
+  top:auto!important;
+  z-index:1!important;
+  background:transparent!important;
   backdrop-filter:none!important;
 }
-
-/* Game-icon SVGs are delivered as images, so currentColor cannot recolor
-   them. This filter gives the two FAB action icons the same gold hover cue. */
-.sw-fab button[data-fab-action="build"] .sw-fab__theme-icon,
-.sw-fab button[data-fab-action="character"] .sw-fab__theme-icon { transition:filter 140ms ease; }
-.sw-fab button[data-fab-action="build"]:hover .sw-fab__theme-icon,
-.sw-fab button[data-fab-action="character"]:hover .sw-fab__theme-icon {
-  filter:brightness(0) saturate(100%) invert(79%) sepia(44%) saturate(774%) hue-rotate(355deg) brightness(98%) contrast(91%);
+body[data-ui="v12"] .v12-source-pane-scroll {
+  min-height:0;
+  overflow:auto;
+  overscroll-behavior:contain;
+  scrollbar-color:color-mix(in srgb,var(--v12-teal) 48%,transparent) transparent;
 }
+body[data-ui="v12"] .v12-source-families > .v12-source-pane-scroll { padding-bottom:8px; }
+body[data-ui="v12"] .v12-source-entries > .v12-source-pane-scroll { padding-top:8px; }
+
+/* The icon endpoint renders its requested color into the SVG. Cross-fading
+   exact theme colors avoids the yellow cast produced by CSS image filters. */
+.sw-fab .sw-fab__theme-icon { position:relative; display:inline-grid; width:22px; height:22px; place-items:center; }
+.sw-fab .sw-fab__theme-icon > img { grid-area:1/1; transition:opacity 140ms ease; }
+.sw-fab .sw-fab__theme-icon-gold { opacity:0; }
+.sw-fab button:is([data-fab-action="build"],[data-fab-action="character"]):hover .sw-fab__theme-icon-default { opacity:0; }
+.sw-fab button:is([data-fab-action="build"],[data-fab-action="character"]):hover .sw-fab__theme-icon-gold { opacity:1; }
 
 body[data-ui="v12"] .v12-markdown { min-width:0; font:inherit; color:inherit; overflow-wrap:anywhere; }
 body[data-ui="v12"] .v12-markdown :is(p,ul,ol,blockquote) { margin:0 0 .55em; }

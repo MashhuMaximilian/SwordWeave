@@ -7,7 +7,7 @@ export type AuthoringGuideKind = "primitive" | "effect" | "capability" | "lineag
 const AUTHORING_GUIDES: Record<AuthoringGuideKind, { title: string; body: string; rule: string }> = {
   primitive: {
     title: "Primitive: a purchased building block",
-    body: "A primitive is one atomic rule permanently unlocked with BU: a Verb, Domain, output, range, geometry, defense, or other modifier. Once owned, it can be reused and recombined across any number of recipes. In simple terms, primitives are the individual words and tools in your mechanical vocabulary. Buy the useful part once, then bring it into every fitting spell, maneuver, item, or feature.",
+    body: "A primitive is one atomic rule permanently unlocked with BU: a Verb, Domain, output, range, geometry, defense, or other modifier. Once owned, it can be reused and recombined across any number of recipes. During play, you can rearrange your primitives to create capabilities on the fly, whether you use them normally or mirrored.",
     rule: "BU buys the ingredient. Building another recipe with an ingredient you already own does not buy it again.",
   },
   effect: {

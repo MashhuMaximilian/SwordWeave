@@ -782,9 +782,9 @@ export function GrammarLibrary({
           toolbarState.typeFilter === "ALL" ||
           toolbarState.typeFilter === "GROUP_MECHANICS") &&
         primitiveCategories.length > 0 ? (
-          <section className="v12-source-families min-h-0 overflow-auto">
+          <section className="v12-source-families min-h-0">
             <header className="v12-source-pane-head"><p className="v12-kicker">Lexicon categories · market families</p><button type="button" aria-label={familiesCollapsed ? "Show market families" : "Hide market families"} aria-expanded={!familiesCollapsed} onClick={()=>setFamiliesCollapsed(value=>!value)}>{familiesCollapsed ? "⌄" : "⌃"}</button></header>
-            {!familiesCollapsed ? <div className="v12-source-family-list">
+            {!familiesCollapsed ? <div className="v12-source-pane-scroll v12-source-family-list">
               {primitiveCategories.map((category) => {
                 const active = toolbarState.category === category.value;
                 return (
@@ -813,9 +813,9 @@ export function GrammarLibrary({
             </div> : null}
           </section>
         ) : null}
-        <section className="v12-source-entries min-h-0 overflow-auto">
+        <section className="v12-source-entries min-h-0">
           <header className="v12-source-pane-head"><p className="v12-kicker">Entries</p><button type="button" aria-label={entriesCollapsed ? "Show exact entries" : "Hide exact entries"} aria-expanded={!entriesCollapsed} onClick={()=>setEntriesCollapsed(value=>!value)}>{entriesCollapsed ? "⌃" : "⌄"}</button></header>
-          {!entriesCollapsed ? <>
+          {!entriesCollapsed ? <div className="v12-source-pane-scroll">
           {(toolbarState.typeFilter === "PRIMITIVE" || toolbarState.category) ? <div className="v12-tier-tabs" aria-label="Source tiers">{["", "1", "2", "3", "4", "5"].map(tier => <button type="button" key={tier} aria-pressed={(toolbarState.tier ?? "") === tier} onClick={() => setToolbarState(prev => ({ ...prev, tier }))}>{tier ? `Tier ${["", "I", "II", "III", "IV", "V"][Number(tier)]}` : "All"}</button>)}</div> : null}
           <div className="v12-origin-tabs" aria-label="Source origin">{(["all", "system", "community"] as const).map(origin => <button type="button" key={origin} aria-pressed={(toolbarState.origin ?? "all") === origin} onClick={() => setToolbarState(prev => ({ ...prev, origin }))}>{origin === "all" ? "All origins" : origin === "system" ? "System" : "Community"}</button>)}</div>
           <div className="v12-source-results-head">
@@ -837,7 +837,7 @@ export function GrammarLibrary({
             emptyTitle="No grammar entries yet"
             emptyDescription="Build primitives, effects, and capabilities to see them here."
           />
-          </> : null}
+          </div> : null}
         </section>
       </div>
     </div>

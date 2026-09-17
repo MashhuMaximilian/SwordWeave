@@ -562,7 +562,7 @@ export function ItemForm({
 
   return (
     <form
-      className="v12-instrument grid grid-cols-1 gap-4 rounded-md border border-border bg-card p-4 sm:p-5"
+      className="v12-instrument v12-item-author grid grid-cols-1 gap-4 rounded-md border border-border bg-card p-4 sm:p-5"
       onSubmit={submitItem}
     >
       <div className="flex items-center justify-between gap-3">

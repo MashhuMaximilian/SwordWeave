@@ -53,6 +53,31 @@ import { useIsMobile } from "@/lib/hooks/use-is-mobile";
  *  near-black on light) so it stays visible. */
 const FAB_ICON_COLOR_LIGHT = "#011614";
 const FAB_ICON_COLOR_DARK = "#ffffff";
+const FAB_ICON_GOLD_LIGHT = "#76622f";
+const FAB_ICON_GOLD_DARK = "#d3aa61";
+
+function FabThemeIcon({ iconKey, dark }: { iconKey: string; dark: boolean }) {
+  return (
+    <span className="sw-fab__theme-icon" aria-hidden="true">
+      <IconDisplay
+        iconSource="GAME_ICONS"
+        iconKey={iconKey}
+        iconColor={dark ? FAB_ICON_COLOR_DARK : FAB_ICON_COLOR_LIGHT}
+        size={22}
+        alt=""
+        className="sw-fab__theme-icon-default"
+      />
+      <IconDisplay
+        iconSource="GAME_ICONS"
+        iconKey={iconKey}
+        iconColor={dark ? FAB_ICON_GOLD_DARK : FAB_ICON_GOLD_LIGHT}
+        size={22}
+        alt=""
+        className="sw-fab__theme-icon-gold"
+      />
+    </span>
+  );
+}
 
 type DrawerTab = "build" | "preview" | null;
 
@@ -419,14 +444,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         // build tab otherwise.
         label: "Build & Preview",
         icon: (
-          <IconDisplay
-            iconSource="GAME_ICONS"
-            iconKey="lorc/anvil-impact"
-            iconColor={dark ? FAB_ICON_COLOR_DARK : FAB_ICON_COLOR_LIGHT}
-            size={22}
-            alt="Build & Preview"
-            className="sw-fab__theme-icon"
-          />
+          <FabThemeIcon iconKey="lorc/anvil-impact" dark={dark} />
         ),
         onClick: () => {
                 if (pathname === "/atelier") {
@@ -456,14 +474,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
       key: "character",
       label: "Character",
       icon: (
-        <IconDisplay
-          iconSource="GAME_ICONS"
-          iconKey="delapouite/mona-lisa"
-          iconColor={dark ? FAB_ICON_COLOR_DARK : FAB_ICON_COLOR_LIGHT}
-          size={22}
-          alt="Character"
-          className="sw-fab__theme-icon"
-        />
+        <FabThemeIcon iconKey="delapouite/mona-lisa" dark={dark} />
       ),
       onClick: () => {
         characterModal.toggle();
