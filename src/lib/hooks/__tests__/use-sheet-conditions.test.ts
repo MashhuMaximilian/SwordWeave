@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 
 // Mirror the relevant scan logic for testing without React
 function isKnownFlag(label: string): boolean {
+  if (label.startsWith("runtime:")) return true;
   if (label.startsWith("proficient_in(")) return true;
   if (label.startsWith("not_proficient_in(")) return true;
   if (label.startsWith("proficient_in_attribute(")) return true;
@@ -209,6 +210,31 @@ describe("use-sheet-conditions scanner", () => {
     ]);
     expect(result).toHaveLength(1);
     expect(result[0]?.title).toBe("Hunter Bonus");
+  });
+
+  it("classifies namespaced runtime event flags as automatic", () => {
+    const result = scanPrimitivesForConditions([
+      {
+        primitiveId: 14104,
+        primitive: {
+          id: 14104,
+          name: "Opening Tempo",
+          hardModifiers: [
+            {
+              kind: "modify",
+              target: "action_roll",
+              operation: "add",
+              value: 1,
+              condition: {
+                kind: "compound",
+                tokens: ["self:runtime:combat_started"],
+              },
+            },
+          ],
+        },
+      },
+    ]);
+    expect(result).toHaveLength(0);
   });
 
   it("creates sheet conditions for compound with OR'd manual trigger", () => {

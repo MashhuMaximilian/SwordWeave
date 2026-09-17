@@ -534,6 +534,8 @@ export function migrateLegacyCondition(legacy: {
 export type ConditionBadge = {
   kind: "preset" | "tag" | "narrative" | "axis";
   label: string;
+  /** A table-declared switch rather than a predicate read from sheet state. */
+  manual?: boolean;
   /**
    * Phase 9.5 follow-up (Mashu 2026-09-07): the axis this
    * pill belongs to (self / target / scene / actor) so the
@@ -572,6 +574,7 @@ export function conditionToBadges(
         return {
           kind: "axis" as const,
           label: friendlyConditionLabel(stripCategoryPrefix(t)),
+          ...(extracted?.body.startsWith("manual:") ? { manual: true } : {}),
           ...(extracted ? { axis: extracted.axis } : {}),
         } satisfies ConditionBadge;
       }),
@@ -583,6 +586,7 @@ export function conditionToBadges(
       return {
         kind: "axis" as const,
         label: friendlyConditionLabel(stripCategoryPrefix(t)),
+        ...(extracted?.body.startsWith("manual:") ? { manual: true } : {}),
         ...(extracted ? { axis: extracted.axis } : {}),
       } satisfies ConditionBadge;
     });
@@ -601,6 +605,7 @@ export function conditionToBadges(
         badges.push({
           kind: "axis",
           label: friendlyConditionLabel(stripCategoryPrefix(token)),
+          ...(extracted?.body.startsWith("manual:") ? { manual: true } : {}),
           ...(extracted ? { axis: extracted.axis } : {}),
         });
       } else {
@@ -634,6 +639,9 @@ export function conditionToBadges(
  *   - everything else                           → verbatim
  */
 function friendlyConditionLabel(label: string): string {
+  if (label.startsWith("manual:")) {
+    return label.slice("manual:".length).replaceAll("_", " ");
+  }
   if (label === "not_proficient") return "not_proficient(any practice)";
   if (label === "proficient") return "proficient(any practice)";
   if (label === "not_proficient_in_attribute(any)")
@@ -647,14 +655,40 @@ function friendlyConditionLabel(label: string): string {
       const stat = parts[1] ?? "";
       const op = parts[2] ?? "=";
       const v = parts[3] ?? "0";
+      const statNames: Record<string, string> = {
+        vitality: "Vitality",
+        vitality_pct: "Vitality %",
+        vitality_max: "Max Vitality",
+        save_dc: "Save DC",
+        block_value: "Block value",
+        carry_capacity: "Carry capacity",
+        upkeep_cost: "Upkeep cost",
+      };
+      const comparisons: Record<string, string> = {
+        "<": "is lower than",
+        "<=": "is at most",
+        "=": "is",
+        "!=": "is not",
+        ">=": "is at least",
+        ">": "is greater than",
+      };
+      const statName = statNames[stat] ?? titleConditionAtom(stat);
+      const value = stat === "vitality_pct" ? `${Number((Number(v) * 100).toFixed(10))}%` : v;
       if (op === "between" && parts.length === 5) {
         const vh = parts[4] ?? v;
-        return `${stat} between ${v} - ${vh}`;
+        const high = stat === "vitality_pct" ? `${Number((Number(vh) * 100).toFixed(10))}%` : vh;
+        return `${statName} is between ${value} and ${high}`;
       }
-      return `${stat} ${op} ${v}`;
+      return `${statName} ${comparisons[op] ?? op} ${value}`;
     }
   }
   return label;
+}
+
+function titleConditionAtom(value: string): string {
+  return value
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 // =============================================================================

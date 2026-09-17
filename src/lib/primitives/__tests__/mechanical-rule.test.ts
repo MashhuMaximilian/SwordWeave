@@ -20,7 +20,7 @@ describe("canonical mechanical sentences", () => {
     expect(renderMechanicalRule({family:"GENERIC",operation:"add",target:"Damage",value:{kind:"dice",expression:"2d6+3"}})).toBe("Add +2D6+3 to Damage.");
     expect(renderMechanicalRule({family:"GENERIC",operation:"grant",target:"Behavior",value:{kind:"keyword",text:"flying"}})).toBe("Grant [flying] to Behavior.");
     expect(renderMechanicalRule({family:"GENERIC",operation:"set",target:"Awareness",value:{kind:"runtime",name:"proficiency_bonus",hint:"number"}})).toBe("Set Awareness to exactly /proficiency_bonus/.");
-    expect(renderMechanicalRule({family:"GENERIC",operation:"add",target:"Defense",value:[{op:"+",value:{kind:"number",value:2}},{op:"+",value:{kind:"runtime",name:"PB",hint:"number"}}]})).toBe("Add +2 + /PB/ to Defense.");
+    expect(renderMechanicalRule({family:"GENERIC",operation:"add",target:"Defense",value:[{op:"+",value:{kind:"number",value:2}},{op:"+",value:{kind:"runtime",name:"PB",hint:"number"}}]})).toBe("Add 2 + /PB/ to Defense.");
   });
   it("renders grants, revocations, bounds, and explicit recipients", () => {
     expect(renderMechanicalRule({family:"GENERIC",operation:"grant",target:"Permission",value:"flight",recipient:"TARGET"})).toBe("Grant flight to Permission for Target.");
@@ -63,6 +63,14 @@ describe("mechanicalDescriptionFromModifiers", () => {
       kind:"modify", operation:"subtract", target:"save_dc", value:{kind:"number",value:1},
       condition:{kind:"tags",customTags:["target:exposed"]},
     }])).toBe("Subtract 1 from Save DC when the target is exposed.");
+  });
+
+  it("renders tracked and declared triggers in beginner-facing language", () => {
+    expect(mechanicalDescriptionFromModifiers([{
+      kind:"modify", operation:"add", target:"skill_practice_check",
+      value:[{op:"+",value:{kind:"derived",which:"pb_half"}},{op:"+",value:{kind:"attribute",attribute:"physical"}}],
+      condition:{kind:"compound",tokens:["self:stat|vitality_pct|<|0.3128436","OR","self:manual:tracking_enemies"]},
+    }])).toBe("Add PB/2 + physical to Practice checks when self vitality % is lower than 31.28436% or tracking enemies.");
   });
 });
 

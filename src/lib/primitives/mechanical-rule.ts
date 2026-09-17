@@ -93,15 +93,18 @@ function conditionText(value: unknown): string {
     const words = badges.map((badge) => {
       if (badge.kind === "tag" && /^(AND|OR)$/i.test(badge.label))
         return badge.label.toLowerCase();
+      if (badge.manual) return badge.label.toLowerCase();
       const axis =
         badge.axis === "target"
-          ? "the target is "
+          ? "the target "
           : badge.axis === "scene"
-            ? "the scene is "
+            ? "the scene "
             : badge.axis
-              ? "self is "
+              ? "self "
               : "";
-      return `${axis}${badge.label.toLowerCase()}`;
+      const label = badge.label.toLowerCase();
+      const completePredicate = /\b(is|has|uses|enters|leaves)\b/.test(label);
+      return `${axis}${completePredicate ? label : `is ${label}`}`;
     });
     return words.join(" ");
   } catch {
@@ -203,7 +206,9 @@ export function renderMechanicalRule(rule: CanonicalMechanicalRule): string {
   }
 
   const target = display(rule.target || bindings["target"] || "[target]");
-  const value = display(rule.value ?? bindings["value"] ?? "[value]");
+  const rawValue = rule.value ?? bindings["value"] ?? "[value]";
+  const value = display(rawValue);
+  const isEquation = Array.isArray(rawValue);
   const operation = rule.operation ?? "add";
   const recipient =
     rule.recipient && rule.recipient !== "SELF"
@@ -224,7 +229,7 @@ export function renderMechanicalRule(rule: CanonicalMechanicalRule): string {
               ? `Multiply ${target} by ${value}${recipient}`
               : operation === "divide"
                 ? `Divide ${target} by ${value}${recipient}`
-                : `Add ${!value.startsWith("-") && !value.startsWith("+") ? "+" : ""}${value} to ${target}${recipient}`;
+                : `Add ${!isEquation && !value.startsWith("-") && !value.startsWith("+") ? "+" : ""}${value} to ${target}${recipient}`;
   return withCondition(body, rule.conditionText);
 }
 
@@ -308,7 +313,15 @@ export function mechanicalDescriptionFromModifiers(
   return modifiers
     .map((modifier) => {
       const rule = mechanicalRuleFromModifier(modifier);
-      rule.value = modifierValue(modifier.value);
+      if (
+        modifier.value &&
+        typeof modifier.value === "object" &&
+        !Array.isArray(modifier.value) &&
+        "kind" in modifier.value &&
+        modifier.value["kind"] === "keyword"
+      ) {
+        rule.value = modifierValue(modifier.value);
+      }
       return renderMechanicalRule(rule);
     })
     .filter(Boolean)

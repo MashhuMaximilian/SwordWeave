@@ -1027,7 +1027,7 @@ describe("conditionToBadges — axis-explicit display (i2.6)", () => {
       customTags: ["self:stat|vitality_pct|<|0.5"],
     });
     expect(badges).toEqual([
-      { kind: "axis", label: "vitality_pct < 0.5", axis: "self" },
+      { kind: "axis", label: "Vitality % is lower than 50%", axis: "self" },
     ]);
   });
 
@@ -1037,7 +1037,7 @@ describe("conditionToBadges — axis-explicit display (i2.6)", () => {
       customTags: ["self:stat|vitality|between|5|15"],
     });
     expect(badges).toEqual([
-      { kind: "axis", label: "vitality between 5 - 15", axis: "self" },
+      { kind: "axis", label: "Vitality is between 5 and 15", axis: "self" },
     ]);
   });
 
@@ -1053,7 +1053,7 @@ describe("conditionToBadges — axis-explicit display (i2.6)", () => {
     expect(badges).toEqual([
       { kind: "axis", label: "not_proficient(any practice)", axis: "self" },
       { kind: "tag", label: "AND" },
-      { kind: "axis", label: "vitality_pct < 0.5", axis: "self" },
+      { kind: "axis", label: "Vitality % is lower than 50%", axis: "self" },
     ]);
   });
 });

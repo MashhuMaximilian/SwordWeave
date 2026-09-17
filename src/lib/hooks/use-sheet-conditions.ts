@@ -158,6 +158,9 @@ function isManualTriggerToken(token: string): boolean {
 }
 
 function isKnownFlag(label: string): boolean {
+  // Runtime flags are emitted by the action/scene runtime rather than toggled
+  // manually in the sheet's Conditions drawer.
+  if (label.startsWith("runtime:")) return true;
   // Proficiency / not_proficient_in_*: computable
   if (label.startsWith("proficient_in(")) return true;
   if (label.startsWith("not_proficient_in(")) return true;
