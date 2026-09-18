@@ -422,7 +422,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         label: "Functions",
       },
     ];
-    if (isSplitableSandboxRoute) {
+    if (isMobile && isSplitableSandboxRoute) {
       list.push({
         kind: "action",
         key: "split",
@@ -519,6 +519,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
     return list;
   }, [
     isSandboxRoute,
+    isMobile,
     isSplitableSandboxRoute,
     sandboxSplit,
     setSandboxSplit,

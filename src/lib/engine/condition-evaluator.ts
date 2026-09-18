@@ -35,9 +35,13 @@ import type { ModifierCondition } from "@/types/condition";
 import {
   ALL_PRACTICES,
   ALL_ATTRIBUTES,
+  type Operand,
+  type OperandValue,
+  type Operator,
   type AttributeKey,
 } from "@/types/modifier";
 import type { PracticeKey } from "@/types/modifier";
+import { parseRuleFormula } from "@/lib/primitives/rule-formula";
 import { rollDice } from "./runtime-resolver";
 
 // =============================================================================
@@ -695,6 +699,11 @@ function resolveConditionValue(
   ctx: ConditionContext,
 ): number | string | undefined {
   const value = raw.trim();
+  if (value.startsWith("formula:")) {
+    const parsed = parseRuleFormula(value.slice("formula:".length));
+    if (parsed.error || parsed.operands.length === 0) return undefined;
+    return resolveConditionFormula(parsed.operands, ctx);
+  }
   if (/^#.+#$/.test(value)) {
     return rollDice(value.slice(1, -1)).total;
   }
@@ -705,6 +714,40 @@ function resolveConditionValue(
   if (/^\[.*\]$/.test(value)) return value.slice(1, -1);
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : value;
+}
+
+function applyConditionFormulaOperator(accumulator: number, operator: Operator, right: number): number {
+  switch (operator) {
+    case "+": return accumulator + right;
+    case "-": return accumulator - right;
+    case "*": return accumulator * right;
+    case "/": return right === 0 ? accumulator : accumulator / right;
+    case "%": return accumulator + accumulator * right;
+  }
+}
+
+function resolveConditionFormulaValue(value: OperandValue, ctx: ConditionContext): number {
+  switch (value.kind) {
+    case "number": return value.value;
+    case "dice": return rollDice(value.expression).total;
+    case "attribute": return ctx.character.attributes[value.attribute] ?? 0;
+    case "practice": return ctx.character.practices[value.practice] ?? 0;
+    case "derived": {
+      const proficiency = Number(readCharacterStatString("proficiency_bonus", ctx.character) ?? 0);
+      if (value.which === "pb_half") return proficiency / 2;
+      if (value.which === "pb2" || value.which === "pb*2" || value.which === "expertise") return proficiency * 2;
+      if (value.which === "level") return Number(readCharacterStatString("level", ctx.character) ?? 0);
+      return proficiency;
+    }
+    case "runtime": return Number(readCharacterStatString(value.name, ctx.character) ?? 0);
+    case "behavior": return Number(readCharacterStatString(value.name, ctx.character) ?? 0);
+    case "keyword": return 0;
+    case "paren": return resolveConditionFormula(value.operands, ctx);
+  }
+}
+
+function resolveConditionFormula(operands: readonly Operand[], ctx: ConditionContext): number {
+  return operands.reduce((accumulator, operand) => applyConditionFormulaOperator(accumulator, operand.op, resolveConditionFormulaValue(operand.value, ctx)), 0);
 }
 
 /**
@@ -979,6 +1022,11 @@ function readCharacterStat(
       return character.saveDc;
     case "block_value":
       return character.blockValue;
+    case "pb":
+    case "proficiency_bonus":
+      return typeof character.custom["proficiency_bonus"] === "number"
+        ? character.custom["proficiency_bonus"]
+        : Math.floor((character.vitalityMax + 30) / 20);
     case "physical":
     case "mental":
     case "magical":

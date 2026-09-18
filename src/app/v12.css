@@ -3878,6 +3878,50 @@ body[data-ui="v12"] .v12-rule-formula-preview b { color:var(--v12-gold-hi); }
   body[data-ui="v12"] :is(.v12-rule-condition-stage,.v12-rule-condition-custom,.v12-rule-stacking) { grid-template-columns:1fr; }
 }
 
+/* Mechanical instrument polish: construction families share the modifier
+   builder's brass material and compact selection language. */
+body[data-ui="v12"] .v12-rule-kind-picker button[aria-pressed="true"],
+body[data-ui="v12"] :is(.v12-composition-presets,.v12-composition-choice-group) button[aria-pressed="true"] { position:relative;overflow:hidden;border-color:var(--v12-brass)!important;background:linear-gradient(112deg,transparent 0 24%,rgb(255 246 207 / 18%) 42%,transparent 60%),linear-gradient(180deg,#513b19 0%,#21170a 50%,#684a1a 100%)!important;color:#ffe7a3!important;box-shadow:inset 0 1px rgb(255 244 199 / 52%),inset 0 -2px #b4822c,0 0 0 1px rgb(69 45 13 / 76%)!important;text-shadow:0 1px rgb(0 0 0 / 68%); }
+body[data-ui="v12"] .v12-composition-author { background:linear-gradient(145deg,rgb(201 154 66 / 7%),transparent 34%),var(--v12-inset) padding-box,var(--v12-brass-edge) border-box!important;box-shadow:inset 0 1px rgb(255 231 163 / 12%); }
+body[data-ui="v12"] .v12-composition-heading { border-bottom-color:color-mix(in srgb,var(--v12-brass) 56%,transparent)!important;background:linear-gradient(98deg,rgb(201 154 66 / 12%),transparent 44%); }
+body[data-ui="v12"] .v12-composition-heading span,body[data-ui="v12"] .v12-composition-heading b { color:var(--v12-gold-hi)!important; }
+body[data-ui="v12"] .v12-composition-access-row { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:9px 12px 2px; }
+body[data-ui="v12"] .v12-composition-choice-group { display:grid;gap:5px; }
+body[data-ui="v12"] .v12-composition-choice-group > b { color:var(--v12-gold-hi);font:700 8px/1 var(--font-system);letter-spacing:.09em;text-transform:uppercase; }
+body[data-ui="v12"] .v12-composition-choice-group > div { display:flex;min-width:0;gap:3px; }
+body[data-ui="v12"] .v12-composition-choice-group button,body[data-ui="v12"] .v12-composition-presets button { min-height:28px!important;padding:3px 8px!important;border:1px solid transparent!important;border-radius:3px!important;background:linear-gradient(var(--v12-panel-deep),var(--v12-inset)) padding-box,var(--v12-silver-edge) border-box!important;color:var(--v12-paper)!important;font:600 10px/1.1 var(--font-system)!important; }
+body[data-ui="v12"] .v12-composition-choice-group button { flex:1 1 0; }
+body[data-ui="v12"] .v12-composition-output { position:relative;margin:5px 12px 10px!important;padding:10px 12px 10px 15px!important;border:1px solid transparent!important;border-radius:4px!important;background:linear-gradient(100deg,rgb(201 154 66 / 11%),var(--v12-panel-deep) 48%) padding-box,var(--v12-brass-edge) border-box!important;color:var(--v12-gold-hi)!important;font:500 13px/1.4 var(--font-body)!important;text-shadow:0 0 16px rgb(201 154 66 / 18%); }
+body[data-ui="v12"] .v12-composition-output::before { content:"";position:absolute;top:5px;bottom:5px;left:5px;width:2px;border-radius:2px;background:var(--v12-gold-edge); }
+body[data-ui="v12"] .v12-rule-sentence { position:relative;isolation:isolate; }
+body[data-ui="v12"] .v12-rule-sentence::before { content:"";position:absolute;z-index:-1;top:0;left:0;width:36%;height:1px;background:var(--v12-gold-edge);box-shadow:0 0 12px rgb(201 154 66 / 32%); }
+body[data-ui="v12"] .v12-rule-sentence::after { content:"";position:absolute;right:8px;bottom:7px;width:34px;height:1px;background:var(--v12-brass-edge); }
+body[data-ui="v12"] .v12-rule-sentence :is(.is-variable,.is-value,.is-operation,.is-scope,.is-condition) { text-shadow:0 0 15px rgb(201 154 66 / 26%); }
+body[data-ui="v12"] .v12-rule-number-entry { display:flex;min-width:0; }
+body[data-ui="v12"] .v12-rule-number-entry input { min-width:0;flex:1;border-radius:0 3px 3px 0!important; }
+body[data-ui="v12"] .v12-rule-number-entry:not(:has(.v12-rule-percent-toggle)) input { border-radius:3px!important; }
+body[data-ui="v12"] .v12-rule-percent-toggle { flex:0 0 31px;min-height:28px!important;padding:2px!important;border:1px solid var(--v12-silver)!important;border-right:0!important;border-radius:3px 0 0 3px!important;background:var(--v12-panel-deep)!important;color:var(--v12-dim)!important;font:700 11px/1 var(--font-mono)!important; }
+body[data-ui="v12"] .v12-rule-percent-toggle[aria-pressed="true"] { background:linear-gradient(180deg,#513b19,#21170a 54%,#684a1a)!important;color:#ffe7a3!important;box-shadow:inset 0 1px rgb(255 244 199 / 45%),inset 0 -2px #a97828!important; }
+body[data-ui="v12"] .v12-rule-percent-help { margin:0;color:var(--v12-soft);font:400 9px/1.3 var(--font-body); }
+body[data-ui="v12"] .v12-rule-condition-library { display:grid;gap:6px;max-height:220px;overflow:auto;padding:5px;border:1px solid color-mix(in srgb,var(--v12-brass) 28%,transparent);border-radius:4px;background:rgb(0 0 0 / 16%); }
+body[data-ui="v12"] .v12-rule-condition-library > section { display:grid;grid-template-columns:86px minmax(0,1fr);align-items:start;gap:5px; }
+body[data-ui="v12"] .v12-rule-condition-library > section > b { padding-top:7px;color:var(--v12-gold-hi);font:700 8px/1 var(--font-system);letter-spacing:.07em;text-transform:uppercase; }
+body[data-ui="v12"] .v12-rule-condition-formula { display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px; }
+body[data-ui="v12"] .v12-rule-condition-formula input { min-width:0; }
+body[data-ui="v12"] .v12-rule-condition-formula small { grid-column:1/-1;color:var(--v12-gold-hi);font:500 9px/1.3 var(--font-mono); }
+body[data-ui="v12"] .v12-rule-condition-formula small.has-error { color:#ff929d; }
+body[data-ui="v12"] .v12-source-family { height:auto!important;min-height:36px!important;padding:6px 7px!important;align-items:center; }
+body[data-ui="v12"] .v12-source-family > span:nth-child(2) { min-width:0;font:600 10px/1.18 var(--font-system);overflow-wrap:anywhere; }
+body[data-ui="v12"] .v12-source-family > span:first-child { font-size:10px; }
+body[data-ui="v12"] .v12-source-family > small { font:600 9px/1 var(--font-mono); }
+.sw-fab .sw-fab__action-grid { display:grid;gap:4px; }
+.sw-fab .sw-fab__utility-grid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px; }
+.sw-fab .sw-fab__utility-grid:has([data-fab-action="split"]) { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.sw-fab .sw-fab__workspace-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;padding-top:4px;border-top:1px solid color-mix(in srgb,var(--v12-brass) 32%,transparent); }
+body[data-ui="v12"] .v12-preview-destination-title { display:flex;align-items:center;gap:7px;color:inherit; }
+body[data-ui="v12"] .v12-preview-destination-title > svg { color:var(--v12-gold-hi);filter:drop-shadow(0 0 7px rgb(201 154 66 / 24%)); }
+@media(max-width:720px) { body[data-ui="v12"] .v12-composition-access-row { grid-template-columns:1fr; } body[data-ui="v12"] .v12-rule-condition-library > section { grid-template-columns:1fr; } }
+
 /* Mechanical authoring uses the brass edge as a material, with a dark gold
    center and bright silver-gold reflections instead of flat orange fills. */
 body[data-ui="v12"] .v12-rule-builder {

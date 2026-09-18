@@ -1773,58 +1773,36 @@ export function PrimitiveForm({
         </div>
                 {ruleKind === "DOMAIN_ACCESS" || ruleKind === "VERB_ACCESS" ? (
                   <div className="v12-composition-access-row">
-                    <label>
-                      Operation
-                      <select
-                        value={composition.operation}
-                        onChange={(event) => {
-                          setComposition((current) => ({
-                            ...current,
-                            operation: event.target.value as "grant" | "revoke",
-                          }));
-                          setIsDirty(true);
-                        }}
-          >
-                        <option value="grant">Grant</option>
-                        <option value="revoke">Revoke</option>
-                      </select>
-                    </label>
-                    <label>
-                      Tier
-                      <select
-                        value={composition.tier}
-                        onChange={(event) => {
-                          setComposition((current) => ({
-                            ...current,
-                            tier: event.target
-                              .value as CompositionDraft["tier"],
-                          }));
-                          setIsDirty(true);
-                        }}
-                      >
-                        {["Tier I", "Tier II", "Tier III", "Tier IV"].map(
-                          (tier) => (
-                            <option key={tier}>{tier}</option>
-                          ),
-                        )}
-                      </select>
-                    </label>
-                    <label>
-                      Recipient
-                      <select
-                        value={composition.recipient}
-                        onChange={(event) => {
-                          setComposition((current) => ({
-                            ...current,
-                            recipient: event.target.value as "SELF" | "TARGET",
-                          }));
-                          setIsDirty(true);
-                        }}
-                      >
-                        <option value="SELF">Self</option>
-                        <option value="TARGET">Target</option>
-                      </select>
-                    </label>
+                    <div className="v12-composition-choice-group">
+                      <b>Operation</b>
+                      <div>
+                        {(["grant", "revoke"] as const).map((operation) => (
+                          <button key={operation} type="button" aria-pressed={composition.operation === operation} onClick={() => { setComposition((current) => ({ ...current, operation })); setIsDirty(true); }}>
+                            {operation === "grant" ? "Grant" : "Revoke"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="v12-composition-choice-group">
+                      <b>Tier</b>
+                      <div>
+                        {(["Tier I", "Tier II", "Tier III", "Tier IV"] as const).map((tier) => (
+                          <button key={tier} type="button" aria-pressed={composition.tier === tier} onClick={() => { setComposition((current) => ({ ...current, tier })); setIsDirty(true); }}>
+                            {tier.replace("Tier ", "")}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="v12-composition-choice-group">
+                      <b>Recipient</b>
+                      <div>
+                        {(["SELF", "TARGET"] as const).map((recipient) => (
+                          <button key={recipient} type="button" aria-pressed={composition.recipient === recipient} onClick={() => { setComposition((current) => ({ ...current, recipient })); setIsDirty(true); }}>
+                            {recipient === "SELF" ? "Self" : "Target"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 ) : null}
                 {ruleKind === "DOMAIN_ACCESS" ? (

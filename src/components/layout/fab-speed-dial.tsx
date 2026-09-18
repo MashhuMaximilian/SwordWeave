@@ -325,18 +325,18 @@ export function FabSpeedDial({
             );
           })}
 
-          {/* Compact icon grid — 2x3 of small icon-only buttons, fill width.
-              Row 1: split, dark, fullscreen toggles.
-              Row 2: account (opens user menu), build and preview, character (Mona Lisa). */}
+          {/* Utilities/profile stay together; Build and Character own a
+              dedicated second row. Split is supplied only on mobile. */}
           <div
-            className="sw-fab__action-grid mt-1 grid grid-cols-3 gap-1 rounded-lg border border-border/60 bg-card/40 p-1"
+            className="sw-fab__action-grid mt-1 rounded-lg border border-border/60 bg-card/40 p-1"
             data-fab-action-grid
             style={{
               animation: `sw-fab-item-in 180ms ease-out both`,
               animationDelay: `${items.length * 20}ms`,
             }}
           >
-            {(
+            <div className="sw-fab__utility-grid">
+              {(
               [
                 ...items.filter(
                   (i): i is FabAction =>
@@ -366,44 +366,18 @@ export function FabSpeedDial({
                     setOpen(false);
                   },
                 },
-                ...items.filter(
-                  (i): i is FabAction =>
-                    i.kind === "action" &&
-                    (i.key === "build" || i.key === "character"),
-                ),
               ] as FabAction[]
-            ).map((action) => (
-              <button
-                key={action.key}
-                type="button"
-                data-fab-action={action.key}
-                onClick={() => action.onClick()}
-                disabled={action.disabled}
-                aria-pressed={action.active}
-                aria-label={action.label}
-                title={action.label}
-                className={cn(
-                  "relative flex h-9 w-full items-center justify-center rounded-md border text-[10px] font-medium transition-all active:scale-95",
-                  action.active
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-background text-muted-foreground hover:border-primary hover:text-foreground",
-                )}
-              >
-                {action.icon}
-                {(() => {
-                  const count = badgeCounts[action.key] ?? 0;
-                  if (count <= 0) return null;
-                  return (
-                    <span
-                      className="pointer-events-none absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground ring-2 ring-background"
-                      aria-label={`${count} unsaved ${action.label.toLowerCase()} change${count === 1 ? "" : "s"}`}
-                    >
-                      {count > 9 ? "9+" : count}
-                    </span>
-                  );
-                })()}
-              </button>
-            ))}
+              ).map((action) => (
+                <FabGridAction key={action.key} action={action} badgeCount={badgeCounts[action.key] ?? 0} />
+              ))}
+            </div>
+            <div className="sw-fab__workspace-grid">
+              {items.filter(
+                (i): i is FabAction => i.kind === "action" && (i.key === "build" || i.key === "character"),
+              ).map((action) => (
+                <FabGridAction key={action.key} action={action} badgeCount={badgeCounts[action.key] ?? 0} />
+              ))}
+            </div>
           </div>
         </div>
       ) : null}
@@ -439,6 +413,36 @@ export function FabSpeedDial({
         }
       `}</style>
     </div>
+  );
+}
+
+function FabGridAction({ action, badgeCount }: { action: FabAction; badgeCount: number }) {
+  return (
+    <button
+      type="button"
+      data-fab-action={action.key}
+      onClick={() => action.onClick()}
+      disabled={action.disabled}
+      aria-pressed={action.active}
+      aria-label={action.label}
+      title={action.label}
+      className={cn(
+        "relative flex h-9 w-full items-center justify-center rounded-md border text-[10px] font-medium transition-all active:scale-95",
+        action.active
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border bg-background text-muted-foreground hover:border-primary hover:text-foreground",
+      )}
+    >
+      {action.icon}
+      {badgeCount > 0 ? (
+        <span
+          className="pointer-events-none absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground ring-2 ring-background"
+          aria-label={`${badgeCount} unsaved ${action.label.toLowerCase()} change${badgeCount === 1 ? "" : "s"}`}
+        >
+          {badgeCount > 9 ? "9+" : badgeCount}
+        </span>
+      ) : null}
+    </button>
   );
 }
 

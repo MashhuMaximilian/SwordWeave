@@ -1094,4 +1094,23 @@ describe("evaluateCondition — authored comparison value syntax", () => {
     expect(evaluateCondition({ kind: "tags", customTags: ["self:stat|vitality|=|#1d1#"] }, numeric)).toBe(true);
     expect(evaluateCondition({ kind: "tags", customTags: ["self:stat|damage_type|=|[fire]"] }, text)).toBe(true);
   });
+
+  it("evaluates a formula made from sheet and derived values", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        custom: { scene_heat: 8, proficiency_bonus: 4 },
+      }),
+    });
+    expect(
+      evaluateCondition(
+        {
+          kind: "tags",
+          customTags: [
+            "self:stat|scene_heat|=|formula:/awareness/ + PB",
+          ],
+        },
+        ctx,
+      ),
+    ).toBe(true);
+  });
 });

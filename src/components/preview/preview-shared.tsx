@@ -386,7 +386,7 @@ export function ConditionLine({
 // =============================================================================
 
 import { useState } from "react";
-import { Pencil, ExternalLink, History, Trash2 } from "lucide-react";
+import { Anvil, Pencil, PencilLine, UserRoundPlus, ExternalLink, History, Trash2 } from "lucide-react";
 import {
   VisibilitySelect,
   visibilityLabel,
@@ -443,9 +443,17 @@ function DestinationAction({
   destination: "workspace" | "active-build" | "persistent-build" | "character" | "primary";
   emphasis?: boolean;
 }) {
+  const DestinationIcon = destination === "workspace"
+    ? PencilLine
+    : destination === "character"
+      ? UserRoundPlus
+      : Anvil;
   const content = (
     <>
-      <span className="text-sm font-semibold leading-tight">{action.label}</span>
+      <span className="v12-preview-destination-title">
+        <DestinationIcon className="size-4 shrink-0" aria-hidden="true" />
+        <span className="text-sm font-semibold leading-tight">{action.label}</span>
+      </span>
       {action.description || (action.disabled && action.title) ? (
         <span className="text-[11px] leading-snug text-muted-foreground">
           {action.description ?? action.title}

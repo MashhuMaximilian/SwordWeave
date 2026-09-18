@@ -451,7 +451,9 @@ function conditionLabel(pill: ConditionPill): string {
     const formatted =
       pill.stat === "vitality_pct" && typeof raw === "number"
         ? `${Number((raw * 100).toFixed(5))}%`
-        : String(raw);
+        : typeof raw === "string" && raw.startsWith("formula:")
+          ? raw.slice("formula:".length)
+          : String(raw);
     const high =
       pill.operator === "between" && pill.valueHigh !== undefined
         ? ` and ${pill.stat === "vitality_pct" && typeof pill.valueHigh === "number" ? Number((pill.valueHigh * 100).toFixed(5)) : pill.valueHigh}`
@@ -1848,18 +1850,36 @@ function ConditionCard({
               family.values.some((item) => item[1] === pill.stat),
             )?.id ?? "runtime");
   const raw = pill.value;
+  const sheetReferenceNames = new Set<string>([
+    ...ALL_ATTRIBUTES,
+    ...ALL_PRACTICES,
+    ...ALL_DERIVED,
+    "proficiency_bonus",
+  ]);
   const initialValueFamily =
-    typeof raw === "string" && /^#.*#$/.test(raw)
+    typeof raw === "string" && raw.startsWith("formula:")
+      ? "formula"
+      : typeof raw === "string" && /^#.*#$/.test(raw)
       ? "dice"
       : typeof raw === "string" && /^\/.*\/$/.test(raw)
-        ? "sheet"
+        ? sheetReferenceNames.has(raw.slice(1, -1).toLowerCase())
+          ? "sheet"
+          : "runtime"
         : typeof raw === "string" && /^\[.*\]$/.test(raw)
-          ? "keyword"
+          ? "state"
           : "fixed";
   const [readGroup, setReadGroup] = useState(initialGroup);
   const [valueFamily, setValueFamily] = useState<
-    "fixed" | "sheet" | "dice" | "runtime" | "keyword"
+    "fixed" | "sheet" | "dice" | "formula" | "state" | "runtime"
   >(initialValueFamily);
+  const [diceDraft, setDiceDraft] = useState(
+    typeof raw === "string" && /^#.*#$/.test(raw) ? raw.slice(1, -1) : "1d6",
+  );
+  const [formulaDraft, setFormulaDraft] = useState(
+    typeof raw === "string" && raw.startsWith("formula:")
+      ? raw.slice("formula:".length)
+      : "PB + 1",
+  );
   const [runtimeDraft, setRuntimeDraft] = useState(
     typeof raw === "string" && /^\/.*\/$/.test(raw) ? raw.slice(1, -1) : "",
   );
@@ -1921,6 +1941,7 @@ function ConditionCard({
     const stored = pill.stat === "vitality_pct" ? value / 100 : value;
     onPatch(high ? { valueHigh: stored } : { value: stored });
   };
+  const parsedConditionFormula = parseRuleFormula(formulaDraft);
   return (
     <article className="v12-rule-condition-card">
       <header>
@@ -2155,11 +2176,12 @@ function ConditionCard({
                   >
                     {(
                       [
-                        ["fixed", "Fixed"],
+                        ["fixed", "Fixed number"],
                         ["sheet", "Sheet value"],
-                        ["dice", "#dice#"],
-                        ["runtime", "/runtime/"],
-                        ["keyword", "[keyword]"],
+                        ["dice", "Dice"],
+                        ["formula", "Formula"],
+                        ["state", "State / keyword"],
+                        ["runtime", "Custom runtime"],
                       ] as const
                     ).map(([value, label]) => (
                       <button
@@ -2177,31 +2199,15 @@ function ConditionCard({
                     <div className="v12-rule-fixed-condition">
                       {pill.stat === "vitality" ||
                       pill.stat === "vitality_pct" ? (
-                        <div className="v12-rule-condition-unit">
-                          <b>Unit</b>
-                          <div className="v12-rule-chip-row">
-                            <Choice
-                              label="Absolute Vitality"
-                              selected={vitalityUnit === "absolute"}
-                              onClick={() => switchVitalityUnit("absolute")}
-                            />
-                            <Choice
-                              label="Percentage"
-                              selected={vitalityUnit === "percent"}
-                              onClick={() => switchVitalityUnit("percent")}
-                            />
-                          </div>
-                        </div>
+                        <p className="v12-rule-percent-help">Toggle % to compare a percentage; leave it off for exact Vitality.</p>
                       ) : null}
                       <div className="v12-rule-entry-row">
-                        <input
-                          type="number"
-                          step="any"
-                          inputMode="decimal"
-                          value={numericValue}
-                          onChange={(event) => storeNumber(event.target.value)}
-                          placeholder="Any whole or decimal number"
-                        />
+                        <div className="v12-rule-number-entry">
+                          {pill.stat === "vitality" || pill.stat === "vitality_pct" ? (
+                            <button type="button" className="v12-rule-percent-toggle" aria-pressed={vitalityUnit === "percent"} aria-label={vitalityUnit === "percent" ? "Use absolute Vitality" : "Use Vitality percentage"} onClick={() => switchVitalityUnit(vitalityUnit === "percent" ? "absolute" : "percent")}>%</button>
+                          ) : null}
+                          <input type="number" step="any" inputMode="decimal" value={numericValue} onChange={(event) => storeNumber(event.target.value)} placeholder="Any whole or decimal number" />
+                        </div>
                         <div className="v12-rule-chip-row">
                           {(pill.stat === "vitality_pct"
                             ? [10, 25, 31.28436, 50, 75]
@@ -2226,7 +2232,8 @@ function ConditionCard({
                     </div>
                   ) : null}
                   {valueFamily === "sheet" ? (
-                    <div className="v12-rule-chip-row">
+                    <div className="v12-rule-condition-library">
+                      <ValueGroup title="Attributes">
                       {ALL_ATTRIBUTES.map((value) => (
                         <Choice
                           key={value}
@@ -2235,6 +2242,8 @@ function ConditionCard({
                           onClick={() => onPatch({ value: `/${value}/` })}
                         />
                       ))}
+                      </ValueGroup>
+                      <ValueGroup title="Practices">
                       {ALL_PRACTICES.map((value) => (
                         <Choice
                           key={value}
@@ -2243,29 +2252,47 @@ function ConditionCard({
                           onClick={() => onPatch({ value: `/${value}/` })}
                         />
                       ))}
-                      <Choice
-                        label="/PB/"
-                        selected={pill.value === "/proficiency_bonus/"}
-                        onClick={() =>
-                          onPatch({ value: "/proficiency_bonus/" })
-                        }
-                      />
+                      </ValueGroup>
+                      <ValueGroup title="Derived values">
+                        {ALL_DERIVED.map((value) => (
+                          <Choice key={value} label={`/${title(value)}/`} selected={pill.value === `/${value}/` || (value === "pb" && pill.value === "/proficiency_bonus/")} onClick={() => onPatch({ value: `/${value === "pb" ? "proficiency_bonus" : value}/` })} />
+                        ))}
+                      </ValueGroup>
                     </div>
                   ) : null}
                   {valueFamily === "dice" ? (
-                    <div className="v12-rule-chip-row">
-                      {DICE_TYPES.map((die) => (
+                    <div className="v12-rule-condition-library">
+                      <div className="v12-rule-chip-row">{DICE_TYPES.map((die) => (
                         <Choice
                           key={die}
                           label={`#1${die}#`}
                           selected={pill.value === `#1${die}#`}
                           onClick={() => onPatch({ value: `#1${die}#` })}
                         />
-                      ))}
+                      ))}</div>
+                      <div className="v12-rule-entry-row">
+                        <input value={diceDraft} onChange={(event) => setDiceDraft(event.target.value)} placeholder="2d8 + 3" />
+                        <button type="button" disabled={!diceDraft.trim()} onClick={() => onPatch({ value: `#${diceDraft.trim().replace(/^#|#$/g, "")}#` })}>Use #dice#</button>
+                      </div>
+                    </div>
+                  ) : null}
+                  {valueFamily === "formula" ? (
+                    <div className="v12-rule-condition-formula">
+                      <input value={formulaDraft} onChange={(event) => setFormulaDraft(event.target.value)} placeholder="(5 + PB) / Awareness + 2d8" />
+                      <button type="button" disabled={Boolean(parsedConditionFormula.error)} onClick={() => onPatch({ value: `formula:${renderEquation(parsedConditionFormula.operands)}` })}>Use formula</button>
+                      <small className={parsedConditionFormula.error ? "has-error" : ""}>{parsedConditionFormula.error ?? renderEquation(parsedConditionFormula.operands)}</small>
                     </div>
                   ) : null}
                   {valueFamily === "runtime" ? (
-                    <div className="v12-rule-entry-row">
+                    <div className="v12-rule-condition-library">
+                      {Array.from(new Set(RUNTIME_VARIABLES.map((item) => item.group))).map((group) => (
+                        <ValueGroup key={group} title={group}>
+                          {RUNTIME_VARIABLES.filter((item) => item.group === group).map((item) => (
+                            <Choice key={item.name} label={`/${item.label}/`} selected={!item.name.includes("<key>") && pill.value === `/${item.name}/`} onClick={() => { if (item.name.includes("<key>")) { setRuntimeDraft(item.name.replace("<key>", "")); return; } onPatch({ value: `/${item.name}/` }); }} />
+                          ))}
+                        </ValueGroup>
+                      ))}
+                      <div className="v12-rule-entry-row">
                       <input
                         value={runtimeDraft}
                         onChange={(event) =>
@@ -2284,10 +2311,17 @@ function ConditionCard({
                       >
                         Use /variable/
                       </button>
+                      </div>
                     </div>
                   ) : null}
-                  {valueFamily === "keyword" ? (
-                    <div className="v12-rule-entry-row">
+                  {valueFamily === "state" ? (
+                    <div className="v12-rule-condition-library">
+                      {Array.from(new Set(SUB_CHOICE_KEYWORDS.map((item) => item.group))).map((group) => (
+                        <ValueGroup key={group} title={group}>
+                          {SUB_CHOICE_KEYWORDS.filter((item) => item.group === group).map((item) => { const value = slug(item.label); return <Choice key={`${group}:${value}`} label={`[${item.label}]`} selected={pill.value === `[${value}]`} onClick={() => onPatch({ value: `[${value}]` })} />; })}
+                        </ValueGroup>
+                      ))}
+                      <div className="v12-rule-entry-row">
                       <input
                         value={keywordDraft}
                         onChange={(event) =>
@@ -2304,6 +2338,7 @@ function ConditionCard({
                       >
                         Use [keyword]
                       </button>
+                      </div>
                     </div>
                   ) : null}
                 </div>
