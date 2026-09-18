@@ -158,6 +158,43 @@ const OPERATION_COPY: ReadonlyArray<{
   },
 ];
 
+const STACKING_OPTIONS: ReadonlyArray<{
+  value: ModifierDraft["stacking"];
+  label: string;
+  help: string;
+}> = [
+  {
+    value: "stack",
+    label: "Stack all",
+    help: "Keep every contribution and combine them in resolver order.",
+  },
+  {
+    value: "highest-only",
+    label: "Highest only",
+    help: "Keep only the largest contribution to this result.",
+  },
+  {
+    value: "lowest-only",
+    label: "Lowest only",
+    help: "Keep only the smallest contribution to this result.",
+  },
+  {
+    value: "unique-by-primitive",
+    label: "Once per primitive",
+    help: "The same primitive can contribute only once, even if applied repeatedly.",
+  },
+  {
+    value: "unique-by-target",
+    label: "Once per target",
+    help: "Keep one contribution for each affected target.",
+  },
+  {
+    value: "replace",
+    label: "Newest replaces old",
+    help: "The latest matching contribution replaces the one already stored.",
+  },
+];
+
 const SUBJECTS: ReadonlyArray<{
   label: string;
   value: ConditionPresetCategory;
@@ -178,8 +215,7 @@ const CONDITION_STAT_FAMILIES: readonly ConditionReadFamily[] = [
     id: "sheet",
     label: "Character sheet",
     values: [
-      ["Vitality (absolute)", "vitality"],
-      ["Vitality %", "vitality_pct"],
+      ["Vitality", "vitality"],
       ["Max Vitality", "vitality_max"],
       ["Physical", "physical"],
       ["Mental", "mental"],
@@ -195,9 +231,7 @@ const CONDITION_STAT_FAMILIES: readonly ConditionReadFamily[] = [
     id: "rolls",
     label: "Rolls & checks",
     values: [
-      ...ALL_PRACTICES.map(
-        (practice) => [title(practice), practice] as const,
-      ),
+      ...ALL_PRACTICES.map((practice) => [title(practice), practice] as const),
       ["Action roll", "action_roll"],
       ["Attack bonus", "attack_bonus"],
       ["Damage output", "damage_output"],
@@ -401,6 +435,7 @@ function comparisonLabel(value: ConditionPill["operator"]): string {
 }
 
 function statLabel(value: string | undefined): string {
+  if (value === "vitality_pct") return "Vitality";
   return (
     CONDITION_STATS.find((item) => item[1] === value)?.[0] ??
     title(value ?? "value")
@@ -490,6 +525,9 @@ export function PrimitiveRuleInstrument({
   const [formulaOpen, setFormulaOpen] = useState(false);
   const [formulaText, setFormulaText] = useState("");
   const [declaredText, setDeclaredText] = useState("");
+  const [expandedConditionIndex, setExpandedConditionIndex] = useState<
+    number | null
+  >(modifier.v1Condition.pills.length ? 0 : null);
   const [runtimeTemplate, setRuntimeTemplate] = useState<
     (typeof RUNTIME_VARIABLES)[number] | null
   >(null);
@@ -560,6 +598,9 @@ export function PrimitiveRuleInstrument({
       operators,
       categories: [...new Set(pills.map((pill) => pill.category))],
     });
+    setExpandedConditionIndex(
+      pills.length ? Math.min(index, pills.length - 1) : null,
+    );
   };
 
   const trackedCondition = (): ConditionPill => ({
@@ -581,6 +622,7 @@ export function PrimitiveRuleInstrument({
       narrative: "",
       includeTags: true,
     });
+    setExpandedConditionIndex(pills.length - 1);
   };
 
   const declaredCondition = (text: string): ConditionPill => ({
@@ -621,11 +663,14 @@ export function PrimitiveRuleInstrument({
         replaceIndex >= 0
           ? modifier.v1Condition.operators
           : pills.length > 1
-          ? [...modifier.v1Condition.operators, join]
-          : [],
+            ? [...modifier.v1Condition.operators, join]
+            : [],
       narrative: "",
       includeTags: true,
     });
+    setExpandedConditionIndex(
+      replaceIndex >= 0 ? replaceIndex : pills.length - 1,
+    );
     setDeclaredText("");
   };
 
@@ -648,12 +693,19 @@ export function PrimitiveRuleInstrument({
       narrative: "",
       includeTags: true,
     });
+    setExpandedConditionIndex(pills.length - 1);
   };
 
   const addCondition = (join: "AND" | "OR") => {
     if (triggerMode === "declared") addDeclaredCondition(join);
     else addTrackedCondition(join);
     setActivePanel("trigger");
+  };
+
+  const patchConnector = (index: number, value: "AND" | "OR") => {
+    const operators = [...modifier.v1Condition.operators];
+    operators[index - 1] = value;
+    onConditionChange({ ...modifier.v1Condition, operators });
   };
 
   const setTriggerMode = (mode: TriggerMode) => {
@@ -665,6 +717,7 @@ export function PrimitiveRuleInstrument({
         narrative: "",
         includeTags: false,
       });
+      setExpandedConditionIndex(null);
     } else if (mode === "tracked") {
       const pill = trackedCondition();
       onConditionChange({
@@ -674,6 +727,7 @@ export function PrimitiveRuleInstrument({
         narrative: "",
         includeTags: true,
       });
+      setExpandedConditionIndex(0);
     } else {
       onConditionChange({
         categories: ["self"],
@@ -682,6 +736,7 @@ export function PrimitiveRuleInstrument({
         narrative: "",
         includeTags: true,
       });
+      setExpandedConditionIndex(0);
     }
   };
 
@@ -708,6 +763,9 @@ export function PrimitiveRuleInstrument({
   const selectedFamily =
     TARGET_FAMILIES.find((family) => family.id === targetFamily) ??
     TARGET_FAMILIES[0]!;
+  const selectedStacking =
+    STACKING_OPTIONS.find((option) => option.value === modifier.stacking) ??
+    STACKING_OPTIONS[0]!;
   const targetMatches = selectedFamily.targets.filter((target) => {
     const spec = MODIFIER_TARGET_SPEC[target];
     return [
@@ -865,7 +923,10 @@ export function PrimitiveRuleInstrument({
             <button
               type="button"
               className="is-condition"
-              onClick={() => setActivePanel("trigger")}
+              onClick={() => {
+                setActivePanel("trigger");
+                setExpandedConditionIndex(index);
+              }}
             >
               {conditionLabel(pill)}
             </button>
@@ -1513,11 +1574,9 @@ export function PrimitiveRuleInstrument({
                 condition={modifier.v1Condition}
                 onPatchPill={patchPill}
                 onRemove={removeCondition}
-                onConnector={(index, value) => {
-                  const operators = [...modifier.v1Condition.operators];
-                  operators[index - 1] = value;
-                  onConditionChange({ ...modifier.v1Condition, operators });
-                }}
+                onConnector={patchConnector}
+                expandedIndex={expandedConditionIndex}
+                onExpandedIndexChange={setExpandedConditionIndex}
               />
             ) : null}
             {triggerMode === "declared" ? (
@@ -1529,20 +1588,69 @@ export function PrimitiveRuleInstrument({
                 </p>
                 <div className="v12-rule-declared-current">
                   {modifier.v1Condition.pills.map((pill, index) => (
-                    <label key={`${index}:${pill.flag}`}>
-                      <span>{index === 0 ? "When" : modifier.v1Condition.operators[index - 1] ?? "OR"}</span>
-                      <input
-                        value={pill.label}
-                        onChange={(event) => {
-                          const clean = event.target.value;
-                          patchPill(index, {
-                            label: clean,
-                            flag: `manual:${slug(clean)}`,
-                          });
-                        }}
-                        placeholder="Name the table event"
-                      />
-                    </label>
+                    <article
+                      className="v12-rule-condition-card v12-rule-declared-card"
+                      key={index}
+                    >
+                      <header>
+                        <div className="v12-rule-condition-join">
+                          {index === 0 ? (
+                            <strong>WHEN</strong>
+                          ) : (
+                            (["AND", "OR"] as const).map((value) => (
+                              <button
+                                type="button"
+                                key={value}
+                                aria-pressed={
+                                  (modifier.v1Condition.operators[index - 1] ??
+                                    "OR") === value
+                                }
+                                onClick={() => patchConnector(index, value)}
+                              >
+                                {value}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          className="v12-rule-condition-summary"
+                          aria-expanded={expandedConditionIndex === index}
+                          onClick={() =>
+                            setExpandedConditionIndex((current) =>
+                              current === index ? null : index,
+                            )
+                          }
+                        >
+                          <b>{pill.label}</b>
+                          <span aria-hidden="true">⌄</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="v12-rule-condition-remove"
+                          onClick={() => removeCondition(index)}
+                          aria-label="Remove condition"
+                        >
+                          ×
+                        </button>
+                      </header>
+                      {expandedConditionIndex === index ? (
+                        <label className="v12-rule-declared-name">
+                          <span>Table event</span>
+                          <input
+                            value={pill.label}
+                            onChange={(event) => {
+                              const clean = event.target.value;
+                              patchPill(index, {
+                                label: clean,
+                                flag: `manual:${slug(clean)}`,
+                              });
+                            }}
+                            placeholder="Name the table event"
+                          />
+                        </label>
+                      ) : null}
+                    </article>
                   ))}
                 </div>
                 <div className="v12-rule-declared-groups">
@@ -1584,30 +1692,45 @@ export function PrimitiveRuleInstrument({
       </section>
 
       <section className="v12-rule-stacking">
-        <div>
+        <div className="v12-rule-stacking-copy">
           <b>Stacking rule</b>
           <span>
             When several effects modify the same result, decide which
             contributions the resolver keeps.
           </span>
         </div>
-        <select
-          aria-label="Stacking rule"
-          value={modifier.stacking}
-          onChange={(event) =>
-            onPatch({
-              stacking: event.target.value as ModifierDraft["stacking"],
-            })
-          }
-        >
-          <option value="stack">Stack all</option>
-          <option value="highest-only">Highest only</option>
-          <option value="lowest-only">Lowest only</option>
-          <option value="unique-by-primitive">Once per primitive</option>
-          <option value="unique-by-target">Once per target</option>
-          <option value="replace">Newest replaces old</option>
-        </select>
-        <button type="button" onClick={onClear}>
+        <div className="v12-rule-stacking-picker">
+          <label htmlFor="mechanical-rule-stacking">How they combine</label>
+          <select
+            id="mechanical-rule-stacking"
+            aria-label="Stacking rule"
+            value={modifier.stacking}
+            onChange={(event) =>
+              onPatch({
+                stacking: event.target.value as ModifierDraft["stacking"],
+              })
+            }
+          >
+            {STACKING_OPTIONS.map((option) => (
+              <option value={option.value} key={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <p>{selectedStacking.help}</p>
+          <details>
+            <summary>Compare all stacking rules</summary>
+            <dl>
+              {STACKING_OPTIONS.map((option) => (
+                <div key={option.value}>
+                  <dt>{option.label}</dt>
+                  <dd>{option.help}</dd>
+                </div>
+              ))}
+            </dl>
+          </details>
+        </div>
+        <button type="button" className="v12-rule-remove" onClick={onClear}>
           Remove mechanical rule
         </button>
       </section>
@@ -1664,11 +1787,15 @@ function TrackedConditionEditor({
   onPatchPill,
   onRemove,
   onConnector,
+  expandedIndex,
+  onExpandedIndexChange,
 }: {
   condition: ConditionAuthoring;
   onPatchPill: (index: number, patch: ConditionPillPatch) => void;
   onRemove: (index: number) => void;
   onConnector: (index: number, value: "AND" | "OR") => void;
+  expandedIndex: number | null;
+  onExpandedIndexChange: (index: number | null) => void;
 }) {
   return (
     <div className="v12-rule-condition-editor">
@@ -1678,6 +1805,10 @@ function TrackedConditionEditor({
           pill={pill}
           index={index}
           connector={condition.operators[index - 1] ?? "AND"}
+          expanded={expandedIndex === index}
+          onToggle={() =>
+            onExpandedIndexChange(expandedIndex === index ? null : index)
+          }
           onPatch={(patch) => onPatchPill(index, patch)}
           onRemove={() => onRemove(index)}
           onConnector={(value) => onConnector(index, value)}
@@ -1691,6 +1822,8 @@ function ConditionCard({
   pill,
   index,
   connector,
+  expanded,
+  onToggle,
   onPatch,
   onRemove,
   onConnector,
@@ -1698,6 +1831,8 @@ function ConditionCard({
   pill: ConditionPill;
   index: number;
   connector: "AND" | "OR";
+  expanded: boolean;
+  onToggle: () => void;
   onPatch: (patch: ConditionPillPatch) => void;
   onRemove: () => void;
   onConnector: (value: "AND" | "OR") => void;
@@ -1707,9 +1842,11 @@ function ConditionCard({
       ? "practice"
       : pill.kind === "flag"
         ? "state"
-        : (CONDITION_STAT_FAMILIES.find((family) =>
-            family.values.some((item) => item[1] === pill.stat),
-          )?.id ?? "runtime");
+        : pill.stat === "vitality_pct"
+          ? "sheet"
+          : (CONDITION_STAT_FAMILIES.find((family) =>
+              family.values.some((item) => item[1] === pill.stat),
+            )?.id ?? "runtime");
   const raw = pill.value;
   const initialValueFamily =
     typeof raw === "string" && /^#.*#$/.test(raw)
@@ -1729,27 +1866,55 @@ function ConditionCard({
   const [keywordDraft, setKeywordDraft] = useState(
     typeof raw === "string" && /^\[.*\]$/.test(raw) ? raw.slice(1, -1) : "",
   );
+  const [vitalityUnit, setVitalityUnit] = useState<"absolute" | "percent">(
+    pill.stat === "vitality_pct" ? "percent" : "absolute",
+  );
   const customStat =
     pill.kind === "stat" &&
+    pill.stat !== "vitality_pct" &&
     !CONDITION_STATS.some((item) => item[1] === pill.stat);
   const customFlag =
     pill.kind === "flag" && Boolean(pill.flag?.startsWith("runtime:"));
-  const setStat = (stat: string) =>
+  const setStat = (stat: string) => {
+    const resolvedStat =
+      stat === "vitality" && vitalityUnit === "percent" ? "vitality_pct" : stat;
     onPatch({
       kind: "stat",
-      stat,
+      stat: resolvedStat,
       operator: pill.kind === "stat" ? (pill.operator ?? "<") : "<",
-      value: stat === "vitality_pct" ? 0.5 : 1,
+      value: resolvedStat === "vitality_pct" ? 0.5 : 1,
       valueHigh: undefined,
       practice: undefined,
       flag: undefined,
     });
+  };
   const numericValue =
     typeof pill.value === "number"
       ? pill.stat === "vitality_pct"
         ? Number((pill.value * 100).toFixed(5))
         : pill.value
       : "";
+  const switchVitalityUnit = (unit: "absolute" | "percent") => {
+    if (unit === vitalityUnit) return;
+    const displayed = typeof numericValue === "number" ? numericValue : 1;
+    const highDisplayed =
+      typeof pill.valueHigh === "number"
+        ? pill.stat === "vitality_pct"
+          ? Number((pill.valueHigh * 100).toFixed(5))
+          : pill.valueHigh
+        : undefined;
+    setVitalityUnit(unit);
+    onPatch({
+      stat: unit === "percent" ? "vitality_pct" : "vitality",
+      value: unit === "percent" ? displayed / 100 : displayed,
+      valueHigh:
+        highDisplayed === undefined
+          ? undefined
+          : unit === "percent"
+            ? highDisplayed / 100
+            : highDisplayed,
+    });
+  };
   const storeNumber = (text: string, high = false) => {
     const value = Number(text);
     if (!Number.isFinite(value)) return;
@@ -1777,7 +1942,15 @@ function ConditionCard({
             </>
           )}
         </div>
-        <b>{conditionLabel(pill)}</b>
+        <button
+          type="button"
+          className="v12-rule-condition-summary"
+          aria-expanded={expanded}
+          onClick={onToggle}
+        >
+          <b>{conditionLabel(pill)}</b>
+          <span aria-hidden="true">⌄</span>
+        </button>
         <button
           type="button"
           className="v12-rule-condition-remove"
@@ -1787,332 +1960,382 @@ function ConditionCard({
           ×
         </button>
       </header>
-      <div className="v12-rule-condition-stage">
-        <span>Who</span>
-        <div className="v12-rule-chip-row">
-          {SUBJECTS.map((item) => (
-            <Choice
-              key={item.value}
-              label={item.label}
-              selected={
-                (pill.category === "actor" ? "self" : pill.category) ===
-                item.value
-              }
-              onClick={() => onPatch({ category: item.value })}
-            />
-          ))}
-        </div>
-      </div>
-      <div className="v12-rule-condition-stage">
-        <span>Read</span>
-        <div className="v12-rule-condition-palette">
-          <div className="v12-rule-family-tabs" role="tablist" aria-label="Tracked condition value types">
-            {[
-              ...CONDITION_STAT_FAMILIES.map((family) => [family.id, family.label] as const),
-              ["practice", "Practice proficiency"] as const,
-              ["state", "State / event"] as const,
-            ].map(([value, label]) => (
-              <button
-                type="button"
-                role="tab"
-                key={value}
-                aria-selected={readGroup === value}
-                onClick={() => setReadGroup(value)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          {CONDITION_STAT_FAMILIES.map((family) =>
-            readGroup === family.id ? (
-              <div className="v12-rule-chip-row" key={family.id}>
-                {family.values.map(([label, value]) => (
-                  <Choice
-                    key={value}
-                    label={label}
-                    selected={pill.kind === "stat" && pill.stat === value}
-                    onClick={() => setStat(value)}
-                  />
-                ))}
-                {family.id === "runtime" ? (
-                  <Choice
-                    label="Custom runtime value…"
-                    selected={customStat}
-                    onClick={() => setStat("custom_value")}
-                  />
-                ) : null}
-              </div>
-            ) : null,
-          )}
-          {readGroup === "practice" ? (
-            <div className="v12-rule-chip-row">
-              {ALL_PRACTICES.map((practice) => (
-                <Choice
-                  key={practice}
-                  label={title(practice)}
-                  selected={
-                    pill.kind === "proficiency" && pill.practice === practice
-                  }
-                  onClick={() =>
-                    onPatch({
-                      kind: "proficiency",
-                      practice,
-                      operator: "=",
-                      value: "proficient",
-                      stat: undefined,
-                      flag: undefined,
-                    })
-                  }
-                />
-              ))}
-            </div>
-          ) : null}
-          {readGroup === "state" ? (
-            <div className="v12-rule-chip-row">
-              {CONDITION_FLAGS.map((flag) => (
-                <Choice
-                  key={flag}
-                  label={title(flag)}
-                  selected={pill.kind === "flag" && pill.flag === slug(flag)}
-                  onClick={() =>
-                    onPatch({
-                      kind: "flag",
-                      flag: slug(flag),
-                      operator: "=",
-                      value: "active",
-                      stat: undefined,
-                      practice: undefined,
-                    })
-                  }
-                />
-              ))}
-              <Choice
-                label="Custom tracked state…"
-                selected={customFlag}
-                onClick={() =>
-                  onPatch({
-                    kind: "flag",
-                    flag: "runtime:custom_event",
-                    operator: "=",
-                    value: "active",
-                    stat: undefined,
-                    practice: undefined,
-                  })
-                }
-              />
-            </div>
-          ) : null}
-        </div>
-      </div>
-      {customStat ? (
-        <label className="v12-rule-condition-custom">
-          <span>Runtime name</span>
-          <input
-            value={pill.stat ?? ""}
-            onChange={(event) =>
-              onPatch({ stat: runtimeKey(event.target.value, "custom_value") })
-            }
-            placeholder="scene_heat"
-          />
-        </label>
-      ) : null}
-      {customFlag ? (
-        <label className="v12-rule-condition-custom">
-          <span>Runtime name</span>
-          <input
-            value={pill.flag?.slice("runtime:".length) ?? ""}
-            onChange={(event) =>
-              onPatch({
-                flag: `runtime:${runtimeKey(event.target.value, "custom_event")}`,
-              })
-            }
-            placeholder="combat_started"
-          />
-        </label>
-      ) : null}
-      {pill.kind === "stat" ? (
+      {expanded ? (
         <>
           <div className="v12-rule-condition-stage">
-            <span>Compare</span>
+            <span>Who</span>
             <div className="v12-rule-chip-row">
-              {COMPARISONS.map(([label, value]) => (
+              {SUBJECTS.map((item) => (
                 <Choice
-                  key={value}
-                  label={label}
-                  selected={pill.operator === value}
-                  onClick={() =>
-                    onPatch({
-                      operator: value,
-                      valueHigh:
-                        value === "between"
-                          ? (pill.valueHigh ?? pill.value)
-                          : undefined,
-                    })
+                  key={item.value}
+                  label={item.label}
+                  selected={
+                    (pill.category === "actor" ? "self" : pill.category) ===
+                    item.value
                   }
+                  onClick={() => onPatch({ category: item.value })}
                 />
               ))}
             </div>
           </div>
           <div className="v12-rule-condition-stage">
-            <span>Value</span>
-            <div className="v12-rule-condition-value">
-              <div className="v12-rule-family-tabs" role="tablist" aria-label="Comparison value sources">
-                {(
-                  [
-                    ["fixed", "Fixed"],
-                    ["sheet", "Sheet value"],
-                    ["dice", "#dice#"],
-                    ["runtime", "/runtime/"],
-                    ["keyword", "[keyword]"],
-                  ] as const
-                ).map(([value, label]) => (
+            <span>Read</span>
+            <div className="v12-rule-condition-palette">
+              <div
+                className="v12-rule-family-tabs"
+                role="tablist"
+                aria-label="Tracked condition value types"
+              >
+                {[
+                  ...CONDITION_STAT_FAMILIES.map(
+                    (family) => [family.id, family.label] as const,
+                  ),
+                  ["practice", "Practice proficiency"] as const,
+                  ["state", "State / event"] as const,
+                ].map(([value, label]) => (
                   <button
                     type="button"
                     role="tab"
                     key={value}
-                    aria-selected={valueFamily === value}
-                    onClick={() => setValueFamily(value)}
+                    aria-selected={readGroup === value}
+                    onClick={() => setReadGroup(value)}
                   >
                     {label}
                   </button>
                 ))}
               </div>
-              {valueFamily === "fixed" ? (
-                <div className="v12-rule-fixed-condition">
-                  <div className="v12-rule-entry-row">
-                    <input
-                      type="number"
-                      step="any"
-                      inputMode="decimal"
-                      value={numericValue}
-                      onChange={(event) => storeNumber(event.target.value)}
-                      placeholder="Any whole or decimal number"
-                    />
-                    {pill.stat === "vitality_pct" ? <em>%</em> : null}
-                    <div className="v12-rule-chip-row">
-                      {(pill.stat === "vitality_pct"
-                        ? [10, 25, 31.28436, 50, 75]
-                        : NUMBER_SHORTCUTS
-                      ).map((value) => (
-                        <Choice
-                          key={value}
-                          label={String(value)}
-                          selected={numericValue === value}
-                          onClick={() => storeNumber(String(value))}
-                        />
-                      ))}
-                    </div>
+              {CONDITION_STAT_FAMILIES.map((family) =>
+                readGroup === family.id ? (
+                  <div className="v12-rule-chip-row" key={family.id}>
+                    {family.values.map(([label, value]) => (
+                      <Choice
+                        key={value}
+                        label={label}
+                        selected={
+                          pill.kind === "stat" &&
+                          (value === "vitality"
+                            ? pill.stat === "vitality" ||
+                              pill.stat === "vitality_pct"
+                            : pill.stat === value)
+                        }
+                        onClick={() => setStat(value)}
+                      />
+                    ))}
+                    {family.id === "runtime" ? (
+                      <Choice
+                        label="Custom runtime value…"
+                        selected={customStat}
+                        onClick={() => setStat("custom_value")}
+                      />
+                    ) : null}
                   </div>
-                  <small>
-                    {pill.stat === "vitality_pct"
-                      ? "This reads a percentage. Choose Vitality (absolute) under Read to compare hit points directly. Decimals are allowed."
-                      : "Whole numbers, decimals, and negative values are allowed."}
-                  </small>
-                </div>
-              ) : null}
-              {valueFamily === "sheet" ? (
+                ) : null,
+              )}
+              {readGroup === "practice" ? (
                 <div className="v12-rule-chip-row">
-                  {ALL_ATTRIBUTES.map((value) => (
+                  {ALL_PRACTICES.map((practice) => (
                     <Choice
-                      key={value}
-                      label={`/${title(value)}/`}
-                      selected={pill.value === `/${value}/`}
-                      onClick={() => onPatch({ value: `/${value}/` })}
+                      key={practice}
+                      label={title(practice)}
+                      selected={
+                        pill.kind === "proficiency" &&
+                        pill.practice === practice
+                      }
+                      onClick={() =>
+                        onPatch({
+                          kind: "proficiency",
+                          practice,
+                          operator: "=",
+                          value: "proficient",
+                          stat: undefined,
+                          flag: undefined,
+                        })
+                      }
                     />
                   ))}
-                  {ALL_PRACTICES.map((value) => (
+                </div>
+              ) : null}
+              {readGroup === "state" ? (
+                <div className="v12-rule-chip-row">
+                  {CONDITION_FLAGS.map((flag) => (
                     <Choice
-                      key={value}
-                      label={`/${title(value)}/`}
-                      selected={pill.value === `/${value}/`}
-                      onClick={() => onPatch({ value: `/${value}/` })}
+                      key={flag}
+                      label={title(flag)}
+                      selected={
+                        pill.kind === "flag" && pill.flag === slug(flag)
+                      }
+                      onClick={() =>
+                        onPatch({
+                          kind: "flag",
+                          flag: slug(flag),
+                          operator: "=",
+                          value: "active",
+                          stat: undefined,
+                          practice: undefined,
+                        })
+                      }
                     />
                   ))}
                   <Choice
-                    label="/PB/"
-                    selected={pill.value === "/proficiency_bonus/"}
-                    onClick={() => onPatch({ value: "/proficiency_bonus/" })}
-                  />
-                </div>
-              ) : null}
-              {valueFamily === "dice" ? (
-                <div className="v12-rule-chip-row">
-                  {DICE_TYPES.map((die) => (
-                    <Choice
-                      key={die}
-                      label={`#1${die}#`}
-                      selected={pill.value === `#1${die}#`}
-                      onClick={() => onPatch({ value: `#1${die}#` })}
-                    />
-                  ))}
-                </div>
-              ) : null}
-              {valueFamily === "runtime" ? (
-                <div className="v12-rule-entry-row">
-                  <input
-                    value={runtimeDraft}
-                    onChange={(event) => setRuntimeDraft(event.target.value)}
-                    placeholder="scene_heat"
-                  />
-                  <button
-                    type="button"
-                    disabled={!runtimeDraft.trim()}
+                    label="Custom tracked state…"
+                    selected={customFlag}
                     onClick={() =>
                       onPatch({
-                        value: `/${runtimeKey(runtimeDraft, "runtime_value")}/`,
+                        kind: "flag",
+                        flag: "runtime:custom_event",
+                        operator: "=",
+                        value: "active",
+                        stat: undefined,
+                        practice: undefined,
                       })
                     }
-                  >
-                    Use /variable/
-                  </button>
-                </div>
-              ) : null}
-              {valueFamily === "keyword" ? (
-                <div className="v12-rule-entry-row">
-                  <input
-                    value={keywordDraft}
-                    onChange={(event) => setKeywordDraft(event.target.value)}
-                    placeholder="fire"
                   />
-                  <button
-                    type="button"
-                    disabled={!keywordDraft.trim()}
-                    onClick={() =>
-                      onPatch({ value: `[${slug(keywordDraft)}]` })
-                    }
-                  >
-                    Use [keyword]
-                  </button>
                 </div>
               ) : null}
             </div>
           </div>
-          {pill.operator === "between" ? (
+          {customStat ? (
             <label className="v12-rule-condition-custom">
-              <span>Upper value</span>
+              <span>Runtime name</span>
               <input
-                type="number"
-                step="any"
-                inputMode="decimal"
-                value={
-                  typeof pill.valueHigh === "number"
-                    ? pill.stat === "vitality_pct"
-                      ? Number((pill.valueHigh * 100).toFixed(5))
-                      : pill.valueHigh
-                    : String(pill.valueHigh ?? "")
+                value={pill.stat ?? ""}
+                onChange={(event) =>
+                  onPatch({
+                    stat: runtimeKey(event.target.value, "custom_value"),
+                  })
                 }
-                onChange={(event) => storeNumber(event.target.value, true)}
-                placeholder="Upper number"
+                placeholder="scene_heat"
               />
             </label>
           ) : null}
+          {customFlag ? (
+            <label className="v12-rule-condition-custom">
+              <span>Runtime name</span>
+              <input
+                value={pill.flag?.slice("runtime:".length) ?? ""}
+                onChange={(event) =>
+                  onPatch({
+                    flag: `runtime:${runtimeKey(event.target.value, "custom_event")}`,
+                  })
+                }
+                placeholder="combat_started"
+              />
+            </label>
+          ) : null}
+          {pill.kind === "stat" ? (
+            <>
+              <div className="v12-rule-condition-stage">
+                <span>Compare</span>
+                <div className="v12-rule-chip-row">
+                  {COMPARISONS.map(([label, value]) => (
+                    <Choice
+                      key={value}
+                      label={label}
+                      selected={pill.operator === value}
+                      onClick={() =>
+                        onPatch({
+                          operator: value,
+                          valueHigh:
+                            value === "between"
+                              ? (pill.valueHigh ?? pill.value)
+                              : undefined,
+                        })
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="v12-rule-condition-stage">
+                <span>Value</span>
+                <div className="v12-rule-condition-value">
+                  <div
+                    className="v12-rule-family-tabs"
+                    role="tablist"
+                    aria-label="Comparison value sources"
+                  >
+                    {(
+                      [
+                        ["fixed", "Fixed"],
+                        ["sheet", "Sheet value"],
+                        ["dice", "#dice#"],
+                        ["runtime", "/runtime/"],
+                        ["keyword", "[keyword]"],
+                      ] as const
+                    ).map(([value, label]) => (
+                      <button
+                        type="button"
+                        role="tab"
+                        key={value}
+                        aria-selected={valueFamily === value}
+                        onClick={() => setValueFamily(value)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  {valueFamily === "fixed" ? (
+                    <div className="v12-rule-fixed-condition">
+                      {pill.stat === "vitality" ||
+                      pill.stat === "vitality_pct" ? (
+                        <div className="v12-rule-condition-unit">
+                          <b>Unit</b>
+                          <div className="v12-rule-chip-row">
+                            <Choice
+                              label="Absolute Vitality"
+                              selected={vitalityUnit === "absolute"}
+                              onClick={() => switchVitalityUnit("absolute")}
+                            />
+                            <Choice
+                              label="Percentage"
+                              selected={vitalityUnit === "percent"}
+                              onClick={() => switchVitalityUnit("percent")}
+                            />
+                          </div>
+                        </div>
+                      ) : null}
+                      <div className="v12-rule-entry-row">
+                        <input
+                          type="number"
+                          step="any"
+                          inputMode="decimal"
+                          value={numericValue}
+                          onChange={(event) => storeNumber(event.target.value)}
+                          placeholder="Any whole or decimal number"
+                        />
+                        <div className="v12-rule-chip-row">
+                          {(pill.stat === "vitality_pct"
+                            ? [10, 25, 31.28436, 50, 75]
+                            : NUMBER_SHORTCUTS
+                          ).map((value) => (
+                            <Choice
+                              key={value}
+                              label={String(value)}
+                              selected={numericValue === value}
+                              onClick={() => storeNumber(String(value))}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <small>
+                        {pill.stat === "vitality_pct"
+                          ? "Percentage is selected. Enter 50 for 50%, or use any decimal percentage such as 31.28436."
+                          : pill.stat === "vitality"
+                            ? "Absolute Vitality is selected. Enter the exact number of Vitality points."
+                            : "Whole numbers, decimals, and negative values are allowed."}
+                      </small>
+                    </div>
+                  ) : null}
+                  {valueFamily === "sheet" ? (
+                    <div className="v12-rule-chip-row">
+                      {ALL_ATTRIBUTES.map((value) => (
+                        <Choice
+                          key={value}
+                          label={`/${title(value)}/`}
+                          selected={pill.value === `/${value}/`}
+                          onClick={() => onPatch({ value: `/${value}/` })}
+                        />
+                      ))}
+                      {ALL_PRACTICES.map((value) => (
+                        <Choice
+                          key={value}
+                          label={`/${title(value)}/`}
+                          selected={pill.value === `/${value}/`}
+                          onClick={() => onPatch({ value: `/${value}/` })}
+                        />
+                      ))}
+                      <Choice
+                        label="/PB/"
+                        selected={pill.value === "/proficiency_bonus/"}
+                        onClick={() =>
+                          onPatch({ value: "/proficiency_bonus/" })
+                        }
+                      />
+                    </div>
+                  ) : null}
+                  {valueFamily === "dice" ? (
+                    <div className="v12-rule-chip-row">
+                      {DICE_TYPES.map((die) => (
+                        <Choice
+                          key={die}
+                          label={`#1${die}#`}
+                          selected={pill.value === `#1${die}#`}
+                          onClick={() => onPatch({ value: `#1${die}#` })}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
+                  {valueFamily === "runtime" ? (
+                    <div className="v12-rule-entry-row">
+                      <input
+                        value={runtimeDraft}
+                        onChange={(event) =>
+                          setRuntimeDraft(event.target.value)
+                        }
+                        placeholder="scene_heat"
+                      />
+                      <button
+                        type="button"
+                        disabled={!runtimeDraft.trim()}
+                        onClick={() =>
+                          onPatch({
+                            value: `/${runtimeKey(runtimeDraft, "runtime_value")}/`,
+                          })
+                        }
+                      >
+                        Use /variable/
+                      </button>
+                    </div>
+                  ) : null}
+                  {valueFamily === "keyword" ? (
+                    <div className="v12-rule-entry-row">
+                      <input
+                        value={keywordDraft}
+                        onChange={(event) =>
+                          setKeywordDraft(event.target.value)
+                        }
+                        placeholder="fire"
+                      />
+                      <button
+                        type="button"
+                        disabled={!keywordDraft.trim()}
+                        onClick={() =>
+                          onPatch({ value: `[${slug(keywordDraft)}]` })
+                        }
+                      >
+                        Use [keyword]
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+              {pill.operator === "between" ? (
+                <label className="v12-rule-condition-custom">
+                  <span>Upper value</span>
+                  <input
+                    type="number"
+                    step="any"
+                    inputMode="decimal"
+                    value={
+                      typeof pill.valueHigh === "number"
+                        ? pill.stat === "vitality_pct"
+                          ? Number((pill.valueHigh * 100).toFixed(5))
+                          : pill.valueHigh
+                        : String(pill.valueHigh ?? "")
+                    }
+                    onChange={(event) => storeNumber(event.target.value, true)}
+                    placeholder="Upper number"
+                  />
+                </label>
+              ) : null}
+            </>
+          ) : (
+            <p className="v12-rule-condition-state">
+              This tracked state is either active or inactive; it does not need
+              a comparison value.
+            </p>
+          )}
         </>
-      ) : (
-        <p className="v12-rule-condition-state">
-          This tracked state is either active or inactive; it does not need a
-          comparison value.
-        </p>
-      )}
+      ) : null}
     </article>
   );
 }
