@@ -1709,7 +1709,7 @@ export function PrimitiveForm({
               className="v12-rule-kind-picker"
               aria-label="Mechanical rule kind"
             >
-          <p>Character and runtime values</p>
+          <span className="v12-rule-kind-label">Rule format</span>
               <button
                 type="button"
                 aria-pressed={ruleKind === "MODIFIER"}
@@ -1727,9 +1727,8 @@ export function PrimitiveForm({
                   setIsDirty(true);
                 }}
               >
-                Sheet or action value
+                Value or runtime change
               </button>
-          <p>Construction language and capability shape</p>
               {compositionOptions.map((option) => (
                 <button
                   key={option.value}

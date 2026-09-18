@@ -757,11 +757,11 @@ describe("Phase 8.I i2.7 — new targets from canonical PDFs", () => {
     expect(spec.valueIsNumeric).toBe(true);
   });
 
-  it("equip_slot target uses free-text widget (author-named key)", () => {
+  it("equip_slot target is the numeric count of universal slots used", () => {
     const spec = MODIFIER_TARGET_SPEC.equip_slot;
     expect(spec.target).toBe("equip_slot");
-    expect(spec.widget).toBe("free-text");
-    expect(spec.freeTextPlaceholder).toBeTruthy();
+    expect(spec.widget).toBe("none");
+    expect(spec.valueIsNumeric).toBe(true);
   });
 
   it("damage_type target uses free-text widget (author-named key)", () => {
@@ -825,4 +825,3 @@ describe("Phase 8.I i2.7b - damage_modifier target", () => {
     expect(spec.freeTextPlaceholder).toMatch(/fire/);
   });
 });
-

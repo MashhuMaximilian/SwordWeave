@@ -800,7 +800,7 @@ describe("RUNTIME_VARIABLES - value picker chip feed", () => {
 
   it("includes the i2.7 sub-target placeholder atoms", () => {
     const names = RUNTIME_VARIABLES.map((v) => v.name);
-    expect(names).toContain("equip_slot:<key>");
+    expect(names).toContain("equip_slots_used");
     expect(names).toContain("damage_type:<key>");
     expect(names).toContain("maintained:<key>");
   });

@@ -689,18 +689,19 @@ export const RUNTIME_VARIABLES: readonly RuntimeVariable[] = [
   // Tag enum comparisons (engine maps enum to numeric tier).
   { label: "size", name: "size", hint: "number", group: "Tag Enum" },
   { label: "source type", name: "source_type", hint: "number", group: "Tag Enum" },
-  // Sub-target refs — author names the key at primitive time,
-  // the chip is the placeholder; the user typically types
-  // /equip_slot:weapon/ directly.
-  { label: "equip slot:<key>", name: "equip_slot:<key>", hint: "text", group: "Sub-Target" },
-  { label: "damage type:<key>", name: "damage_type:<key>", hint: "text", group: "Sub-Target" },
-  { label: "maintained:<key>", name: "maintained:<key>", hint: "number", group: "Sub-Target" },
-  { label: "upkeep cost:<key>", name: "upkeep_cost:<key>", hint: "number", group: "Sub-Target" },
+  // The sheet has six universal equipment slots. Rules read the
+  // current used-slot count; there are no author-named slot keys.
+  { label: "equip slots used", name: "equip_slots_used", hint: "number", group: "Stat" },
+  // Named references reveal a key field in the authoring UI. The
+  // placeholder is never saved; it is replaced by the author's stable name.
+  { label: "named damage type", name: "damage_type:<key>", hint: "text", group: "Sub-Target" },
+  { label: "maintained capability", name: "maintained:<key>", hint: "number", group: "Sub-Target" },
+  { label: "upkeep for capability", name: "upkeep_cost:<key>", hint: "number", group: "Sub-Target" },
   // Phase 8.I i2.7b (Mashu 2026-08-06): damage modifier
   // multiplier read. Used in equations like
   //   "base_damage * /damage_modifier:fire/"
   // to apply vulnerability/resistance/immunity at eval time.
-  { label: "damage modifier:<key>", name: "damage_modifier:<key>", hint: "number", group: "Sub-Target" },
+  { label: "damage modifier for type", name: "damage_modifier:<key>", hint: "number", group: "Sub-Target" },
 ];
 
 // =============================================================================

@@ -32,8 +32,13 @@
  */
 
 import type { ModifierCondition } from "@/types/condition";
-import { ALL_PRACTICES, ALL_ATTRIBUTES, type AttributeKey } from "@/types/modifier";
+import {
+  ALL_PRACTICES,
+  ALL_ATTRIBUTES,
+  type AttributeKey,
+} from "@/types/modifier";
 import type { PracticeKey } from "@/types/modifier";
+import { rollDice } from "./runtime-resolver";
 
 // =============================================================================
 // Runtime context
@@ -363,10 +368,7 @@ export function evaluateCondition(
 // Preset evaluator (legacy keys)
 // =============================================================================
 
-function evaluatePreset(
-  presetKey: string,
-  ctx: ConditionContext,
-): boolean {
+function evaluatePreset(presetKey: string, ctx: ConditionContext): boolean {
   // Map legacy preset keys to runtime checks. All read character
   // state except `target-*` which need a target.
   switch (presetKey) {
@@ -376,7 +378,9 @@ function evaluatePreset(
       if (!axis) return false;
       // For actor: read character.vitality / character.vitalityMax
       if (presetKey.startsWith("actor-")) {
-        return ctx.character.vitality / Math.max(1, ctx.character.vitalityMax) < 0.5;
+        return (
+          ctx.character.vitality / Math.max(1, ctx.character.vitalityMax) < 0.5
+        );
       }
       // For target: read target.custom.hp_pct (target must
       // expose this via its custom map).
@@ -487,10 +491,7 @@ function evaluateTagsAsPillChain(
  * "target" reads target.tags; "scene" reads scene.tags). All
  * tag-style pills are read as descriptive tags.
  */
-function evaluatePillToken(
-  token: string,
-  ctx: ConditionContext,
-): boolean {
+function evaluatePillToken(token: string, ctx: ConditionContext): boolean {
   const sep = token.indexOf(":");
   if (sep < 0) return false;
   const axis = token.slice(0, sep);
@@ -501,18 +502,26 @@ function evaluatePillToken(
   if (payload.startsWith("stat|")) {
     if (axis === "target") {
       if (!ctx.target) return false;
-      return evaluateStatTokenPayload(payload, {
-        custom: ctx.target.custom,
-      });
+      return evaluateStatTokenPayload(
+        payload,
+        {
+          custom: ctx.target.custom,
+        },
+        ctx,
+      );
     }
     if (axis === "scene") {
       if (!ctx.scene) return false;
-      return evaluateStatTokenPayload(payload, {
-        custom: ctx.scene.custom,
-      });
+      return evaluateStatTokenPayload(
+        payload,
+        {
+          custom: ctx.scene.custom,
+        },
+        ctx,
+      );
     }
     // self or actor
-    return evaluateStatTokenPayload(payload, ctx.character);
+    return evaluateStatTokenPayload(payload, ctx.character, ctx);
   }
 
   // Standard pill — flag / proficiency / tag.
@@ -570,6 +579,7 @@ function evaluateStatTokenPayload(
   source:
     | { custom: Readonly<Record<string, number | boolean | string>> }
     | CharacterConditionState,
+  ctx: ConditionContext,
 ): boolean {
   // Strip "stat|" prefix if not already done by caller.
   let body = payload.startsWith("stat|") ? payload.slice(5) : payload;
@@ -579,20 +589,26 @@ function evaluateStatTokenPayload(
   const statName = parts[0]!;
   const op = parts[1]!;
   const rawValue = parts[2]!;
+  const expected = resolveConditionValue(rawValue, ctx);
+  const expectedHigh = resolveConditionValue(parts[3] ?? rawValue, ctx);
 
   // Resolve the actual stat value.
   let actualNum: number | undefined;
   let actualStr: string | undefined;
   if ("vitality" in source || "practices" in source) {
     // It's a CharacterConditionState.
-    const stat = readCharacterStatString(statName, source as CharacterConditionState);
+    const stat = readCharacterStatString(
+      statName,
+      source as CharacterConditionState,
+    );
     if (typeof stat === "number") {
       actualNum = stat;
     } else if (typeof stat === "string") {
       actualStr = stat;
     }
   } else {
-    const v = (source as { custom: Readonly<Record<string, number | boolean>> }).custom[statName];
+    const v = (source as { custom: Readonly<Record<string, number | boolean>> })
+      .custom[statName];
     if (typeof v === "number") {
       actualNum = v;
     } else if (typeof v === "string") {
@@ -608,27 +624,38 @@ function evaluateStatTokenPayload(
   // numeric ops compare against.
   if (TAG_ENUM_STATS.has(statName) || actualStr !== undefined) {
     if (actualStr === undefined) return false;
-    if (op === "=") return actualStr === rawValue;
-    if (op === "!=") return actualStr !== rawValue;
+    const expectedString =
+      typeof expected === "string" ? expected : String(expected ?? "");
+    if (op === "=") return actualStr === expectedString;
+    if (op === "!=") return actualStr !== expectedString;
     if (op === "between") {
-      const v2 = parts[3] ?? rawValue;
-      return actualStr === rawValue || actualStr === v2;
+      const highString =
+        typeof expectedHigh === "string"
+          ? expectedHigh
+          : String(expectedHigh ?? "");
+      return actualStr === expectedString || actualStr === highString;
     }
     // Tier-mapped comparisons (size, upkeep_cost, complexity
     // resolved to numeric tier by readCharacterStat). For
     // these we still get a number from readCharacterStat and
     // fall through to the numeric branch.
     if (actualNum !== undefined) {
-      const v1 = Number(rawValue);
+      const v1 = Number(expected);
       if (!Number.isFinite(v1)) return false;
-      const v2 = parts[3] !== undefined ? Number(parts[3]) : v1;
+      const v2 = Number(expectedHigh ?? v1);
       switch (op) {
-        case "<": return actualNum < v1;
-        case "<=": return actualNum <= v1;
-        case ">": return actualNum > v1;
-        case ">=": return actualNum >= v1;
-        case "between": return actualNum >= v1 && actualNum <= v2;
-        default: return false;
+        case "<":
+          return actualNum < v1;
+        case "<=":
+          return actualNum <= v1;
+        case ">":
+          return actualNum > v1;
+        case ">=":
+          return actualNum >= v1;
+        case "between":
+          return actualNum >= v1 && actualNum <= v2;
+        default:
+          return false;
       }
     }
     return false;
@@ -636,20 +663,48 @@ function evaluateStatTokenPayload(
 
   // Numeric comparison.
   if (actualNum === undefined) return false;
-  const v1 = Number(rawValue);
+  const v1 = Number(expected);
   if (!Number.isFinite(v1)) return false;
-  const v2 = parts[3] !== undefined ? Number(parts[3]) : v1;
+  const v2 = Number(expectedHigh ?? v1);
 
   switch (op) {
-    case "<": return actualNum < v1;
-    case "<=": return actualNum <= v1;
-    case ">": return actualNum > v1;
-    case ">=": return actualNum >= v1;
-    case "=": return actualNum === v1;
-    case "!=": return actualNum !== v1;
-    case "between": return actualNum >= v1 && actualNum <= v2;
-    default: return false;
+    case "<":
+      return actualNum < v1;
+    case "<=":
+      return actualNum <= v1;
+    case ">":
+      return actualNum > v1;
+    case ">=":
+      return actualNum >= v1;
+    case "=":
+      return actualNum === v1;
+    case "!=":
+      return actualNum !== v1;
+    case "between":
+      return actualNum >= v1 && actualNum <= v2;
+    default:
+      return false;
   }
+}
+
+/** Resolve the author-facing condition value syntax at the moment the
+ * condition is checked. Plain numbers remain numbers, /name/ reads a live
+ * character or runtime value, #dice# rolls, and [keyword] compares text. */
+function resolveConditionValue(
+  raw: string,
+  ctx: ConditionContext,
+): number | string | undefined {
+  const value = raw.trim();
+  if (/^#.+#$/.test(value)) {
+    return rollDice(value.slice(1, -1)).total;
+  }
+  if (/^\/.+\/$/.test(value)) {
+    const key = value.slice(1, -1).trim().toLowerCase().replace(/\s+/g, "_");
+    return readCharacterStatString(key, ctx.character);
+  }
+  if (/^\[.*\]$/.test(value)) return value.slice(1, -1);
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : value;
 }
 
 /**
@@ -734,10 +789,14 @@ function checkSelfFlag(
     return ALL_PRACTICES.every((p) => !character.proficiencies.has(p));
   }
   if (label === "proficient_in(all_saves)") {
-    return ALL_ATTRIBUTES.every((a) => character.proficiencies.has(`save_${a}`));
+    return ALL_ATTRIBUTES.every((a) =>
+      character.proficiencies.has(`save_${a}`),
+    );
   }
   if (label === "not_proficient_in(all_saves)") {
-    return ALL_ATTRIBUTES.every((a) => !character.proficiencies.has(`save_${a}`));
+    return ALL_ATTRIBUTES.every(
+      (a) => !character.proficiencies.has(`save_${a}`),
+    );
   }
   if (label.startsWith("proficient_in(")) {
     const practice = label.slice("proficient_in(".length, -1);
@@ -890,10 +949,7 @@ function resolveAxis(
  * Read a stat value from an axis. Returns `undefined` when the
  * stat name isn't recognized on that axis.
  */
-function readStat(
-  stat: string,
-  axis: ResolvedAxis,
-): number | undefined {
+function readStat(stat: string, axis: ResolvedAxis): number | undefined {
   if (axis.character) {
     return readCharacterStat(stat, axis.character);
   }

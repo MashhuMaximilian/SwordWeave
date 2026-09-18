@@ -635,10 +635,10 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget | "defense_dc", Modifie
   },
   equip_slot: {
     target: "equip_slot",
-    label: "Equip Slot",
+    label: "Equip Slots Used",
     layer: null,
-    widget: "free-text",
-    freeTextPlaceholder: "e.g. 0, weapon, armor, ring1",
+    widget: "none",
+    valueIsNumeric: true,
   },
   damage_type: {
     target: "damage_type",

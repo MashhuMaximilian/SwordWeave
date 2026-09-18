@@ -1064,3 +1064,34 @@ describe("evaluateCondition - i2.7 tag-enum string comparisons", () => {
     ).toBe(true);
   });
 });
+
+describe("evaluateCondition — authored comparison value syntax", () => {
+  it("reads a live sheet value from /variable/", () => {
+    const ctx = makeCtx({ character: makeCharacter({ vitality: 4 }) });
+    expect(
+      evaluateCondition(
+        { kind: "tags", customTags: ["self:stat|vitality|=|/awareness/"] },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("reads a custom runtime value from /variable/", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({ custom: { danger_threshold: 7, scene_heat: 8 } }),
+    });
+    expect(
+      evaluateCondition(
+        { kind: "tags", customTags: ["self:stat|scene_heat|>|/danger_threshold/"] },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("accepts deterministic #dice# and [keyword] values", () => {
+    const numeric = makeCtx({ character: makeCharacter({ vitality: 1 }) });
+    const text = makeCtx({ character: makeCharacter({ custom: { damage_type: "fire" } }) });
+    expect(evaluateCondition({ kind: "tags", customTags: ["self:stat|vitality|=|#1d1#"] }, numeric)).toBe(true);
+    expect(evaluateCondition({ kind: "tags", customTags: ["self:stat|damage_type|=|[fire]"] }, text)).toBe(true);
+  });
+});
