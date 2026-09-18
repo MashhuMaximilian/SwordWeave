@@ -1735,6 +1735,7 @@ export function PrimitiveForm({
                   type="button"
                   aria-pressed={ruleKind === option.value}
                   onClick={() => {
+                    setModifiers([]);
                     setComposition((current) => ({
                       ...current,
                       family: option.value,
@@ -1893,11 +1894,11 @@ export function PrimitiveForm({
             ) : null}
             {!ruleKind ? (
               <p className="v12-narrative-only-note">
-                No orange mechanical output will be shown. The verbose
-                description remains visible in white.
+                No mechanical output is stored. The verbose description remains
+                the complete player-facing rule.
               </p>
             ) : null}
-            {modifiers[0] ? (
+            {ruleKind === "MODIFIER" && modifiers[0] ? (
               <PrimitiveRuleInstrument
                 modifier={modifiers[0]}
                 onPatch={(patch) => patchModifier(modifiers[0]!.id, patch)}

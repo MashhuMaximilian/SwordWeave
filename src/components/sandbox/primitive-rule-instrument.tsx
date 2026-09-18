@@ -167,21 +167,76 @@ const SUBJECTS: ReadonlyArray<{
   { label: "Scene", value: "scene" },
 ];
 
-const CONDITION_STATS = [
-  ["Vitality", "vitality"],
-  ["Vitality %", "vitality_pct"],
-  ["Max Vitality", "vitality_max"],
-  ["Save DC", "save_dc"],
-  ["Block value", "block_value"],
-  ["Physical", "physical"],
-  ["Mental", "mental"],
-  ["Magical", "magical"],
-  ["Speed", "speed"],
-  ["Carry capacity", "carry_capacity"],
-  ["Load", "load"],
-  ["Complexity", "complexity"],
-  ["Upkeep cost", "upkeep_cost"],
-] as const;
+type ConditionReadFamily = {
+  readonly id: string;
+  readonly label: string;
+  readonly values: ReadonlyArray<readonly [string, string]>;
+};
+
+const CONDITION_STAT_FAMILIES: readonly ConditionReadFamily[] = [
+  {
+    id: "sheet",
+    label: "Character sheet",
+    values: [
+      ["Vitality (absolute)", "vitality"],
+      ["Vitality %", "vitality_pct"],
+      ["Max Vitality", "vitality_max"],
+      ["Physical", "physical"],
+      ["Mental", "mental"],
+      ["Magical", "magical"],
+      ["Proficiency Bonus", "proficiency_bonus"],
+      ["Save DC", "save_dc"],
+      ["Block value", "block_value"],
+      ["Speed", "speed"],
+      ["Carry capacity", "carry_capacity"],
+    ],
+  },
+  {
+    id: "rolls",
+    label: "Rolls & checks",
+    values: [
+      ...ALL_PRACTICES.map(
+        (practice) => [title(practice), practice] as const,
+      ),
+      ["Action roll", "action_roll"],
+      ["Attack bonus", "attack_bonus"],
+      ["Damage output", "damage_output"],
+      ["Healing output", "healing_output"],
+      ["Initiative", "initiative"],
+    ],
+  },
+  {
+    id: "runtime",
+    label: "Runtime & resources",
+    values: [
+      ["Load", "load"],
+      ["Strain", "strain"],
+      ["Item slot cost", "item_slot_cost"],
+      ["Equip slots used", "equip_slots_used"],
+      ["Scene pace", "scene_pace"],
+      ["Complexity", "complexity"],
+      ["Upkeep cost", "upkeep_cost"],
+    ],
+  },
+  {
+    id: "shape",
+    label: "Capability shape",
+    values: [
+      ["Range", "range"],
+      ["Targeting", "targeting"],
+      ["Duration", "duration"],
+      ["Combat action", "combat_action"],
+      ["Size", "size"],
+      ["Damage type", "damage_type"],
+      ["Source type", "source_type"],
+      ["Damage modifier", "damage_modifier"],
+    ],
+  },
+];
+
+const CONDITION_STATS = CONDITION_STAT_FAMILIES.flatMap(
+  (family) => family.values,
+);
 
 const CONDITION_FLAGS = [
   "prone",
@@ -200,17 +255,54 @@ const CONDITION_FLAGS = [
   "in cover",
 ] as const;
 
-const DECLARED_TRIGGERS = [
-  "tracking enemies",
-  "searching for danger",
-  "protecting an ally",
-  "using this capability",
-  "after taking damage",
-  "after dealing damage",
-  "at the start of your turn",
-  "at the end of your turn",
-  "when entering the area",
-  "when the GM calls for it",
+const DECLARED_TRIGGER_GROUPS = [
+  {
+    label: "Exploration",
+    values: [
+      "tracking enemies",
+      "searching for danger",
+      "navigating difficult terrain",
+      "examining a clue",
+      "gathering information",
+      "resting or making camp",
+    ],
+  },
+  {
+    label: "Combat",
+    values: [
+      "protecting an ally",
+      "using this capability",
+      "attacking from concealment",
+      "after taking damage",
+      "after dealing damage",
+      "after missing an attack",
+      "when initiative is rolled",
+      "at the start of your turn",
+      "at the end of your turn",
+    ],
+  },
+  {
+    label: "Scene & movement",
+    values: [
+      "when entering the area",
+      "when leaving the area",
+      "when crossing a threshold",
+      "while in darkness",
+      "while in difficult terrain",
+      "when a hazard appears",
+    ],
+  },
+  {
+    label: "Social & story",
+    values: [
+      "while negotiating",
+      "while deceiving someone",
+      "when someone lies to you",
+      "when an ally calls for help",
+      "when the GM declares a complication",
+      "when the GM calls for it",
+    ],
+  },
 ] as const;
 
 const COMPARISONS = [
@@ -352,6 +444,7 @@ function labelForPill(pill: ConditionPill): string {
   if (pill.kind === "stat") return statLabel(pill.stat);
   if (pill.kind === "proficiency")
     return `${title(pill.practice ?? "practice")} proficiency`;
+  if (pill.flag?.startsWith("manual:")) return pill.label;
   if (pill.flag?.startsWith("runtime:"))
     return title(pill.flag.slice("runtime:".length));
   return title(pill.flag ?? pill.label);
@@ -490,25 +583,77 @@ export function PrimitiveRuleInstrument({
     });
   };
 
-  const chooseDeclaredTrigger = (text: string) => {
+  const declaredCondition = (text: string): ConditionPill => ({
+    category: "self",
+    label: text,
+    kind: "flag",
+    flag: `manual:${slug(text)}`,
+    operator: "=",
+    value: "active",
+  });
+
+  const chooseDeclaredTrigger = (text: string, join: "AND" | "OR" = "OR") => {
     const clean = text.trim();
     if (!clean) return;
-    const pill: ConditionPill = {
-      category: "self",
-      label: clean,
-      kind: "flag",
-      flag: `manual:${slug(clean)}`,
-      operator: "=",
-      value: "active",
-    };
+    const current = modifier.v1Condition.pills;
+    if (current.some((pill) => pill.label === clean)) return;
+    const placeholderIndex = current.findIndex(
+      (pill) => pill.flag === "manual:another_declared_event",
+    );
+    const replaceIndex =
+      placeholderIndex >= 0
+        ? placeholderIndex
+        : current.length === 1 &&
+            current[0]?.label === "tracking enemies" &&
+            clean !== "tracking enemies"
+          ? 0
+          : -1;
+    const pills =
+      replaceIndex >= 0
+        ? current.map((pill, index) =>
+            index === replaceIndex ? declaredCondition(clean) : pill,
+          )
+        : [...current, declaredCondition(clean)];
     onConditionChange({
-      categories: ["self"],
-      pills: [pill],
-      operators: [],
+      categories: [...new Set(pills.map((pill) => pill.category))],
+      pills,
+      operators:
+        replaceIndex >= 0
+          ? modifier.v1Condition.operators
+          : pills.length > 1
+          ? [...modifier.v1Condition.operators, join]
+          : [],
       narrative: "",
       includeTags: true,
     });
     setDeclaredText("");
+  };
+
+  const addDeclaredCondition = (join: "AND" | "OR") => {
+    if (
+      modifier.v1Condition.pills.some(
+        (pill) => pill.flag === "manual:another_declared_event",
+      )
+    )
+      return;
+    const pills = [
+      ...modifier.v1Condition.pills,
+      declaredCondition("another declared event"),
+    ];
+    onConditionChange({
+      categories: [...new Set(pills.map((pill) => pill.category))],
+      pills,
+      operators:
+        pills.length > 1 ? [...modifier.v1Condition.operators, join] : [],
+      narrative: "",
+      includeTags: true,
+    });
+  };
+
+  const addCondition = (join: "AND" | "OR") => {
+    if (triggerMode === "declared") addDeclaredCondition(join);
+    else addTrackedCondition(join);
+    setActivePanel("trigger");
   };
 
   const setTriggerMode = (mode: TriggerMode) => {
@@ -530,7 +675,13 @@ export function PrimitiveRuleInstrument({
         includeTags: true,
       });
     } else {
-      chooseDeclaredTrigger("tracking enemies");
+      onConditionChange({
+        categories: ["self"],
+        pills: [declaredCondition("tracking enemies")],
+        operators: [],
+        narrative: "",
+        includeTags: true,
+      });
     }
   };
 
@@ -728,6 +879,16 @@ export function PrimitiveRuleInstrument({
             </button>
           </span>
         ))}
+        {modifier.v1Condition.pills.length ? (
+          <span className="v12-rule-inline-connectors">
+            <button type="button" onClick={() => addCondition("AND")}>
+              ＋ AND
+            </button>
+            <button type="button" onClick={() => addCondition("OR")}>
+              ＋ OR
+            </button>
+          </span>
+        ) : null}
         {!modifier.v1Condition.pills.length ? (
           <button
             type="button"
@@ -1352,7 +1513,6 @@ export function PrimitiveRuleInstrument({
                 condition={modifier.v1Condition}
                 onPatchPill={patchPill}
                 onRemove={removeCondition}
-                onAdd={addTrackedCondition}
                 onConnector={(index, value) => {
                   const operators = [...modifier.v1Condition.operators];
                   operators[index - 1] = value;
@@ -1364,20 +1524,43 @@ export function PrimitiveRuleInstrument({
               <div className="v12-rule-declared-editor">
                 <p>
                   This creates a runtime flag. The player or GM can turn it on
-                  for situations the sheet cannot detect by itself.
+                  for situations the sheet cannot detect by itself. Add several
+                  events with the inline AND and OR controls above.
                 </p>
-                <div className="v12-rule-chip-row">
-                  {DECLARED_TRIGGERS.map((text) => (
-                    <button
-                      type="button"
-                      key={text}
-                      aria-pressed={
-                        modifier.v1Condition.pills[0]?.label === text
-                      }
-                      onClick={() => chooseDeclaredTrigger(text)}
-                    >
-                      {text}
-                    </button>
+                <div className="v12-rule-declared-current">
+                  {modifier.v1Condition.pills.map((pill, index) => (
+                    <label key={`${index}:${pill.flag}`}>
+                      <span>{index === 0 ? "When" : modifier.v1Condition.operators[index - 1] ?? "OR"}</span>
+                      <input
+                        value={pill.label}
+                        onChange={(event) => {
+                          const clean = event.target.value;
+                          patchPill(index, {
+                            label: clean,
+                            flag: `manual:${slug(clean)}`,
+                          });
+                        }}
+                        placeholder="Name the table event"
+                      />
+                    </label>
+                  ))}
+                </div>
+                <div className="v12-rule-declared-groups">
+                  {DECLARED_TRIGGER_GROUPS.map((group) => (
+                    <ValueGroup key={group.label} title={group.label}>
+                      {group.values.map((text) => (
+                        <button
+                          type="button"
+                          key={text}
+                          aria-pressed={modifier.v1Condition.pills.some(
+                            (pill) => pill.label === text,
+                          )}
+                          onClick={() => chooseDeclaredTrigger(text)}
+                        >
+                          {text}
+                        </button>
+                      ))}
+                    </ValueGroup>
                   ))}
                 </div>
                 <div className="v12-rule-entry-row">
@@ -1480,13 +1663,11 @@ function TrackedConditionEditor({
   condition,
   onPatchPill,
   onRemove,
-  onAdd,
   onConnector,
 }: {
   condition: ConditionAuthoring;
   onPatchPill: (index: number, patch: ConditionPillPatch) => void;
   onRemove: (index: number) => void;
-  onAdd: (join: "AND" | "OR") => void;
   onConnector: (index: number, value: "AND" | "OR") => void;
 }) {
   return (
@@ -1502,14 +1683,6 @@ function TrackedConditionEditor({
           onConnector={(value) => onConnector(index, value)}
         />
       ))}
-      <div className="v12-rule-condition-add">
-        <button type="button" onClick={() => onAdd("AND")}>
-          ＋ AND condition
-        </button>
-        <button type="button" onClick={() => onAdd("OR")}>
-          ＋ OR condition
-        </button>
-      </div>
     </div>
   );
 }
@@ -1534,7 +1707,9 @@ function ConditionCard({
       ? "practice"
       : pill.kind === "flag"
         ? "state"
-        : "number";
+        : (CONDITION_STAT_FAMILIES.find((family) =>
+            family.values.some((item) => item[1] === pill.stat),
+          )?.id ?? "runtime");
   const raw = pill.value;
   const initialValueFamily =
     typeof raw === "string" && /^#.*#$/.test(raw)
@@ -1544,9 +1719,7 @@ function ConditionCard({
         : typeof raw === "string" && /^\[.*\]$/.test(raw)
           ? "keyword"
           : "fixed";
-  const [readGroup, setReadGroup] = useState<"number" | "practice" | "state">(
-    initialGroup,
-  );
+  const [readGroup, setReadGroup] = useState(initialGroup);
   const [valueFamily, setValueFamily] = useState<
     "fixed" | "sheet" | "dice" | "runtime" | "keyword"
   >(initialValueFamily);
@@ -1634,13 +1807,11 @@ function ConditionCard({
         <span>Read</span>
         <div className="v12-rule-condition-palette">
           <div className="v12-rule-family-tabs" role="tablist" aria-label="Tracked condition value types">
-            {(
-              [
-                ["number", "Tracked number"],
-                ["practice", "Proficiency"],
-                ["state", "State / event"],
-              ] as const
-            ).map(([value, label]) => (
+            {[
+              ...CONDITION_STAT_FAMILIES.map((family) => [family.id, family.label] as const),
+              ["practice", "Practice proficiency"] as const,
+              ["state", "State / event"] as const,
+            ].map(([value, label]) => (
               <button
                 type="button"
                 role="tab"
@@ -1652,23 +1823,27 @@ function ConditionCard({
               </button>
             ))}
           </div>
-          {readGroup === "number" ? (
-            <div className="v12-rule-chip-row">
-              {CONDITION_STATS.map(([label, value]) => (
-                <Choice
-                  key={value}
-                  label={label}
-                  selected={pill.kind === "stat" && pill.stat === value}
-                  onClick={() => setStat(value)}
-                />
-              ))}
-              <Choice
-                label="Custom runtime number…"
-                selected={customStat}
-                onClick={() => setStat("custom_value")}
-              />
-            </div>
-          ) : null}
+          {CONDITION_STAT_FAMILIES.map((family) =>
+            readGroup === family.id ? (
+              <div className="v12-rule-chip-row" key={family.id}>
+                {family.values.map(([label, value]) => (
+                  <Choice
+                    key={value}
+                    label={label}
+                    selected={pill.kind === "stat" && pill.stat === value}
+                    onClick={() => setStat(value)}
+                  />
+                ))}
+                {family.id === "runtime" ? (
+                  <Choice
+                    label="Custom runtime value…"
+                    selected={customStat}
+                    onClick={() => setStat("custom_value")}
+                  />
+                ) : null}
+              </div>
+            ) : null,
+          )}
           {readGroup === "practice" ? (
             <div className="v12-rule-chip-row">
               {ALL_PRACTICES.map((practice) => (
@@ -1803,24 +1978,36 @@ function ConditionCard({
                 ))}
               </div>
               {valueFamily === "fixed" ? (
-                <div className="v12-rule-entry-row">
-                  <input
-                    inputMode="decimal"
-                    value={numericValue}
-                    onChange={(event) => storeNumber(event.target.value)}
-                    placeholder="Any number"
-                  />
-                  {pill.stat === "vitality_pct" ? <em>%</em> : null}
-                  <div className="v12-rule-chip-row">
-                    {NUMBER_SHORTCUTS.map((value) => (
-                      <Choice
-                        key={value}
-                        label={String(value)}
-                        selected={numericValue === value}
-                        onClick={() => storeNumber(String(value))}
-                      />
-                    ))}
+                <div className="v12-rule-fixed-condition">
+                  <div className="v12-rule-entry-row">
+                    <input
+                      type="number"
+                      step="any"
+                      inputMode="decimal"
+                      value={numericValue}
+                      onChange={(event) => storeNumber(event.target.value)}
+                      placeholder="Any whole or decimal number"
+                    />
+                    {pill.stat === "vitality_pct" ? <em>%</em> : null}
+                    <div className="v12-rule-chip-row">
+                      {(pill.stat === "vitality_pct"
+                        ? [10, 25, 31.28436, 50, 75]
+                        : NUMBER_SHORTCUTS
+                      ).map((value) => (
+                        <Choice
+                          key={value}
+                          label={String(value)}
+                          selected={numericValue === value}
+                          onClick={() => storeNumber(String(value))}
+                        />
+                      ))}
+                    </div>
                   </div>
+                  <small>
+                    {pill.stat === "vitality_pct"
+                      ? "This reads a percentage. Choose Vitality (absolute) under Read to compare hit points directly. Decimals are allowed."
+                      : "Whole numbers, decimals, and negative values are allowed."}
+                  </small>
                 </div>
               ) : null}
               {valueFamily === "sheet" ? (
@@ -1904,6 +2091,8 @@ function ConditionCard({
             <label className="v12-rule-condition-custom">
               <span>Upper value</span>
               <input
+                type="number"
+                step="any"
                 inputMode="decimal"
                 value={
                   typeof pill.valueHigh === "number"
