@@ -1,4 +1,5 @@
 import { IconDisplay } from "@/components/icons/icon-display";
+import type { CSSProperties } from "react";
 
 const FAB_ICON_COLOR_LIGHT = "#011614";
 const FAB_ICON_COLOR_DARK = "#ffffff";
@@ -12,8 +13,15 @@ export function FabThemeIcon({
   iconKey: string;
   dark: boolean;
 }) {
+  const [author, slug] = iconKey.split("/", 2);
+  const maskUrl = `/api/icons/game/${encodeURIComponent(author ?? "")}/${encodeURIComponent(slug ?? "")}?color=%23ffffff`;
+
   return (
-    <span className="sw-fab__theme-icon" aria-hidden="true">
+    <span
+      className="sw-fab__theme-icon"
+      aria-hidden="true"
+      style={{ "--sw-fab-icon-mask": `url("${maskUrl}")` } as CSSProperties}
+    >
       <IconDisplay
         iconSource="GAME_ICONS"
         iconKey={iconKey}
@@ -30,6 +38,7 @@ export function FabThemeIcon({
         alt=""
         className="sw-fab__theme-icon-gold"
       />
+      <span className="sw-fab__theme-icon-metal" />
     </span>
   );
 }

@@ -3819,10 +3819,21 @@ body[data-ui="v12"] .v12-source-detail-aside [data-preview-action-group="referen
 /* The icon endpoint renders its requested color into the SVG. Cross-fading
    exact theme colors avoids the yellow cast produced by CSS image filters. */
 .sw-fab .sw-fab__theme-icon { position:relative; display:inline-grid; width:22px; height:22px; place-items:center; }
-.sw-fab .sw-fab__theme-icon > img { grid-area:1/1; transition:opacity 140ms ease; }
+.sw-fab .sw-fab__theme-icon > :is(img,.sw-fab__theme-icon-metal) { grid-area:1/1; transition:opacity 140ms ease; }
 .sw-fab .sw-fab__theme-icon-gold { opacity:0; }
+.sw-fab__theme-icon-metal {
+  display:block;
+  width:22px;
+  height:22px;
+  opacity:0;
+  background:linear-gradient(125deg,#fff8d6 4%,#f3d386 23%,#8a5c1d 47%,#fff0b3 64%,#b47d29 82%,#f8dfa0 100%);
+  -webkit-mask:var(--sw-fab-icon-mask) center/contain no-repeat;
+  mask:var(--sw-fab-icon-mask) center/contain no-repeat;
+  filter:drop-shadow(0 1px 0 #3a2408) drop-shadow(0 0 6px rgb(238 190 91 / 28%));
+}
 .sw-fab button:is([data-fab-action="build"],[data-fab-action="character"]):hover .sw-fab__theme-icon-default { opacity:0; }
-.sw-fab button:is([data-fab-action="build"],[data-fab-action="character"]):hover .sw-fab__theme-icon-gold { opacity:1; }
+.sw-fab button:is([data-fab-action="build"],[data-fab-action="character"]):hover .sw-fab__theme-icon-gold { opacity:0; }
+.sw-fab button:is([data-fab-action="build"],[data-fab-action="character"]):hover .sw-fab__theme-icon-metal { opacity:1; }
 
 body[data-ui="v12"] .v12-markdown { min-width:0; font:inherit; color:inherit; overflow-wrap:anywhere; }
 body[data-ui="v12"] .v12-markdown :is(p,ul,ol,blockquote) { margin:0 0 .55em; }
@@ -4066,41 +4077,44 @@ body[data-ui="v12"] .v12-rule-condition-summary[aria-expanded="true"] span {
   transform:rotate(0deg);
 }
 
-/* Rule prose uses actual metallic faces, rather than flat theme colors. */
-body[data-ui="v12"] .v12-rule-sentence :is(.is-variable,.is-value,.is-connector) {
-  background:linear-gradient(180deg,#fff7d7 0%,#e4bd68 35%,#9b6d26 61%,#ffe5a0 100%)!important;
-  background-clip:text!important;
-  -webkit-background-clip:text!important;
-  color:transparent!important;
-  -webkit-text-fill-color:transparent!important;
-  text-shadow:0 1px 0 rgb(0 0 0 / 58%),0 0 13px rgb(201 154 66 / 24%)!important;
+/* The sentence is prose with small engraved controls. Avoid text-clipped
+   gradients here: some Chromium builds paint those across the button box. */
+body[data-ui="v12"] .v12-rule-sentence .is-grammar {
+  color:#c9c9c5!important;
+  -webkit-text-fill-color:#c9c9c5!important;
+  background:transparent!important;
+  text-shadow:0 1px #000,0 0 9px rgb(230 232 232 / 10%)!important;
 }
-body[data-ui="v12"] .v12-rule-sentence .is-operation {
-  background:linear-gradient(180deg,#ffe1c8 0%,#ed9c68 37%,#8b452d 64%,#ffc295 100%)!important;
-  background-clip:text!important;
-  -webkit-background-clip:text!important;
-  color:transparent!important;
-  -webkit-text-fill-color:transparent!important;
-  text-shadow:0 1px 0 rgb(0 0 0 / 60%),0 0 12px rgb(204 107 60 / 22%)!important;
+body[data-ui="v12"] .v12-rule-sentence > button:is(.is-variable,.is-value,.is-operation,.is-scope),
+body[data-ui="v12"] .v12-rule-sentence .v12-rule-condition > button.is-condition {
+  min-height:26px!important;
+  padding:2px 7px 3px!important;
+  border:1px solid transparent!important;
+  border-radius:4px!important;
+  background:linear-gradient(180deg,#17191d,#090b0f) padding-box,var(--v12-brass-edge) border-box!important;
+  box-shadow:inset 0 1px rgb(255 248 218 / 13%),inset 0 -1px rgb(117 75 19 / 66%),0 1px 2px rgb(0 0 0 / 46%)!important;
+  text-shadow:0 1px #000,0 0 10px rgb(201 154 66 / 16%)!important;
 }
-body[data-ui="v12"] .v12-rule-sentence :is(.is-scope,.is-condition,.is-grammar) {
-  background:linear-gradient(180deg,#fff 0%,#d9dde3 34%,#858b94 62%,#f2f5f8 100%)!important;
-  background-clip:text!important;
-  -webkit-background-clip:text!important;
-  color:transparent!important;
-  -webkit-text-fill-color:transparent!important;
-  text-shadow:0 1px 0 rgb(0 0 0 / 64%),0 0 10px rgb(221 226 234 / 12%)!important;
-}
-body[data-ui="v12"] .v12-rule-sentence > button:is(.is-variable,.is-value),
-body[data-ui="v12"] .v12-rule-sentence .v12-rule-condition > b.is-connector {
-  background-image:linear-gradient(180deg,#fff7d7 0%,#e4bd68 35%,#9b6d26 61%,#ffe5a0 100%)!important;
+body[data-ui="v12"] .v12-rule-sentence > button:is(.is-variable,.is-value) {
+  color:#f4d98d!important;
+  -webkit-text-fill-color:#f4d98d!important;
 }
 body[data-ui="v12"] .v12-rule-sentence > button.is-operation {
-  background-image:linear-gradient(180deg,#ffe1c8 0%,#ed9c68 37%,#8b452d 64%,#ffc295 100%)!important;
+  color:#f3aa7b!important;
+  -webkit-text-fill-color:#f3aa7b!important;
+  background:linear-gradient(180deg,#1b1614,#0b0909) padding-box,var(--v12-copper-edge) border-box!important;
 }
-body[data-ui="v12"] .v12-rule-sentence > :is(button.is-scope,span.is-grammar),
+body[data-ui="v12"] .v12-rule-sentence > button.is-scope,
 body[data-ui="v12"] .v12-rule-sentence .v12-rule-condition > button.is-condition {
-  background-image:linear-gradient(180deg,#fff 0%,#d9dde3 34%,#858b94 62%,#f2f5f8 100%)!important;
+  color:#e3e6e8!important;
+  -webkit-text-fill-color:#e3e6e8!important;
+  background:linear-gradient(180deg,#191c21,#090b0f) padding-box,var(--v12-silver-edge) border-box!important;
+}
+body[data-ui="v12"] .v12-rule-sentence .v12-rule-condition > b.is-connector {
+  color:#f4d98d!important;
+  -webkit-text-fill-color:#f4d98d!important;
+  background:transparent!important;
+  text-shadow:0 1px #000,0 0 10px rgb(201 154 66 / 24%)!important;
 }
 
 /* Collapsed condition connectors use the same engraved brass face as the
@@ -4121,9 +4135,10 @@ body[data-ui="v12"] .v12-rule-condition-join button[aria-pressed="true"] {
 /* Destination actions reuse the exact FAB artwork. In the preview the gold
    layer stays visible so both destinations read as the same commands. */
 body[data-ui="v12"] .v12-preview-destination-title .sw-fab__theme-icon { position:relative;display:inline-grid;flex:0 0 22px;width:22px;height:22px;place-items:center; }
-body[data-ui="v12"] .v12-preview-destination-title .sw-fab__theme-icon > img { grid-area:1/1; }
+body[data-ui="v12"] .v12-preview-destination-title .sw-fab__theme-icon > :is(img,.sw-fab__theme-icon-metal) { grid-area:1/1; }
 body[data-ui="v12"] .v12-preview-destination-title .sw-fab__theme-icon-default { opacity:0; }
-body[data-ui="v12"] .v12-preview-destination-title .sw-fab__theme-icon-gold { opacity:1;filter:drop-shadow(0 0 7px rgb(201 154 66 / 24%)); }
+body[data-ui="v12"] .v12-preview-destination-title .sw-fab__theme-icon-gold { opacity:0; }
+body[data-ui="v12"] .v12-preview-destination-title .sw-fab__theme-icon-metal { opacity:1; }
 body[data-ui="v12"] .v12-rule-declared-name {
   display:grid!important;
   grid-template-columns:92px minmax(0,1fr)!important;
