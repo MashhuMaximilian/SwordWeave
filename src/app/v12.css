@@ -3744,6 +3744,210 @@ body[data-ui="v12"] .v12-rule-formula-dialog > footer .is-primary { border-color
   body[data-ui="v12"] .v12-rule-formula-help { grid-template-columns:1fr; }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Personal archive — Characters and My Creations                              */
+/* -------------------------------------------------------------------------- */
+body[data-ui="v12"] :is(.v12-roster-page,.v12-creations-page) {
+  width:min(1480px,calc(100% - 36px));
+  min-height:calc(100dvh - 96px);
+  margin:0 auto;
+  padding:28px 0 64px;
+}
+body[data-ui="v12"] :is(.v12-roster-hero,.v12-creations-hero) {
+  position:relative;
+  display:flex;
+  align-items:end;
+  justify-content:space-between;
+  gap:24px;
+  min-height:170px;
+  padding:28px 30px 24px;
+  border:1px solid transparent;
+  border-radius:8px 8px 0 0;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 84% 16%,color-mix(in srgb,var(--v12-brass) 19%,transparent),transparent 32%),
+    linear-gradient(112deg,color-mix(in srgb,var(--v12-raised) 88%,var(--v12-brass) 4%),var(--v12-inset)) padding-box,
+    var(--v12-gold-edge) border-box;
+  box-shadow:var(--v12-shadow),inset 0 1px color-mix(in srgb,var(--v12-gold-hi) 20%,transparent);
+}
+body[data-ui="v12"] :is(.v12-roster-hero,.v12-creations-hero)::before {
+  content:"";
+  position:absolute;
+  inset:10px 10px auto;
+  height:1px;
+  background:linear-gradient(90deg,var(--v12-gold-hi),var(--v12-brass),transparent 76%);
+  opacity:.72;
+}
+body[data-ui="v12"] :is(.v12-roster-hero,.v12-creations-hero) h1 {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:7px 0 0;
+  color:var(--v12-silver-hi);
+  font-size:clamp(2.35rem,4vw,4.6rem);
+  line-height:.92;
+  letter-spacing:.07em;
+  text-transform:uppercase;
+  text-shadow:0 1px 0 #000,0 0 28px color-mix(in srgb,var(--v12-brass) 17%,transparent);
+}
+body[data-ui="v12"] .v12-kicker {
+  margin:0;
+  color:var(--v12-gold-hi)!important;
+  font:700 10px/1 var(--font-system)!important;
+  letter-spacing:.2em;
+  text-transform:uppercase;
+}
+body[data-ui="v12"] :is(.v12-roster-deck,.v12-creations-deck) {
+  max-width:760px;
+  margin:16px 0 0;
+  color:var(--v12-soft);
+  font:400 14px/1.55 var(--font-body);
+}
+body[data-ui="v12"] .v12-creations-actions {
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  gap:8px;
+}
+body[data-ui="v12"] :is(.v12-roster-page,.v12-creations-page) .v12-metal-button {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  min-height:40px;
+  padding:8px 14px;
+  border:1px solid transparent;
+  border-radius:5px;
+  background:linear-gradient(var(--v12-panel-deep),var(--v12-inset)) padding-box,var(--v12-silver-edge) border-box;
+  color:var(--v12-paper,var(--foreground));
+  font:600 12px/1 var(--font-system);
+  box-shadow:inset 0 1px rgb(255 255 255 / 8%);
+}
+body[data-ui="v12"] :is(.v12-roster-page,.v12-creations-page) .v12-metal-button:hover {
+  color:var(--v12-gold-hi);
+  background:linear-gradient(color-mix(in srgb,var(--v12-brass) 10%,var(--v12-panel-deep)),var(--v12-inset)) padding-box,var(--v12-gold-edge) border-box;
+}
+body[data-ui="v12"] :is(.v12-roster-page,.v12-creations-page) .v12-metal-button--primary {
+  color:#17120a;
+  background:linear-gradient(180deg,var(--v12-gold-hi),var(--v12-brass)) padding-box,var(--v12-gold-edge) border-box;
+  box-shadow:inset 0 1px rgb(255 255 255 / 45%),0 8px 24px rgb(0 0 0 / 24%);
+}
+body[data-ui="v12"] :is(.v12-roster-tabs-shell,.v12-creations-browser) {
+  position:relative;
+  margin-top:0;
+  padding:0 20px 24px;
+  border:1px solid transparent;
+  border-top:0;
+  border-radius:0 0 8px 8px;
+  background:linear-gradient(color-mix(in srgb,var(--v12-panel-deep) 95%,transparent),var(--v12-panel-deep)) padding-box,var(--v12-gold-edge) border-box;
+  box-shadow:var(--v12-shadow);
+}
+body[data-ui="v12"] :is(.v12-roster-tabs,.v12-creations-tabs) {
+  display:flex;
+  flex-wrap:wrap;
+  gap:0;
+  border-bottom:1px solid color-mix(in srgb,var(--v12-brass) 52%,var(--v12-line-subtle));
+}
+body[data-ui="v12"] :is(.v12-roster-tab,.v12-creations-tab) {
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  min-height:48px;
+  padding:9px 18px;
+  border:0;
+  background:transparent;
+  color:var(--v12-soft);
+  font:600 12px/1 var(--font-system);
+}
+body[data-ui="v12"] :is(.v12-roster-tab,.v12-creations-tab)::after {
+  content:"";
+  position:absolute;
+  right:8px;
+  bottom:-1px;
+  left:8px;
+  height:3px;
+  background:transparent;
+}
+body[data-ui="v12"] :is(.v12-roster-tab,.v12-creations-tab):is(:hover,.is-active) { color:var(--v12-gold-hi); }
+body[data-ui="v12"] :is(.v12-roster-tab,.v12-creations-tab).is-active {
+  background:linear-gradient(180deg,transparent,color-mix(in srgb,var(--v12-brass) 13%,transparent));
+}
+body[data-ui="v12"] :is(.v12-roster-tab,.v12-creations-tab).is-active::after { background:var(--v12-gold-edge); }
+body[data-ui="v12"] .v12-roster-count {
+  min-width:20px;
+  padding:3px 6px;
+  border:1px solid color-mix(in srgb,var(--v12-silver) 56%,transparent);
+  border-radius:999px;
+  color:var(--v12-soft);
+  font:700 9px/1 var(--font-technical);
+  text-align:center;
+}
+body[data-ui="v12"] .v12-roster-count.is-active { border-color:var(--v12-brass);color:var(--v12-gold-hi); }
+body[data-ui="v12"] .v12-roster-tab-content { margin-top:18px; }
+body[data-ui="v12"] .v12-roster-grid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px; }
+body[data-ui="v12"] .v12-roster-card {
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  padding:18px;
+  border:1px solid transparent;
+  border-radius:6px;
+  background:linear-gradient(145deg,color-mix(in srgb,var(--v12-raised) 82%,var(--v12-brass) 3%),var(--v12-inset)) padding-box,var(--v12-silver-edge) border-box;
+  box-shadow:inset 0 1px rgb(255 255 255 / 8%);
+}
+body[data-ui="v12"] .v12-roster-card::before { content:"";position:absolute;inset:0 auto 0 0;width:3px;background:var(--v12-gold-edge);opacity:.72; }
+body[data-ui="v12"] .v12-roster-card:hover { background:linear-gradient(145deg,color-mix(in srgb,var(--v12-raised) 78%,var(--v12-brass) 8%),var(--v12-inset)) padding-box,var(--v12-gold-edge) border-box; }
+body[data-ui="v12"] :is(.v12-roster-empty,.v12-creations-empty) {
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  min-height:330px;
+  padding:42px 24px;
+  border:1px solid transparent;
+  border-radius:6px;
+  overflow:hidden;
+  background:radial-gradient(circle at 50% 45%,color-mix(in srgb,var(--v12-brass) 10%,transparent),transparent 38%),linear-gradient(var(--v12-inset),var(--v12-panel-deep)) padding-box,var(--v12-silver-edge) border-box;
+  text-align:center;
+}
+body[data-ui="v12"] :is(.v12-roster-empty,.v12-creations-empty)::before { content:"";position:absolute;top:10px;width:min(280px,55%);height:1px;background:var(--v12-gold-edge); }
+body[data-ui="v12"] :is(.v12-roster-empty,.v12-creations-empty) h2 { margin:8px 0 0;color:var(--v12-gold-hi);font-size:25px; }
+body[data-ui="v12"] :is(.v12-roster-empty,.v12-creations-empty) p { max-width:520px;margin:0;color:var(--v12-soft)!important;font-size:13px!important;line-height:1.5; }
+body[data-ui="v12"] .v12-roster-sigil { display:grid;place-items:center;width:62px;height:62px;border:1px solid transparent;border-radius:50%;background:var(--v12-panel-deep) padding-box,var(--v12-gold-edge) border-box;color:var(--v12-gold-hi);box-shadow:0 0 30px color-mix(in srgb,var(--v12-brass) 18%,transparent); }
+body[data-ui="v12"] .v12-roster-loading { height:64px;margin-top:0;border:1px solid var(--v12-brass);background:var(--v12-panel-deep); }
+body[data-ui="v12"] .v12-creations-browser { padding-top:0; }
+body[data-ui="v12"] .v12-creations-subtabs { display:flex;flex-wrap:wrap;gap:6px;padding:12px 0 0; }
+body[data-ui="v12"] .v12-creations-chip { min-height:30px;padding:5px 10px;border:1px solid color-mix(in srgb,var(--v12-silver) 66%,transparent);border-radius:4px;background:var(--v12-inset);color:var(--v12-soft);font:600 10px/1 var(--font-system); }
+body[data-ui="v12"] .v12-creations-chip.is-active { border-color:var(--v12-brass);background:color-mix(in srgb,var(--v12-brass) 14%,var(--v12-inset));color:var(--v12-gold-hi);box-shadow:inset 0 -2px color-mix(in srgb,var(--v12-gold-hi) 55%,transparent); }
+body[data-ui="v12"] .v12-creations-toolbar { margin-top:14px;padding:8px;border:1px solid transparent;border-radius:5px;background:linear-gradient(var(--v12-inset),var(--v12-panel-deep)) padding-box,var(--v12-silver-edge) border-box; }
+body[data-ui="v12"] .v12-creations-view-toggle { display:inline-flex;flex:none;overflow:hidden;border:1px solid var(--v12-silver);border-radius:4px; }
+body[data-ui="v12"] .v12-creations-view-button { display:grid;place-items:center;min-width:36px;min-height:32px;border:0;border-left:1px solid var(--v12-silver);background:var(--v12-panel-deep);color:var(--v12-soft); }
+body[data-ui="v12"] .v12-creations-view-button:first-child { border-left:0; }
+body[data-ui="v12"] .v12-creations-view-button.is-active { color:#17120a;background:linear-gradient(180deg,var(--v12-gold-hi),var(--v12-brass)); }
+body[data-ui="v12"] .v12-creations-results { margin-top:12px;padding:8px;border:1px solid transparent;border-radius:6px;background:linear-gradient(color-mix(in srgb,var(--v12-inset) 90%,transparent),var(--v12-panel-deep)) padding-box,var(--v12-silver-edge) border-box; }
+body[data-ui="v12"] .v12-creations-empty { min-height:300px;margin-top:12px; }
+
+@media(max-width:980px) {
+  body[data-ui="v12"] .v12-roster-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  body[data-ui="v12"] :is(.v12-roster-hero,.v12-creations-hero) { align-items:flex-start;flex-direction:column; }
+  body[data-ui="v12"] .v12-creations-actions { justify-content:flex-start; }
+}
+@media(max-width:640px) {
+  body[data-ui="v12"] :is(.v12-roster-page,.v12-creations-page) { width:100%;padding:10px 8px 84px; }
+  body[data-ui="v12"] :is(.v12-roster-hero,.v12-creations-hero) { min-height:0;padding:22px 16px 18px; }
+  body[data-ui="v12"] :is(.v12-roster-hero,.v12-creations-hero) h1 { font-size:32px; }
+  body[data-ui="v12"] :is(.v12-roster-deck,.v12-creations-deck) { font-size:12px; }
+  body[data-ui="v12"] :is(.v12-roster-tabs-shell,.v12-creations-browser) { padding:0 8px 14px; }
+  body[data-ui="v12"] :is(.v12-roster-tabs,.v12-creations-tabs) { flex-wrap:nowrap;overflow:auto; }
+  body[data-ui="v12"] :is(.v12-roster-tab,.v12-creations-tab) { flex:1 0 auto;min-height:42px;padding:7px 10px;font-size:10px; }
+  body[data-ui="v12"] .v12-roster-grid { grid-template-columns:1fr; }
+  body[data-ui="v12"] .v12-creations-actions { display:grid;width:100%;grid-template-columns:1fr; }
+}
+
 /* Each mechanics pane owns a static header and a separate scrolling body.
    Rows end at the header edge instead of passing behind its lettering. */
 body[data-ui="v12"] .v12-source-split { contain:paint; }

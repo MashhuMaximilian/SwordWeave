@@ -75,7 +75,7 @@ export function CharacterListTabs({
   );
 
   return (
-    <div>
+    <div className="v12-roster-tabs-shell">
       <TabStrip
         active={activeTab}
         counts={{
@@ -86,7 +86,7 @@ export function CharacterListTabs({
         onChange={setTab}
       />
 
-      <div className="mt-6">
+      <div className="v12-roster-tab-content">
         {activeTab === "mine" && (
           <div>
             {mineContent ?? mineEmptyState}
@@ -120,7 +120,7 @@ function TabStrip({ active, counts, onChange }: TabStripProps) {
     <div
       role="tablist"
       aria-label="Character list views"
-      className="flex flex-wrap items-center gap-1 border-b border-border"
+      className="v12-roster-tabs"
     >
       {tabs.map((t) => {
         const isActive = active === t.id;
@@ -132,20 +132,16 @@ function TabStrip({ active, counts, onChange }: TabStripProps) {
             aria-selected={isActive}
             onClick={() => onChange(t.id)}
             className={cn(
-              "relative -mb-px flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors",
-              isActive
-                ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground",
+              "v12-roster-tab",
+              isActive ? "is-active" : "",
             )}
           >
             {t.label}
             {t.count !== null && (
               <span
                 className={cn(
-                  "rounded-full px-1.5 py-0 text-[10px] font-bold",
-                  isActive
-                    ? "bg-primary/15 text-primary"
-                    : "bg-secondary text-secondary-foreground",
+                  "v12-roster-count",
+                  isActive ? "is-active" : "",
                 )}
               >
                 {t.count}
@@ -161,7 +157,7 @@ function TabStrip({ active, counts, onChange }: TabStripProps) {
 function SharedGrid({ rows }: { rows: SharedCharacterRow[] }) {
   if (rows.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-md border border-dashed border-border bg-card/50 px-6 py-16 text-center">
+      <div className="v12-roster-empty">
         <h2 className="text-2xl font-semibold">No characters shared with you yet</h2>
         <p className="mt-2 max-w-md text-sm text-muted-foreground">
           When someone shares a character with you, it shows up here. (Part C
@@ -171,7 +167,7 @@ function SharedGrid({ rows }: { rows: SharedCharacterRow[] }) {
     );
   }
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="v12-roster-grid">
       {rows.map((row) => (
         <SharedCharacterCard key={row.id} row={row} />
       ))}
@@ -182,7 +178,7 @@ function SharedGrid({ rows }: { rows: SharedCharacterRow[] }) {
 function PublicGrid({ items }: { items: LibraryItem[] }) {
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-md border border-dashed border-border bg-card/50 px-6 py-16 text-center">
+      <div className="v12-roster-empty">
         <h2 className="text-2xl font-semibold">No public characters yet</h2>
         <p className="mt-2 max-w-md text-sm text-muted-foreground">
           The codex is empty. Make one of your own characters public from the
@@ -192,7 +188,7 @@ function PublicGrid({ items }: { items: LibraryItem[] }) {
     );
   }
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="v12-roster-grid">
       {items.map((item) => (
         <PublicCharacterCard key={item.id} item={item} />
       ))}

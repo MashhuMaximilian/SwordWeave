@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { and, asc, desc, eq, or, isNull } from "drizzle-orm";
 import Link from "next/link";
 import { Hammer, Plus } from "lucide-react";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { NewCharacterButton } from "@/components/characters/new-character-button";
 import { db } from "@/db/client";
 import {
@@ -26,7 +26,7 @@ import {
 } from "@/components/sandbox/sandbox-row-mapper";
 import type { LibraryItem } from "@/lib/publishing/library-query";
 import { CreationsClient } from "./creations-client";
-import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
+import { resolveLocalAuthorIdentity } from "@/lib/auth/author-resolver";
 import { loadLibraryEngagement } from "@/lib/engagement/library-engagement";
 import {
   resolveEngagementMap,
@@ -44,6 +44,12 @@ export default async function CreationsPage({
   if (!userId) {
     redirect("/sign-in?redirect=/creations");
   }
+  const clerkAccount = await currentUser();
+  const ownerIdentity = await resolveLocalAuthorIdentity(
+    userId,
+    clerkAccount?.username,
+  );
+  const ownerClerkId = ownerIdentity.clerkUserId;
 
   const params = await searchParams;
   const statusFilter = params.status === "draft" ? "draft" : "all";
@@ -54,29 +60,29 @@ export default async function CreationsPage({
   const [primitiveRows, effectRows, capabilityRows, templateRows, itemRows, characterRows, buildRows] =
     await Promise.all([
       db.query.primitives.findMany({
-        where: eq(primitives.userId, userId),
+        where: eq(primitives.userId, ownerClerkId),
         orderBy: [asc(primitives.name)],
       }),
       db.query.effects.findMany({
-        where: eq(effects.userId, userId),
+        where: eq(effects.userId, ownerClerkId),
         orderBy: [asc(effects.name)],
         with: { primitiveLinks: { with: { primitive: true } } },
       }),
       db.query.capabilities.findMany({
-        where: eq(capabilities.userId, userId),
+        where: eq(capabilities.userId, ownerClerkId),
         orderBy: [asc(capabilities.name)],
         with: { primitiveLinks: { with: { primitive: true } } },
       }),
       db.query.heritage.findMany({
-        where: eq(heritage.userId, userId),
+        where: eq(heritage.userId, ownerClerkId),
         orderBy: [asc(heritage.kind), asc(heritage.name)],
       }),
       db.query.items.findMany({
-        where: eq(items.userId, userId),
+        where: eq(items.userId, ownerClerkId),
         orderBy: [asc(items.name)],
       }),
       db.query.characters.findMany({
-        where: eq(characters.userId, userId),
+        where: eq(characters.userId, ownerClerkId),
         orderBy: [desc(characters.level), asc(characters.name)],
       }),
       // Builds (Phase 7): separate `builds` table. Same ownership model —
@@ -87,7 +93,7 @@ export default async function CreationsPage({
         columns: { id: true, name: true, description: true, level: true,
           isPublic: true, sourceOrigin: true, iconSource: true, iconKey: true,
           iconUrl: true, iconColor: true },
-        where: eq(builds.userId, userId),
+        where: eq(builds.userId, ownerClerkId),
         orderBy: [desc(builds.level), asc(builds.name)],
       }),
     ]);
@@ -144,7 +150,7 @@ export default async function CreationsPage({
   // the right "active" icon when the user has already liked the entry).
   // Without it, the creations list renders an empty heart on every card
   // and clicking it would prompt a sign-in modal even when authed.
-  const currentUserInternalId = await resolveUserIdByClerkId(userId);
+  const currentUserInternalId = ownerIdentity.internalUserId;
 
   // Build items WITHOUT engagement first so we can resolve the engagement
   // map keyed by the same composite IDs the mappers emit
@@ -200,33 +206,33 @@ export default async function CreationsPage({
   };
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-5 py-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <main className="v12-creations-page">
+      <div className="v12-creations-hero">
         <div>
-          <p className="text-xs font-semibold uppercase text-muted-foreground">
+          <p className="v12-kicker">
             Workshop
           </p>
-          <h1 className="mt-3 flex items-center gap-2 text-4xl font-semibold">
+          <h1>
             <Hammer className="size-8" />
             My Creations
           </h1>
-          <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
+          <p className="v12-creations-deck">
             All your authored entries — primitives, effects, capabilities,
             heritage, and items — in one place. Filter by type or status to
             find drafts, jump into the sandbox to keep editing, or open the
             canonical detail page to view forks and likes.
           </p>
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <div className="v12-creations-actions">
           <Link
             href="/atelier?build=primitive"
-            className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            className="v12-metal-button v12-metal-button--primary"
           >
             <Plus className="size-4" /> New Grammar
           </Link>
           <Link
             href="/atelier?build=heritage"
-            className="flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:border-primary"
+            className="v12-metal-button"
           >
             <Plus className="size-4" /> New Heritage
           </Link>
@@ -242,6 +248,6 @@ export default async function CreationsPage({
         engagement={engagement}
         currentUserInternalId={currentUserInternalId}
       />
-    </div>
+    </main>
   );
 }

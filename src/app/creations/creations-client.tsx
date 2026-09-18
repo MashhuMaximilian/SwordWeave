@@ -369,27 +369,27 @@ export function CreationsClient({
     visibility !== "all";
 
   return (
-    <div className="mt-8 space-y-4">
-      <div role="tablist" aria-label="My creations" className="flex flex-wrap gap-2 border-b border-border pb-3">
+    <div className="v12-creations-browser">
+      <div role="tablist" aria-label="My creations" className="v12-creations-tabs">
         {([['mechanics', 'Mechanics'], ['heritages', 'Heritages'], ['characters', 'Characters']] as const).map(([key, label]) => (
           <button key={key} type="button" role="tab" aria-selected={tab === key}
             onClick={() => { setTab(key); setType('all'); }}
-            className={cn('rounded-md px-4 py-2 text-sm font-medium', tab === key ? 'bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:text-foreground')}>
+            className={cn('v12-creations-tab', tab === key ? 'is-active' : '')}>
             {label} ({items.filter(item => TAB_TYPES[key].includes(TARGET_TYPE_MAP[item.targetType] ?? "primitive")).length})
           </button>
         ))}
       </div>
       {tab === "heritages" && (
-        <div role="group" aria-label="Heritage kind" className="flex flex-wrap gap-2">
+        <div role="group" aria-label="Heritage kind" className="v12-creations-subtabs">
           {([['all', 'All heritages'], ['LINEAGE_TEMPLATE', 'Lineages'], ['MANIFEST_TEMPLATE', 'Manifests'], ['UPBRINGING_TEMPLATE', 'Upbringings']] as const).map(([key, label]) => (
             <button key={key} type="button" aria-pressed={heritageKind === key} onClick={() => setHeritageKind(key)}
-              className={cn('rounded-full border px-3 py-1 text-xs', heritageKind === key ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground')}>
+              className={cn('v12-creations-chip', heritageKind === key ? 'is-active' : '')}>
               {label}
             </button>
           ))}
         </div>
       )}
-      <div className="rounded-md border border-border bg-card p-3">
+      <div className="v12-creations-toolbar">
         <div className="flex items-center gap-2">
           <div className="min-w-0 flex-1">
             <ColumnSearchBar
@@ -403,7 +403,7 @@ export function CreationsClient({
               the user navigates away. Two buttons side-by-side; the active
               one shows the primary colour, the other is muted. */}
           <div
-            className="inline-flex shrink-0 overflow-hidden rounded-md border border-border"
+            className="v12-creations-view-toggle"
             role="group"
             aria-label="View mode"
           >
@@ -411,10 +411,8 @@ export function CreationsClient({
               type="button"
               onClick={() => setView("GRID")}
               className={cn(
-                "inline-flex items-center justify-center px-2.5 py-1.5 text-xs font-medium transition-colors",
-                view === "GRID"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-card text-muted-foreground hover:text-foreground",
+                "v12-creations-view-button",
+                view === "GRID" ? "is-active" : "",
               )}
               title="Grid view"
               aria-pressed={view === "GRID"}
@@ -425,10 +423,8 @@ export function CreationsClient({
               type="button"
               onClick={() => setView("LIST")}
               className={cn(
-                "inline-flex items-center justify-center border-l border-border px-2.5 py-1.5 text-xs font-medium transition-colors",
-                view === "LIST"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-card text-muted-foreground hover:text-foreground",
+                "v12-creations-view-button",
+                view === "LIST" ? "is-active" : "",
               )}
               title="List view"
               aria-pressed={view === "LIST"}
@@ -440,7 +436,7 @@ export function CreationsClient({
       </div>
 
       {items.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-md border border-dashed border-border bg-card/30 p-12 text-center">
+        <div className="v12-creations-empty">
           <p className="text-sm font-medium text-muted-foreground">
             You haven&apos;t authored anything yet.
           </p>
@@ -450,7 +446,7 @@ export function CreationsClient({
           </p>
         </div>
       ) : (
-        <div className="rounded-md border border-border bg-card/50 p-2">
+        <div className="v12-creations-results">
           <LibraryTable
             items={filteredItems}
             view={view}

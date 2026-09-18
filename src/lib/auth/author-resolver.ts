@@ -7,7 +7,7 @@
 // bridges the two.
 // =============================================================================
 
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/db/client";
 import { users } from "@/db/schema";
 
@@ -86,4 +86,44 @@ export async function resolveUserIdByClerkId(
     columns: { id: true },
   });
   return row?.id ?? null;
+}
+
+/**
+ * Clerk development instances can be recreated while the local SwordWeave
+ * database is kept. In that case the same developer has a new Clerk id but
+ * their authored rows still carry the previous one. During local development
+ * only, reconnect the session to the existing profile by its stable username.
+ * Production always requires the exact Clerk id.
+ */
+export async function resolveLocalAuthorIdentity(
+  clerkUserId: string,
+  clerkUsername: string | null | undefined,
+): Promise<{ clerkUserId: string; internalUserId: string | null }> {
+  const exact = await db.query.users.findFirst({
+    where: eq(users.clerkUserId, clerkUserId),
+    columns: { id: true, clerkUserId: true },
+  });
+  if (exact) {
+    return { clerkUserId: exact.clerkUserId, internalUserId: exact.id };
+  }
+
+  if (process.env.NODE_ENV !== "development" || !clerkUsername) {
+    return { clerkUserId, internalUserId: null };
+  }
+
+  const localProfile = await db.query.users.findFirst({
+    where: and(
+      eq(users.username, clerkUsername.trim().toLowerCase()),
+      eq(users.isAnonymized, false),
+      isNull(users.deletedAt),
+    ),
+    columns: { id: true, clerkUserId: true },
+  });
+
+  return localProfile
+    ? {
+        clerkUserId: localProfile.clerkUserId,
+        internalUserId: localProfile.id,
+      }
+    : { clerkUserId, internalUserId: null };
 }

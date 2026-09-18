@@ -19,7 +19,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { asc, eq } from "drizzle-orm";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { Plus, UserRound } from "lucide-react";
 import {
   CharacterListTabs,
@@ -31,7 +31,7 @@ import { characters } from "@/db/schema";
 import { aggregateCharacterSheet } from "@/lib/engine";
 import { queryLibrary } from "@/lib/publishing/library-query";
 import { listSharedCharacters } from "@/lib/character/list-shared-characters";
-import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
+import { resolveLocalAuthorIdentity } from "@/lib/auth/author-resolver";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +41,11 @@ interface PageProps {
 
 export default async function CharactersPage({ searchParams }: PageProps) {
   const { userId: clerkId } = await auth();
+  const clerkAccount = clerkId ? await currentUser() : null;
+  const ownerIdentity = clerkId
+    ? await resolveLocalAuthorIdentity(clerkId, clerkAccount?.username)
+    : null;
+  const ownerClerkId = ownerIdentity?.clerkUserId ?? clerkId;
   const params = await searchParams;
 
   const initialTab: CharacterTab = (() => {
@@ -50,7 +55,7 @@ export default async function CharactersPage({ searchParams }: PageProps) {
   })();
 
   // Resolve internal user.id once for the shared-with-me query.
-  const myInternalId = clerkId ? await resolveUserIdByClerkId(clerkId) : null;
+  const myInternalId = ownerIdentity?.internalUserId ?? null;
 
   // Load all three lists in parallel. Each is independent. The
   // shared query short-circuits when myInternalId is null (no
@@ -65,9 +70,9 @@ export default async function CharactersPage({ searchParams }: PageProps) {
   const [ownRows, sharedRows, publicResult] = (await (async () => {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const ownedPromise: Promise<any[]> = clerkId
+      const ownedPromise: Promise<any[]> = ownerClerkId
         ? (db.query.characters.findMany({
-            where: eq(characters.userId, clerkId),
+            where: eq(characters.userId, ownerClerkId),
             orderBy: [asc(characters.level), asc(characters.name)],
             with: {
               primitiveLinks: { with: { primitive: true } },
@@ -97,14 +102,14 @@ export default async function CharactersPage({ searchParams }: PageProps) {
   ];
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-5 py-8">
-      <div className="flex items-end justify-between gap-4">
+    <main className="v12-roster-page">
+      <div className="v12-roster-hero">
         <div>
-          <p className="text-xs font-semibold uppercase text-muted-foreground">
+          <p className="v12-kicker">
             Roster
           </p>
-          <h1 className="mt-3 text-4xl font-semibold">Characters</h1>
-          <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
+          <h1>Characters</h1>
+          <p className="v12-roster-deck">
             Your own characters, characters shared with you, and the public
             library of builds you can fork as your own.
           </p>
@@ -123,7 +128,7 @@ export default async function CharactersPage({ searchParams }: PageProps) {
             ownRows.length === 0 ? (
               <OwnEmptyState />
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="v12-roster-grid">
                 {ownRows.map((c) => (
                   <CharacterCard
                     key={c.id}
@@ -148,30 +153,30 @@ export default async function CharactersPage({ searchParams }: PageProps) {
           mineEmptyState={<OwnEmptyState />}
         />
       </Suspense>
-    </div>
+    </main>
   );
 }
 
 function TabFallback() {
   return (
-    <div className="mt-8 h-12 animate-pulse rounded-md border border-dashed border-border bg-card/40" />
+    <div className="v12-roster-loading animate-pulse" />
   );
 }
 
 function OwnEmptyState() {
   return (
-    <div className="mt-12 flex flex-col items-center justify-center rounded-md border border-dashed border-border bg-card/50 px-6 py-16 text-center">
-      <div className="flex size-14 items-center justify-center rounded-full border border-border bg-background">
+    <div className="v12-roster-empty">
+      <div className="v12-roster-sigil">
         <UserRound className="size-7 text-muted-foreground" />
       </div>
-      <h2 className="mt-6 text-2xl font-semibold">No characters yet</h2>
-      <p className="mt-2 max-w-md text-sm text-muted-foreground">
+      <h2>No characters yet</h2>
+      <p>
         Forge your first character using the 5-step wizard. You can fork builds
         from the Public library tab once you have a roster.
       </p>
       <Link
         href="/sandbox/characters"
-        className="mt-6 flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-base font-medium text-primary-foreground hover:bg-primary/90"
+        className="v12-metal-button v12-metal-button--primary"
       >
         <Plus className="size-5" />
         Create your first character
@@ -280,7 +285,7 @@ async function CharacterCard({
   const portrait = character.portraitUrl;
 
   return (
-    <div className="group relative flex flex-col rounded-md border border-border bg-card p-5 transition-colors hover:border-primary">
+    <article className="v12-roster-card group">
       <div className="flex items-start gap-3">
         {portrait ? (
           <img
@@ -357,7 +362,7 @@ async function CharacterCard({
       <div className="mt-5 flex gap-2">
         <Link
           href={`/characters/${character.id}`}
-          className="flex-1 rounded-md bg-primary px-3 py-1.5 text-center text-xs font-medium text-primary-foreground hover:bg-primary/90"
+          className="v12-metal-button v12-metal-button--primary flex-1 justify-center"
         >
           Open Sheet
         </Link>
@@ -365,7 +370,7 @@ async function CharacterCard({
             Edit/clone affordances live on the sheet itself in the
             PDF-aligned layout — list-page keeps just Open Sheet. */}
       </div>
-    </div>
+    </article>
   );
 }
 

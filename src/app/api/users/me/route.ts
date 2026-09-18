@@ -11,10 +11,11 @@
  * Response: 200 { username, displayName, avatarUrl } | 401
  */
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { users } from "@/db/schema/profiles";
+import { resolveLocalAuthorIdentity } from "@/lib/auth/author-resolver";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,8 +26,13 @@ export async function GET(): Promise<Response> {
     return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
   }
 
+  const clerkAccount = await currentUser();
+  const ownerIdentity = await resolveLocalAuthorIdentity(
+    clerkUserId,
+    clerkAccount?.username,
+  );
   const row = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, clerkUserId),
+    where: eq(users.clerkUserId, ownerIdentity.clerkUserId),
     columns: {
       username: true,
       displayName: true,
