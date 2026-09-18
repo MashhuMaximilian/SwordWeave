@@ -871,7 +871,7 @@ export function PrimitiveRuleInstrument({
             >
               {valueLabel(modifier)}
             </button>
-            <span>{operation.join}</span>
+            <span className="is-grammar">{operation.join}</span>
             <button
               type="button"
               className="is-variable"
@@ -882,7 +882,7 @@ export function PrimitiveRuleInstrument({
           </>
         ) : (
           <>
-            <span>{operation.lead}</span>
+            <span className="is-grammar">{operation.lead}</span>
             <button
               type="button"
               className="is-variable"
@@ -890,7 +890,7 @@ export function PrimitiveRuleInstrument({
             >
               {targetLabel(modifier)}
             </button>
-            <span>{operation.join}</span>
+            <span className="is-grammar">{operation.join}</span>
             <button
               type="button"
               className="is-operation"
@@ -907,7 +907,7 @@ export function PrimitiveRuleInstrument({
             </button>
           </>
         )}
-        <span>for</span>
+        <span className="is-grammar">for</span>
         <button
           type="button"
           className="is-scope"
@@ -917,7 +917,7 @@ export function PrimitiveRuleInstrument({
         </button>
         {modifier.v1Condition.pills.map((pill, index) => (
           <span className="v12-rule-condition" key={`${index}:${pill.label}`}>
-            <b>
+            <b className="is-connector">
               {index
                 ? (modifier.v1Condition.operators[index - 1] ?? "AND")
                 : "WHEN"}
@@ -961,7 +961,7 @@ export function PrimitiveRuleInstrument({
             ＋ when
           </button>
         ) : null}
-        <span>.</span>
+        <span className="is-grammar">.</span>
       </div>
 
       <section className="v12-rule-panel">

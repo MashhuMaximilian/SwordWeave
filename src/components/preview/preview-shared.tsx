@@ -386,7 +386,9 @@ export function ConditionLine({
 // =============================================================================
 
 import { useState } from "react";
-import { Anvil, Pencil, PencilLine, UserRoundPlus, ExternalLink, History, Trash2 } from "lucide-react";
+import { Pencil, PencilLine, ExternalLink, History, Trash2 } from "lucide-react";
+import { FabThemeIcon } from "@/components/layout/fab-theme-icon";
+import { useIsDark } from "@/lib/hooks/use-is-dark";
 import {
   VisibilitySelect,
   visibilityLabel,
@@ -443,15 +445,18 @@ function DestinationAction({
   destination: "workspace" | "active-build" | "persistent-build" | "character" | "primary";
   emphasis?: boolean;
 }) {
-  const DestinationIcon = destination === "workspace"
-    ? PencilLine
-    : destination === "character"
-      ? UserRoundPlus
-      : Anvil;
+  const dark = useIsDark();
+  const destinationIcon = destination === "character" ? (
+    <FabThemeIcon iconKey="delapouite/mona-lisa" dark={dark} />
+  ) : destination === "persistent-build" || destination === "active-build" ? (
+    <FabThemeIcon iconKey="lorc/anvil-impact" dark={dark} />
+  ) : (
+    <PencilLine className="size-4 shrink-0" aria-hidden="true" />
+  );
   const content = (
     <>
       <span className="v12-preview-destination-title">
-        <DestinationIcon className="size-4 shrink-0" aria-hidden="true" />
+        {destinationIcon}
         <span className="text-sm font-semibold leading-tight">{action.label}</span>
       </span>
       {action.description || (action.disabled && action.title) ? (

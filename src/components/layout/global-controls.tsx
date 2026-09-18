@@ -46,38 +46,8 @@ import {
 } from "lucide-react";
 import { useModalStack } from "@/components/ui/modal-stack";
 import { cn } from "@/lib/utils";
-import { IconDisplay } from "@/components/icons/icon-display";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
-
-/** Color for the FAB build icon — flips with theme (white on dark,
- *  near-black on light) so it stays visible. */
-const FAB_ICON_COLOR_LIGHT = "#011614";
-const FAB_ICON_COLOR_DARK = "#ffffff";
-const FAB_ICON_GOLD_LIGHT = "#76622f";
-const FAB_ICON_GOLD_DARK = "#d3aa61";
-
-function FabThemeIcon({ iconKey, dark }: { iconKey: string; dark: boolean }) {
-  return (
-    <span className="sw-fab__theme-icon" aria-hidden="true">
-      <IconDisplay
-        iconSource="GAME_ICONS"
-        iconKey={iconKey}
-        iconColor={dark ? FAB_ICON_COLOR_DARK : FAB_ICON_COLOR_LIGHT}
-        size={22}
-        alt=""
-        className="sw-fab__theme-icon-default"
-      />
-      <IconDisplay
-        iconSource="GAME_ICONS"
-        iconKey={iconKey}
-        iconColor={dark ? FAB_ICON_GOLD_DARK : FAB_ICON_GOLD_LIGHT}
-        size={22}
-        alt=""
-        className="sw-fab__theme-icon-gold"
-      />
-    </span>
-  );
-}
+import { FabThemeIcon } from "./fab-theme-icon";
 
 type DrawerTab = "build" | "preview" | null;
 

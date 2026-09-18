@@ -4065,6 +4065,65 @@ body[data-ui="v12"] .v12-rule-condition-summary span {
 body[data-ui="v12"] .v12-rule-condition-summary[aria-expanded="true"] span {
   transform:rotate(0deg);
 }
+
+/* Rule prose uses actual metallic faces, rather than flat theme colors. */
+body[data-ui="v12"] .v12-rule-sentence :is(.is-variable,.is-value,.is-connector) {
+  background:linear-gradient(180deg,#fff7d7 0%,#e4bd68 35%,#9b6d26 61%,#ffe5a0 100%)!important;
+  background-clip:text!important;
+  -webkit-background-clip:text!important;
+  color:transparent!important;
+  -webkit-text-fill-color:transparent!important;
+  text-shadow:0 1px 0 rgb(0 0 0 / 58%),0 0 13px rgb(201 154 66 / 24%)!important;
+}
+body[data-ui="v12"] .v12-rule-sentence .is-operation {
+  background:linear-gradient(180deg,#ffe1c8 0%,#ed9c68 37%,#8b452d 64%,#ffc295 100%)!important;
+  background-clip:text!important;
+  -webkit-background-clip:text!important;
+  color:transparent!important;
+  -webkit-text-fill-color:transparent!important;
+  text-shadow:0 1px 0 rgb(0 0 0 / 60%),0 0 12px rgb(204 107 60 / 22%)!important;
+}
+body[data-ui="v12"] .v12-rule-sentence :is(.is-scope,.is-condition,.is-grammar) {
+  background:linear-gradient(180deg,#fff 0%,#d9dde3 34%,#858b94 62%,#f2f5f8 100%)!important;
+  background-clip:text!important;
+  -webkit-background-clip:text!important;
+  color:transparent!important;
+  -webkit-text-fill-color:transparent!important;
+  text-shadow:0 1px 0 rgb(0 0 0 / 64%),0 0 10px rgb(221 226 234 / 12%)!important;
+}
+body[data-ui="v12"] .v12-rule-sentence > button:is(.is-variable,.is-value),
+body[data-ui="v12"] .v12-rule-sentence .v12-rule-condition > b.is-connector {
+  background-image:linear-gradient(180deg,#fff7d7 0%,#e4bd68 35%,#9b6d26 61%,#ffe5a0 100%)!important;
+}
+body[data-ui="v12"] .v12-rule-sentence > button.is-operation {
+  background-image:linear-gradient(180deg,#ffe1c8 0%,#ed9c68 37%,#8b452d 64%,#ffc295 100%)!important;
+}
+body[data-ui="v12"] .v12-rule-sentence > :is(button.is-scope,span.is-grammar),
+body[data-ui="v12"] .v12-rule-sentence .v12-rule-condition > button.is-condition {
+  background-image:linear-gradient(180deg,#fff 0%,#d9dde3 34%,#858b94 62%,#f2f5f8 100%)!important;
+}
+
+/* Collapsed condition connectors use the same engraved brass face as the
+   rest of the selected rule controls. */
+body[data-ui="v12"] .v12-rule-condition-join button[aria-pressed="true"] {
+  position:relative;
+  overflow:hidden;
+  border-color:var(--rule-gold)!important;
+  background:
+    linear-gradient(112deg,transparent 0 24%,rgb(255 248 217 / 20%) 42%,transparent 59%),
+    linear-gradient(180deg,#553f1d 0%,#21170a 49%,#6b4c1c 100%)!important;
+  color:var(--rule-gold-bright)!important;
+  -webkit-text-fill-color:var(--rule-gold-bright)!important;
+  box-shadow:inset 0 1px rgb(255 244 199 / 54%),inset 0 -2px #b9852f,0 0 0 1px rgb(68 45 13 / 76%)!important;
+  text-shadow:0 1px rgb(0 0 0 / 68%)!important;
+}
+
+/* Destination actions reuse the exact FAB artwork. In the preview the gold
+   layer stays visible so both destinations read as the same commands. */
+body[data-ui="v12"] .v12-preview-destination-title .sw-fab__theme-icon { position:relative;display:inline-grid;flex:0 0 22px;width:22px;height:22px;place-items:center; }
+body[data-ui="v12"] .v12-preview-destination-title .sw-fab__theme-icon > img { grid-area:1/1; }
+body[data-ui="v12"] .v12-preview-destination-title .sw-fab__theme-icon-default { opacity:0; }
+body[data-ui="v12"] .v12-preview-destination-title .sw-fab__theme-icon-gold { opacity:1;filter:drop-shadow(0 0 7px rgb(201 154 66 / 24%)); }
 body[data-ui="v12"] .v12-rule-declared-name {
   display:grid!important;
   grid-template-columns:92px minmax(0,1fr)!important;
