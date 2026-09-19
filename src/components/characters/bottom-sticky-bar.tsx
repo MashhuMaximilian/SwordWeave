@@ -1161,7 +1161,7 @@ export function BottomStickyBar({
               encumbrance.equipSlotsAvailable, which the engine
               already returns on sheet.encumbrance (the ItemsTab
               worked because it pulls the same fields directly). */}
-          <div className="mt-2 rounded-md border border-border bg-card overflow-hidden">
+          <div className="v12-drawer-loadout mt-2 rounded-md border border-border bg-card overflow-hidden">
             <div className="grid grid-cols-2 divide-x divide-border">
               <LoadCell encumbrance={encumbrance} onClick={openEncumbranceModal} />
               <EquipSlotsPanel
@@ -1175,7 +1175,7 @@ export function BottomStickyBar({
           {/* Phase 8.I i2 finish (Mashu 2026-08-06): speed +
               carry capacity cards from primitive walks. */}
           {/* Speed card only — carry/load handled by LoadCell above. */}
-          <div className="mt-2 rounded-md border border-border bg-card overflow-hidden">
+          <div className="v12-drawer-speed mt-2 rounded-md border border-border bg-card overflow-hidden">
             <SpeedCard speedByType={speedByType} onClick={openSpeedModal} />
           </div>
 
@@ -1184,7 +1184,7 @@ export function BottomStickyBar({
           {(damageModifiers.resistance.length > 0 ||
             damageModifiers.vulnerability.length > 0 ||
             damageModifiers.immunity.length > 0) && (
-            <div className="mt-2 rounded-md border border-border bg-card px-2 py-1.5">
+            <div className="v12-drawer-damage mt-2 rounded-md border border-border bg-card px-2 py-1.5">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Damage Modifiers
               </p>
@@ -1222,7 +1222,7 @@ export function BottomStickyBar({
               Each variable shows its current value + the
               contributing primitives. */}
           {behaviorVariables.length > 0 && (
-            <div className="mt-2 rounded-md border border-border bg-card px-2 py-1.5">
+            <div className="v12-drawer-behavior mt-2 rounded-md border border-border bg-card px-2 py-1.5">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Behavior Variables
               </p>

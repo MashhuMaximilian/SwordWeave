@@ -584,156 +584,83 @@ export function ItemCard({
                 {nested.capabilityLinks.length + nested.effectLinks.length + nested.primitiveLinks.length}
               </b>
             </summary>
-            <div className="v12-inventory-construction-body">
-            {nested.capabilityLinks.length > 0 && (
-              <details className="text-xs" open>
-                <summary className="cursor-pointer select-none text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Capabilities ({nested.capabilityLinks.length})
-                </summary>
-                <ul className="mt-2 space-y-1.5">
-                  {nested.capabilityLinks.map((cl) => (
-                    <li key={cl.capabilityId}>
-                      {/* Phase 8.4 v23 (Mashu 2026-07-29):
-                          cap active/trigger lives on the
-                          sheet (per-character runtime).
-                          Per Mashu: items don't have caps
-                          in the modal — toggle here.
-                          v24.5: clicking the cap name
-                          opens the EntityPreview modal
-                          (cap click should preview the cap,
-                          not just be a toggle). */}
-                      <div className="flex items-start gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openCapabilityPreview(cl.capabilityId)}
-                          title={`Preview "${cl.capability.name}"`}
-                          className="flex-1 rounded border border-border/40 bg-card px-2 py-1.5 text-left transition-colors hover:bg-secondary"
-                        >
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="font-medium">
-                              {cl.capability.name}
-                            </span>
-                            <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                              {cl.capability.type}
-                            </span>
-                            {/* Phase 8.5 H6 round 10: every
-                                nested cap gets a SlotSourceBadge
-                                with the cap's latest version id.
-                                Falls back to a plain "Pinned" span
-                                when the version isn't in the map
-                                (shouldn't happen in practice — every
-                                cap has at least a v1). */}
-                            <SlotSourceBadge
-                              slotSource={"PINNED"}
-                              versionId={latestVersions?.get(makeVersionKey("capability", cl.capability.id)) ?? null}
-                              latestVersionId={null}
-                              targetType="CAPABILITY"
-                              targetId={cl.capability.id}
-                            />
+            <div className="v12-inventory-construction-body v12-item-composition">
+              {nested.capabilityLinks.length > 0 && (
+                <section className="v12-item-composition-group">
+                  <h5>Capabilities <span>{nested.capabilityLinks.length}</span></h5>
+                  <div className="v12-item-composition-stack">
+                    {nested.capabilityLinks.map((cl) => (
+                      <article key={cl.capabilityId} className="v12-expression-piece" data-expression-kind="capability">
+                        <div className="v12-expression-heading">
+                          <p className="v12-kicker">Capability · {cl.capability.type}</p>
+                          <SlotSourceBadge
+                            slotSource="PINNED"
+                            versionId={latestVersions?.get(makeVersionKey("capability", cl.capability.id)) ?? null}
+                            latestVersionId={null}
+                            targetType="CAPABILITY"
+                            targetId={cl.capability.id}
+                          />
+                        </div>
+                        <div className="v12-item-composition-title">
+                          <button type="button" onClick={() => openCapabilityPreview(cl.capabilityId)}>{cl.capability.name}</button>
+                          <ItemCapabilityToggle itemId={item.id} characterId={characterId} capability={cl.capability} />
+                        </div>
+                        {cl.capability.verboseDescription && <Markdown copyRole="narrative" className="v12-expression-description line-clamp-2">{cl.capability.verboseDescription}</Markdown>}
+                        {cl.capability.effectLinks.length > 0 && (
+                          <div className="v12-compact-effects">
+                            <p>Effects ({cl.capability.effectLinks.length})</p>
+                            {cl.capability.effectLinks.map((link) => (
+                              <button key={link.effectId} type="button" className="v12-compact-effect-row" onClick={() => openEffectPreview(link.effectId)}>
+                                <span>{link.effect.name}</span>
+                                <span>Effect</span>
+                                {link.effect.description && <Markdown copyRole="narrative" className="line-clamp-1">{link.effect.description}</Markdown>}
+                              </button>
+                            ))}
                           </div>
-                          {cl.capability.verboseDescription && (
-                            <Markdown copyRole="narrative" className="mt-1 line-clamp-3">{cl.capability.verboseDescription}</Markdown>
-                          )}
-                        </button>
-                        <ItemCapabilityToggle
-                          itemId={item.id}
-                          characterId={characterId}
-                          capability={cl.capability}
-                        />
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            )}
-            {nested.effectLinks.length > 0 && (
-              <details className="text-xs">
-                <summary className="cursor-pointer select-none text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Effects ({nested.effectLinks.length})
-                </summary>
-                <ul className="mt-2 space-y-1.5">
-                  {nested.effectLinks.map((el) => (
-                    <li
-                      key={el.effectId}
-                      className="rounded border border-border/40 bg-background/40 px-2 py-1.5"
-                    >
-                      {/* v24.5: click the effect name to preview. */}
-                      <button
-                        type="button"
-                        onClick={() => openEffectPreview(el.effectId)}
-                        title={`Preview "${el.effect.name}"`}
-                        className="block w-full text-left transition-colors hover:underline"
-                      >
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="font-medium">{el.effect.name}</span>
-                          {/* Phase 8.5 H6 round 10: SlotSourceBadge
-                              with the effect's latest version id. */}
-                          <SlotSourceBadge
-                            slotSource={"PINNED"}
-                            versionId={latestVersions?.get(makeVersionKey("effect", el.effectId)) ?? null}
-                            latestVersionId={null}
-                            targetType="EFFECT"
-                            targetId={el.effectId}
-                          />
-                        </div>
-                        {el.effect.description && (
-                          <Markdown copyRole="narrative" className="mt-1 line-clamp-2">{el.effect.description}</Markdown>
                         )}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            )}
-            {nested.primitiveLinks.length > 0 && (
-              <details className="text-xs" open>
-                <summary className="cursor-pointer select-none text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Primitives ({nested.primitiveLinks.length})
-                </summary>
-                <ul className="mt-2 space-y-1.5">
-                  {nested.primitiveLinks.map((pl) => (
-                    <li
-                      key={pl.primitiveId}
-                      className="rounded border border-border/40 bg-background/40 px-2 py-1.5"
-                    >
-                      {/* v24.5: click the primitive name to preview. */}
-                      <button
-                        type="button"
-                        onClick={() => openPrimitivePreview(pl.primitiveId)}
-                        title={`Preview "${pl.primitive.name}"`}
-                        className="block w-full text-left transition-colors hover:underline"
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-1.5">
-                          <span className="font-medium">
-                            {pl.primitive.name}
-                          </span>
-                          <span className="font-mono text-muted-foreground">
-                            {pl.primitive.buCost} BU
-                          </span>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              )}
+              {nested.effectLinks.length > 0 && (
+                <section className="v12-item-composition-group">
+                  <h5>Effects <span>{nested.effectLinks.length}</span></h5>
+                  <div className="v12-item-composition-stack">
+                    {nested.effectLinks.map((el) => (
+                      <article key={el.effectId} className="v12-expression-piece" data-expression-kind="effect">
+                        <div className="v12-expression-heading">
+                          <p className="v12-kicker">Effect</p>
+                          <SlotSourceBadge slotSource="PINNED" versionId={latestVersions?.get(makeVersionKey("effect", el.effectId)) ?? null} latestVersionId={null} targetType="EFFECT" targetId={el.effectId} />
                         </div>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                            {pl.primitive.category}
-                          </span>
-                          {/* Phase 8.5 H6 round 10: SlotSourceBadge
-                              with the primitive's latest version id. */}
-                          <SlotSourceBadge
-                            slotSource={"PINNED"}
-                            versionId={latestVersions?.get(makeVersionKey("primitive", pl.primitiveId)) ?? null}
-                            latestVersionId={null}
-                            targetType="PRIMITIVE"
-                            targetId={String(pl.primitiveId)}
-                          />
+                        <button type="button" className="v12-item-composition-name" onClick={() => openEffectPreview(el.effectId)}>{el.effect.name}</button>
+                        {el.effect.description && <Markdown copyRole="narrative" className="v12-expression-description line-clamp-2">{el.effect.description}</Markdown>}
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              )}
+              {nested.primitiveLinks.length > 0 && (
+                <section className="v12-item-composition-group">
+                  <h5>Primitives <span>{nested.primitiveLinks.length}</span></h5>
+                  <div className="v12-item-composition-stack is-rules">
+                    {nested.primitiveLinks.map((pl) => (
+                      <article key={pl.primitiveId} className="v12-expression-rule">
+                        <div className="v12-bundled-primitive-title">
+                          <span className="v12-workspace-version">v</span>
+                          <button type="button" onClick={() => openPrimitivePreview(pl.primitiveId)}>{pl.primitive.name}</button>
+                          <span className="v12-workspace-kind">{pl.primitive.buCost} BU</span>
                         </div>
-                        {pl.primitive.narrativeRule && (
-                          <Markdown copyRole="narrative" className="mt-1 line-clamp-2">{pl.primitive.narrativeRule}</Markdown>
-                        )}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            )}
+                        <div className="v12-rule-provenance">
+                          <span>{pl.primitive.category}</span>
+                          <SlotSourceBadge slotSource="PINNED" versionId={latestVersions?.get(makeVersionKey("primitive", pl.primitiveId)) ?? null} latestVersionId={null} targetType="PRIMITIVE" targetId={String(pl.primitiveId)} />
+                        </div>
+                        {pl.primitive.narrativeRule && <Markdown copyRole="narrative" className="v12-rule-text v12-rule-description line-clamp-2">{pl.primitive.narrativeRule}</Markdown>}
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              )}
             </div>
           </details>
         )}

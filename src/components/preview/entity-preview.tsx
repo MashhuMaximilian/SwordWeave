@@ -902,7 +902,8 @@ function EffectBody({
   const totalBu = row.primitiveLinks.reduce((s, l) => s + Math.abs(l.primitive.buCost * l.quantity), 0);
   return (
     <div className="v12-composite-preview-body space-y-5">
-      <Header
+      <div className="v12-composite-preview-primary">
+        <Header
         fallback="EFF"
         iconSource={row.iconSource}
         iconKey={row.iconKey}
@@ -916,24 +917,15 @@ function EffectBody({
             <VisibilityPill isPublic={row.isPublic} />
           </>
         }
-      />
-      {row.narrativeDescription ? (
-        <Section heading="Narrative description">
-          <div className="rounded-md border border-border/60 bg-background/40 p-3 text-sm leading-7 [&_p]:mb-2 [&_p:last-child]:mb-0 [&_strong]:font-bold [&_strong]:text-foreground [&_em]:italic">
-            <Markdown>{row.narrativeDescription}</Markdown>
-          </div>
-        </Section>
-      ) : null}
-      {row.tags.length > 0 ? (
-        <Section heading="Tags">
-          <div className="flex flex-wrap gap-1.5">
-            {row.tags.map((tag) => (
-              <span key={tag} className="rounded-full border border-border bg-secondary/60 px-2.5 py-0.5 text-xs font-medium">{tag}</span>
-            ))}
-          </div>
-        </Section>
-      ) : null}
-      <ComposedList
+        />
+        {row.narrativeDescription ? (
+          <Section heading="Narrative description"><Markdown>{row.narrativeDescription}</Markdown></Section>
+        ) : null}
+        {row.tags.length > 0 ? (
+          <Section heading="Tags"><div className="flex flex-wrap gap-1.5">{row.tags.map((tag) => <span key={tag} className="rounded-full border border-border bg-secondary/60 px-2.5 py-0.5 text-xs font-medium">{tag}</span>)}</div></Section>
+        ) : null}
+      </div>
+      <div className="v12-composite-preview-secondary"><ComposedList
         title={`Composed primitives (${row.primitiveLinks.length})`}
         onSubLink={onSubLink}
         items={row.primitiveLinks.map((l) => ({
@@ -943,7 +935,7 @@ function EffectBody({
           versionNumber: l.versionNumber,
           subText: <span>{l.primitive.category}{l.quantity > 1 ? ` ×${l.quantity}` : ""}</span>,
         }))}
-      />
+      /></div>
     </div>
   );
 }
@@ -1149,9 +1141,16 @@ function TemplateBody({
     ),
   );
   const inheritedPrimitiveLinks = [...capabilityPrimitiveLinks, ...capabilityEffectPrimitiveLinks];
+  const inheritedEffectLinks = row.capabilityLinks.flatMap((cl) =>
+    (cl.capability.effectLinks ?? []).map((effectLink) => ({
+      ...effectLink,
+      capabilityName: cl.capability.name,
+    })),
+  );
   return (
     <div className="v12-composite-preview-body space-y-4">
-      <Header
+      <div className="v12-composite-preview-primary">
+        <Header
         fallback="TPL"
         iconSource={row.iconSource}
         iconKey={row.iconKey}
@@ -1169,16 +1168,39 @@ function TemplateBody({
             <VisibilityPill isPublic={row.isPublic} />
           </>
         }
+        />
+        {row.description ? (
+          <Section heading="Description"><Markdown>{row.description}</Markdown></Section>
+        ) : null}
+        {row.suggestedTraits ? (
+          <Section heading="Suggested traits"><Markdown>{row.suggestedTraits}</Markdown></Section>
+        ) : null}
+      </div>
+      <div className="v12-composite-preview-secondary">
+      <ComposedList
+        title={`Bundled capabilities (${row.capabilityLinks.length})`}
+        onSubLink={onSubLink}
+        items={row.capabilityLinks.map((l) => ({
+          id: l.capability.id,
+          name: l.capability.name,
+          bu: Math.abs(computeTransitiveBu({ primitiveLinks: l.capability.primitiveLinks ?? [], effectLinks: l.capability.effectLinks ?? [] }).transitiveBu),
+          versionNumber: l.versionNumber,
+          subText: <span>{(l.capability.effectLinks ?? []).length} effects · {(l.capability.primitiveLinks ?? []).length} direct primitives</span>,
+          targetType: "CAPABILITY" as const,
+        }))}
       />
-      {row.description ? (
-        <Section heading="Description">
-          <Markdown>{row.description}</Markdown>
-        </Section>
-      ) : null}
-      {row.suggestedTraits ? (
-        <Section heading="Suggested traits">
-          <Markdown>{row.suggestedTraits}</Markdown>
-        </Section>
+      {inheritedEffectLinks.length > 0 ? (
+        <ComposedList
+          title={`Effects from capabilities (${inheritedEffectLinks.length})`}
+          onSubLink={onSubLink}
+          items={inheritedEffectLinks.map((link) => ({
+            id: link.effectId,
+            name: link.effect.name,
+            bu: Math.abs((link.primitiveLinks ?? []).reduce((sum, primitiveLink) => sum + primitiveLink.primitive.buCost, 0)),
+            subText: <span>via capability: {link.capabilityName}</span>,
+            targetType: "EFFECT" as const,
+          }))}
+        />
       ) : null}
       <ComposedList
         title={`Bundled primitives (${row.primitiveLinks.length})`}
@@ -1218,37 +1240,7 @@ function TemplateBody({
           }))}
         />
       ) : null}
-      <ComposedList
-        title={`Bundled capabilities (${row.capabilityLinks.length})`}
-        onSubLink={onSubLink}
-        items={row.capabilityLinks.map((l) => ({
-          id: l.capability.id,
-          name: l.capability.name,
-          // Phase 8.1 batch 13.5 follow-up: per-capability BU must
-          // include primitives from the capability's effects, not just
-          // its direct primitiveLinks. Mashu 2026-07-22: "Capability X
-          // has cost 13 BU for example, but it still shows 3 BU in
-          // lineage preview where capability X is shown." Same bug
-          // that bit `bulkComputeCapabilityBuCost` server-side — the
-          // preview is showing the same wrong number because both
-          // call-sites only summed direct primitives.
-          bu: Math.abs(
-            computeTransitiveBu({
-              primitiveLinks: l.capability.primitiveLinks ?? [],
-              effectLinks: l.capability.effectLinks ?? [],
-            }).transitiveBu,
-          ),
-          versionNumber: l.versionNumber,
-          // Phase 8.1 batch 13.2 follow-up: open the capability
-          // preview when the user clicks this row. The default
-          // (PRIMITIVE) would route the click to the wrong
-          // endpoint. Mashu 2026-07-22: "in view atelier if i
-          // click on a bundled capability, it does not open the
-          // preview modal for that like it does for effects or
-          // primitives."
-          targetType: "CAPABILITY" as const,
-        }))}
-      />
+      </div>
     </div>
   );
 }
@@ -1305,7 +1297,8 @@ function ItemBody({
   ];
   return (
     <div className="v12-composite-preview-body space-y-4">
-      <Header
+      <div className="v12-composite-preview-primary">
+        <Header
         fallback="ITM"
         iconSource={row.iconSource}
         iconKey={row.iconKey}
@@ -1351,21 +1344,37 @@ function ItemBody({
             <VisibilityPill isPublic={row.isPublic} />
           </>
         }
+        />
+        {row.description ? <Section heading="Description"><Markdown>{row.description}</Markdown></Section> : null}
+        {row.tags.length > 0 ? (
+          <Section heading="Tags"><div className="flex flex-wrap gap-1">{row.tags.map((tag) => <span key={tag} className="rounded-full bg-secondary px-2 py-0.5 text-xs">{tag}</span>)}</div></Section>
+        ) : null}
+      </div>
+      <div className="v12-composite-preview-secondary">
+      <ComposedList
+        title={`Composed capabilities (${row.capabilityLinks.length})`}
+        onSubLink={onSubLink}
+        items={row.capabilityLinks.map((l) => ({
+          id: l.capabilityId,
+          name: l.capability.name,
+          bu: Math.abs(computeTransitiveBu({ primitiveLinks: l.capability.primitiveLinks ?? [], effectLinks: l.capability.effectLinks ?? [] }).transitiveBu),
+          versionNumber: l.versionNumber,
+          subText: <span>{(l.capability.effectLinks ?? []).length} effects · {(l.capability.primitiveLinks ?? []).length} direct primitives</span>,
+          targetType: "CAPABILITY" as const,
+        }))}
       />
-      {row.description ? (
-        <Section heading="Description">
-          <Markdown>{row.description}</Markdown>
-        </Section>
-      ) : null}
-      {row.tags.length > 0 ? (
-        <Section heading="Tags">
-          <div className="flex flex-wrap gap-1">
-            {row.tags.map((tag) => (
-              <span key={tag} className="rounded-full bg-secondary px-2 py-0.5 text-xs">{tag}</span>
-            ))}
-          </div>
-        </Section>
-      ) : null}
+      <ComposedList
+        title={`Composed effects (${row.effectLinks.length})`}
+        onSubLink={onSubLink}
+        items={row.effectLinks.map((l) => ({
+          id: l.effectId,
+          name: l.effect.name,
+          bu: (l.effect.primitiveLinks ?? []).reduce((s, x) => s + Math.abs(x.primitive.buCost * x.quantity), 0),
+          versionNumber: l.versionNumber,
+          note: l.effect.narrativeDescription ?? null,
+          targetType: "EFFECT" as const,
+        }))}
+      />
       <ComposedList
         title={`Item-augment primitives (${row.primitiveLinks.length})`}
         onSubLink={onSubLink}
@@ -1392,41 +1401,7 @@ function ItemBody({
           }))}
         />
       ) : null}
-      <ComposedList
-        title={`Composed effects (${row.effectLinks.length})`}
-        onSubLink={onSubLink}
-        items={row.effectLinks.map((l) => ({
-          id: l.effectId,
-          name: l.effect.name,
-          bu: (l.effect.primitiveLinks ?? []).reduce((s, x) => s + Math.abs(x.primitive.buCost * x.quantity), 0),
-          versionNumber: l.versionNumber,
-          note: l.effect.narrativeDescription ?? null,
-          // Phase 8.1 batch 13.4 follow-up: open the effect preview
-          // when this row is clicked (default would be PRIMITIVE).
-          targetType: "EFFECT" as const,
-        }))}
-      />
-      <ComposedList
-        title={`Composed capabilities (${row.capabilityLinks.length})`}
-        onSubLink={onSubLink}
-        items={row.capabilityLinks.map((l) => ({
-          id: l.capabilityId,
-          name: l.capability.name,
-          // Phase 8.1 batch 13.5 follow-up: per-capability BU must
-          // include the capability's effect primitives. See the
-          // matching fix in TemplateBody above for rationale.
-          bu: Math.abs(
-            computeTransitiveBu({
-              primitiveLinks: l.capability.primitiveLinks ?? [],
-              effectLinks: l.capability.effectLinks ?? [],
-            }).transitiveBu,
-          ),
-          versionNumber: l.versionNumber,
-          // Phase 8.1 batch 13.4 follow-up: open the capability
-          // preview when this row is clicked.
-          targetType: "CAPABILITY" as const,
-        }))}
-      />
+      </div>
     </div>
   );
 }
