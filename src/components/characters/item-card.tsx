@@ -121,7 +121,211 @@ export interface ItemCardProps {
   // rendered a hardcoded "Pinned" without a
   // version number, even though every cap /
   // effect / primitive has a v1 version row.
-  latestVersions?: Map<VersionKey, string>;
+  latestVersions?: Map<VersionKey, string> | undefined;
+}
+
+type ItemNestedPrimitive = {
+  primitiveId: number;
+  primitive: {
+    id: number;
+    name: string;
+    category?: string | null;
+    buCost?: number | null;
+    narrativeRule?: string | null;
+    mechanicalOutputText?: string | null;
+  };
+};
+
+type ItemNestedEffect = {
+  effectId: string;
+  effect: {
+    id: string;
+    name: string;
+    description?: string | null;
+    narrativeDescription?: string | null;
+    primitiveLinks?: ItemNestedPrimitive[];
+  };
+};
+
+function ItemPrimitiveCompositionRow({
+  link,
+  latestVersions,
+  onOpen,
+}: {
+  link: ItemNestedPrimitive;
+  latestVersions?: Map<VersionKey, string> | undefined;
+  onOpen: (primitiveId: number) => void;
+}) {
+  const mechanicalRule = link.primitive.mechanicalOutputText;
+  const narrativeRule = link.primitive.narrativeRule;
+  const versionId = latestVersions?.get(makeVersionKey("primitive", link.primitiveId)) ?? null;
+  return (
+    <article className="v12-expression-rule" data-expression-kind="primitive">
+      <div className="v12-bundled-primitive-title">
+        <span className="v12-workspace-version">{versionId ? `v:${versionId.slice(0, 8)}` : "v:1"}</span>
+        <button type="button" onClick={() => onOpen(link.primitiveId)}>{link.primitive.name}</button>
+        <span className="v12-workspace-kind">Primitive</span>
+      </div>
+      <div className="v12-rule-provenance">
+        <span>{link.primitive.category ?? "primitive"} · {link.primitive.buCost ?? 0} BU</span>
+        <SlotSourceBadge
+          slotSource="PINNED"
+          versionId={versionId}
+          latestVersionId={null}
+          targetType="PRIMITIVE"
+          targetId={String(link.primitiveId)}
+        />
+      </div>
+      {mechanicalRule && <Markdown copyRole="mechanical" className="v12-rule-text v12-rule-output line-clamp-2">{mechanicalRule}</Markdown>}
+      {narrativeRule && narrativeRule !== mechanicalRule && <Markdown copyRole="narrative" className="v12-rule-text v12-rule-description line-clamp-2">{narrativeRule}</Markdown>}
+    </article>
+  );
+}
+
+function ItemEffectComposition({
+  link,
+  characterId,
+  itemId,
+  latestVersions,
+  onOpenEffect,
+  onOpenPrimitive,
+  hydrate = false,
+}: {
+  link: ItemNestedEffect;
+  characterId: string;
+  itemId: string;
+  latestVersions?: Map<VersionKey, string> | undefined;
+  onOpenEffect: (effectId: string) => void;
+  onOpenPrimitive: (primitiveId: number) => void;
+  hydrate?: boolean;
+}) {
+  const [hydrated, setHydrated] = useState<ItemNestedEffect["effect"] | null>(null);
+
+  useEffect(() => {
+    const suppliedPrimitives = link.effect.primitiveLinks ?? [];
+    const hasCompletePrimitiveRows = suppliedPrimitives.length > 0 && suppliedPrimitives.every(
+      (primitiveLink) => primitiveLink.primitive.category !== undefined,
+    );
+    if (!hydrate || hasCompletePrimitiveRows) return;
+    let cancelled = false;
+    void fetch(`/api/effects/${encodeURIComponent(link.effectId)}`)
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload: { effect?: ItemNestedEffect["effect"] } | null) => {
+        if (!cancelled && payload?.effect) setHydrated(payload.effect);
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [hydrate, link.effect.primitiveLinks, link.effectId]);
+
+  const effect = hydrated ?? link.effect;
+  const description = effect.narrativeDescription ?? effect.description;
+  const primitiveLinks = effect.primitiveLinks ?? [];
+  const versionId = latestVersions?.get(makeVersionKey("effect", link.effectId)) ?? null;
+  return (
+    <article className="v12-expression-piece" data-expression-kind="effect" data-character-id={characterId} data-item-id={itemId}>
+      <header className="v12-expression-entity-header v12-effect-title-row">
+        <div className="v12-expression-identity">
+          <span className="v12-workspace-version">{versionId ? `v:${versionId.slice(0, 8)}` : "v:1"}</span>
+          <button type="button" onClick={() => onOpenEffect(link.effectId)}>{effect.name}</button>
+        </div>
+        <div className="v12-expression-meta">
+          <span className="v12-workspace-kind">Effect</span>
+          <SlotSourceBadge slotSource="PINNED" versionId={versionId} latestVersionId={null} targetType="EFFECT" targetId={link.effectId} />
+        </div>
+      </header>
+      {description && <Markdown copyRole="narrative" className="v12-expression-description line-clamp-2">{description}</Markdown>}
+      {primitiveLinks.length > 0 && (
+        <div className="v12-bundle-contents">
+          {primitiveLinks.map((primitiveLink) => (
+            <ItemPrimitiveCompositionRow
+              key={primitiveLink.primitiveId}
+              link={primitiveLink}
+              latestVersions={latestVersions}
+              onOpen={onOpenPrimitive}
+            />
+          ))}
+        </div>
+      )}
+    </article>
+  );
+}
+
+function ItemCapabilityComposition({
+  link,
+  characterId,
+  itemId,
+  latestVersions,
+  onOpenCapability,
+  onOpenEffect,
+  onOpenPrimitive,
+}: {
+  link: NonNullable<ItemCardProps["nested"]>["capabilityLinks"][number];
+  characterId: string;
+  itemId: string;
+  latestVersions?: Map<VersionKey, string> | undefined;
+  onOpenCapability: (capabilityId: string) => void;
+  onOpenEffect: (effectId: string) => void;
+  onOpenPrimitive: (primitiveId: number) => void;
+}) {
+  const [composition, setComposition] = useState<{
+    effectLinks?: ItemNestedEffect[];
+    primitiveLinks?: ItemNestedPrimitive[];
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch(`/api/capabilities/${encodeURIComponent(link.capabilityId)}`)
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload: { capability?: { effectLinks?: ItemNestedEffect[]; primitiveLinks?: ItemNestedPrimitive[] } } | null) => {
+        if (!cancelled && payload?.capability) setComposition(payload.capability);
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [link.capabilityId]);
+
+  const effects: ItemNestedEffect[] = composition?.effectLinks ?? link.capability.effectLinks;
+  const directPrimitives = composition?.primitiveLinks ?? [];
+  const versionId = latestVersions?.get(makeVersionKey("capability", link.capability.id)) ?? null;
+  return (
+    <article className="v12-expression-piece" data-expression-kind="capability">
+      <header className="v12-expression-entity-header v12-capability-title-row">
+        <div className="v12-expression-identity">
+          <span className="v12-workspace-version">{versionId ? `v:${versionId.slice(0, 8)}` : "v:1"}</span>
+          <button type="button" onClick={() => onOpenCapability(link.capabilityId)}>{link.capability.name}</button>
+        </div>
+        <div className="v12-expression-meta">
+          <span className="v12-workspace-kind">Capability · {link.capability.type}</span>
+          <SlotSourceBadge slotSource="PINNED" versionId={versionId} latestVersionId={null} targetType="CAPABILITY" targetId={link.capability.id} />
+          <ItemCapabilityToggle itemId={itemId} characterId={characterId} capability={link.capability} />
+        </div>
+      </header>
+      {link.capability.verboseDescription && <Markdown copyRole="narrative" className="v12-expression-description line-clamp-2">{link.capability.verboseDescription}</Markdown>}
+      {(effects.length > 0 || directPrimitives.length > 0) && (
+        <div className="v12-bundle-contents v12-item-capability-composition">
+          {effects.map((effectLink) => (
+            <ItemEffectComposition
+              key={effectLink.effectId}
+              link={effectLink}
+              characterId={characterId}
+              itemId={itemId}
+              latestVersions={latestVersions}
+              onOpenEffect={onOpenEffect}
+              onOpenPrimitive={onOpenPrimitive}
+              hydrate
+            />
+          ))}
+          {directPrimitives.map((primitiveLink) => (
+            <ItemPrimitiveCompositionRow
+              key={primitiveLink.primitiveId}
+              link={primitiveLink}
+              latestVersions={latestVersions}
+              onOpen={onOpenPrimitive}
+            />
+          ))}
+        </div>
+      )}
+    </article>
+  );
 }
 
 export function ItemCard({
@@ -590,55 +794,16 @@ export function ItemCard({
                   <h5>Capabilities <span>{nested.capabilityLinks.length}</span></h5>
                   <div className="v12-item-composition-stack">
                     {nested.capabilityLinks.map((cl) => (
-                      <article key={cl.capabilityId} className="v12-expression-piece" data-expression-kind="capability">
-                        <div className="v12-expression-heading">
-                          <p className="v12-kicker">Capability · {cl.capability.type}</p>
-                        </div>
-                        <div className="v12-item-composition-title">
-                          <div className="v12-item-composition-title-copy">
-                            <button type="button" onClick={() => openCapabilityPreview(cl.capabilityId)}>{cl.capability.name}</button>
-                            <SlotSourceBadge
-                              slotSource="PINNED"
-                              versionId={latestVersions?.get(makeVersionKey("capability", cl.capability.id)) ?? null}
-                              latestVersionId={null}
-                              targetType="CAPABILITY"
-                              targetId={cl.capability.id}
-                            />
-                          </div>
-                          <ItemCapabilityToggle itemId={item.id} characterId={characterId} capability={cl.capability} />
-                        </div>
-                        {cl.capability.verboseDescription && <Markdown copyRole="narrative" className="v12-expression-description line-clamp-2">{cl.capability.verboseDescription}</Markdown>}
-                        {cl.capability.effectLinks.length > 0 && (
-                          <div className="v12-bundle-contents v12-item-capability-composition">
-                            <div className="v12-expression-direct">
-                              <header>
-                                <p className="v12-kicker">Effects</p>
-                                <span className="v12-tag">{cl.capability.effectLinks.length}</span>
-                              </header>
-                              <div className="v12-item-nested-effects">
-                                {cl.capability.effectLinks.map((link) => (
-                                  <article key={link.effectId} className="v12-expression-piece" data-expression-kind="effect">
-                                    <div className="v12-expression-heading">
-                                      <p className="v12-kicker">Effect</p>
-                                    </div>
-                                    <div className="v12-effect-title-row">
-                                      <button type="button" onClick={() => openEffectPreview(link.effectId)}>{link.effect.name}</button>
-                                      <SlotSourceBadge
-                                        slotSource="PINNED"
-                                        versionId={latestVersions?.get(makeVersionKey("effect", link.effectId)) ?? null}
-                                        latestVersionId={null}
-                                        targetType="EFFECT"
-                                        targetId={link.effectId}
-                                      />
-                                    </div>
-                                    {link.effect.description && <Markdown copyRole="narrative" className="v12-expression-description line-clamp-2">{link.effect.description}</Markdown>}
-                                  </article>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </article>
+                      <ItemCapabilityComposition
+                        key={cl.capabilityId}
+                        link={cl}
+                        characterId={characterId}
+                        itemId={item.id}
+                        latestVersions={latestVersions}
+                        onOpenCapability={openCapabilityPreview}
+                        onOpenEffect={openEffectPreview}
+                        onOpenPrimitive={openPrimitivePreview}
+                      />
                     ))}
                   </div>
                 </section>
@@ -648,16 +813,16 @@ export function ItemCard({
                   <h5>Effects <span>{nested.effectLinks.length}</span></h5>
                   <div className="v12-item-composition-stack">
                     {nested.effectLinks.map((el) => (
-                      <article key={el.effectId} className="v12-expression-piece" data-expression-kind="effect">
-                        <div className="v12-expression-heading">
-                          <p className="v12-kicker">Effect</p>
-                        </div>
-                        <div className="v12-effect-title-row">
-                          <button type="button" className="v12-item-composition-name" onClick={() => openEffectPreview(el.effectId)}>{el.effect.name}</button>
-                          <SlotSourceBadge slotSource="PINNED" versionId={latestVersions?.get(makeVersionKey("effect", el.effectId)) ?? null} latestVersionId={null} targetType="EFFECT" targetId={el.effectId} />
-                        </div>
-                        {el.effect.description && <Markdown copyRole="narrative" className="v12-expression-description line-clamp-2">{el.effect.description}</Markdown>}
-                      </article>
+                      <ItemEffectComposition
+                        key={el.effectId}
+                        link={el}
+                        characterId={characterId}
+                        itemId={item.id}
+                        latestVersions={latestVersions}
+                        onOpenEffect={openEffectPreview}
+                        onOpenPrimitive={openPrimitivePreview}
+                        hydrate
+                      />
                     ))}
                   </div>
                 </section>
@@ -667,18 +832,12 @@ export function ItemCard({
                   <h5>Primitives <span>{nested.primitiveLinks.length}</span></h5>
                   <div className="v12-item-composition-stack is-rules">
                     {nested.primitiveLinks.map((pl) => (
-                      <article key={pl.primitiveId} className="v12-expression-rule">
-                        <div className="v12-bundled-primitive-title">
-                          <span className="v12-workspace-version">v</span>
-                          <button type="button" onClick={() => openPrimitivePreview(pl.primitiveId)}>{pl.primitive.name}</button>
-                          <span className="v12-workspace-kind">{pl.primitive.buCost} BU</span>
-                        </div>
-                        <div className="v12-rule-provenance">
-                          <span>{pl.primitive.category}</span>
-                          <SlotSourceBadge slotSource="PINNED" versionId={latestVersions?.get(makeVersionKey("primitive", pl.primitiveId)) ?? null} latestVersionId={null} targetType="PRIMITIVE" targetId={String(pl.primitiveId)} />
-                        </div>
-                        {pl.primitive.narrativeRule && <Markdown copyRole="narrative" className="v12-rule-text v12-rule-description line-clamp-2">{pl.primitive.narrativeRule}</Markdown>}
-                      </article>
+                      <ItemPrimitiveCompositionRow
+                        key={pl.primitiveId}
+                        link={pl}
+                        latestVersions={latestVersions}
+                        onOpen={openPrimitivePreview}
+                      />
                     ))}
                   </div>
                 </section>

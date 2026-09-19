@@ -53,6 +53,7 @@ export function BundleContents({
             ? `v:${child.versionId.slice(0, 8)}`
             : "v:1";
         const mirrored = edge.isMirrored;
+        const childHasContents = graph.edges.some((candidate) => candidate.parent === child.key);
         const effects = child.kind === "capability" ? graph.edges
           .filter((candidate) => candidate.parent === child.key && candidate.child.startsWith("effect:"))
           .sort((a, b) => a.order - b.order)
@@ -129,7 +130,7 @@ export function BundleContents({
                 return ingredient ? <button key={piece.id} onClick={()=>onOpen(piece,[...ancestors,edge.id])}>{ingredient.name}{ingredient.kind === "effect" ? " · effect" : ""}</button> : null;
               })}
             </div>}
-            {child.kind !== "primitive" && (
+            {child.kind !== "primitive" && childHasContents && (
               <BundleContents
                 node={child}
                 graph={graph}
@@ -149,7 +150,11 @@ export function BundleContents({
   const grantedEntries = contents.filter(edge => graph.nodes.find(child => child.key === edge.child)?.kind !== "primitive");
   const sourceLabel = String(node.data["kind"] ?? node.data["type"] ?? "heritage").toLowerCase();
   return (
-    <div className={`v12-bundle-contents ${node.kind === "heritage" ? "v12-expression-grid" : ""}`}>
+    <div
+      className={`v12-bundle-contents${node.kind === "heritage" ? " v12-expression-grid" : ""}${ancestors.length ? " is-nested" : ""}`}
+      data-depth={ancestors.length}
+      data-parent-kind={node.kind}
+    >
       {!ancestors.length && node.kind !== "heritage" && <p className="v12-kicker">Composition</p>}
       {!contents.length && <p className="text-muted-foreground">Nothing added yet.</p>}
       {node.kind === "heritage" ? <>

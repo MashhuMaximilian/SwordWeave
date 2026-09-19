@@ -270,6 +270,109 @@ function ComposedList({
   );
 }
 
+type CompositionNode = {
+  id: string;
+  name: string;
+  kind: "primitive" | "effect" | "capability" | "item";
+  targetType: "PRIMITIVE" | "EFFECT" | "CAPABILITY" | "ITEM";
+  bu: number;
+  versionNumber?: number | null | undefined;
+  meta?: ReactNode;
+  note?: string | null | undefined;
+  children?: CompositionNode[] | undefined;
+};
+
+function CompositionTree({
+  title,
+  nodes,
+  onSubLink,
+}: {
+  title: string;
+  nodes: CompositionNode[];
+  onSubLink: (link: PreviewSubLink) => void;
+}) {
+  if (nodes.length === 0) return null;
+  return (
+    <Section heading={`${title} (${nodes.length})`}>
+      <div className="v12-composition-tree" role="list">
+        {nodes.map((node, index) => (
+          <CompositionTreeNode key={`${node.targetType}:${node.id}:${index}`} node={node} onSubLink={onSubLink} depth={0} />
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+function CompositionTreeNode({
+  node,
+  onSubLink,
+  depth,
+}: {
+  node: CompositionNode;
+  onSubLink: (link: PreviewSubLink) => void;
+  depth: number;
+}) {
+  const hasChildren = Boolean(node.children?.length);
+  const [expanded, setExpanded] = useState(depth === 0 && node.kind === "capability");
+  return (
+    <div
+      className={`v12-composition-node is-${node.kind}${expanded ? " is-expanded" : ""}`}
+      data-entity-kind={node.kind}
+      data-depth={depth}
+      role="listitem"
+    >
+      <div className="v12-composition-node-row">
+        {hasChildren ? (
+          <button
+            type="button"
+            className="v12-composition-node-toggle"
+            aria-label={`${expanded ? "Collapse" : "Expand"} ${node.name}`}
+            aria-expanded={expanded}
+            onClick={() => setExpanded((current) => !current)}
+          >
+            <ChevronRight aria-hidden="true" />
+          </button>
+        ) : <span className="v12-composition-node-spacer" aria-hidden="true" />}
+        <span className="v12-composition-node-kind" aria-hidden="true">{node.kind.slice(0, 3)}</span>
+        <button
+          type="button"
+          className="v12-composition-node-main"
+          onClick={() => onSubLink({ targetType: node.targetType, targetId: node.id, label: node.name })}
+          aria-label={`Preview ${node.kind}: ${node.name}`}
+        >
+          <span className="v12-composition-node-titleline">
+            <span className="v12-composition-node-name">{node.name}</span>
+            <VersionChip versionNumber={node.versionNumber} />
+          </span>
+          {node.note ? <Markdown copyRole="mechanical" className="v12-composition-node-note line-clamp-2">{node.note}</Markdown> : null}
+          {node.meta ? <span className="v12-composition-node-meta">{node.meta}</span> : null}
+        </button>
+        <span className="v12-composition-node-bu"><b>{node.bu}</b><small>BU</small></span>
+        <button
+          type="button"
+          className="v12-composition-node-preview"
+          onClick={() => onSubLink({ targetType: node.targetType, targetId: node.id, label: node.name })}
+          aria-label={`Open ${node.name} preview`}
+        >
+          <ChevronRight aria-hidden="true" />
+        </button>
+      </div>
+      {hasChildren && expanded ? (
+        <div className="v12-composition-node-children" role="list">
+          {node.children!.map((child, index) => (
+            <CompositionTreeNode
+              key={`${child.targetType}:${child.id}:${index}`}
+              node={child}
+              onSubLink={onSubLink}
+              depth={depth + 1}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 // ---- primitive modifier cards ----------------------------------------------
 
 function ModifierCards({
@@ -980,20 +1083,24 @@ function CapabilityBody({
       })),
     }).transitiveBu,
   );
-  // Phase 8.1 batch 13.2: collect primitives from each effect so the
-  // preview shows the full transitive closure. Per Mashu 2026-07-22:
-  // "we need in primitives another section 'Primitives from effects'
-  // to list the primitives inherited from effect. ... we should also
-  // list primitives from capabilities. And if said capability has
-  // an effect, in same section with primitives from capability we
-  // should list the primitives from effect of capability too (and
-  // for each we should mention source)."
-  const effectPrimitiveLinks = row.effectLinks.flatMap((effectLink) =>
-    (effectLink.effect.primitiveLinks ?? []).map((pl) => ({
-      ...pl,
-      effectName: effectLink.effect.name,
+  const effectNodes: CompositionNode[] = row.effectLinks.map((link) => ({
+    id: link.effectId,
+    name: link.effect.name,
+    kind: "effect",
+    targetType: "EFFECT",
+    bu: (link.effect.primitiveLinks ?? []).reduce((sum, primitiveLink) => sum + Math.abs(primitiveLink.primitive.buCost * primitiveLink.quantity), 0),
+    versionNumber: link.versionNumber,
+    note: link.effect.narrativeDescription ?? null,
+    meta: <>{(link.effect.primitiveLinks ?? []).length} primitives{link.slotLabel ? <> · &ldquo;{link.slotLabel}&rdquo;</> : null}</>,
+    children: (link.effect.primitiveLinks ?? []).map((primitiveLink) => ({
+      id: String(primitiveLink.primitive.id),
+      name: primitiveLink.primitive.name,
+      kind: "primitive",
+      targetType: "PRIMITIVE",
+      bu: Math.abs(primitiveLink.primitive.buCost * primitiveLink.quantity),
+      meta: <>{primitiveLink.primitive.category}{primitiveLink.quantity > 1 ? ` · ×${primitiveLink.quantity}` : ""}</>,
     })),
-  );
+  }));
   return (
     <div className="v12-composite-preview-body space-y-4">
       <div className="v12-composite-preview-primary">
@@ -1048,55 +1155,7 @@ function CapabilityBody({
           ),
         }))}
         />
-      {/* Phase 8.1 batch 13.2: NEW section. Primitives that come in
-          via the capability's effects. Each row tagged with the
-          effect it came from so the player can trace the chain. */}
-      {effectPrimitiveLinks.length > 0 ? (
-          <ComposedList
-          title={`Primitives from effects (${effectPrimitiveLinks.length})`}
-          onSubLink={onSubLink}
-          items={effectPrimitiveLinks.map((pl) => ({
-            id: String(pl.primitive.id),
-            name: pl.primitive.name,
-            bu: Math.abs(pl.primitive.buCost * pl.quantity),
-            entityKind: "primitive" as const,
-            subText: (
-              <>
-                <span>{pl.primitive.category}</span>
-                {pl.quantity > 1 ? <span>× {pl.quantity}</span> : null}
-                <span className="rounded bg-primary/15 px-1.5 py-0.5 font-medium text-primary">
-                  via effect: {pl.effectName}
-                </span>
-              </>
-            ),
-          }))}
-          />
-      ) : null}
-        <ComposedList
-        title={`Composed effects (${row.effectLinks.length})`}
-        onSubLink={onSubLink}
-        items={row.effectLinks.map((l) => ({
-          id: l.effectId,
-          name: l.effect.name,
-          bu: (l.effect.primitiveLinks ?? []).reduce((s, x) => s + Math.abs(x.primitive.buCost * x.quantity), 0),
-          versionNumber: l.versionNumber,
-          entityKind: "effect" as const,
-          note: l.effect.narrativeDescription ?? null,
-          subText: (
-            <>
-              <span>{(l.effect.primitiveLinks ?? []).length} primitives</span>
-              {l.slotLabel ? <span className="italic">&ldquo;{l.slotLabel}&rdquo;</span> : null}
-            </>
-          ),
-          // Phase 8.1 batch 13.4 follow-up: open the effect preview
-          // when the user clicks this row. The default (PRIMITIVE)
-          // routes the click to the wrong endpoint. Mashu 2026-07-22:
-          // "now capabilities view doesn't open effects anymore in
-          // new modal." Regressed when batch 13.1 follow-up added
-          // per-item targetType but missed the CapabilityBody case.
-          targetType: "EFFECT" as const,
-        }))}
-        />
+        <CompositionTree title="Composed effects" nodes={effectNodes} onSubLink={onSubLink} />
       </div>
     </div>
   );
@@ -1137,33 +1196,45 @@ function TemplateBody({
     })),
   });
   const primitiveBu = Math.abs(transitiveResult.transitiveBu);
-  // Collect every primitive inherited through a bundled capability,
-  // including primitives nested one level deeper inside its effects.
-  const capabilityPrimitiveLinks = row.capabilityLinks.flatMap((cl) =>
-    (cl.capability.primitiveLinks ?? []).map((pl) => ({
-      primitiveId: pl.primitiveId,
-      quantity: 1,
-      primitive: pl.primitive,
-      source: `via capability: ${cl.capability.name}`,
-    })),
-  );
-  const capabilityEffectPrimitiveLinks = row.capabilityLinks.flatMap((cl) =>
-    (cl.capability.effectLinks ?? []).flatMap((effectLink) =>
-      (effectLink.primitiveLinks ?? []).map((pl) => ({
-        primitiveId: pl.primitiveId,
-        quantity: 1,
-        primitive: pl.primitive,
-        source: `via capability: ${cl.capability.name} › effect: ${effectLink.effect.name}`,
-      })),
-    ),
-  );
-  const inheritedPrimitiveLinks = [...capabilityPrimitiveLinks, ...capabilityEffectPrimitiveLinks];
-  const inheritedEffectLinks = row.capabilityLinks.flatMap((cl) =>
-    (cl.capability.effectLinks ?? []).map((effectLink) => ({
-      ...effectLink,
-      capabilityName: cl.capability.name,
-    })),
-  );
+  const capabilityNodes: CompositionNode[] = row.capabilityLinks.map((link) => {
+    const capabilityEffects = link.capability.effectLinks ?? [];
+    const directPrimitives = link.capability.primitiveLinks ?? [];
+    return {
+      id: link.capability.id,
+      name: link.capability.name,
+      kind: "capability",
+      targetType: "CAPABILITY",
+      bu: Math.abs(computeTransitiveBu({ primitiveLinks: directPrimitives, effectLinks: capabilityEffects }).transitiveBu),
+      versionNumber: link.versionNumber,
+      meta: <>{link.capability.type} · {capabilityEffects.length} effects · {directPrimitives.length} direct primitives</>,
+      children: [
+        ...directPrimitives.map((primitiveLink): CompositionNode => ({
+          id: String(primitiveLink.primitive.id),
+          name: primitiveLink.primitive.name,
+          kind: "primitive",
+          targetType: "PRIMITIVE",
+          bu: Math.abs(primitiveLink.primitive.buCost),
+          meta: <>{primitiveLink.primitive.category} · direct</>,
+        })),
+        ...capabilityEffects.map((effectLink): CompositionNode => ({
+          id: effectLink.effectId,
+          name: effectLink.effect.name,
+          kind: "effect",
+          targetType: "EFFECT",
+          bu: Math.abs((effectLink.primitiveLinks ?? []).reduce((sum, primitiveLink) => sum + primitiveLink.primitive.buCost, 0)),
+          meta: <>{(effectLink.primitiveLinks ?? []).length} primitives</>,
+          children: (effectLink.primitiveLinks ?? []).map((primitiveLink): CompositionNode => ({
+            id: String(primitiveLink.primitive.id),
+            name: primitiveLink.primitive.name,
+            kind: "primitive",
+            targetType: "PRIMITIVE",
+            bu: Math.abs(primitiveLink.primitive.buCost),
+            meta: primitiveLink.primitive.category,
+          })),
+        })),
+      ],
+    };
+  });
   return (
     <div className="v12-composite-preview-body space-y-4">
       <div className="v12-composite-preview-primary">
@@ -1194,35 +1265,9 @@ function TemplateBody({
         ) : null}
       </div>
       <div className="v12-composite-preview-secondary">
+      <CompositionTree title="Bundled capabilities" nodes={capabilityNodes} onSubLink={onSubLink} />
       <ComposedList
-        title={`Bundled capabilities (${row.capabilityLinks.length})`}
-        onSubLink={onSubLink}
-        items={row.capabilityLinks.map((l) => ({
-          id: l.capability.id,
-          name: l.capability.name,
-          bu: Math.abs(computeTransitiveBu({ primitiveLinks: l.capability.primitiveLinks ?? [], effectLinks: l.capability.effectLinks ?? [] }).transitiveBu),
-          versionNumber: l.versionNumber,
-          entityKind: "capability" as const,
-          subText: <span>{l.capability.type} · {(l.capability.effectLinks ?? []).length} effects · {(l.capability.primitiveLinks ?? []).length} direct primitives</span>,
-          targetType: "CAPABILITY" as const,
-        }))}
-      />
-      {inheritedEffectLinks.length > 0 ? (
-        <ComposedList
-          title={`Effects from capabilities (${inheritedEffectLinks.length})`}
-          onSubLink={onSubLink}
-          items={inheritedEffectLinks.map((link) => ({
-            id: link.effectId,
-            name: link.effect.name,
-            bu: Math.abs((link.primitiveLinks ?? []).reduce((sum, primitiveLink) => sum + primitiveLink.primitive.buCost, 0)),
-            entityKind: "effect" as const,
-            subText: <span>{(link.primitiveLinks ?? []).length} primitives · via capability: {link.capabilityName}</span>,
-            targetType: "EFFECT" as const,
-          }))}
-        />
-      ) : null}
-      <ComposedList
-        title={`Bundled primitives (${row.primitiveLinks.length})`}
+        title={`Direct primitives (${row.primitiveLinks.length})`}
         onSubLink={onSubLink}
         items={row.primitiveLinks.map((l) => ({
           id: String(l.primitive.id),
@@ -1237,30 +1282,6 @@ function TemplateBody({
           ),
         }))}
       />
-      {/* Each inherited primitive keeps its source path visible so the
-          player can distinguish direct capability pieces from pieces
-          contributed by an effect inside that capability. */}
-      {inheritedPrimitiveLinks.length > 0 ? (
-        <ComposedList
-          title={`Primitives from capabilities (${inheritedPrimitiveLinks.length})`}
-          onSubLink={onSubLink}
-          items={inheritedPrimitiveLinks.map((pl) => ({
-            id: String(pl.primitive.id),
-            name: pl.primitive.name,
-            bu: Math.abs(pl.primitive.buCost * pl.quantity),
-            entityKind: "primitive" as const,
-            subText: (
-              <>
-                <span>{pl.primitive.category}</span>
-                {pl.quantity > 1 ? <span>× {pl.quantity}</span> : null}
-                <span className="rounded bg-primary/15 px-1.5 py-0.5 font-medium text-primary">
-                  {pl.source}
-                </span>
-              </>
-            ),
-          }))}
-        />
-      ) : null}
       </div>
     </div>
   );
@@ -1294,28 +1315,63 @@ function ItemBody({
     })),
   });
   const totalBu = row.buCost + Math.abs(transitive.transitiveBu);
-  const inheritedPrimitiveLinks = [
-    ...row.effectLinks.flatMap((effectLink) =>
-      (effectLink.effect.primitiveLinks ?? []).map((link) => ({
-        ...link,
-        source: `via effect: ${effectLink.effect.name}`,
-      })),
-    ),
-    ...row.capabilityLinks.flatMap((capabilityLink) => [
-      ...(capabilityLink.capability.primitiveLinks ?? []).map((link) => ({
-        ...link,
-        quantity: 1,
-        source: `via capability: ${capabilityLink.capability.name}`,
-      })),
-      ...(capabilityLink.capability.effectLinks ?? []).flatMap((effectLink) =>
-        (effectLink.primitiveLinks ?? []).map((link) => ({
-          ...link,
-          quantity: 1,
-          source: `via capability: ${capabilityLink.capability.name} › effect: ${effectLink.effect.name}`,
+  const capabilityNodes: CompositionNode[] = row.capabilityLinks.map((link) => {
+    const effects = link.capability.effectLinks ?? [];
+    const directPrimitives = link.capability.primitiveLinks ?? [];
+    return {
+      id: link.capabilityId,
+      name: link.capability.name,
+      kind: "capability",
+      targetType: "CAPABILITY",
+      bu: Math.abs(computeTransitiveBu({ primitiveLinks: directPrimitives, effectLinks: effects }).transitiveBu),
+      versionNumber: link.versionNumber,
+      meta: <>{link.capability.type} · {effects.length} effects · {directPrimitives.length} direct primitives</>,
+      children: [
+        ...directPrimitives.map((primitiveLink): CompositionNode => ({
+          id: String(primitiveLink.primitive.id),
+          name: primitiveLink.primitive.name,
+          kind: "primitive",
+          targetType: "PRIMITIVE",
+          bu: Math.abs(primitiveLink.primitive.buCost),
+          meta: <>{primitiveLink.primitive.category} · direct</>,
         })),
-      ),
-    ]),
-  ];
+        ...effects.map((effectLink): CompositionNode => ({
+          id: effectLink.effectId,
+          name: effectLink.effect.name,
+          kind: "effect",
+          targetType: "EFFECT",
+          bu: Math.abs((effectLink.primitiveLinks ?? []).reduce((sum, primitiveLink) => sum + primitiveLink.primitive.buCost, 0)),
+          meta: <>{(effectLink.primitiveLinks ?? []).length} primitives</>,
+          children: (effectLink.primitiveLinks ?? []).map((primitiveLink): CompositionNode => ({
+            id: String(primitiveLink.primitive.id),
+            name: primitiveLink.primitive.name,
+            kind: "primitive",
+            targetType: "PRIMITIVE",
+            bu: Math.abs(primitiveLink.primitive.buCost),
+            meta: primitiveLink.primitive.category,
+          })),
+        })),
+      ],
+    };
+  });
+  const effectNodes: CompositionNode[] = row.effectLinks.map((link) => ({
+    id: link.effectId,
+    name: link.effect.name,
+    kind: "effect",
+    targetType: "EFFECT",
+    bu: (link.effect.primitiveLinks ?? []).reduce((sum, primitiveLink) => sum + Math.abs(primitiveLink.primitive.buCost * primitiveLink.quantity), 0),
+    versionNumber: link.versionNumber,
+    note: link.effect.narrativeDescription ?? null,
+    meta: <>{(link.effect.primitiveLinks ?? []).length} primitives{link.slotLabel ? <> · &ldquo;{link.slotLabel}&rdquo;</> : null}</>,
+    children: (link.effect.primitiveLinks ?? []).map((primitiveLink) => ({
+      id: String(primitiveLink.primitive.id),
+      name: primitiveLink.primitive.name,
+      kind: "primitive",
+      targetType: "PRIMITIVE",
+      bu: Math.abs(primitiveLink.primitive.buCost * primitiveLink.quantity),
+      meta: <>{primitiveLink.primitive.category}{primitiveLink.quantity > 1 ? ` · ×${primitiveLink.quantity}` : ""}</>,
+    })),
+  }));
   return (
     <div className="v12-composite-preview-body space-y-4">
       <div className="v12-composite-preview-primary">
@@ -1372,35 +1428,10 @@ function ItemBody({
         ) : null}
       </div>
       <div className="v12-composite-preview-secondary">
+      <CompositionTree title="Bundled capabilities" nodes={capabilityNodes} onSubLink={onSubLink} />
+      <CompositionTree title="Bundled effects" nodes={effectNodes} onSubLink={onSubLink} />
       <ComposedList
-        title={`Composed capabilities (${row.capabilityLinks.length})`}
-        onSubLink={onSubLink}
-        items={row.capabilityLinks.map((l) => ({
-          id: l.capabilityId,
-          name: l.capability.name,
-          bu: Math.abs(computeTransitiveBu({ primitiveLinks: l.capability.primitiveLinks ?? [], effectLinks: l.capability.effectLinks ?? [] }).transitiveBu),
-          versionNumber: l.versionNumber,
-          entityKind: "capability" as const,
-          subText: <span>{l.capability.type} · {(l.capability.effectLinks ?? []).length} effects · {(l.capability.primitiveLinks ?? []).length} direct primitives</span>,
-          targetType: "CAPABILITY" as const,
-        }))}
-      />
-      <ComposedList
-        title={`Composed effects (${row.effectLinks.length})`}
-        onSubLink={onSubLink}
-        items={row.effectLinks.map((l) => ({
-          id: l.effectId,
-          name: l.effect.name,
-          bu: (l.effect.primitiveLinks ?? []).reduce((s, x) => s + Math.abs(x.primitive.buCost * x.quantity), 0),
-          versionNumber: l.versionNumber,
-          entityKind: "effect" as const,
-          note: l.effect.narrativeDescription ?? null,
-          subText: <span>{(l.effect.primitiveLinks ?? []).length} primitives</span>,
-          targetType: "EFFECT" as const,
-        }))}
-      />
-      <ComposedList
-        title={`Item-augment primitives (${row.primitiveLinks.length})`}
+        title={`Direct primitives (${row.primitiveLinks.length})`}
         onSubLink={onSubLink}
         items={row.primitiveLinks.map((l) => ({
           id: String(l.primitive.id),
@@ -1410,23 +1441,6 @@ function ItemBody({
           entityKind: "primitive" as const,
         }))}
       />
-      {inheritedPrimitiveLinks.length > 0 ? (
-        <ComposedList
-          title={`Inherited primitives (${inheritedPrimitiveLinks.length})`}
-          onSubLink={onSubLink}
-          items={inheritedPrimitiveLinks.map((link) => ({
-            id: String(link.primitive.id),
-            name: link.primitive.name,
-            bu: Math.abs(link.primitive.buCost * link.quantity),
-            entityKind: "primitive" as const,
-            subText: (
-              <span className="rounded bg-primary/15 px-1.5 py-0.5 font-medium text-primary">
-                {link.source}
-              </span>
-            ),
-          }))}
-        />
-      ) : null}
       </div>
     </div>
   );
