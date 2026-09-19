@@ -231,14 +231,14 @@ export function ItemCapabilityToggle({
   ]);
 
   return (
-    <div className="flex shrink-0 flex-col items-end gap-1.5">
+    <div className="v12-item-capability-actions flex shrink-0 flex-wrap items-center justify-end gap-1">
       <button
         type="button"
         onClick={handleToggle}
         disabled={toggling}
         aria-pressed={active}
         className={cn(
-          "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-medium transition-colors disabled:opacity-50",
+          "inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-medium transition-colors disabled:opacity-50",
           active
             ? "border-primary bg-primary/10 text-primary"
             : "border-border bg-background hover:bg-secondary",
@@ -256,7 +256,7 @@ export function ItemCapabilityToggle({
         type="button"
         onClick={handleTrigger}
         disabled={triggerPending}
-        className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-[10px] font-medium transition-colors hover:bg-secondary disabled:opacity-50"
+        className="inline-flex items-center gap-1 rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-medium transition-colors hover:bg-secondary disabled:opacity-50"
         title="Trigger (one-shot fire-and-revert)"
       >
         {triggerPending ? (

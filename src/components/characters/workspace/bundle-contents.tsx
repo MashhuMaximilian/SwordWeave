@@ -70,7 +70,6 @@ export function BundleContents({
                 : `v12-expression-rule${mirrored ? " is-mirrored" : ""}`
             }
           >
-            {child.kind !== "primitive" && <div className="v12-expression-heading"><p className="v12-kicker">{child.kind}{child.kind !== "effect" && typeof child.data["type"] === "string" ? ` · ${child.data["type"]}` : ""}</p><span className="v12-tag">{bundleBu(graph, child.key)} BU</span></div>}
             {child.kind === "primitive" ? <div className="v12-bundled-primitive-title">
               <span className="v12-workspace-version">{versionLabel}</span>
               <button
@@ -80,33 +79,50 @@ export function BundleContents({
                 {child.name}
               </button>
               <span className="v12-workspace-kind">Primitive</span>
-            </div> : child.kind === "effect" ? <div className="v12-effect-title-row">
-              <button
-                className="min-w-0 text-left text-primary hover:underline"
-                onClick={() => onOpen(edge, ancestors)}
-              >
-                {child.name}
-              </button>
-              {characterId && mode === "PLAY" && <button
-                className="v12-effect-toggle"
-                aria-pressed={!effectIsOff?.(child.id)}
-                onClick={() => onToggleEffect?.(child.id)}
-              >
-                {effectIsOff?.(child.id) ? "Inactive" : "Active"}
-              </button>}
-            </div> : <button
-              className="py-1 text-left text-primary hover:underline"
-              onClick={() => onOpen(edge, ancestors)}
-            >
-              {child.name}{" "}
-              <span className="ml-2 text-xs text-muted-foreground">{child.kind}</span>
-            </button>}
+            </div> : child.kind === "effect" ? <header className="v12-expression-entity-header v12-effect-title-row">
+              <div className="v12-expression-identity">
+                <span className="v12-workspace-version">{versionLabel}</span>
+                <button
+                  className="min-w-0 text-left text-primary hover:underline"
+                  onClick={() => onOpen(edge, ancestors)}
+                >
+                  {child.name}
+                </button>
+              </div>
+              <div className="v12-expression-meta">
+                <span className="v12-workspace-kind">Effect</span>
+                <span className="v12-tag">{bundleBu(graph, child.key)} BU</span>
+                {characterId && mode === "PLAY" && <button
+                  className="v12-effect-toggle"
+                  aria-pressed={!effectIsOff?.(child.id)}
+                  onClick={() => onToggleEffect?.(child.id)}
+                >
+                  {effectIsOff?.(child.id) ? "Inactive" : "Active"}
+                </button>}
+              </div>
+            </header> : <header className="v12-expression-entity-header v12-capability-title-row">
+              <div className="v12-expression-identity">
+                <span className="v12-workspace-version">{versionLabel}</span>
+                <button
+                  className="min-w-0 text-left text-primary hover:underline"
+                  onClick={() => onOpen(edge, ancestors)}
+                >
+                  {child.name}
+                </button>
+              </div>
+              <div className="v12-expression-meta">
+                <span className="v12-workspace-kind">
+                  {child.kind}{typeof child.data["type"] === "string" ? ` · ${child.data["type"]}` : ""}
+                </span>
+                <span className="v12-tag">{bundleBu(graph, child.key)} BU</span>
+                {characterId && mode === "PLAY" && <CapabilityCard characterId={characterId} actionsOnly showPrimitives={false} showPreviewButton={false} capability={{ id: child.id, name: child.name, type: String(child.data["type"] ?? "Capability"), sourceType: String(child.data["sourceType"] ?? "Character"), acquiredAtLevel: Number(edge.data?.["acquiredAtLevel"] ?? 1), versionId: child.versionId, latestVersionId: child.latestVersionId, slotSource: null, verboseDescription: child.description, effectLinks: effects }} />}
+              </div>
+            </header>}
             {child.kind === "primitive" && edge.isMirrored && <div className="v12-rule-provenance" aria-label={`${child.name} supply state`}>
               {edge.isMirrored && <span className="is-mirrored v12-mirrored-label">Mirrored</span>}
             </div>}
             {child.kind === "primitive" && ruleText(child, mirrored) && ruleText(child, mirrored) !== child.description && <p className="v12-rule-text v12-rule-output">{ruleText(child, mirrored)}</p>}
             {child.description && child.description !== "null" && <Markdown copyRole="narrative" className={child.kind === "primitive" ? "v12-rule-text v12-rule-description" : "v12-expression-description"}>{child.description}</Markdown>}
-            {child.kind === "capability" && characterId && mode === "PLAY" && <CapabilityCard characterId={characterId} actionsOnly showPrimitives={false} showPreviewButton={false} capability={{ id: child.id, name: child.name, type: String(child.data["type"] ?? "Capability"), sourceType: String(child.data["sourceType"] ?? "Character"), acquiredAtLevel: Number(edge.data?.["acquiredAtLevel"] ?? 1), versionId: child.versionId, latestVersionId: child.latestVersionId, slotSource: null, verboseDescription: child.description, effectLinks: effects }} />}
             {child.kind === "capability" && <div className="v12-expression-recipe" aria-label={`${child.name} recipe`}>
               {graph.edges.filter(piece => piece.parent === child.key).sort((a,b)=>a.order-b.order).map(piece => {
                 const ingredient=graph.nodes.find(candidate=>candidate.key===piece.child);

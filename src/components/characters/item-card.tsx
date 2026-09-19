@@ -593,29 +593,49 @@ export function ItemCard({
                       <article key={cl.capabilityId} className="v12-expression-piece" data-expression-kind="capability">
                         <div className="v12-expression-heading">
                           <p className="v12-kicker">Capability · {cl.capability.type}</p>
-                          <SlotSourceBadge
-                            slotSource="PINNED"
-                            versionId={latestVersions?.get(makeVersionKey("capability", cl.capability.id)) ?? null}
-                            latestVersionId={null}
-                            targetType="CAPABILITY"
-                            targetId={cl.capability.id}
-                          />
                         </div>
                         <div className="v12-item-composition-title">
-                          <button type="button" onClick={() => openCapabilityPreview(cl.capabilityId)}>{cl.capability.name}</button>
+                          <div className="v12-item-composition-title-copy">
+                            <button type="button" onClick={() => openCapabilityPreview(cl.capabilityId)}>{cl.capability.name}</button>
+                            <SlotSourceBadge
+                              slotSource="PINNED"
+                              versionId={latestVersions?.get(makeVersionKey("capability", cl.capability.id)) ?? null}
+                              latestVersionId={null}
+                              targetType="CAPABILITY"
+                              targetId={cl.capability.id}
+                            />
+                          </div>
                           <ItemCapabilityToggle itemId={item.id} characterId={characterId} capability={cl.capability} />
                         </div>
                         {cl.capability.verboseDescription && <Markdown copyRole="narrative" className="v12-expression-description line-clamp-2">{cl.capability.verboseDescription}</Markdown>}
                         {cl.capability.effectLinks.length > 0 && (
-                          <div className="v12-compact-effects">
-                            <p>Effects ({cl.capability.effectLinks.length})</p>
-                            {cl.capability.effectLinks.map((link) => (
-                              <button key={link.effectId} type="button" className="v12-compact-effect-row" onClick={() => openEffectPreview(link.effectId)}>
-                                <span>{link.effect.name}</span>
-                                <span>Effect</span>
-                                {link.effect.description && <Markdown copyRole="narrative" className="line-clamp-1">{link.effect.description}</Markdown>}
-                              </button>
-                            ))}
+                          <div className="v12-bundle-contents v12-item-capability-composition">
+                            <div className="v12-expression-direct">
+                              <header>
+                                <p className="v12-kicker">Effects</p>
+                                <span className="v12-tag">{cl.capability.effectLinks.length}</span>
+                              </header>
+                              <div className="v12-item-nested-effects">
+                                {cl.capability.effectLinks.map((link) => (
+                                  <article key={link.effectId} className="v12-expression-piece" data-expression-kind="effect">
+                                    <div className="v12-expression-heading">
+                                      <p className="v12-kicker">Effect</p>
+                                    </div>
+                                    <div className="v12-effect-title-row">
+                                      <button type="button" onClick={() => openEffectPreview(link.effectId)}>{link.effect.name}</button>
+                                      <SlotSourceBadge
+                                        slotSource="PINNED"
+                                        versionId={latestVersions?.get(makeVersionKey("effect", link.effectId)) ?? null}
+                                        latestVersionId={null}
+                                        targetType="EFFECT"
+                                        targetId={link.effectId}
+                                      />
+                                    </div>
+                                    {link.effect.description && <Markdown copyRole="narrative" className="v12-expression-description line-clamp-2">{link.effect.description}</Markdown>}
+                                  </article>
+                                ))}
+                              </div>
+                            </div>
                           </div>
                         )}
                       </article>
@@ -631,9 +651,11 @@ export function ItemCard({
                       <article key={el.effectId} className="v12-expression-piece" data-expression-kind="effect">
                         <div className="v12-expression-heading">
                           <p className="v12-kicker">Effect</p>
+                        </div>
+                        <div className="v12-effect-title-row">
+                          <button type="button" className="v12-item-composition-name" onClick={() => openEffectPreview(el.effectId)}>{el.effect.name}</button>
                           <SlotSourceBadge slotSource="PINNED" versionId={latestVersions?.get(makeVersionKey("effect", el.effectId)) ?? null} latestVersionId={null} targetType="EFFECT" targetId={el.effectId} />
                         </div>
-                        <button type="button" className="v12-item-composition-name" onClick={() => openEffectPreview(el.effectId)}>{el.effect.name}</button>
                         {el.effect.description && <Markdown copyRole="narrative" className="v12-expression-description line-clamp-2">{el.effect.description}</Markdown>}
                       </article>
                     ))}

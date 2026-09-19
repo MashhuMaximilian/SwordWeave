@@ -192,6 +192,7 @@ function ComposedList({
     meta?: ReactNode;
     bu: number;
     versionNumber?: number | null | undefined;
+    entityKind?: "primitive" | "effect" | "capability" | "item";
     subText?: ReactNode;
     note?: string | null;
     // Phase 8.1 batch 13.2 follow-up: per-item targetType so the
@@ -244,12 +245,19 @@ function ComposedList({
                 : undefined
             }
             className={`v12-composed-ledger-row${onSubLink ? " is-actionable" : ""}`}
+            data-entity-kind={it.entityKind ?? "primitive"}
+            aria-label={onSubLink ? `Preview ${it.entityKind ?? "primitive"}: ${it.name}` : undefined}
           >
             <div className="v12-composed-ledger-index" aria-hidden="true">
-              <VersionChip versionNumber={it.versionNumber} />
+              <span className="font-mono text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
+                {(it.entityKind ?? "primitive").slice(0, 3)}
+              </span>
             </div>
             <div className="v12-composed-ledger-copy">
-              <span className="v12-composed-ledger-name">{it.name}</span>
+              <div className="v12-composed-ledger-titleline flex min-w-0 items-center gap-1.5">
+                <span className="v12-composed-ledger-name min-w-0 flex-1">{it.name}</span>
+                <VersionChip versionNumber={it.versionNumber} />
+              </div>
               {it.note ? <Markdown copyRole="mechanical" className="v12-composed-ledger-rule line-clamp-2">{it.note}</Markdown> : null}
               {it.subText ? <div className="v12-composed-ledger-source">{it.subText}</div> : null}
             </div>
@@ -933,6 +941,7 @@ function EffectBody({
           name: l.primitive.name,
           bu: Math.abs(l.primitive.buCost * l.quantity),
           versionNumber: l.versionNumber,
+          entityKind: "primitive" as const,
           subText: <span>{l.primitive.category}{l.quantity > 1 ? ` ×${l.quantity}` : ""}</span>,
         }))}
       /></div>
@@ -1027,6 +1036,7 @@ function CapabilityBody({
           name: l.primitive.name,
           bu: Math.abs(l.primitive.buCost * l.quantity),
           versionNumber: l.versionNumber,
+          entityKind: "primitive" as const,
           subText: (
             <>
               <span>{l.primitive.category}</span>
@@ -1049,6 +1059,7 @@ function CapabilityBody({
             id: String(pl.primitive.id),
             name: pl.primitive.name,
             bu: Math.abs(pl.primitive.buCost * pl.quantity),
+            entityKind: "primitive" as const,
             subText: (
               <>
                 <span>{pl.primitive.category}</span>
@@ -1069,8 +1080,14 @@ function CapabilityBody({
           name: l.effect.name,
           bu: (l.effect.primitiveLinks ?? []).reduce((s, x) => s + Math.abs(x.primitive.buCost * x.quantity), 0),
           versionNumber: l.versionNumber,
+          entityKind: "effect" as const,
           note: l.effect.narrativeDescription ?? null,
-          subText: l.slotLabel ? <span className="italic">&ldquo;{l.slotLabel}&rdquo;</span> : undefined,
+          subText: (
+            <>
+              <span>{(l.effect.primitiveLinks ?? []).length} primitives</span>
+              {l.slotLabel ? <span className="italic">&ldquo;{l.slotLabel}&rdquo;</span> : null}
+            </>
+          ),
           // Phase 8.1 batch 13.4 follow-up: open the effect preview
           // when the user clicks this row. The default (PRIMITIVE)
           // routes the click to the wrong endpoint. Mashu 2026-07-22:
@@ -1185,7 +1202,8 @@ function TemplateBody({
           name: l.capability.name,
           bu: Math.abs(computeTransitiveBu({ primitiveLinks: l.capability.primitiveLinks ?? [], effectLinks: l.capability.effectLinks ?? [] }).transitiveBu),
           versionNumber: l.versionNumber,
-          subText: <span>{(l.capability.effectLinks ?? []).length} effects · {(l.capability.primitiveLinks ?? []).length} direct primitives</span>,
+          entityKind: "capability" as const,
+          subText: <span>{l.capability.type} · {(l.capability.effectLinks ?? []).length} effects · {(l.capability.primitiveLinks ?? []).length} direct primitives</span>,
           targetType: "CAPABILITY" as const,
         }))}
       />
@@ -1197,7 +1215,8 @@ function TemplateBody({
             id: link.effectId,
             name: link.effect.name,
             bu: Math.abs((link.primitiveLinks ?? []).reduce((sum, primitiveLink) => sum + primitiveLink.primitive.buCost, 0)),
-            subText: <span>via capability: {link.capabilityName}</span>,
+            entityKind: "effect" as const,
+            subText: <span>{(link.primitiveLinks ?? []).length} primitives · via capability: {link.capabilityName}</span>,
             targetType: "EFFECT" as const,
           }))}
         />
@@ -1210,6 +1229,7 @@ function TemplateBody({
           name: l.primitive.name,
           bu: l.primitive.buCost,
           versionNumber: l.versionNumber,
+          entityKind: "primitive" as const,
           subText: (
             <span className="rounded bg-primary/15 px-1.5 py-0.5 font-medium text-primary">
               direct
@@ -1228,6 +1248,7 @@ function TemplateBody({
             id: String(pl.primitive.id),
             name: pl.primitive.name,
             bu: Math.abs(pl.primitive.buCost * pl.quantity),
+            entityKind: "primitive" as const,
             subText: (
               <>
                 <span>{pl.primitive.category}</span>
@@ -1359,7 +1380,8 @@ function ItemBody({
           name: l.capability.name,
           bu: Math.abs(computeTransitiveBu({ primitiveLinks: l.capability.primitiveLinks ?? [], effectLinks: l.capability.effectLinks ?? [] }).transitiveBu),
           versionNumber: l.versionNumber,
-          subText: <span>{(l.capability.effectLinks ?? []).length} effects · {(l.capability.primitiveLinks ?? []).length} direct primitives</span>,
+          entityKind: "capability" as const,
+          subText: <span>{l.capability.type} · {(l.capability.effectLinks ?? []).length} effects · {(l.capability.primitiveLinks ?? []).length} direct primitives</span>,
           targetType: "CAPABILITY" as const,
         }))}
       />
@@ -1371,7 +1393,9 @@ function ItemBody({
           name: l.effect.name,
           bu: (l.effect.primitiveLinks ?? []).reduce((s, x) => s + Math.abs(x.primitive.buCost * x.quantity), 0),
           versionNumber: l.versionNumber,
+          entityKind: "effect" as const,
           note: l.effect.narrativeDescription ?? null,
+          subText: <span>{(l.effect.primitiveLinks ?? []).length} primitives</span>,
           targetType: "EFFECT" as const,
         }))}
       />
@@ -1383,6 +1407,7 @@ function ItemBody({
           name: l.primitive.name,
           bu: l.primitive.buCost,
           versionNumber: l.versionNumber,
+          entityKind: "primitive" as const,
         }))}
       />
       {inheritedPrimitiveLinks.length > 0 ? (
@@ -1393,6 +1418,7 @@ function ItemBody({
             id: String(link.primitive.id),
             name: link.primitive.name,
             bu: Math.abs(link.primitive.buCost * link.quantity),
+            entityKind: "primitive" as const,
             subText: (
               <span className="rounded bg-primary/15 px-1.5 py-0.5 font-medium text-primary">
                 {link.source}
