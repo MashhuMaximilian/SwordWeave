@@ -1,5 +1,7 @@
 # SwordWeave Design Notes
 
+The authoritative production visual contract is [SwordWeave aesthetic system](design/swordweave-aesthetic-system.md). Historical mockup notes remain useful as research, but they do not override that contract.
+
 ## Primitive Market Revision - Mirror Vectors
 
 Source: `BU_Market_of_Primitive_components__Complete_System.pdf`, revised July 3, 2026.
