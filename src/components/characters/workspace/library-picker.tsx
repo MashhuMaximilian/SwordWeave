@@ -6,14 +6,17 @@ import { loadEntityPreview, previewKind } from "./workspace-entity-preview";
 import { WorkspaceSurface } from "./workspace-surface";
 import type { EntityKind, EntityKey } from "@/lib/character/workspace/model";
 import type { LibraryItem } from "@/lib/publishing/library-query";
+import { Markdown } from "@/components/ui/markdown";
 export function WorkspaceLibraryPicker({
   kinds,
   category,
   onSelect,
+  destinationLabel = "character",
 }: {
   kinds: EntityKind[];
   category: string;
   onSelect: (key: EntityKey, name: string, heritageType?: string) => void;
+  destinationLabel?: string;
 }) {
   const [previewPath, setPreviewPath] = useState<SandboxPreviewItem[]>([]);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -129,6 +132,21 @@ export function WorkspaceLibraryPicker({
               Back to {previewPath.at(-2)!.row.name}
             </button>
           )}
+          {previewPath.length === 1 && (
+            <div className="v12-library-preview-command">
+              <div><span>Ready to place</span><strong>{previewPath[0]!.row.name}</strong></div>
+              <button
+                type="button"
+                onClick={() => {
+                  const p = previewPath[0]!;
+                  onSelect(`${p.kind}:${p.row.id}`, p.row.name, p.kind === "heritage" ? p.row.kind : undefined);
+                  setPreviewPath([]);
+                }}
+              >
+                Add to {destinationLabel}
+              </button>
+            </div>
+          )}
           <EntityPreview
             item={previewPath.at(-1)!}
             callbacks={{
@@ -140,53 +158,25 @@ export function WorkspaceLibraryPicker({
                 ),
             }}
           />
-          {previewPath.length === 1 && (
-            <button
-              className="mt-3 rounded bg-primary px-4 py-2 text-primary-foreground"
-              onClick={() => {
-                const p = previewPath[0]!;
-                onSelect(
-                  `${p.kind}:${p.row.id}`,
-                  p.row.name,
-                  p.kind === "heritage" ? p.row.kind : undefined,
-                );
-                setPreviewPath([]);
-              }}
-            >
-              + Add {previewPath[0]!.row.name}
-            </button>
-          )}
         </WorkspaceSurface>
       )}
-      <ul className="v12-workspace-library-results max-h-72 space-y-2 overflow-y-auto">
+      <ul className="v12-workspace-library-results">
         {items.map((item) => (
           <li
             key={item.id}
-            className="v12-workspace-library-row flex flex-wrap items-center gap-2 rounded border border-border p-3"
+            className="v12-workspace-library-row"
           >
-            <span className="min-w-0 flex-1 font-medium">{item.name}</span>
-            <span className="text-xs">{item.buCost ?? 0} BU</span>
-            <button
-              type="button"
-              className="rounded border border-border px-3 py-2 text-sm hover:bg-secondary"
-              disabled={previewLoading}
-              onClick={() => void openPreview(kind, String(item.targetId))}
-            >
-              Preview<span className="sr-only"> {item.name}</span>
-            </button>
-            <button
-              type="button"
-              className="rounded border border-primary bg-primary/15 px-3 py-2 text-sm text-primary"
-              onClick={() =>
-                onSelect(
-                  `${kind}:${item.targetId}`,
-                  item.name,
-                  kind === "heritage" ? heritageType : undefined,
-                )
-              }
-            >
-              + Add<span className="sr-only"> {item.name}</span>
-            </button>
+            <header>
+              <span className="v12-workspace-version">v{item.versionNumber ?? 1}</span>
+              <div><small>{item.category?.replaceAll("_", " ") ?? kind}</small><strong>{item.name}</strong></div>
+              <b>{item.buCost ?? 0} BU</b>
+            </header>
+            {item.mechanicalDescription && <p className="v12-library-row-mechanic">{item.mechanicalDescription}</p>}
+            {(item.verboseDescription || item.description) && <Markdown className="v12-library-row-description line-clamp-2">{item.verboseDescription || item.description || ""}</Markdown>}
+            <footer>
+              <button type="button" disabled={previewLoading} onClick={() => void openPreview(kind, String(item.targetId))}>Inspect</button>
+              <button type="button" className="is-primary" onClick={() => onSelect(`${kind}:${item.targetId}`, item.name, kind === "heritage" ? heritageType : undefined)}>Add to {destinationLabel}</button>
+            </footer>
           </li>
         ))}
       </ul>

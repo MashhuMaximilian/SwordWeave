@@ -405,6 +405,7 @@ export function EntityComposer({
         <WorkspaceLibraryPicker
           kinds={kinds}
           category={category}
+          destinationLabel={node?.name ?? `this ${kind}`}
           onSelect={(key, name) => {
             void choose(key, name).catch((cause) => setError(cause instanceof Error ? cause.message : "Unable to add piece."));
           }}

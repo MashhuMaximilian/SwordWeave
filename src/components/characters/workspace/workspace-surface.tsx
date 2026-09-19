@@ -16,11 +16,13 @@ const ParentSurface = createContext<((covered: boolean) => void) | null>(null);
 export function WorkspaceSurface({
   modal,
   title,
+  kicker = "Character archive",
   onClose,
   children,
 }: {
   modal: boolean;
   title: string;
+  kicker?: string;
   onClose: () => void;
   children: ReactNode;
 }) {
@@ -105,7 +107,7 @@ export function WorkspaceSurface({
         >
           <div className="v12-workspace-modal-head v12-section-head flex items-center justify-between border-b border-border px-5 py-3">
             <div>
-              <p className="v12-kicker">Character archive</p>
+              <p className="v12-kicker">{kicker}</p>
               <span className="v12-workspace-modal-title font-subtitle font-medium">{title}</span>
             </div>
             <button

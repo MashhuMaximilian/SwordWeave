@@ -853,7 +853,7 @@ export function BottomStickyBar({
               a formula popup. The proficient chip gets a "PROF" tag.
               PB is the 4th card (Phase 8.4 v25 — moved here from
               the bottom grid so the user sees it next to the mods). */}
-          <div className="mt-2 mb-2">
+          <div className="v12-drawer-section v12-drawer-attributes mt-2 mb-2">
             <p className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
               Mods + saves
             </p>
@@ -934,7 +934,7 @@ export function BottomStickyBar({
               single row at all widths. Phase 8.5 H7 (Mashu
               2026-08-03): PB joined ATK + Save DC here; it was
               previously in the attribute row above. */}
-          <div className="mb-2 grid grid-cols-3 gap-2">
+          <div className="v12-drawer-section v12-drawer-derived mb-2 grid grid-cols-3 gap-2">
             <button
               type="button"
               onClick={() => setCombo("pb")}
@@ -1003,7 +1003,7 @@ export function BottomStickyBar({
 
           {/* 4. Practices — 3 columns, capitalized. Each
               column is clickable for practice provenance. */}
-          <div>
+          <div className="v12-drawer-section v12-drawer-practices">
             <p className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
               Practices
             </p>

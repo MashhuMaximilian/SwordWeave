@@ -3723,6 +3723,7 @@ function ItemsTab({
         <li key={item.id}>
           <ItemCard
             characterId={characterId}
+            displayRole={role}
             item={item}
             atCapacity={atCapacity}
             nested={{

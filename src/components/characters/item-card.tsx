@@ -47,6 +47,7 @@ interface EquipResponse {
 
 export interface ItemCardProps {
   characterId: string;
+  displayRole?: "equipped" | "gear" | "pack";
   item: {
     id: string;
     name: string;
@@ -125,6 +126,7 @@ export interface ItemCardProps {
 
 export function ItemCard({
   characterId,
+  displayRole = "gear",
   item,
   atCapacity = false,
   nested,
@@ -449,6 +451,7 @@ export function ItemCard({
   return (
     <div
       data-item-kind={item.itemType.toLowerCase()}
+      data-inventory-role={displayRole}
       data-has-construction={Boolean(nested && (nested.capabilityLinks.length || nested.effectLinks.length || nested.primitiveLinks.length))}
       className={cn(
         "v12-inventory-card v12-item-dossier rounded-md border bg-card p-4 transition-colors",

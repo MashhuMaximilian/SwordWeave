@@ -102,7 +102,7 @@ export function BundleContents({
               <span className="ml-2 text-xs text-muted-foreground">{child.kind}</span>
             </button>}
             {child.kind === "primitive" && edge.isMirrored && <div className="v12-rule-provenance" aria-label={`${child.name} supply state`}>
-              {edge.isMirrored && <span className="is-mirrored">Mirrored inverse</span>}
+              {edge.isMirrored && <span className="is-mirrored v12-mirrored-label">Mirrored</span>}
             </div>}
             {child.kind === "primitive" && ruleText(child, mirrored) && ruleText(child, mirrored) !== child.description && <p className="v12-rule-text v12-rule-output">{ruleText(child, mirrored)}</p>}
             {child.description && child.description !== "null" && <Markdown className={child.kind === "primitive" ? "v12-rule-text v12-rule-description" : "v12-expression-description"}>{child.description}</Markdown>}

@@ -6196,3 +6196,96 @@ body[data-ui="v12"] .v12-build-preview-modal [data-drawer-build] [data-drawer-re
   body[data-ui="v12"] .v12-formula-body > section { grid-column:auto!important; }
   body[data-ui="v12"] .v12-identity-pool-card { grid-template-columns:minmax(0,1fr) auto auto; }
 }
+
+/* Character sheet correction pass: enforce the authored hierarchy everywhere. */
+body[data-ui="v12"] .v12-character-page[data-character-surface] :is(.v12-expression-rule,.v12-mastery-item,[data-workspace-kind="primitive"]) :is(.v12-rule-output,.v12-rule-text:not(.v12-rule-description)),
+body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-expression-direct .v12-expression-rule > .v12-rule-output,
+body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-direct-heritage-grid [data-workspace-kind="primitive"] > .v12-rule-text:not(.v12-rule-description),
+body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-mastery-item > button > p {
+  margin-top:5px!important;color:var(--v12-copper-hi)!important;font:500 12px/1.42 var(--font-body)!important;
+}
+body[data-ui="v12"] .v12-character-page[data-character-surface] :is(.v12-expression-rule,[data-workspace-kind="primitive"]) > :is(.v12-rule-description,.line-clamp-2),
+body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-expression-direct .v12-expression-rule > .v12-rule-description,
+body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-direct-heritage-grid [data-workspace-kind="primitive"] > .line-clamp-2 {
+  margin-top:4px!important;color:var(--v12-paper)!important;font:400 10px/1.45 var(--font-body)!important;
+}
+body[data-ui="v12"] .v12-mirrored-label { display:inline-flex!important;align-items:center;min-height:18px;padding:3px 6px!important;border:1px solid #d2a64b!important;border-radius:999px!important;background:linear-gradient(180deg,#3b2c12,#171006)!important;color:#ffe29a!important;font:700 7px/1 var(--font-system)!important;letter-spacing:.12em;text-transform:uppercase;box-shadow:inset 0 1px rgb(255 255 255 / 10%),0 0 8px rgb(210 166 75 / 16%); }
+body[data-ui="v12"] .v12-row-remove,
+body[data-ui="v12"] .v12-workspace-remove-action { display:inline-flex;align-items:center;justify-content:center;gap:4px;border:1px solid rgb(210 103 94 / 56%)!important;background:rgb(84 24 22 / 22%)!important;color:#ffaaa1!important; }
+body[data-ui="v12"] .v12-row-remove { min-height:25px;padding:4px 7px;border-radius:3px;font:700 8px/1 var(--font-system);letter-spacing:.06em;text-transform:uppercase; }
+
+/* Preview and rules dialogs use a compact instrument frame. */
+body[data-ui="v12"] .v12-workspace-modal { width:min(980px,calc(100vw - 32px))!important;border:1px solid transparent!important;border-radius:5px!important;background:linear-gradient(155deg,#111a23,#060a0f 64%) padding-box,var(--v12-gold-edge) border-box!important;box-shadow:inset 4px 0 var(--v12-teal),0 30px 90px rgb(0 0 0 / 78%)!important; }
+body[data-ui="v12"] .v12-workspace-modal-head { min-height:58px!important;padding:9px 13px 8px 18px!important;border-bottom:1px solid color-mix(in srgb,var(--v12-brass) 46%,transparent)!important;background:linear-gradient(100deg,#151e27,#080d13)!important; }
+body[data-ui="v12"] .v12-workspace-modal-head .v12-kicker { color:var(--v12-brass-hi);font-size:7px;letter-spacing:.17em; }
+body[data-ui="v12"] .v12-workspace-modal-title { display:block;margin-top:4px;color:var(--v12-paper);font:500 21px/1 var(--font-display);letter-spacing:.02em;text-transform:none; }
+body[data-ui="v12"] .v12-workspace-modal-close { display:grid;place-items:center;width:32px;height:32px;padding:0!important;border:1px solid color-mix(in srgb,var(--v12-silver) 45%,transparent);border-radius:50%!important;background:#05090d!important; }
+body[data-ui="v12"] .v12-workspace-modal-body { padding:12px!important; }
+body[data-ui="v12"] .v12-fetched-preview > .v12-composite-preview-body { margin:0; }
+body[data-ui="v12"] .v12-formula-modal { width:min(720px,calc(100vw - 28px))!important;max-height:86dvh!important;border-radius:5px!important; }
+body[data-ui="v12"] .v12-formula-head { min-height:0!important;padding:7px 12px 7px 16px!important; }
+body[data-ui="v12"] .v12-formula-head h2 { display:inline-block;margin-top:3px!important;font-size:19px!important; }
+body[data-ui="v12"] .v12-formula-head p { display:inline-block;margin:3px 0 0 8px!important;font-size:8px!important; }
+body[data-ui="v12"] .v12-formula-head > button { width:31px;height:31px; }
+body[data-ui="v12"] .v12-formula-body { display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:8px!important;padding:10px 12px 14px 17px!important; }
+body[data-ui="v12"] .v12-formula-body > section { grid-column:auto!important;padding:10px!important; }
+body[data-ui="v12"] .v12-formula-body > section:has(.v12-formula-section-label + p) { background:linear-gradient(100deg,#0b1219,#05090d) padding-box,var(--v12-silver-edge) border-box!important; }
+
+/* Library inside character authoring is the same dense mechanic catalogue. */
+body[data-ui="v12"] .v12-workspace-library { padding:0!important;overflow:hidden;border:1px solid transparent!important;border-radius:5px!important;background:linear-gradient(160deg,#0d151d,#05090e) padding-box,var(--v12-gold-edge) border-box!important; }
+body[data-ui="v12"] .v12-workspace-library-head { padding:12px 14px;border-bottom:1px solid color-mix(in srgb,var(--v12-brass) 38%,transparent);background:linear-gradient(100deg,#141d26,#080d13); }
+body[data-ui="v12"] .v12-workspace-library-tools { margin:0!important;padding:9px 11px;border-bottom:1px solid color-mix(in srgb,var(--v12-silver) 19%,transparent);background:#05090d; }
+body[data-ui="v12"] .v12-workspace-library-tools :is(select,input) { min-height:34px!important;border-radius:2px!important;background:#020509!important;font-size:10px!important; }
+body[data-ui="v12"] .v12-workspace-library-results { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;max-height:54dvh;overflow:auto;margin:0;padding:10px; }
+body[data-ui="v12"] .v12-workspace-library-row { display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;min-width:0;overflow:hidden;border:1px solid transparent;border-radius:3px;background:linear-gradient(145deg,#101922,#070c11) padding-box,var(--v12-silver-edge) border-box;box-shadow:inset 3px 0 var(--v12-teal); }
+body[data-ui="v12"] .v12-workspace-library-row > header { display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;padding:9px 10px 7px;border-bottom:1px solid color-mix(in srgb,var(--v12-silver) 18%,transparent); }
+body[data-ui="v12"] .v12-workspace-library-row > header div { min-width:0; }
+body[data-ui="v12"] .v12-workspace-library-row > header small { display:block;color:var(--v12-brass-hi);font:700 7px/1 var(--font-system);letter-spacing:.11em;text-transform:uppercase; }
+body[data-ui="v12"] .v12-workspace-library-row > header strong { display:block;overflow:hidden;margin-top:4px;color:var(--v12-paper);font:600 14px/1.15 var(--font-subtitle);text-overflow:ellipsis;white-space:nowrap; }
+body[data-ui="v12"] .v12-workspace-library-row > header > b { color:var(--v12-gold-hi);font:600 9px/1 var(--font-technical); }
+body[data-ui="v12"] .v12-library-row-mechanic { padding:8px 10px 0;color:var(--v12-copper-hi);font:500 12px/1.4 var(--font-body); }
+body[data-ui="v12"] .v12-library-row-description { padding:5px 10px 8px;color:var(--v12-paper)!important;font:400 10px/1.42 var(--font-body)!important; }
+body[data-ui="v12"] .v12-workspace-library-row > footer { display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:7px 9px 9px;border-top:1px solid color-mix(in srgb,var(--v12-silver) 16%,transparent); }
+body[data-ui="v12"] .v12-workspace-library-row > footer button { min-height:29px;border:1px solid color-mix(in srgb,var(--v12-silver) 42%,transparent);border-radius:2px;background:#060a0f;color:var(--v12-paper);font:700 8px/1 var(--font-system);letter-spacing:.07em;text-transform:uppercase; }
+body[data-ui="v12"] .v12-workspace-library-row > footer button.is-primary { border-color:var(--v12-brass);background:linear-gradient(180deg,#493819,#171006);color:var(--v12-gold-hi); }
+body[data-ui="v12"] .v12-library-preview-command { position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;padding:9px 11px;border:1px solid var(--v12-brass);background:linear-gradient(100deg,#18140b,#080b0e);box-shadow:0 8px 24px rgb(0 0 0 / 32%); }
+body[data-ui="v12"] .v12-library-preview-command span { display:block;color:var(--v12-brass-hi);font:700 7px/1 var(--font-system);letter-spacing:.14em;text-transform:uppercase; }
+body[data-ui="v12"] .v12-library-preview-command strong { display:block;margin-top:3px;color:var(--v12-paper);font:600 13px/1.2 var(--font-subtitle); }
+body[data-ui="v12"] .v12-library-preview-command button { min-height:31px;padding:6px 11px;border:1px solid var(--v12-brass);border-radius:2px;background:linear-gradient(180deg,#d7b565,#76521e);color:#130e05;font:800 8px/1 var(--font-system);letter-spacing:.08em;text-transform:uppercase; }
+
+/* Inventory is a loadout board: constructed gear has presence; pack goods stay compact. */
+body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-inventory-command { min-height:78px;padding:13px 15px;background:radial-gradient(circle at 82% 0,rgb(211 163 69 / 11%),transparent 27%),linear-gradient(110deg,#171c22,#070c11 70%) padding-box,var(--v12-gold-edge) border-box;box-shadow:inset 4px 0 var(--v12-brass),0 12px 32px rgb(0 0 0 / 24%); }
+body[data-ui="v12"] .v12-inventory-command-copy h3 { font-size:20px; }
+body[data-ui="v12"] .v12-inventory-workshop { background:linear-gradient(155deg,#111820,#070b10) padding-box,var(--v12-gold-edge) border-box;box-shadow:inset 3px 0 var(--v12-brass); }
+body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-item-dossier { border-radius:3px!important;background:radial-gradient(circle at 95% 0,rgb(214 164 72 / 7%),transparent 28%),linear-gradient(145deg,#121a22,#060b10 74%) padding-box,var(--v12-silver-edge) border-box!important; }
+body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-item-dossier[data-inventory-role="equipped"] { min-height:180px;background:radial-gradient(circle at 88% 0,rgb(69 190 179 / 10%),transparent 30%),linear-gradient(145deg,#121d24,#071014) padding-box,var(--v12-gold-edge) border-box!important;box-shadow:inset 4px 0 var(--v12-teal),0 10px 25px rgb(0 0 0 / 28%); }
+body[data-ui="v12"] .v12-item-dossier-head { min-height:76px;padding:10px;border-bottom-color:color-mix(in srgb,var(--v12-brass) 24%,transparent); }
+body[data-ui="v12"] .v12-item-actions > button[aria-pressed] { border-color:var(--v12-brass)!important;background:linear-gradient(180deg,#3c3018,#151006)!important;color:var(--v12-gold-hi)!important; }
+body[data-ui="v12"] .v12-item-actions > button[aria-pressed="true"] { border-color:#63cfc2!important;background:linear-gradient(180deg,#235b55,#102e2d)!important;color:#d9fff9!important; }
+body[data-ui="v12"] .v12-item-dossier[data-inventory-role="pack"] { min-height:0; }
+body[data-ui="v12"] .v12-item-dossier[data-inventory-role="pack"] .v12-item-dossier-head { min-height:58px;padding:8px 9px; }
+body[data-ui="v12"] .v12-item-dossier[data-inventory-role="pack"] .v12-item-glyph { width:29px;height:29px;flex-basis:29px;font-size:10px; }
+body[data-ui="v12"] .v12-item-dossier[data-inventory-role="pack"] .v12-item-title { font-size:13px; }
+body[data-ui="v12"] .v12-item-dossier[data-inventory-role="pack"] :is(.v12-item-version,.v12-inventory-description,.v12-inventory-construction) { display:none; }
+body[data-ui="v12"] .v12-item-dossier[data-inventory-role="pack"] .v12-item-actions { margin-top:5px!important;padding:0 9px 8px; }
+
+/* The quick dock reads as one arcane instrument rather than stacked default cards. */
+body[data-ui="v12"] .v12-bottom-drawer { background:radial-gradient(circle at 50% 0,rgb(211 164 71 / 10%),transparent 22%),linear-gradient(165deg,#111922,#04080d 68%) padding-box,var(--v12-gold-edge) border-box!important;box-shadow:0 -24px 62px rgb(0 0 0 / 58%),inset 0 2px rgb(237 204 126 / 16%); }
+body[data-ui="v12"] .v12-bottom-drawer-toggle { min-height:42px!important;background:linear-gradient(90deg,#090f15,#111820 48%,#070b10)!important; }
+body[data-ui="v12"] .v12-bottom-drawer-body { display:grid;gap:8px;padding:10px 12px 15px!important;background-image:linear-gradient(rgb(54 180 176 / .035) 1px,transparent 1px),linear-gradient(90deg,rgb(54 180 176 / .035) 1px,transparent 1px);background-size:36px 36px; }
+body[data-ui="v12"] .v12-drawer-section { margin:0!important;padding:9px;border:1px solid transparent;border-radius:3px;background:linear-gradient(145deg,#111922,#070b10) padding-box,var(--v12-silver-edge) border-box;box-shadow:inset 3px 0 color-mix(in srgb,var(--v12-brass) 58%,transparent); }
+body[data-ui="v12"] .v12-drawer-section > p:first-child { margin:0 0 7px!important;color:var(--v12-brass-hi)!important;font:700 8px/1 var(--font-system)!important;letter-spacing:.14em!important; }
+body[data-ui="v12"] .v12-drawer-section button { border-width:1px!important;border-radius:2px!important;background:linear-gradient(145deg,#0d141c,#05090d)!important; }
+body[data-ui="v12"] .v12-drawer-section button:is(:hover,:focus-visible) { border-color:var(--v12-brass)!important;background:linear-gradient(145deg,#17170f,#080b0e)!important; }
+
+@media(max-width:640px) {
+  body[data-ui="v12"] .v12-workspace-modal { width:100%!important;max-height:92dvh!important;border-radius:7px 7px 0 0!important; }
+  body[data-ui="v12"] .v12-workspace-modal-head { min-height:53px!important;padding:8px 11px 8px 15px!important; }
+  body[data-ui="v12"] .v12-workspace-modal-body { padding:8px!important; }
+  body[data-ui="v12"] .v12-workspace-library-results { grid-template-columns:minmax(0,1fr);max-height:58dvh;padding:7px; }
+  body[data-ui="v12"] .v12-library-preview-command { align-items:stretch;flex-direction:column; }
+  body[data-ui="v12"] .v12-formula-modal { width:100%!important;max-height:88dvh!important; }
+  body[data-ui="v12"] .v12-formula-head { min-height:0!important;padding:6px 9px 6px 13px!important; }
+  body[data-ui="v12"] .v12-formula-body { padding:8px 8px 13px 12px!important; }
+  body[data-ui="v12"] .v12-drawer-section { padding:7px; }
+}

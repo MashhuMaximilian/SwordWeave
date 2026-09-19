@@ -8,7 +8,7 @@ import {
   type SetStateAction,
 } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, ArrowLeft, Plus, Search } from "lucide-react";
+import { ChevronRight, ArrowLeft, Plus, Search, Trash2 } from "lucide-react";
 import { BundleContents } from "./bundle-contents";
 import { WorkspaceSurface } from "./workspace-surface";
 import { WorkspaceEntityPreview } from "./workspace-entity-preview";
@@ -745,10 +745,13 @@ export function CharacterWorkspace({
       </nav>}
       <WorkspaceSurface
         modal={!!selected || !!composer}
+        kicker={preview ? "Read-only preview" : composer ? "Character atelier" : "Character archive"}
         title={
           composer
             ? `${composer.node ? "Edit" : "Create"} ${composer.kind}`
-            : (selected?.name ?? "Character")
+            : preview && selected
+              ? `Preview ${selected.name}`
+              : (selected?.name ?? "Character")
         }
         onClose={() => {
           if (saveReview) {
@@ -958,6 +961,21 @@ export function CharacterWorkspace({
                       Remove from character
                     </button>
                   )}
+                  {selected && selectedEdge && selectedEdge.parent !== null && (
+                    <button
+                      className={`${button} v12-workspace-remove-action`}
+                      onClick={() =>
+                        setPending({
+                          child: selected.key,
+                          operation: "remove-reference",
+                          edgeId: selectedEdge.id,
+                        })
+                      }
+                    >
+                      <Trash2 className="mr-1 inline size-3" />
+                      Remove from {graph.nodes.find((node) => node.key === selectedEdge.parent)?.name ?? "bundle"}
+                    </button>
+                  )}
                   {creationKinds.length > 0 && (
                     <details className="relative sm:hidden">
                       <summary className={`${button} cursor-pointer list-none`}>
@@ -1104,7 +1122,7 @@ export function CharacterWorkspace({
                 !preview && (
                   <Markdown className="v12-workspace-selected-description text-sm">{selected.description}</Markdown>
                 )}
-              {selected?.kind === "effect" && mode === "PLAY" && (
+              {selected?.kind === "effect" && mode === "PLAY" && !preview && (
                 <button
                   className={button}
                   aria-pressed={!toggles.offEffectIds.has(selected.id)}
@@ -1121,7 +1139,7 @@ export function CharacterWorkspace({
                     : "Disable effect"}
                 </button>
               )}
-              {selected?.kind === "capability" && mode === "PLAY" && (
+              {selected?.kind === "capability" && mode === "PLAY" && !preview && (
                 <CapabilityCard
                   characterId={characterId}
                   showPrimitives={false}
@@ -1272,12 +1290,12 @@ export function CharacterWorkspace({
                             <div className="v12-mastery-family-grid">{members.map(({node}) => {
                               const mirrored = supplyPaths(graph, node.key).some((supply) => supply.edges.some((entry) => entry.isMirrored));
                               return <article className={`v12-mastery-item${mirrored ? " is-mirrored" : ""}`} key={node.key}>
-                              <button onClick={() => { const nextPath = supplyPaths(graph, node.key)[0]?.edges.map((edge) => edge.id) ?? []; setPath(nextPath); setPreview(false); }}>
-                                <span><span className="v12-mastery-title"><span className="v12-workspace-version">{workspaceVersionLabel(node)}</span><b>{node.name}</b>{mirrored && <span className="v12-mirrored-label">Mirrored inverse</span>}</span><small>{bundleBu(graph, node.key)} BU</small></span>
+                              <button onClick={() => { const nextPath = supplyPaths(graph, node.key)[0]?.edges.map((edge) => edge.id) ?? []; setPath(nextPath); setPreview(mode === "PLAY"); }}>
+                                <span><span className="v12-mastery-title"><span className="v12-workspace-version">{workspaceVersionLabel(node)}</span><b>{node.name}</b>{mirrored && <span className="v12-mirrored-label">Mirrored</span>}</span><small>{bundleBu(graph, node.key)} BU</small></span>
                                 <p>{workspaceRuleText(node, mirrored)}</p>
                               </button>
                               <div className="v12-mastery-paths" aria-label={`Supply paths for ${node.name}`}>
-                                {displaySupplyPaths(graph, node.key).map(supply => <button key={supply.edges.map(e => e.id).join("/")} onClick={() => { setPath(supply.edges.map(e => e.id)); setPreview(false); }}>
+                                {displaySupplyPaths(graph, node.key).map(supply => <button key={supply.edges.map(e => e.id).join("/")} onClick={() => { setPath(supply.edges.map(e => e.id)); setPreview(mode === "PLAY"); }}>
                                   {supplyPathLabel(graph, supply)}
                                 </button>)}
                               </div>
@@ -1653,7 +1671,7 @@ function WorkspaceRow({
                 const chosen = edge ? [...(selected ? path : []), edge.id] : (paths[0]?.edges.map((item) => item.id) ?? []);
                 setPath(chosen);
                 setComposer(null);
-                setPreview(false);
+                setPreview(mode === "PLAY");
               }}
             >
               <span className="v12-workspace-entry-name">{node.name}</span>
@@ -1661,6 +1679,8 @@ function WorkspaceRow({
           </div>
           <div className="v12-source-actions">
             <span className={state.available ? "is-available" : ""}>{state.available ? "Available" : "Unavailable"}</span>
+            {mirrored && <span className="v12-mirrored-label">Mirrored</span>}
+            {mode === "BUILD" && edge && <button type="button" className="v12-row-remove" aria-label={`Remove ${node.name}`} onClick={() => setPending({ child: node.key, operation: edge.parent === null ? "detach" : "remove-reference", edgeId: edge.id })}><Trash2 className="size-3" /> Remove</button>}
           </div>
         </div>
       ) : (
@@ -1698,12 +1718,13 @@ function WorkspaceRow({
                 : (paths[0]?.edges.map((e) => e.id) ?? []);
               setPath(chosen);
               setComposer(null);
-              setPreview(false);
+              setPreview(mode === "PLAY");
             }}
           >
             <span className="v12-workspace-entry-name">{node.name}</span>
           </button>
           <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
+            {mirrored && <span className="v12-mirrored-label">Mirrored</span>}
             <span className="v12-workspace-kind text-xs text-muted-foreground">
               {node.kind === "primitive"
                 ? String(node.data["category"]).replaceAll("_", " ").toLowerCase()
@@ -1715,6 +1736,7 @@ function WorkspaceRow({
             <span className={`text-xs ${state.available ? "text-primary" : "text-muted-foreground"}`}>
               {state.available ? "Available" : "Unavailable"}
             </span>
+            {mode === "BUILD" && edge && <button type="button" className="v12-row-remove" aria-label={`Remove ${node.name}`} onClick={() => setPending({ child: node.key, operation: edge.parent === null ? "detach" : "remove-reference", edgeId: edge.id })}><Trash2 className="size-3" /><span className="sr-only">Remove</span></button>}
           </div>
         </div>
       )}
@@ -1782,6 +1804,7 @@ function WorkspaceRow({
               : (paths[0]?.edges.map((e) => e.id) ?? []);
             setPath([...base, ...ancestors, childEdge.id]);
             setComposer(null);
+            setPreview(mode === "PLAY");
           }}
         />
       )}
