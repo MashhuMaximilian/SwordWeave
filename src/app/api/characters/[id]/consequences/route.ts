@@ -13,6 +13,7 @@ import {
   parseOccurrence,
 } from "@/lib/character/consequences/validation";
 import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
+import { resolveCharacterAccess } from "@/lib/character/resolve-character-access";
 
 class CommandError extends Error {
   constructor(
@@ -23,19 +24,15 @@ class CommandError extends Error {
   }
 }
 async function requireOwner(id: string, userId: string, lock = false) {
-  const rows = lock
-    ? await db
-        .select({ userId: characters.userId })
-        .from(characters)
-        .where(eq(characters.id, id))
-        .for("update")
-    : await db
-        .select({ userId: characters.userId })
-        .from(characters)
-        .where(eq(characters.id, id));
-  if (!rows[0]) throw new CommandError("Character not found.", 404);
-  if (rows[0].userId !== userId)
-    throw new CommandError("You do not own this character.", 403);
+  await resolveCharacterAccess(userId, id, { require: "OWNER" });
+  if (lock) {
+    const rows = await db
+      .select({ id: characters.id })
+      .from(characters)
+      .where(eq(characters.id, id))
+      .for("update");
+    if (!rows[0]) throw new CommandError("Character not found.", 404);
+  }
 }
 async function read(id: string) {
   const records = await db

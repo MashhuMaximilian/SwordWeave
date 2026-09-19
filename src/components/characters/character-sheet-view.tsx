@@ -30,6 +30,8 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { DetailModal } from "@/components/ui/detail-modal";
+import { Markdown } from "@/components/ui/markdown";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import type { HardModifier } from "@/types/swordweave";
 import type { ConditionContext } from "@/lib/engine/condition-evaluator";
 import { ToastViewport, useToasts } from "@/components/ui/toast";
@@ -56,7 +58,6 @@ import { PrimitivePreviewCard } from "@/components/characters/primitive-preview-
 import { BottomStickyBar } from "@/components/characters/bottom-sticky-bar";
 import { CharacterWorkspace } from "@/components/characters/workspace/character-workspace";
 import { ConditionsDrawer } from "@/components/characters/conditions-drawer";
-import { BuildModeBanner } from "@/components/characters/build-mode-banner";
 import { AccordionFooterActions } from "@/components/characters/accordion-footer-actions";
 import { FormulaModal, type FormulaStep } from "@/components/characters/formula-modal";
 import { useDeepPrimitiveClosure } from "@/components/characters/use-deep-primitive-closure";
@@ -992,68 +993,6 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         autoEvaluated={autoEvaluated}
       />
     <div className="v12-character-page mx-auto w-full max-w-[1480px] px-5 pt-20 pb-32" data-character-surface>
-      {/* Phase 9.1 (Mashu 2026-09-06): BUILD/PLAY mode banner. Sits at
-          the top of the sheet so the user always knows which mode
-          they're in. The banner owns the toggle; accordions react
-          to the mode via the `mode` prop below. */}
-      <BuildModeBanner
-        characterId={props.id}
-        initialMode={props.mode ?? "PLAY"}
-      />
-      <section className="v12-character-core" aria-label="Character possibility instrument">
-        <div className="v12-core-axis">
-          <span>
-            <small>Physical</small>
-            <strong>{resolver.totals["attribute.physical"] ?? props.attrPhysical}</strong>
-          </span>
-          <span>
-            <small>Mental</small>
-            <strong>{resolver.totals["attribute.mental"] ?? props.attrMental}</strong>
-          </span>
-          <span>
-            <small>Magical</small>
-            <strong>{resolver.totals["attribute.magical"] ?? props.attrMagical}</strong>
-          </span>
-        </div>
-        <div className="v12-core-identity">
-          {props.portraitUrl ? (
-            <img src={props.portraitUrl} alt="" />
-          ) : (
-            <span>{props.name.slice(0, 2).toUpperCase()}</span>
-          )}
-          <p className="v12-kicker">Personal possibility instrument</p>
-          <h1>{props.name}</h1>
-          <small>Level {props.level} · {props.size}</small>
-        </div>
-        <div className="v12-core-axis v12-core-axis--right">
-          <span>
-            <small>Vitality</small>
-            <strong>{resolver.maxVitality ?? props.vitality.max}</strong>
-          </span>
-          <span>
-            <small>Primitives</small>
-            <strong>{props.primitiveLinks.length}</strong>
-          </span>
-          <span>
-            <small>Bundles</small>
-            <strong>{props.capabilityLinks.length + props.heritageLinks.length}</strong>
-          </span>
-        </div>
-      </section>
-
-      <div className="v12-character-intent">
-        <span aria-hidden="true">✦</span>
-        <div>
-          <b>Build an at-table declaration</b>
-          <p>Select owned primitives, inspect their source paths, and compose the action.</p>
-        </div>
-        <CharacterEditButton
-          characterId={props.id}
-          className="v12-metal-button v12-metal-button--primary"
-          title="Open this character in the Atelier"
-        />
-      </div>
-
       <nav className="v12-character-lenses" aria-label="Character sheet sections">
         <div>
           {TABS.map((item) => {
@@ -3770,8 +3709,8 @@ function ItemsTab({
   const atCapacity =
     encumbrance.equipSlotsUsed >= encumbrance.equipSlotsAvailable;
   return (
-    <div>
-      <div className="mb-4 rounded-md border border-border bg-card p-3 text-xs">
+    <div className="v12-sheet-items">
+      <div className="v12-sheet-load-deck">
         <span className="font-semibold uppercase text-muted-foreground">
           Load:{" "}
         </span>
@@ -3781,7 +3720,7 @@ function ItemsTab({
         </span>
         {encumbrance.equipSlotsUsed} / {encumbrance.equipSlotsAvailable}
       </div>
-      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <ul className="v12-sheet-item-grid">
         {items.map((i) => (
           <li key={i.id}>
             {/* Phase 8.2 batch 4: each item is now an interactive
@@ -3897,27 +3836,32 @@ function NotesTab({
       : "Up to date";
 
   return (
-    <div className="space-y-4">
+    <div className="v12-sheet-notes">
       {/* ---- Player-visible notes (always editable) ---- */}
       <section
         aria-label="Character notes"
-        className="relative overflow-hidden rounded-md border border-border bg-card"
+        className="v12-notes-console"
       >
-        <span className="absolute inset-x-0 top-0 h-0.5 bg-primary" />
-        <div className="p-4">
+        <div className="v12-notes-console-head">
           <div className="flex items-baseline justify-between">
             <h3 className="text-sm font-semibold">Notes</h3>
             <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
               Public · everyone can read
             </span>
           </div>
-          <textarea
+          <MarkdownEditor
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            onChange={setNotes}
             rows={10}
             placeholder="Personality, backstory hooks, ties, voice…"
-            className="mt-3 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/40"
+            className="v12-notes-editor"
           />
+          {notes.trim() ? (
+            <div className="v12-notes-preview">
+              <p className="v12-kicker">Rendered notes</p>
+              <Markdown>{notes}</Markdown>
+            </div>
+          ) : null}
           <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
             <span>{notes.length} chars</span>
             {notesDirty && (
@@ -4040,8 +3984,8 @@ function BackstoryTab({
   const empty = isBackstoryEmpty(data);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-baseline justify-between">
+    <div className="v12-sheet-backstory">
+      <div className="v12-backstory-toolbar">
         <p className="text-xs text-muted-foreground">
           Four freeform fields. Edit in the modal — saves back to the
           character's backstory column.
@@ -4049,7 +3993,7 @@ function BackstoryTab({
         <button
           type="button"
           onClick={() => setModalOpen(true)}
-          className="inline-flex shrink-0 items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+          className="v12-metal-button v12-metal-button--primary inline-flex min-h-8 shrink-0 items-center gap-1 whitespace-nowrap px-3 py-1.5 text-xs font-medium"
         >
           <Pencil className="size-3" />
           {empty ? "Write backstory" : "Edit"}
@@ -4066,7 +4010,7 @@ function BackstoryTab({
           </p>
         </div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="v12-backstory-grid">
           {BACKSTORY_FIELDS.map((f) => (
             <BackstoryFieldCard
               key={f.key}
@@ -4118,12 +4062,11 @@ function BackstoryFieldCard({
   return (
     <section
       aria-label={label}
-      className="relative overflow-hidden rounded-md border border-border bg-card"
+      className="v12-backstory-card"
     >
-      <span className="absolute inset-x-0 top-0 h-0.5 bg-violet-500" />
-      <div className="p-4">
+      <div className="v12-backstory-card-body">
         <div className="flex items-center gap-2">
-          <Icon className="size-4 text-violet-500" />
+          <span className="v12-backstory-glyph"><Icon className="size-4" /></span>
           <h3 className="text-sm font-semibold">{label}</h3>
         </div>
         <p className="mt-0.5 text-[11px] text-muted-foreground">
@@ -4133,7 +4076,7 @@ function BackstoryFieldCard({
           {empty ? (
             <span className="text-muted-foreground italic">— empty —</span>
           ) : (
-            <p className="whitespace-pre-wrap">{value}</p>
+            <Markdown>{value}</Markdown>
           )}
         </div>
       </div>
@@ -4182,7 +4125,7 @@ function BackstoryEditModal({
       onClick={() => !saving && onClose()}
     >
       <div
-        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-border bg-card p-6 shadow-lg"
+        className="v12-backstory-modal max-h-[90vh] w-full max-w-2xl overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-baseline justify-between">
@@ -4210,15 +4153,14 @@ function BackstoryEditModal({
               <span className="block text-[11px] text-muted-foreground">
                 {f.description}
               </span>
-              <textarea
+              <MarkdownEditor
                 value={draft[f.key]}
-                onChange={(e) => {
-                  setDraft((d) => ({ ...d, [f.key]: e.target.value }));
+                onChange={(value) => {
+                  setDraft((d) => ({ ...d, [f.key]: value }));
                   setTouched(true);
                 }}
                 rows={4}
-                maxLength={4000}
-                className="mt-1 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/40"
+                className="mt-1"
               />
             </label>
           ))}
@@ -4376,8 +4318,8 @@ function HistoryTab({
     : entries;
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="v12-sheet-history">
+      <div className="v12-history-toolbar">
         {/* Filter chips */}
         <div className="flex flex-wrap gap-1.5">
           <FilterChip
@@ -4409,10 +4351,10 @@ function HistoryTab({
       </div>
 
       {/* Timeline */}
-      <ol className="relative space-y-1 border-l border-border pl-4">
+      <ol className="v12-history-timeline">
         {filtered.map((entry) => (
           <li key={entry.id} className="relative">
-            <span className="absolute -left-[7px] top-2 size-3 rounded-full border-2 border-background bg-primary" />
+            <span className="v12-history-node" />
             <HistoryEntry
               kind={entry.kind}
               payload={entry.payload}
@@ -4440,7 +4382,8 @@ function FilterChip({
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium capitalize transition-colors ${
+      data-active={active}
+      className={`v12-history-filter inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium capitalize transition-colors ${
         active
           ? "border-primary bg-primary text-primary-foreground"
           : "border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground"
@@ -4472,7 +4415,7 @@ function HistoryEntry({
   const summary = renderHistorySummary(kind, payload);
   const date = new Date(createdAt);
   return (
-    <div className="rounded-md border border-border bg-card px-3 py-2">
+    <div className="v12-history-entry">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div className="flex items-center gap-2">
           {summary.icon}
@@ -4590,6 +4533,16 @@ function renderHistorySummary(
         detail: null,
       };
     }
+    case "item_quantity": {
+      const name = str(payload["itemName"]);
+      const previous = String(payload["previousQuantity"] ?? "—");
+      const next = String(payload["newQuantity"] ?? "—");
+      return {
+        icon: <Package className="size-4 text-primary" />,
+        title: `Changed quantity · ${name}`,
+        detail: `${previous} → ${next}`,
+      };
+    }
     case "dm_bonus_change": {
       const prev = Number(payload["prev"] ?? 0);
       const next = Number(payload["next"] ?? 0);
@@ -4613,11 +4566,46 @@ function renderHistorySummary(
         detail: null,
       };
     }
+    case "mode_changed": {
+      const from = str(payload["fromMode"]);
+      const to = str(payload["toMode"]);
+      return {
+        icon: <Activity className="size-4 text-primary" />,
+        title: `Mode changed to ${to.toLowerCase()}`,
+        detail: `${from} → ${to}`,
+      };
+    }
+    case "primitive_removed":
+      return {
+        icon: <Trash2 className="size-4 text-destructive" />,
+        title: "Primitive removed",
+        detail: payload["primitiveName"] ? str(payload["primitiveName"]) : `Primitive ${String(payload["primitiveId"] ?? "unknown")}`,
+      };
+    case "primitive_moved":
+      return {
+        icon: <ArrowUp className="size-4 text-primary" />,
+        title: "Primitive moved",
+        detail: payload["primitiveName"] ? str(payload["primitiveName"]) : `Primitive ${String(payload["primitiveId"] ?? "unknown")}`,
+      };
+    case "primitive_mirrored":
+      return {
+        icon: <RotateCcw className="size-4 text-amber-500" />,
+        title: "Primitive mirror state changed",
+        detail: payload["primitiveName"] ? str(payload["primitiveName"]) : `Primitive ${String(payload["primitiveId"] ?? "unknown")}`,
+      };
+    case "primitive_slotted":
+      return {
+        icon: <Sparkles className="size-4 text-amber-500" />,
+        title: "Primitive added",
+        detail: payload["primitiveName"] ? str(payload["primitiveName"]) : `Primitive ${String(payload["primitiveId"] ?? "unknown")}`,
+      };
     default:
       return {
         icon: <Clock className="size-4 text-muted-foreground" />,
-        title: kind,
-        detail: JSON.stringify(payload),
+        title: kind.replaceAll("_", " "),
+        detail: Object.entries(payload)
+          .map(([key, value]) => `${key.replaceAll("_", " ")}: ${String(value)}`)
+          .join(" · "),
       };
   }
 }

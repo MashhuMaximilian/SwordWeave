@@ -90,7 +90,7 @@ export function WorkspaceSurface({
       <div
         aria-hidden={covered || undefined}
         style={covered ? { visibility: "hidden" } : undefined}
-        className="fixed inset-0 z-[60] flex items-end justify-center bg-black/70 sm:items-center sm:p-5"
+        className="v12-modal-backdrop fixed inset-0 z-[60] flex items-end justify-center bg-black/70 sm:items-center sm:p-5"
         data-character-surface
         onClick={onClose}
       >
@@ -100,21 +100,24 @@ export function WorkspaceSurface({
           role="dialog"
           aria-modal="true"
           aria-label={title}
-          className="v12-instrument flex max-h-[94dvh] w-full max-w-6xl flex-col overflow-hidden rounded-t-2xl border border-border bg-background shadow-2xl outline-none sm:rounded-2xl"
+          className="v12-modal-surface v12-workspace-modal v12-instrument flex max-h-[94dvh] w-full max-w-6xl flex-col overflow-hidden rounded-t-2xl border border-border bg-background shadow-2xl outline-none sm:rounded-2xl"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="v12-section-head flex items-center justify-between border-b border-border px-5 py-3">
-            <span className="font-subtitle font-medium">{title}</span>
+          <div className="v12-workspace-modal-head v12-section-head flex items-center justify-between border-b border-border px-5 py-3">
+            <div>
+              <p className="v12-kicker">Character archive</p>
+              <span className="v12-workspace-modal-title font-subtitle font-medium">{title}</span>
+            </div>
             <button
               type="button"
               onClick={onClose}
               aria-label="Close workspace dialog"
-              className="rounded p-2 hover:bg-secondary"
+              className="v12-workspace-modal-close rounded p-2 hover:bg-secondary"
             >
               <X className="size-5" />
             </button>
           </div>
-          <div className="overflow-y-auto p-4 sm:p-6">{children}</div>
+          <div className="v12-workspace-modal-body overflow-y-auto p-4 sm:p-6">{children}</div>
         </div>
       </div>
     </ParentSurface.Provider>,

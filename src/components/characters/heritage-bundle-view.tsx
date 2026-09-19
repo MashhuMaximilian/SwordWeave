@@ -40,6 +40,7 @@ import { SlotSourceBadge } from "@/components/characters/slot-source-badge";
 import { makeKey as makeVersionKey, type VersionKey } from "@/lib/versions/version-key";
 import type { SandboxPreviewItem } from "@/components/library/library-item-preview";
 import type { SlotSource } from "@/db/schema/characters";
+import { Markdown } from "@/components/ui/markdown";
 
 export interface HeritageBundleViewProps {
   /**
@@ -452,7 +453,7 @@ export function HeritageBundleView({
             <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               Capabilities ({fullCaps.length})
             </div>
-            <ul className="grid gap-2 xl:grid-cols-2">
+            <ul className="grid grid-cols-1 gap-2">
               {fullCaps.map((cl) => {
                 const slotted = slottedCapIds.has(cl.capabilityId);
                 const cap = cl.capability;
@@ -563,9 +564,7 @@ export function HeritageBundleView({
                       </span>
                     </button>
                     {cap.verboseDescription && (
-                      <p className="mt-1 text-[11px] text-muted-foreground line-clamp-2">
-                        {cap.verboseDescription}
-                      </p>
+                      <Markdown className="mt-1 text-[11px] text-muted-foreground line-clamp-2">{cap.verboseDescription}</Markdown>
                     )}
                     {/* Effects nested under the capability */}
                     {nestedEffects.length > 0 && (
@@ -603,9 +602,7 @@ export function HeritageBundleView({
                                   />
                                 </div>
                                 {el.effect.description && (
-                                  <p className="mt-0.5 text-[11px] text-muted-foreground italic">
-                                    {el.effect.description}
-                                  </p>
+                                  <Markdown className="mt-0.5 text-[11px] text-muted-foreground italic">{el.effect.description}</Markdown>
                                 )}
                                 {showPrimitives && effPrims.length > 0 && (
                                   <ul className="mt-1 space-y-0.5 pl-2 border-l border-border">

@@ -14,8 +14,8 @@ import { WorkspaceSurface } from "./workspace-surface";
 import { WorkspaceEntityPreview } from "./workspace-entity-preview";
 import { WorkspaceLibraryPicker } from "./library-picker";
 import { EntityComposer } from "./entity-composer";
-import { ConsequencePackageAction } from "../consequence-package-action";
 import { CapabilityCard } from "../capability-card";
+import { BuildModeBanner } from "../build-mode-banner";
 import {
   useToggleState,
   effStorageKey,
@@ -39,6 +39,11 @@ import {
 import type { SlotSource } from "@/lib/versions/slot-source";
 import { libraryFamilyLabel } from "@/components/library/library-market-rail";
 import { formatEquationValue } from "@/lib/engine/equation-formatter";
+import { IconDisplay } from "@/components/icons/icon-display";
+import { mechanicalDescriptionFromModifiers } from "@/lib/primitives/mechanical-rule";
+import { flipOperation } from "@/lib/engine/mirror";
+import type { HardModifier } from "@/types/swordweave";
+import { Markdown } from "@/components/ui/markdown";
 
 const categories = [
   ["ALL", "All Primitives"],
@@ -47,12 +52,67 @@ const categories = [
   ["MANIFEST", "Manifests"],
 ] as const;
 const button =
-  "rounded-md border border-border px-3 py-2 text-sm hover:bg-secondary focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50";
+  "v12-workspace-button rounded-md border border-border px-3 py-2 text-sm hover:bg-secondary focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50";
+
+function workspaceRuleText(node: WorkspaceNode, mirrored: boolean): string {
+  const stored = typeof node.data["mechanicalOutputText"] === "string"
+    ? node.data["mechanicalOutputText"]
+    : "";
+  if (!mirrored) return stored || node.description;
+  const modifiers = node.data["hardModifiers"];
+  if (!Array.isArray(modifiers) || modifiers.length === 0) return stored || node.description;
+  const inverse = modifiers.map((modifier) => {
+    const value = modifier as HardModifier;
+    return { ...value, operation: flipOperation(String(value.operation)) ?? value.operation };
+  });
+  return mechanicalDescriptionFromModifiers(inverse as HardModifier[]) || stored || node.description;
+}
+
+function workspaceVersionLabel(node: WorkspaceNode): string {
+  return node.data["workspaceVersionNumber"]
+    ? `v${node.data["workspaceVersionNumber"]}`
+    : node.versionId
+      ? `v:${node.versionId.slice(0, 8)}`
+      : "v:1";
+}
+
+function displaySupplyPaths(graph: WorkspaceGraph, target: EntityKey) {
+  const paths = supplyPaths(graph, target);
+  const inherited = paths.filter((path) => path.nodes.length > 1);
+  const relevant = inherited.length > 0
+    ? inherited
+    : paths.filter((path) => path.nodes.length === 1);
+  const unique = new Map<string, (typeof relevant)[number]>();
+  for (const path of relevant) {
+    const key = [
+      path.nodes.slice(0, -1).join("/"),
+      path.edges.some((edge) => edge.isMirrored) ? "mirrored" : "standard",
+      path.edges.at(-1)?.versionId ?? "live",
+    ].join("|");
+    if (!unique.has(key)) unique.set(key, path);
+  }
+  return [...unique.values()];
+}
+
+function supplyPathLabel(graph: WorkspaceGraph, path: ReturnType<typeof displaySupplyPaths>[number]): string {
+  const ancestors = path.nodes
+    .slice(0, -1)
+    .map((key) => graph.nodes.find((node) => node.key === key)?.name ?? key);
+  const source = ancestors.length > 0
+    ? `Inherited · ${ancestors.join(" → ")}`
+    : "Direct character purchase";
+  const mirrored = path.edges.some((edge) => edge.isMirrored)
+    ? " · Mirrored copy"
+    : "";
+  const version = path.edges.at(-1)?.versionId
+    ? ` · Pinned v:${path.edges.at(-1)!.versionId!.slice(0, 8)}`
+    : " · Live";
+  return `${source}${mirrored}${version}`;
+}
 export function CharacterWorkspace({
   characterId,
   mode,
   items = false,
-  directCapabilityCount,
 }: {
   characterId: string;
   mode: "BUILD" | "PLAY";
@@ -96,6 +156,7 @@ export function CharacterWorkspace({
     expectedHash: string | null;
   } | null>(null);
   const savedKey = useRef<EntityKey | null>(null);
+  const masteryLedgerRef = useRef<HTMLDivElement | null>(null);
   const [pending, setPending] = useState<{
     child: EntityKey;
     operation:
@@ -402,17 +463,72 @@ export function CharacterWorkspace({
     setPicker(false);
     setLibraryOpen(false);
   }
+  useEffect(() => {
+    if (!graph || lens !== "mastery" || selected || items) return;
+    const ledger = masteryLedgerRef.current;
+    if (!ledger || typeof ResizeObserver === "undefined") return;
+    let frame = 0;
+    const layoutMasonry = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const styles = getComputedStyle(ledger);
+        const row = Number.parseFloat(styles.gridAutoRows) || 4;
+        const gap = Number.parseFloat(styles.rowGap) || 12;
+        const visualGap = 12;
+        const cards = Array.from(ledger.children).filter(
+          (element): element is HTMLElement => element instanceof HTMLElement,
+        );
+        for (const card of cards) card.style.gridRowEnd = "auto";
+        for (const card of cards) {
+          const span = Math.max(
+            1,
+            Math.ceil((card.getBoundingClientRect().height + visualGap) / (row + gap)),
+          );
+          card.style.gridRowEnd = `span ${span}`;
+        }
+      });
+    };
+    const observer = new ResizeObserver(layoutMasonry);
+    observer.observe(ledger);
+    for (const child of Array.from(ledger.children)) observer.observe(child);
+    window.addEventListener("resize", layoutMasonry);
+    layoutMasonry();
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("resize", layoutMasonry);
+      observer.disconnect();
+      for (const child of Array.from(ledger.children)) {
+        if (child instanceof HTMLElement) child.style.gridRowEnd = "";
+      }
+    };
+  }, [availability, graph, items, lens, query, selected, sourceFilter, typeFilter]);
   if (!graph)
     return (
       <div className="rounded border border-border p-6">
         {error ? <p role="alert">{error}</p> : "Loading character workspace…"}
       </div>
     );
-  const roots = graph.edges.filter(
-    (e) =>
-      e.parent === null &&
-      (items ? e.category === "ITEM" : e.category !== "ITEM"),
-  );
+  const sourceOrder: Record<string, number> = {
+    LINEAGE: 0,
+    UPBRINGING: 1,
+    MANIFEST: 2,
+    ITEM: 3,
+  };
+  const roots = graph.edges
+    .filter(
+      (e) =>
+        e.parent === null &&
+        (items ? e.category === "ITEM" : e.category !== "ITEM"),
+    )
+    .sort(
+      (a, b) =>
+        (sourceOrder[a.category] ?? 99) - (sourceOrder[b.category] ?? 99) ||
+        a.order - b.order,
+    );
+  const sourceRoots = roots.filter((edge) => {
+    const node = graph.nodes.find((candidate) => candidate.key === edge.child);
+    return node?.kind === "heritage";
+  });
   const nodes = selected
     ? graph.edges
         .filter((e) => e.parent === selected.key)
@@ -421,18 +537,18 @@ export function CharacterWorkspace({
           edge: e,
         }))
         .filter((r) => r.node)
-    : !items && lens === "mastery"
+      : !items && lens === "mastery"
       ? graph.nodes
           .filter((n) => n.kind === "primitive" && (category === "ALL" || supplyPaths(graph, n.key).some(p => p.edges[0]?.category === category)))
           .map((node) => ({ node, edge: undefined }))
-      : roots
+      : (!items && lens === "expressions" ? sourceRoots : roots)
           .filter((e) => category === "ALL" || e.category === category)
           .map((edge) => ({
             node: graph.nodes.find((n) => n.key === edge.child)!,
             edge,
           }))
           .filter((r) => r.node);
-  const visible = nodes.filter(({ node }) => {
+  const matchesCurrentFilters = (node: WorkspaceNode) => {
     const paths = supplyPaths(graph, node.key);
     const available = effectiveAvailability(
       node.key,
@@ -454,7 +570,42 @@ export function CharacterWorkspace({
           ? paths.some((p) => p.item)
           : paths.some((p) => p.edges[0]?.category === sourceFilter)))
     );
-  });
+  };
+  const visible = nodes.filter(({ node }) => matchesCurrentFilters(node));
+  const sourceGroups = (["LINEAGE", "UPBRINGING", "MANIFEST"] as const).map(
+    (sourceCategory) => {
+      const entries = roots
+        .filter((edge) => edge.category === sourceCategory)
+        .map((edge) => ({
+          edge,
+          node: graph.nodes.find((candidate) => candidate.key === edge.child),
+        }))
+        .filter(
+          (entry): entry is { edge: WorkspaceEdge; node: WorkspaceNode } =>
+            Boolean(entry.node && matchesCurrentFilters(entry.node)),
+        );
+      const bundles = entries.filter(({ node }) => node.kind === "heritage");
+      const bundledKeys = new Set(
+        bundles.flatMap(({ node }) =>
+          graph.edges
+            .filter((candidate) => candidate.parent === node.key)
+            .map((candidate) => candidate.child),
+        ),
+      );
+      return {
+        category: sourceCategory,
+        bundles,
+        direct: entries.filter(
+          ({ node }) => node.kind !== "heritage" && !bundledKeys.has(node.key),
+        ),
+      };
+    },
+  );
+  const primitiveCount = graph.nodes.filter((node) => node.kind === "primitive").length;
+  const usableBundleCount = sourceRoots.filter((edge) => {
+    const root = graph.nodes.find((node) => node.key === edge.child);
+    return root && graph.edges.some((candidate) => candidate.parent === root.key);
+  }).length;
   const creationKinds: EntityKind[] = selected
     ? (
         [
@@ -528,18 +679,47 @@ export function CharacterWorkspace({
   };
 
   return (
-    <div className="v12-character-workspace space-y-5" data-layout={layout}>
+    <div className="v12-character-workspace space-y-5" data-layout={layout} data-workspace-scope={items ? "items" : "capabilities"}>
       {!items && <nav className="v12-projection-tabs" aria-label="Character information view">
-        {(["expressions", "mastery"] as const).map(value => <button key={value} aria-pressed={lens === value} onClick={() => { setLens(value); chooseCategory("ALL"); setTypeFilter("all"); }}>
-          {value === "expressions" ? "Capabilities and traits" : "All primitives"}
-        </button>)}
-
+        <div className="v12-projection-tab-list">
+          <button aria-pressed={lens === "expressions"} onClick={() => { setLens("expressions"); chooseCategory("ALL"); setTypeFilter("all"); }}>
+            Bundled by heritage
+          </button>
+          <button aria-pressed={lens === "mastery"} onClick={() => { setLens("mastery"); chooseCategory("ALL"); setTypeFilter("all"); }}>
+            All primitives · {primitiveCount}
+          </button>
+        </div>
+        <p>{lens === "expressions" ? "Capabilities and effects with their outputs" : "Every owned primitive with its source path"}</p>
+        <div className="v12-projection-actions">
+          <BuildModeBanner characterId={characterId} initialMode={mode} />
+          <label>
+            <Search className="size-4" aria-hidden="true" />
+            <input aria-label="Search character pieces" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search…" />
+          </label>
+          <details>
+            <summary>Filters{[sourceFilter, availability, typeFilter].some((value) => value !== "all") ? " •" : ""}</summary>
+            <div>
+              <select aria-label="Filter source" value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value)}>
+                <option value="all">All sources</option>
+                <option value="LINEAGE">Lineages</option>
+                <option value="UPBRINGING">Upbringings</option>
+                <option value="MANIFEST">Manifests</option>
+                <option value="item">Item contribution</option>
+              </select>
+              <select aria-label="Filter availability" value={availability} onChange={(event) => setAvailability(event.target.value)}>
+                <option value="all">Any availability</option>
+                <option value="available">Available</option>
+                <option value="unavailable">Unavailable</option>
+              </select>
+            </div>
+          </details>
+        </div>
       </nav>}
       {!items && <header className="v12-character-section-title">
-        <div><p className="v12-kicker">{lens === "expressions" ? "Capabilities and traits" : "Primitive mastery"}</p><h2>{lens === "expressions" ? "Grouped by what grants them" : "Every primitive, with its supply paths"}</h2></div>
-        {directCapabilityCount !== undefined && <span className="v12-tag v12-tag--teal">{directCapabilityCount} direct capabilities</span>}
+        <div><p className="v12-kicker">{lens === "expressions" ? "Character origins" : "Flat primitive ledger"}</p><h2>{lens === "expressions" ? "Lineage, upbringing, and manifest" : "Grouped by Lexicon Category / Market family"}</h2></div>
+        <span className="v12-tag v12-tag--teal">{lens === "expressions" ? `${usableBundleCount} active sources` : `${primitiveCount} owned primitives`}</span>
       </header>}
-      <nav
+      {items && <nav
         aria-label="Character categories"
         className="v12-character-workspace-tabs grid grid-cols-2 gap-2 sm:flex sm:flex-wrap"
       >
@@ -553,7 +733,7 @@ export function CharacterWorkspace({
             {key === "ALL" ? "All sources" : label}
           </button>
         ))}
-      </nav>
+      </nav>}
       <WorkspaceSurface
         modal={!!selected || !!composer}
         title={
@@ -578,7 +758,7 @@ export function CharacterWorkspace({
         <section className="v12-character-workspace-surface min-w-0 space-y-4" aria-label="Selected workspace">
           <div
             className={
-              path.length
+              path.length && !(selected && mode === "PLAY")
                 ? "flex flex-wrap items-center gap-2 text-sm"
                 : "hidden"
             }
@@ -610,7 +790,7 @@ export function CharacterWorkspace({
               );
             })}
           </div>
-          {(selected || composer || items) && <header className="flex flex-wrap items-start justify-between gap-3">
+          {(selected || composer || items) && !(selected && mode === "PLAY") && <header className="v12-workspace-context-head flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2
                 className={
@@ -695,25 +875,22 @@ export function CharacterWorkspace({
               </div>
             </div>
           )}
-          {selected && !composer && (
-            <button className={button} onClick={() => setPreview(!preview)}>
-              {preview ? "Back to contents" : "Preview"}
-            </button>
-          )}
           {selected && preview && !composer && (
-            <WorkspaceEntityPreview
-              node={selected}
-              graph={graph}
-              onOpen={(key) => {
-                const edge = graph.edges.find(
-                  (e) => e.parent === selected.key && e.child === key,
-                );
-                if (edge) {
-                  openEdge(edge);
-                  setPreview(true);
-                }
-              }}
-            />
+            <div className="v12-library-modal-layout">
+              <WorkspaceEntityPreview
+                node={selected}
+                graph={graph}
+                onOpen={(key) => {
+                  const edge = graph.edges.find(
+                    (e) => e.parent === selected.key && e.child === key,
+                  );
+                  if (edge) {
+                    openEdge(edge);
+                    setPreview(true);
+                  }
+                }}
+              />
+            </div>
           )}
           {error && (
             <div className="rounded border border-destructive p-3 text-sm">
@@ -914,10 +1091,9 @@ export function CharacterWorkspace({
               )}
               {selected?.description &&
                 selected.description !== "null" &&
+                !(selected.kind === "primitive" && mode === "PLAY") &&
                 !preview && (
-                  <p className="whitespace-pre-wrap text-sm">
-                    {selected.description}
-                  </p>
+                  <Markdown className="v12-workspace-selected-description text-sm">{selected.description}</Markdown>
                 )}
               {selected?.kind === "effect" && mode === "PLAY" && (
                 <button
@@ -936,14 +1112,6 @@ export function CharacterWorkspace({
                     : "Disable effect"}
                 </button>
               )}
-              {selected &&
-                (selected.kind === "effect" || selected.kind === "primitive") &&
-                mode === "PLAY" && (
-                  <ConsequencePackageAction
-                    characterId={characterId}
-                    entityKey={selected.key}
-                  />
-                )}
               {selected?.kind === "capability" && mode === "PLAY" && (
                 <CapabilityCard
                   characterId={characterId}
@@ -965,14 +1133,16 @@ export function CharacterWorkspace({
                 />
               )}
               {preview ? null : selected?.kind === "primitive" ? (
-                <WorkspaceEntityPreview
-                  node={selected}
-                  graph={graph}
-                  onOpen={() => {}}
-                />
+                <div className="v12-library-modal-layout">
+                  <WorkspaceEntityPreview
+                    node={selected}
+                    graph={graph}
+                    onOpen={() => {}}
+                  />
+                </div>
               ) : (
                 <>
-                  <div className="flex flex-wrap gap-2">
+                  {(selected || items) && <div className="flex flex-wrap gap-2">
                     <div className="flex gap-1" aria-label="Card layout">
                       {(["grid", "list"] as const).map((value) => (
                         <button
@@ -1055,7 +1225,7 @@ export function CharacterWorkspace({
                         </select>
                       </div>
                     </details>
-                  </div>
+                  </div>}
                   <div
                     data-v12-source-grid
                     className={
@@ -1085,23 +1255,49 @@ export function CharacterWorkspace({
                     }}
                   >
                     {!selected && !items && lens === "mastery" ? (
-                      <div className="v12-mastery-ledger">
+                      <div className="v12-mastery-ledger" ref={masteryLedgerRef}>
                         {Array.from(new Set(visible.map(({ node }) => String(node.data["category"] ?? "UNCLASSIFIED")))).map(family => {
                           const members = visible.filter(({ node }) => String(node.data["category"] ?? "UNCLASSIFIED") === family);
-                          return <section className="v12-mastery-family" key={family}>
-                            <header><div><p className="v12-kicker">Lexicon Category</p><h3>{libraryFamilyLabel({value: family, label: family})}</h3></div><span className="v12-tag">{members.length}</span></header>
-                            {members.map(({node}) => <div className="v12-mastery-entry" key={node.key}>
-                              <WorkspaceRow node={node} context={rowContext} />
+                          return <section className={`v12-mastery-family${members.length === 1 ? " is-single" : ""}`} data-member-count={members.length} key={family}>
+                            <header className="v12-mastery-family-head"><span className="v12-mastery-glyph" aria-hidden="true">{family.includes("DICE") ? "d8" : family.includes("TRIGGER") ? "⌁" : family.includes("PRACTICE") ? "△" : family.includes("PERCEPTION") ? "◉" : "◇"}</span><div><p className="v12-kicker">Lexicon Category</p><h3 className={libraryFamilyLabel({value: family, label: family}).length > 28 ? "is-long" : undefined}>{libraryFamilyLabel({value: family, label: family})}</h3></div><span className="v12-tag">{members.length}</span></header>
+                            <div className="v12-mastery-family-grid">{members.map(({node}) => {
+                              const mirrored = supplyPaths(graph, node.key).some((supply) => supply.edges.some((entry) => entry.isMirrored));
+                              return <article className={`v12-mastery-item${mirrored ? " is-mirrored" : ""}`} key={node.key}>
+                              <button onClick={() => { const nextPath = supplyPaths(graph, node.key)[0]?.edges.map((edge) => edge.id) ?? []; setPath(nextPath); setPreview(false); }}>
+                                <span><span className="v12-mastery-title"><span className="v12-workspace-version">{workspaceVersionLabel(node)}</span><b>{node.name}</b>{mirrored && <span className="v12-mirrored-label">Mirrored inverse</span>}</span><small>{bundleBu(graph, node.key)} BU</small></span>
+                                <p>{workspaceRuleText(node, mirrored)}</p>
+                              </button>
                               <div className="v12-mastery-paths" aria-label={`Supply paths for ${node.name}`}>
-                                {supplyPaths(graph, node.key).map(supply => <button key={supply.edges.map(e => e.id).join("/")} onClick={() => { setPath(supply.edges.map(e => e.id)); setPreview(false); }}>
-                                  {supply.nodes.slice(0, -1).map(key => graph.nodes.find(n => n.key === key)?.name ?? key).join(" → ") || "Direct mastery"}
-                                  {supply.edges.some(e => e.isMirrored) ? " · Mirrored" : ""}
-                                  {supply.edges.at(-1)?.versionId ? " · Pinned version" : ""}
+                                {displaySupplyPaths(graph, node.key).map(supply => <button key={supply.edges.map(e => e.id).join("/")} onClick={() => { setPath(supply.edges.map(e => e.id)); setPreview(false); }}>
+                                  {supplyPathLabel(graph, supply)}
                                 </button>)}
                               </div>
-                            </div>)}
+                            </article>;})}</div>
                           </section>;
                         })}
+                      </div>
+                    ) : !selected && !items && lens === "expressions" ? (
+                      <div className="v12-heritage-sections">
+                        {sourceGroups.map((group) => (
+                          <details className="v12-heritage-kind" key={group.category} open>
+                            <summary>
+                              <span className="v12-heritage-kind-glyph" aria-hidden="true"><IconDisplay iconSource="GAME_ICONS" iconKey={group.category === "LINEAGE" ? "lorc/dna2" : group.category === "UPBRINGING" ? "delapouite/plant-roots" : "caro-asercion/tarot-11-justice"} iconColor="#f1d78a" size={24} alt="" /></span>
+                              <div><p className="v12-kicker">Heritage channel</p><h3>{group.category.toLowerCase()}</h3></div>
+                              <span className="v12-tag">{group.bundles.length} {group.bundles.length === 1 ? "bundle" : "bundles"} · {group.direct.length} direct</span>
+                            </summary>
+                            <div className="v12-heritage-kind-body">
+                              {group.bundles.length > 0 && <div className="v12-heritage-bundles">
+                                {group.bundles.map(({ node, edge }) => <WorkspaceRow key={edge.id} node={node} edge={edge} context={rowContext} />)}
+                              </div>}
+                              <div className="v12-direct-heritage">
+                                <div className="v12-direct-heritage-title"><p className="v12-kicker">Direct {group.category.toLowerCase()} pieces</p><span>{group.direct.length}</span></div>
+                                {group.direct.length > 0 ? <div className="v12-direct-heritage-grid">
+                                  {group.direct.map(({ node, edge }) => <WorkspaceRow key={edge.id} node={node} edge={edge} context={rowContext} />)}
+                                </div> : <p className="v12-heritage-empty">No direct pieces in this heritage channel.</p>}
+                              </div>
+                            </div>
+                          </details>
+                        ))}
                       </div>
                     ) : visible.map(({ node, edge }) => (
                       <WorkspaceRow
@@ -1337,7 +1533,10 @@ function WorkspaceRow({
     toggles.offEffectIds,
   );
   const id = edge?.id ?? node.key;
-  const open = expanded.includes(id);
+  const mirrored = edge?.isMirrored ?? paths.some((entry) => entry.edges.some((candidate) => candidate.isMirrored));
+  const open = node.kind === "heritage"
+    ? !expanded.includes(`collapsed:${id}`)
+    : expanded.includes(id);
   const destinations = graph!.nodes
     .filter(
       (n) =>
@@ -1353,12 +1552,24 @@ function WorkspaceRow({
       })),
     );
   const validDrop = !!dragged && !validateReference(graph!, node.key, dragged);
+  const capabilityEffects = node.kind === "capability"
+    ? graph.edges
+        .filter((candidate) => candidate.parent === node.key && candidate.child.startsWith("effect:"))
+        .sort((a, b) => a.order - b.order)
+        .flatMap((candidate) => {
+          const effect = graph.nodes.find((entry) => entry.key === candidate.child);
+          return effect ? [{
+            effectId: effect.id,
+            effect: { id: effect.id, name: effect.name, description: effect.description },
+          }] : [];
+        })
+    : [];
   return (
     <article
       key={id}
       data-v12-workspace-row
       data-workspace-kind={node.kind}
-      className={`rounded-lg border bg-card ${validDrop ? "border-primary ring-1 ring-primary" : "border-border"}`}
+      className={`rounded-lg border bg-card${mirrored ? " is-mirrored" : ""} ${validDrop ? "border-primary ring-1 ring-primary" : "border-border"}`}
       draggable={mode === "BUILD"}
       onDragEnd={() => setDragged(null)}
       onDragStart={(e) => {
@@ -1392,97 +1603,135 @@ function WorkspaceRow({
           Drop to add a reference
         </p>
       )}
-      <div className="v12-workspace-row-head flex flex-wrap items-center gap-2 px-3 py-3">
-        {mode === "BUILD" && selecting && (
-          <input
-            type="checkbox"
-            aria-label={`Select ${node.name}`}
-            checked={selection.includes(node.key)}
-            onChange={(e) =>
-              setSelection((s) =>
-                e.target.checked
-                  ? [...s, node.key]
-                  : s.filter((k) => k !== node.key),
-              )
-            }
-          />
-        )}
-        <button
-          className={`rounded p-1 hover:bg-secondary ${node.kind === "heritage" ? "v12-source-medallion" : ""}`}
-          aria-label={`${open ? "Collapse" : "Expand"} ${node.name}`}
-          aria-expanded={open}
-          onClick={() =>
-            setExpanded((previous) =>
-              open ? previous.filter((k) => k !== id) : [...previous, id],
-            )
-          }
-        >
-          {node.kind === "heritage" ? <span aria-hidden="true">{String(node.data["kind"]).toUpperCase() === "LINEAGE" ? "♜" : String(node.data["kind"]).toUpperCase() === "UPBRINGING" ? "⚔" : "✦"}</span> : <ChevronRight className={`size-4 ${open ? "rotate-90" : ""}`} />}
-        </button>
-        <button
-          className="min-w-0 flex-1 text-left font-medium hover:text-primary"
-          onClick={() => {
-            const chosen = edge
-              ? [...(selected ? path : []), edge.id]
-              : (paths[0]?.edges.map((e) => e.id) ?? []);
-            setPath(chosen);
-            setComposer(null);
-            setPreview(false);
-          }}
-        >
-          {node.kind === "heritage" && <span className="v12-kicker block">{String(node.data["kind"] ?? "Heritage").replaceAll("_", " ")}</span>}
-          <span className="v12-workspace-entry-name">{node.name}</span>
-        </button>
-        <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
-          <span className="v12-workspace-kind text-xs text-muted-foreground">
-            {node.kind === "primitive"
-              ? String(node.data["category"]).replaceAll("_", " ").toLowerCase()
-              : node.kind}
-          </span>
-          <span className="min-w-12 text-right text-sm">
-            {bundleBu(graph!, node.key)}{" "}
-            {node.kind === "item" ? "Item BU" : "BU"}
-          </span>
-          <span
-            className={`text-xs ${state.available ? "text-primary" : "text-muted-foreground"}`}
-          >
-            {state.available ? "Available" : "Unavailable"}
-          </span>
+      {node.kind === "heritage" ? (
+        <div className="v12-workspace-row-head v12-source-head">
+          {mode === "BUILD" && selecting && (
+            <input
+              type="checkbox"
+              aria-label={`Select ${node.name}`}
+              checked={selection.includes(node.key)}
+              onChange={(event) =>
+                setSelection((current) =>
+                  event.target.checked
+                    ? [...current, node.key]
+                    : current.filter((key) => key !== node.key),
+                )
+              }
+            />
+          )}
           <button
-            className={button}
+            className="v12-row-collapse"
+            aria-label={`${open ? "Collapse" : "Expand"} ${node.name}`}
+            aria-expanded={open}
+            onClick={() => setExpanded((previous) => open ? [...previous, `collapsed:${id}`] : previous.filter((key) => key !== `collapsed:${id}`))}
+          >
+            <ChevronRight className={`size-4 ${open ? "rotate-90" : ""}`} />
+          </button>
+          <span className="v12-source-medallion" aria-hidden="true">
+            <IconDisplay
+              iconSource={node.data["iconSource"] === "UPLOAD" ? "UPLOAD" : "GAME_ICONS"}
+              iconKey={typeof node.data["iconKey"] === "string" && node.data["iconKey"] ? node.data["iconKey"] : String(node.data["kind"]).toUpperCase() === "LINEAGE" ? "lorc/dna2" : String(node.data["kind"]).toUpperCase() === "UPBRINGING" ? "delapouite/plant-roots" : "caro-asercion/tarot-11-justice"}
+              iconUrl={typeof node.data["iconUrl"] === "string" ? node.data["iconUrl"] : null}
+              iconColor={typeof node.data["iconColor"] === "string" ? node.data["iconColor"] : "#f1d78a"}
+              size={25}
+              alt=""
+            />
+          </span>
+          <div className="v12-source-identity">
+            <p className="v12-kicker">{String(node.data["kind"] ?? "Heritage").replaceAll("_", " ")} · {workspaceVersionLabel(node)} · {bundleBu(graph!, node.key)} BU</p>
+            <button
+              onClick={() => {
+                const chosen = edge ? [...(selected ? path : []), edge.id] : (paths[0]?.edges.map((item) => item.id) ?? []);
+                setPath(chosen);
+                setComposer(null);
+                setPreview(false);
+              }}
+            >
+              <span className="v12-workspace-entry-name">{node.name}</span>
+            </button>
+            {node.description && node.description !== "null" && <Markdown>{node.description}</Markdown>}
+          </div>
+          <div className="v12-source-actions">
+            <span className={state.available ? "is-available" : ""}>{state.available ? "Available" : "Unavailable"}</span>
+          </div>
+        </div>
+      ) : (
+        <div className="v12-workspace-row-head flex flex-wrap items-center gap-2 px-3 py-3">
+          {mode === "BUILD" && selecting && (
+            <input
+              type="checkbox"
+              aria-label={`Select ${node.name}`}
+              checked={selection.includes(node.key)}
+              onChange={(e) =>
+                setSelection((s) =>
+                  e.target.checked
+                    ? [...s, node.key]
+                    : s.filter((k) => k !== node.key),
+                )
+              }
+            />
+          )}
+          {node.kind === "capability" && <button
+              className="v12-row-collapse"
+              aria-label={`${open ? "Collapse" : "Expand"} ${node.name}`}
+              aria-expanded={open}
+              onClick={() => setExpanded((previous) => open ? previous.filter((key) => key !== id) : [...previous, id])}
+            >
+              <ChevronRight className={`size-4 ${open ? "rotate-90" : ""}`} />
+            </button>}
+          {node.kind === "primitive" && <span className={`v12-workspace-version${edge?.isMirrored ? " is-mirrored" : ""}`}>
+            {workspaceVersionLabel(node)}
+          </span>}
+          <button
+            className="min-w-0 flex-1 text-left font-medium hover:text-primary"
             onClick={() => {
               const chosen = edge
                 ? [...(selected ? path : []), edge.id]
                 : (paths[0]?.edges.map((e) => e.id) ?? []);
               setPath(chosen);
               setComposer(null);
-              setPreview(true);
-            }}
-          >
-            Preview
-          </button>
-        </div>
-      </div>
-      {mode === "PLAY" && node.kind === "capability" && (
-        <div className="px-4 pb-3">
-          <button
-            className={`${button} bg-primary/15 text-primary`}
-            onClick={() => {
-              setPath(
-                edge
-                  ? [...(selected ? path : []), edge.id]
-                  : (paths[0]?.edges.map((e) => e.id) ?? []),
-              );
-              setComposer(null);
               setPreview(false);
             }}
           >
-            Use {node.name}
+            <span className="v12-workspace-entry-name">{node.name}</span>
           </button>
+          <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
+            <span className="v12-workspace-kind text-xs text-muted-foreground">
+              {node.kind === "primitive"
+                ? String(node.data["category"]).replaceAll("_", " ").toLowerCase()
+                : node.kind}
+            </span>
+            <span className="min-w-12 text-right text-sm">
+              {bundleBu(graph!, node.key)} {node.kind === "item" ? "Item BU" : "BU"}
+            </span>
+            <span className={`text-xs ${state.available ? "text-primary" : "text-muted-foreground"}`}>
+              {state.available ? "Available" : "Unavailable"}
+            </span>
+          </div>
         </div>
       )}
+      {mode === "PLAY" && node.kind === "capability" && (
+        <CapabilityCard
+          characterId={graph.characterId}
+          actionsOnly
+          showPrimitives={false}
+          showPreviewButton={false}
+          capability={{
+            id: node.id,
+            name: node.name,
+            type: String(node.data["type"] ?? "Capability"),
+            sourceType: String(node.data["sourceType"] ?? "Character"),
+            acquiredAtLevel: Number(edge?.data?.["acquiredAtLevel"] ?? 1),
+            versionId: node.versionId,
+            latestVersionId: node.latestVersionId,
+            slotSource: (edge?.slotSource ?? null) as SlotSource | null,
+            verboseDescription: node.description,
+            effectLinks: capabilityEffects,
+          }}
+        />
+      )}
       {mode === "PLAY" && node.kind === "effect" && (
-        <div className="px-4 pb-3">
+        <div className="v12-runtime-actions px-4 pb-3">
           <button
             className={button}
             aria-pressed={!toggles.offEffectIds.has(node.id)}
@@ -1496,22 +1745,29 @@ function WorkspaceRow({
           >
             {toggles.offEffectIds.has(node.id)
               ? "Enable effect"
-              : "Disable effect"}
+              : "Effect active"}
           </button>
         </div>
       )}
-      {node.kind === "primitive" && typeof node.data["mechanicalOutputText"] === "string" && node.data["mechanicalOutputText"] && node.data["mechanicalOutputText"] !== node.description && (
-        <p className="v12-rule-text px-4 pb-3">{node.data["mechanicalOutputText"]}</p>
+      {node.kind === "primitive" && workspaceRuleText(node, mirrored) && workspaceRuleText(node, mirrored) !== node.description && (
+        <p className="v12-rule-text px-4 pb-3">{workspaceRuleText(node, mirrored)}</p>
       )}
-      {node.description && node.description !== "null" && !open && (
-        <p className="line-clamp-2 px-4 pb-3 text-sm text-muted-foreground">
-          {node.description}
-        </p>
+      {node.kind !== "heritage" && node.description && node.description !== "null" && !open && (
+        <Markdown className="line-clamp-2 px-4 pb-3 text-sm text-muted-foreground">{node.description}</Markdown>
       )}
-      {node.kind !== "primitive" && (
+      {node.kind !== "primitive" && (node.kind !== "heritage" || open) && (node.kind !== "capability" || open) && (
         <BundleContents
           node={node}
           graph={graph}
+          characterId={graph.characterId}
+          mode={mode}
+          effectIsOff={(id) => toggles.offEffectIds.has(id)}
+          onToggleEffect={(id) => {
+            const key = effStorageKey(graph.characterId, id);
+            if (toggles.offEffectIds.has(id)) localStorage.removeItem(key);
+            else localStorage.setItem(key, "1");
+            notifyToggleChanged();
+          }}
           onOpen={(childEdge, ancestors) => {
             const base = edge
               ? [...(selected ? path : []), edge.id]
@@ -1521,10 +1777,10 @@ function WorkspaceRow({
           }}
         />
       )}
-      {open && (
+      {open && node.kind !== "heritage" && (
         <div className="space-y-3 border-t border-border px-4 py-3 text-sm">
           {node.description && node.description !== "null" && (
-            <p className="whitespace-pre-wrap">{node.description}</p>
+            <Markdown>{node.description}</Markdown>
           )}
           {(Array.isArray(node.data["hardModifiers"])
             ? node.data["hardModifiers"]
@@ -1545,13 +1801,9 @@ function WorkspaceRow({
               {node.data["workspaceVersionNumber"]
                 ? `v${node.data["workspaceVersionNumber"]}`
                 : "Unversioned"}{" "}
-              {node.latestVersionId && node.versionId !== node.latestVersionId
-                ? "· Update available"
-                : "· Current"}{" "}
-              ·{" "}
               {paths.some((p) => p.edges.some((e) => e.isMirrored))
                 ? "Mirrored supply"
-                : "Standard"}
+                : "Direct supply"}
             </p>
             <div>
               <p className="font-medium">Supplied by</p>
@@ -1730,4 +1982,3 @@ function WorkspaceRow({
     </article>
   );
 }
-

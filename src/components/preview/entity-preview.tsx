@@ -743,7 +743,7 @@ function OwnerBar({ owner }: { owner: NonNullable<EntityPreviewProps["owner"]> }
     // a containing wrapper class so the gap is unambiguous. The
     // mb on the previous section was implicit; making it pt-6 +
     // mt-3 leaves room between the last content line and the rule.
-    <div className="mt-3 flex items-center justify-between gap-2 border-t border-border px-1 pb-4 pt-6 text-xs text-muted-foreground">
+    <div className="v12-preview-owner-bar mt-3 flex items-center justify-between gap-2 border-t border-border px-1 pb-4 pt-6 text-xs text-muted-foreground">
       {profileHref ? (
         <a href={profileHref} className="flex items-center gap-2 hover:underline">
           {inner}

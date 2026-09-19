@@ -20,7 +20,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LayoutGrid, List } from "lucide-react";
+import { Dna, LayoutGrid, List, ScrollText, UsersRound } from "lucide-react";
 import { useModalStack } from "@/components/ui/modal-stack";
 import { LibraryTable } from "@/components/library/library-table";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
@@ -117,11 +117,10 @@ export function CreationsClient({
   const [visibility, setVisibility] = useState<VisibilityFilter>("all");
   const [heritageKind, setHeritageKind] = useState("all");
   const [search, setSearch] = useState("");
-  // P5R-6: LIST view toggle. LibraryTable already supports both modes; the
-  // view prop is just plumbed through. Default LIST (the user said list view
-  // is the better default — grid icons were too dominant and a 2-column
-  // mobile grid was cramped on a 393px viewport). Local state only; the
-  // /library/browse page persists its own choice in the sw_lib_pref cookie.
+  // LibraryTable supports both modes. This personal archive defaults to its
+  // richer catalog grid. Resizing into a narrow screen switches to LIST so
+  // the records remain readable without cramped two-column cards. Local state
+  // only; /library/browse persists its own independent preference.
   //
   // Mobile force-list: even if the user previously picked GRID, the
   // server-rendered `view` prop coming from /creations/page.tsx is the
@@ -130,7 +129,7 @@ export function CreationsClient({
   // the page's media-query check below is a belt-and-braces fallback in
   // case the cookie says GRID and the user resizes the window without a
   // server roundtrip.
-  const [view, setView] = useState<LibraryView>("LIST");
+  const [view, setView] = useState<LibraryView>("GRID");
   // Belt-and-braces: on first effect, if the viewport is mobile-width,
   // pin to LIST regardless of any subsequent GRID toggle. The user can
   // still manually re-toggle to GRID, but on the next reload on a phone
@@ -162,6 +161,8 @@ export function CreationsClient({
     () =>
       initialItems.map((item) => ({
         ...item,
+        category:
+          item.category?.toUpperCase().startsWith("USER:") ? null : item.category,
         visibility: visibilityById[item.id] ?? item.visibility ?? "PRIVATE",
       })),
     [initialItems, visibilityById],
@@ -368,17 +369,75 @@ export function CreationsClient({
     kind !== "all" ||
     visibility !== "all";
 
+  const tabMeta: Record<CreationTab, { description: string; count: number }> = {
+    mechanics: {
+      description: "Rules, effects, capabilities, and equipment",
+      count: items.filter((item) =>
+        TAB_TYPES.mechanics.includes(TARGET_TYPE_MAP[item.targetType] ?? "primitive"),
+      ).length,
+    },
+    heritages: {
+      description: "Lineages, upbringings, and manifests",
+      count: items.filter((item) =>
+        TAB_TYPES.heritages.includes(TARGET_TYPE_MAP[item.targetType] ?? "primitive"),
+      ).length,
+    },
+    characters: {
+      description: "Living sheets and reusable builds",
+      count: items.filter((item) =>
+        TAB_TYPES.characters.includes(TARGET_TYPE_MAP[item.targetType] ?? "primitive"),
+      ).length,
+    },
+  };
+
+  const tabIcon = {
+    mechanics: ScrollText,
+    heritages: Dna,
+    characters: UsersRound,
+  } satisfies Record<CreationTab, typeof ScrollText>;
+
+  const mechanicIndexLabel: Record<TypeFilter, string> = {
+    all: "Rules, effects, capabilities, and equipment",
+    primitive: "Atomic rules and mechanical modifiers",
+    effect: "Runtime effects and resolved states",
+    capability: "Active and passive capability designs",
+    item: "Equipment, weapons, and carried artifacts",
+    template: "Heritage templates",
+    character: "Living character sheets",
+    build: "Reusable character builds",
+  };
+
   return (
     <div className="v12-creations-browser">
       <div role="tablist" aria-label="My creations" className="v12-creations-tabs">
-        {([['mechanics', 'Mechanics'], ['heritages', 'Heritages'], ['characters', 'Characters']] as const).map(([key, label]) => (
-          <button key={key} type="button" role="tab" aria-selected={tab === key}
-            onClick={() => { setTab(key); setType('all'); }}
-            className={cn('v12-creations-tab', tab === key ? 'is-active' : '')}>
-            {label} ({items.filter(item => TAB_TYPES[key].includes(TARGET_TYPE_MAP[item.targetType] ?? "primitive")).length})
-          </button>
-        ))}
+        {([['mechanics', 'Mechanics'], ['heritages', 'Heritages'], ['characters', 'Characters']] as const).map(([key, label]) => {
+          const TabIcon = tabIcon[key];
+          return (
+            <button key={key} type="button" role="tab" aria-selected={tab === key}
+              onClick={() => { setTab(key); setType('all'); }}
+              className={cn('v12-creations-tab', tab === key ? 'is-active' : '')}>
+              <TabIcon aria-hidden="true" />
+              <span>{label}</span>
+              <b>{tabMeta[key].count}</b>
+            </button>
+          );
+        })}
       </div>
+      {tab === "mechanics" && (
+        <div role="group" aria-label="Mechanic kind" className="v12-creations-subtabs v12-creations-subtabs--mechanics">
+          {([['all', 'All mechanics'], ['primitive', 'Primitives'], ['effect', 'Effects'], ['capability', 'Capabilities'], ['item', 'Items']] as const).map(([key, label]) => {
+            const count = key === "all"
+              ? tabMeta.mechanics.count
+              : items.filter((item) => TARGET_TYPE_MAP[item.targetType] === key).length;
+            return (
+              <button key={key} type="button" aria-pressed={type === key} onClick={() => setType(key)}
+                className={cn('v12-creations-chip', type === key ? 'is-active' : '')}>
+                <span>{label}</span><b>{count}</b>
+              </button>
+            );
+          })}
+        </div>
+      )}
       {tab === "heritages" && (
         <div role="group" aria-label="Heritage kind" className="v12-creations-subtabs">
           {([['all', 'All heritages'], ['LINEAGE_TEMPLATE', 'Lineages'], ['MANIFEST_TEMPLATE', 'Manifests'], ['UPBRINGING_TEMPLATE', 'Upbringings']] as const).map(([key, label]) => (
@@ -435,6 +494,17 @@ export function CreationsClient({
         </div>
       </div>
 
+      <div className="v12-creations-index-head">
+        <div>
+          <span>Archive index</span>
+          <strong>{tab === "mechanics" ? mechanicIndexLabel[type] : tabMeta[tab].description}</strong>
+        </div>
+        <p>
+          <b>{filteredItems.length}</b>
+          <span>{filteredItems.length === 1 ? "record" : "records"} in view</span>
+        </p>
+      </div>
+
       {items.length === 0 ? (
         <div className="v12-creations-empty">
           <p className="text-sm font-medium text-muted-foreground">
@@ -446,10 +516,11 @@ export function CreationsClient({
           </p>
         </div>
       ) : (
-        <div className="v12-creations-results">
+        <div className={cn("v12-creations-results", view === "GRID" ? "is-grid" : "is-list")}>
           <LibraryTable
             items={filteredItems}
             view={view}
+            surface="atelier"
             engagement={initialEngagement}
             currentUserInternalId={currentUserInternalId}
             onSelect={(item) => {

@@ -93,7 +93,7 @@ export function ConsequencePackageAction({
     }
   }
   return (
-    <div className="space-y-2">
+    <div className="v12-consequence-package-action space-y-2">
       {!initialPreview && (
         <button
           disabled={busy}

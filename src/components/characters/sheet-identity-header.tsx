@@ -304,15 +304,22 @@ export function SheetIdentityHeader({
       // On desktop it replaces the static in-page header.
       // The content gets a top spacer to clear it (see
       // character-sheet-view.tsx).
-      className="v12-instrument fixed left-0 right-0 top-0 z-30 border-b border-border bg-background/95 backdrop-blur-md"
+      className="v12-sheet-identity v12-instrument fixed left-0 right-0 top-0 z-30 border-b border-border bg-background/95 backdrop-blur-md"
       data-testid="sheet-identity-header"
       data-character-surface
       data-expanded={expanded}
     >
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-secondary/30"
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            setExpanded((value) => !value);
+          }
+        }}
+        className="v12-sheet-identity-summary flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-secondary/30"
         aria-expanded={expanded}
         aria-label={expanded ? "Collapse identity" : "Expand identity"}
       >
@@ -346,11 +353,9 @@ export function SheetIdentityHeader({
             {manifestName ?? ""}
           </div>
         </div>
-        {/* BU metric badge — clickable to open budget popup.
-             Phase 8.4 v25.2 (Mashu 2026-07-30): inner button
-             nested inside the outer expand button. We use
-             stopPropagation so clicking the chip opens the
-             formula popup without toggling expand. */}
+        {/* BU metric badge — clickable to open the budget popup. The
+            expanding row is a keyboard-accessible div so this remains a
+            valid, independent button instead of invalid nested markup. */}
           <div className="flex shrink-0 items-center gap-1.5 text-[11px]">
             <button
               type="button"
@@ -378,14 +383,14 @@ export function SheetIdentityHeader({
               <ChevronDown className="size-4 text-muted-foreground" />
             )}
           </div>
-      </button>
+      </div>
 
       {expanded ? (
-        <div className="border-t border-border bg-background/95 px-3 py-2 text-xs">
+        <div className="v12-sheet-identity-deck border-t border-border bg-background/95 px-3 py-2 text-xs">
           {/* DM Bonus / Item BU / Remaining. The DM Bonus chip is
               editable in place via DmBonusEditor. Mashu 2026-07-28:
               "In the expanded we need to modify the DM bonus too." */}
-          <div className="mb-2 flex flex-wrap items-center gap-2">
+          <div className="v12-identity-metrics mb-2 flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1">
               <span className="font-semibold uppercase text-muted-foreground">
                 DM Bonus
@@ -424,7 +429,7 @@ export function SheetIdentityHeader({
           <button
             type="button"
             onClick={() => setBuPopup("budget")}
-            className="block w-full text-left transition-opacity hover:opacity-80"
+            className="v12-identity-meter block w-full text-left transition-opacity hover:opacity-80"
             title="Show BU budget formula"
             aria-label="Show BU budget formula"
           >
@@ -481,7 +486,7 @@ export function SheetIdentityHeader({
           <button
             type="button"
             onClick={() => setBuPopup("debt")}
-            className="mt-2 block w-full text-left transition-opacity hover:opacity-80"
+            className="v12-identity-meter mt-2 block w-full text-left transition-opacity hover:opacity-80"
             title="Show volatility / debt formula"
             aria-label="Show volatility / debt formula"
           >
@@ -523,7 +528,7 @@ export function SheetIdentityHeader({
 
           {/* Mirrored primitives accordion (NEW v3) */}
           {volatility.mirroredPrimitives && volatility.mirroredPrimitives.length > 0 ? (
-            <details className="mt-3 rounded-md border border-border bg-background/50">
+            <details className="v12-identity-mirrors mt-3 rounded-md border border-border bg-background/50">
               <summary className="cursor-pointer list-none px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 <span className="inline-flex items-center gap-1">
                   <RotateCcw className="size-3" />
@@ -556,7 +561,7 @@ export function SheetIdentityHeader({
               "INSIDE THAT GOD DAMN expanded top deck I
               want to put the identity card. Just above
               the existing buttons for lvl up edit clone." */}
-          <div className="mt-3 overflow-hidden rounded-md border border-border bg-card">
+          <div className="v12-identity-card mt-3 overflow-hidden rounded-md border border-border bg-card">
             <div className="grid grid-cols-2 gap-px bg-border">
               <IdentityCell
                 label="Lineage"
@@ -580,7 +585,7 @@ export function SheetIdentityHeader({
 
           {/* Edit / Clone / Level Up — Mashu 2026-07-28:
               "we need the clone and level up buttons too there." */}
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="v12-identity-actions mt-3 flex flex-wrap items-center gap-2">
             <CharacterEditButton
               characterId={characterId}
               className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium hover:bg-secondary"

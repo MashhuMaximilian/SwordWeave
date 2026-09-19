@@ -20,7 +20,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { asc, eq } from "drizzle-orm";
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { Plus, UserRound } from "lucide-react";
+import { ArrowRight, Plus, UserRound, UsersRound } from "lucide-react";
 import {
   CharacterListTabs,
   type CharacterTab,
@@ -69,7 +69,6 @@ export default async function CharactersPage({ searchParams }: PageProps) {
   // error.tsx can't render it.
   const [ownRows, sharedRows, publicResult] = (await (async () => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const ownedPromise: Promise<any[]> = ownerClerkId
         ? (db.query.characters.findMany({
             where: eq(characters.userId, ownerClerkId),
@@ -103,18 +102,29 @@ export default async function CharactersPage({ searchParams }: PageProps) {
 
   return (
     <main className="v12-roster-page">
-      <div className="v12-roster-hero">
-        <div>
-          <p className="v12-kicker">
-            Roster
-          </p>
-          <h1>Characters</h1>
+      <header className="v12-roster-hero v12-archive-command">
+        <div className="v12-archive-emblem" aria-hidden="true">
+          <UsersRound />
+        </div>
+        <div className="v12-archive-heading">
+          <p className="v12-kicker">Character registry · persistent records</p>
+          <div className="v12-archive-title-line">
+            <h1>Roster Matrix</h1>
+            <span>Personal archive</span>
+          </div>
           <p className="v12-roster-deck">
-            Your own characters, characters shared with you, and the public
-            library of builds you can fork as your own.
+            Open a living character sheet, inspect a shared identity, or draw a
+            public build into your own chronicle.
           </p>
         </div>
-        <NewCharacterButton variant="primary" />
+        <div className="v12-archive-actions">
+          <NewCharacterButton variant="primary" />
+        </div>
+      </header>
+      <div className="v12-archive-telemetry" aria-label="Roster summary">
+        <span><b>{ownRows.length}</b> owned sheets</span>
+        <span><b>{sharedRows.length}</b> shared links</span>
+        <span><b>{publicResult.items.length}</b> public records</span>
       </div>
 
       {/* Suspense wraps the tab strip + content because
@@ -286,22 +296,25 @@ async function CharacterCard({
 
   return (
     <article className="v12-roster-card group">
-      <div className="flex items-start gap-3">
-        {portrait ? (
-          <img
-            src={portrait}
-            alt={character.name}
-            className="size-14 rounded-md border border-border object-cover"
-          />
-        ) : (
-          <div className="flex size-14 items-center justify-center rounded-md border border-border bg-background text-2xl font-bold text-muted-foreground">
-            {character.name.charAt(0).toUpperCase()}
-          </div>
-        )}
+      <div className="v12-roster-card-head">
+        <div className="v12-roster-avatar-frame">
+          {portrait ? (
+            <img
+              src={portrait}
+              alt={character.name}
+              className="v12-roster-avatar"
+            />
+          ) : (
+            <div className="v12-roster-avatar v12-roster-avatar--fallback">
+              {character.name.charAt(0).toUpperCase()}
+            </div>
+          )}
+        </div>
         <div className="min-w-0 flex-1">
+          <p className="v12-roster-record-code">Sheet record · level {character.level}</p>
           <h3 className="truncate text-lg font-semibold">{character.name}</h3>
-          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-            <span className="rounded-full bg-secondary px-2 py-0.5 font-mono font-bold text-secondary-foreground">
+          <div className="v12-roster-lineage">
+            <span className="v12-roster-level">
               L{character.level}
             </span>
             <span>{character.size}</span>
@@ -314,9 +327,9 @@ async function CharacterCard({
       </div>
 
       {/* BU bar */}
-      <div className="mt-4">
-        <div className="flex items-center justify-between text-xs">
-          <span className="font-semibold uppercase text-muted-foreground">
+      <div className="v12-roster-budget">
+        <div className="v12-roster-budget-line">
+          <span>
             BU
           </span>
           <span
@@ -331,9 +344,9 @@ async function CharacterCard({
             </span>
           )}
         </div>
-        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-secondary">
+        <div className="v12-roster-budget-track">
           <div
-          className={`h-full rounded-full transition-all ${
+          className={`v12-roster-budget-fill ${
             trulyOverBudget
               ? "bg-destructive"
               : budgetVisible >= sheet.buBalance.progressionPool
@@ -348,23 +361,23 @@ async function CharacterCard({
       </div>
 
       {/* Stats grid */}
-      <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
+      <div className="v12-roster-stats">
         <Stat label="P" value={character.attrPhysical} />
         <Stat label="M" value={character.attrMental} />
         <Stat label="Mg" value={character.attrMagical} />
       </div>
-      <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+      <div className="v12-roster-footnote">
         <span>Sum: {attrSum}/10</span>
         <span>{sheet.capabilityCount} caps</span>
       </div>
 
       {/* Actions */}
-      <div className="mt-5 flex gap-2">
+      <div className="v12-roster-card-actions">
         <Link
           href={`/characters/${character.id}`}
-          className="v12-metal-button v12-metal-button--primary flex-1 justify-center"
+          className="v12-roster-open"
         >
-          Open Sheet
+          Open sheet <ArrowRight aria-hidden="true" />
         </Link>
         {/* Original page had CharacterEditButton + Clone button here.
             Edit/clone affordances live on the sheet itself in the
@@ -376,8 +389,8 @@ async function CharacterCard({
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-md border border-border bg-background px-2 py-1.5">
-      <div className="text-[10px] font-semibold uppercase text-muted-foreground">
+    <div className="v12-roster-stat">
+      <div>
         {label}
       </div>
       <div className="mt-0.5 font-mono text-sm font-bold">

@@ -204,26 +204,28 @@ export default async function CreationsPage({
     character: characterRows.length,
     build: buildRows.length,
   };
+  const totalCreations = Object.values(counts).reduce((sum, count) => sum + count, 0);
+  const mechanicsCount = counts.primitive + counts.effect + counts.capability + counts.item;
+  const characterCount = counts.character + counts.build;
 
   return (
     <main className="v12-creations-page">
-      <div className="v12-creations-hero">
-        <div>
-          <p className="v12-kicker">
-            Workshop
-          </p>
-          <h1>
-            <Hammer className="size-8" />
-            My Creations
-          </h1>
+      <header className="v12-creations-hero v12-archive-command">
+        <div className="v12-archive-emblem" aria-hidden="true">
+          <Hammer />
+        </div>
+        <div className="v12-archive-heading">
+          <p className="v12-kicker">Authored corpus · {totalCreations} persistent records</p>
+          <div className="v12-archive-title-line">
+            <h1>Maker&apos;s Archive</h1>
+            <span>Private collection</span>
+          </div>
           <p className="v12-creations-deck">
-            All your authored entries — primitives, effects, capabilities,
-            heritage, and items — in one place. Filter by type or status to
-            find drafts, jump into the sandbox to keep editing, or open the
-            canonical detail page to view forks and likes.
+            Your grammar, lineages, equipment, and character records. Inspect
+            a design, return it to the Atelier, or control who may discover it.
           </p>
         </div>
-        <div className="v12-creations-actions">
+        <div className="v12-creations-actions v12-archive-actions">
           <Link
             href="/atelier?build=primitive"
             className="v12-metal-button v12-metal-button--primary"
@@ -238,6 +240,11 @@ export default async function CreationsPage({
           </Link>
           <NewCharacterButton variant="outline" />
         </div>
+      </header>
+      <div className="v12-archive-telemetry" aria-label="Creation summary">
+        <span><b>{mechanicsCount}</b> mechanics</span>
+        <span><b>{counts.template}</b> heritages</span>
+        <span><b>{characterCount}</b> characters &amp; builds</span>
       </div>
 
       <CreationsClient

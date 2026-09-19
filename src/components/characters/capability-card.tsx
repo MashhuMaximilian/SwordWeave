@@ -57,6 +57,7 @@ import {
 } from "@/components/characters/workspace/dnd-primitives";
 import { makeKey as makeVersionKey, type VersionKey } from "@/lib/versions/version-key";
 import { useEntityPreview } from "@/components/characters/preview-modal";
+import { Markdown } from "@/components/ui/markdown";
 
 interface ToggleResponse {
   capability: { id: string; active: boolean };
@@ -132,6 +133,8 @@ export interface CapabilityCardProps {
    * for slotted capabilities).
    */
   showPreviewButton?: boolean;
+  /** Render only the existing play controls for compact workspace rows. */
+  actionsOnly?: boolean;
   /**
    * Phase 8.5 / Session H6 round 11 (Mashu
    * 2026-08-03): the bulk-resolved latest-version
@@ -275,7 +278,7 @@ function EffectToggleRow({
         </button>
       </div>
       {effectDescription ? (
-        <div className="text-muted-foreground italic">{effectDescription}</div>
+        <Markdown className="text-muted-foreground italic">{effectDescription}</Markdown>
       ) : null}
     </li>
   );
@@ -308,6 +311,7 @@ export function CapabilityCard({
   capability,
   showPrimitives = true,
   showPreviewButton = true,
+  actionsOnly = false,
   latestVersions,
   dropEnabled = false,
   onDropPrimitive,
@@ -691,6 +695,35 @@ export function CapabilityCard({
     void openCapabilityPreview();
   };
 
+  if (actionsOnly) {
+    return (
+      <div className="v12-capability-actions-only" onClick={(event) => event.stopPropagation()}>
+        {consequencePreview ? <ConsequencePackageAction characterId={characterId} entityKey={`capability:${capability.id}`} initialPreview={consequencePreview} onClose={() => setConsequencePreview(null)} /> : null}
+        <button
+          type="button"
+          onClick={() => void handleToggle()}
+          disabled={toggling || triggerPending}
+          aria-pressed={showActive}
+          data-testid="capability-toggle"
+          title={showActive ? "Active — click to deactivate" : "Inactive — click to activate"}
+        >
+          <Power className="size-3" />
+          {showActive ? "Active" : "Inactive"}
+        </button>
+        <button
+          type="button"
+          onClick={() => void handleTrigger()}
+          disabled={triggerPending || toggling || !!blockedReason}
+          data-testid="capability-trigger"
+          title="Fire this capability once and log it"
+        >
+          {triggerFlash ? <CheckCircle2 className="size-3" /> : <Zap className="size-3" />}
+          {triggerFlash ? "Triggered" : triggerPending ? "…" : "Trigger"}
+        </button>
+      </div>
+    );
+  }
+
   return (
       <div
         className={cn(
@@ -747,9 +780,7 @@ export function CapabilityCard({
         ) : null}
 
         {capability.verboseDescription && (
-          <p className="mt-2 text-xs leading-relaxed text-muted-foreground line-clamp-3">
-            {capability.verboseDescription}
-          </p>
+          <Markdown className="mt-2 text-xs leading-relaxed text-muted-foreground line-clamp-3">{capability.verboseDescription}</Markdown>
         )}
         {/* Phase 8.4 v5 (Mashu 2026-07-28): nested effects list
             (matches the character-creation modal's structure).

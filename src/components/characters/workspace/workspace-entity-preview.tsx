@@ -84,6 +84,7 @@ export function WorkspaceEntityPreview({
     return result;
   }
   return (
+    <div className="v12-fetched-preview">
     <EntityPreview
       item={{ kind: node.kind, row: rowFor(node) } as SandboxPreviewItem}
       callbacks={{
@@ -91,5 +92,6 @@ export function WorkspaceEntityPreview({
           onOpen(`${previewKind(link.targetType)}:${link.targetId}`),
       }}
     />
+    </div>
   );
 }

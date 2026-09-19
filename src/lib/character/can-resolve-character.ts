@@ -34,9 +34,13 @@
 // =============================================================================
 
 import { and, eq, isNull } from "drizzle-orm";
+import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/db/client";
 import { characters, characterShares } from "@/db/schema";
-import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
+import {
+  resolveLocalAuthorIdentity,
+  resolveUserIdByClerkId,
+} from "@/lib/auth/author-resolver";
 
 export type CharacterPermission = "OWNER" | "EDITOR" | "VIEWER";
 
@@ -68,7 +72,23 @@ async function resolveCharacter(
 
   // Step 1: resolve caller's internal user.id (Clerk ID → UUID).
   // null if the caller has never logged in / doesn't exist yet.
-  const viewerInternalId = await resolveUserIdByClerkId(clerkUserId);
+  let effectiveClerkUserId = clerkUserId;
+  let viewerInternalId = await resolveUserIdByClerkId(clerkUserId);
+
+  // A local Clerk development instance can be recreated while the local
+  // database still contains rows owned by the previous Clerk id. The archive
+  // pages already reconnect that session by stable username; character access
+  // must use the same identity or every sheet link briefly opens and then
+  // redirects back to the roster. Keep this fallback development-only.
+  if (process.env.NODE_ENV === "development" && !viewerInternalId) {
+    const clerkAccount = await currentUser().catch(() => null);
+    const localIdentity = await resolveLocalAuthorIdentity(
+      clerkUserId,
+      clerkAccount?.username,
+    );
+    effectiveClerkUserId = localIdentity.clerkUserId;
+    viewerInternalId = localIdentity.internalUserId;
+  }
 
   // Step 2: load the character row + the share row in two shallow
   // queries. Avoid depth-3+ joins (per the codebase trap).
@@ -81,19 +101,19 @@ async function resolveCharacter(
 
   // Step 3: compute permission.
   //
-  // OWNER shortcut: if the row's userId IS the caller's Clerk ID,
-  // they're the owner. We use Clerk-ID-on-row comparison because
-  // that's the convention used by every existing route. (Some rows
-  // have internal-UUID userId — those don't match a Clerk ID; the
-  // owner would NOT see themselves via this path. That's a
-  // pre-existing data inconsistency, not something this helper
-  // can fix.)
-  if (charRow.userId === clerkUserId) {
+  // Local data spans both ownership conventions used by the app: older rows
+  // store the Clerk id while newer rows may store the internal user UUID.
+  // Resolve both to the same OWNER permission so every character surface uses
+  // one answer after a local Clerk development instance is recreated.
+  if (
+    charRow.userId === effectiveClerkUserId ||
+    (viewerInternalId !== null && charRow.userId === viewerInternalId)
+  ) {
     return {
       character: charRow,
       permission: "OWNER",
       viewerInternalId,
-      ownerInternalId: null, // OWNER's internal id is the viewer's
+      ownerInternalId: viewerInternalId,
     };
   }
 

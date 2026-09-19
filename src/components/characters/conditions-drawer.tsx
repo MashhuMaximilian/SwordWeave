@@ -22,7 +22,7 @@ import { hasExternalCondition } from "@/lib/character/condition-scope";
 
 import { resolveConsequenceConflict } from "@/lib/character/consequences/client-sync";
 import { useState } from "react";
-import { Plus, Power, Pencil, Trash2, ChevronRight, Bot } from "lucide-react";
+import { Plus, Power, Pencil, Trash2, ChevronRight, Bot, X } from "lucide-react";
 import {
   useRuntimeConditions,
   type RuntimeCondition,
@@ -35,8 +35,21 @@ import { humanReadableToken } from "@/lib/engine/condition-dictionary";
 import { conditionActive } from "@/lib/character/condition-overrides";
 import { formatEquationValue } from "@/lib/engine/equation-formatter";
 import { parseCondition, conditionToBadges } from "@/lib/primitives/condition";
+import { mechanicalDescriptionFromModifiers } from "@/lib/primitives/mechanical-rule";
 
 type ConditionModifier = HardModifier;
+
+function humanizeMechanicalDescription(value: string): string {
+  return value
+    .replace(/when self is is_([a-z0-9_]+)/gi, (_, token: string) =>
+      `when Self is ${token.replaceAll("_", " ")}`,
+    )
+    .replace(/\bself\b/g, "Self")
+    .replace(/\b([a-z]+(?:_[a-z0-9]+)+)\b/gi, (token) =>
+      token.replaceAll("_", " "),
+    )
+    .replace(/\s*\(/g, " (");
+}
 
 interface ConditionsDrawerProps {
   characterId: string;
@@ -92,35 +105,33 @@ export function ConditionsDrawer({ characterId, open, onClose, autoEvaluated }: 
       />
 
       <aside
-        className="v12-instrument fixed right-0 top-0 z-40 flex h-full w-full max-w-md flex-col border-l border-amber-500/30 bg-card shadow-2xl"
+        className="v12-conditions-drawer v12-instrument fixed right-0 top-0 z-40 flex h-full w-full max-w-lg flex-col border-l border-amber-500/30 bg-card shadow-2xl"
         data-character-surface
         aria-label="Consequences drawer"
       >
-        <header className="v12-section-head flex items-center justify-between border-b border-amber-500/30 bg-amber-500/5 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <ChevronRight className="size-4 text-amber-600 dark:text-amber-400" />
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
-              Consequences ({conditions.length})
-            </h2>
+        <header className="v12-conditions-head v12-section-head flex items-center justify-between border-b border-amber-500/30 bg-amber-500/5 px-4 py-3">
+          <div>
+            <p className="v12-kicker">Right drawer · runtime context</p>
+            <h2>Conditions · {conditions.length}</h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 transition-colors hover:bg-amber-500/15"
+            className="v12-conditions-close rounded-md p-1 transition-colors hover:bg-amber-500/15"
             aria-label="Close drawer"
           >
-            <ChevronRight className="size-4" />
+            <X className="size-4" />
           </button>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-4 py-3">
+        <div className="v12-conditions-body flex-1 overflow-y-auto px-4 py-3">
           <button
             type="button"
             onClick={() => openComposer(null)}
-            className="mb-4 flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-amber-500/40 bg-amber-500/5 px-3 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-500/10 dark:text-amber-300"
+            className="v12-conditions-add mb-4 flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-amber-500/40 bg-amber-500/5 px-3 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-500/10 dark:text-amber-300"
           >
             <Plus className="size-4" />
-            Add consequence
+            Add condition with source and context
           </button>
 
           {syncError && <p role="alert" className="mb-3 text-sm text-destructive">{syncError} Your local changes are retained.<button className="block underline" onClick={() => void resolveConsequenceConflict(characterId, "local")}>Save my local changes against the latest state</button><button className="block underline" onClick={() => void resolveConsequenceConflict(characterId, "server")}>Use synced changes and keep a local backup</button></p>}
@@ -161,7 +172,7 @@ export function ConditionsDrawer({ characterId, open, onClose, autoEvaluated }: 
           })}
         </div>
 
-        <footer className="border-t border-border bg-background/50 px-4 py-2 text-xs text-muted-foreground">
+        <footer className="v12-conditions-footer border-t border-border bg-background/50 px-4 py-2 text-xs text-muted-foreground">
           Consequences sync with this character. Rest does not resolve them automatically.
           Resolving records recovery and does not refund vitality.
         </footer>
@@ -193,12 +204,12 @@ function Section({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="mb-4">
+    <div className="v12-condition-group mb-4">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="mb-2 flex w-full items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground"
+        className="v12-condition-group-toggle mb-2 flex w-full items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground"
       >
         <span className="flex items-center gap-2">
           <ChevronRight
@@ -212,7 +223,7 @@ function Section({
           )}
         </span>
       </button>
-      {open && <div className="space-y-2">{children}</div>}
+      {open && <div className="v12-condition-list space-y-2">{children}</div>}
     </div>
   );
 }
@@ -233,6 +244,9 @@ export function ConditionCardItem({
 }) {
   const { title, description, tags, modifiers, durationTier } = condition;
   const engineWantsOn = liveActive === true && !active;
+  const mechanicalDescription = modifiers.length > 0
+    ? humanizeMechanicalDescription(mechanicalDescriptionFromModifiers(modifiers))
+    : "No mechanical modifier is attached.";
   const durationLabel =
     durationTier === "long_rest"
       ? "Long rest"
@@ -242,13 +256,14 @@ export function ConditionCardItem({
 
   return (
     <article
-      className={`rounded-md border bg-background p-3 transition-opacity ${
+      className={`v12-condition-card rounded-md border bg-background p-3 transition-opacity ${
         active
           ? "border-amber-500/40"
           : "border-border opacity-60"
       }`}
     >
-      <header className="mb-2 flex items-start justify-between gap-2">
+      <header className="v12-condition-card-head mb-2 flex items-start justify-between gap-2">
+        <span className="v12-condition-medallion" aria-hidden="true"><Power className="size-4" /></span>
         <div className="min-w-0 flex-1">
           <h4 className="truncate text-sm font-semibold text-foreground">
             {title}
@@ -270,7 +285,7 @@ export function ConditionCardItem({
               data-testid="auto-state"
               aria-label="Automatically evaluated consequence"
               title="Calculated from the character state. Manual overrides stay in effect until reset."
-              className="inline-flex items-center rounded bg-secondary px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground"
+              className="inline-flex items-center rounded bg-secondary px-1 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
             >
               <Bot className="size-2.5" />
             </span>
@@ -287,7 +302,7 @@ export function ConditionCardItem({
               data-testid="engine-hint"
               aria-label="Engine wants ON"
               title="Engine thinks this should be on. Your OFF override is honored until you toggle again."
-              className="rounded bg-amber-500/15 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300"
+              className="rounded bg-amber-500/15 px-1 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300"
             >
               engine: on
             </span>
@@ -299,7 +314,7 @@ export function ConditionCardItem({
             aria-pressed={active}
             aria-label={active ? "Deactivate" : "Activate"}
             title={active ? "Active — click to deactivate" : "Inactive — click to activate"}
-            className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+            className={`v12-condition-switch shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
               active
                 ? "bg-amber-500/20 text-amber-700 dark:text-amber-300 hover:bg-amber-500/30"
                 : "bg-muted text-muted-foreground hover:bg-muted/70"
@@ -310,6 +325,8 @@ export function ConditionCardItem({
           </button>
         </div>
       </header>
+
+      <p className="v12-condition-mechanics">{mechanicalDescription}</p>
 
       {/* Phase 8.L round 53: per-modifier breakdown — target,
           subtargets, op+value, stacking, triggers when. */}
@@ -428,7 +445,7 @@ function ModifierSummary({ modifier }: { modifier: ConditionModifier }) {
   const triggersWhen = formatTriggersWhen(cond);
 
   return (
-    <div className="rounded-md border border-amber-500/20 bg-amber-500/5 p-2 text-[11px]">
+    <div className="v12-condition-modifier rounded-md border border-amber-500/20 bg-amber-500/5 p-2 text-[11px]">
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="rounded bg-amber-500/20 px-1.5 py-0.5 font-mono text-amber-700 dark:text-amber-300">
           {targetLabel}

@@ -37,6 +37,7 @@ import type { SlotSource } from "@/db/schema/characters";
 import { ItemCapabilityToggle } from "@/components/characters/item-capability-toggle";
 import { useEntityPreview } from "@/components/characters/preview-modal";
 import { cn } from "@/lib/utils";
+import { Markdown } from "@/components/ui/markdown";
 
 interface EquipResponse {
   character: { id: string; itemId: string };
@@ -448,7 +449,8 @@ export function ItemCard({
   return (
     <div
       className={cn(
-        "rounded-md border bg-card p-4 transition-colors",
+        "v12-inventory-card rounded-md border bg-card p-4 transition-colors",
+        optimisticEquipped && "is-equipped",
         optimisticEquipped ? "border-primary/40" : "border-border",
       )}
     >
@@ -638,9 +640,7 @@ export function ItemCard({
         />
       </div>
       {item.description && (
-        <p className="mt-2 text-xs leading-relaxed text-muted-foreground line-clamp-3">
-          {item.description}
-        </p>
+        <Markdown className="v12-inventory-description line-clamp-3">{item.description}</Markdown>
       )}
 
       {/* Action row */}
@@ -768,9 +768,7 @@ export function ItemCard({
                             />
                           </div>
                           {cl.capability.verboseDescription && (
-                            <p className="mt-1 text-muted-foreground line-clamp-3">
-                              {cl.capability.verboseDescription}
-                            </p>
+                            <Markdown className="mt-1 text-muted-foreground line-clamp-3">{cl.capability.verboseDescription}</Markdown>
                           )}
                         </button>
                         <ItemCapabilityToggle
@@ -815,9 +813,7 @@ export function ItemCard({
                           />
                         </div>
                         {el.effect.description && (
-                          <p className="mt-1 text-muted-foreground line-clamp-2">
-                            {el.effect.description}
-                          </p>
+                          <Markdown className="mt-1 text-muted-foreground line-clamp-2">{el.effect.description}</Markdown>
                         )}
                       </button>
                     </li>
@@ -866,9 +862,7 @@ export function ItemCard({
                           />
                         </div>
                         {pl.primitive.narrativeRule && (
-                          <p className="mt-1 text-muted-foreground line-clamp-2">
-                            {pl.primitive.narrativeRule}
-                          </p>
+                          <Markdown className="mt-1 text-muted-foreground line-clamp-2">{pl.primitive.narrativeRule}</Markdown>
                         )}
                       </button>
                     </li>

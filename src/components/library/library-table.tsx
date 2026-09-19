@@ -383,9 +383,15 @@ function GridCard({
           <h3 className="truncate text-base font-semibold leading-tight md:text-sm">
             {item.name}
           </h3>
-          <p className="mt-0 truncate text-[10px] uppercase tracking-wide text-muted-foreground">
-            {item.targetType.replace(/_/g, " ").toLowerCase()}
-            {item.category ? ` · ${item.category.replace(/_/g, " ")}` : ""}
+          <p className="mt-0 flex min-w-0 flex-wrap items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+            <span data-library-meta="type">
+              {item.targetType.replace(/_/g, " ").toLowerCase()}
+            </span>
+            {item.category ? (
+              <span data-library-meta="category">
+                {item.category.replace(/_/g, " ")}
+              </span>
+            ) : null}
           </p>
         </div>
       </header>
@@ -438,6 +444,17 @@ function GridCard({
       )}
 
       <footer className="mt-auto border-t border-border pt-1.5">
+        {isAtelier && item.targetType === "CHARACTER" ? (
+          <Link
+            href={`/characters/${item.targetId}`}
+            className="v12-creation-open-sheet"
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
+          >
+            <ExternalLink aria-hidden="true" />
+            Open sheet
+          </Link>
+        ) : null}
         <LikeForkBar
           targetType={item.targetType as GridLikeForkTargetType}
           targetId={item.targetId}

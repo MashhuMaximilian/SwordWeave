@@ -3,6 +3,9 @@ import { Fragment } from "react";
 interface MarkdownProps { children: string; className?: string }
 type Block =
   | { type:"p"|"ul"|"ol"|"quote"; content:string[] }
+  | { type:"heading"; level:number; content:string[] }
+  | { type:"code"; content:string[] }
+  | { type:"hr"; content:string[] }
   | { type:"table"; content:string[][] };
 
 function tableCells(line:string) {
@@ -17,6 +20,15 @@ function parseBlocks(src:string):Block[] {
   for(let index=0;index<lines.length;) {
     const line=lines[index]!.trim();
     if(!line){flush();index++;continue;}
+    if(line.startsWith("```")) {
+      flush(); const code:string[]=[]; index++;
+      while(index<lines.length && !lines[index]!.trim().startsWith("```")){code.push(lines[index]!);index++;}
+      if(index<lines.length)index++;
+      blocks.push({type:"code",content:[code.join("\n")]});continue;
+    }
+    const heading=/^(#{1,6})\s+(.+)$/.exec(line);
+    if(heading){flush();blocks.push({type:"heading",level:heading[1]!.length,content:[heading[2]!]});index++;continue;}
+    if(/^([-*_])(?:\s*\1){2,}$/.test(line)){flush();blocks.push({type:"hr",content:[]});index++;continue;}
     if(line.includes("|") && index+1<lines.length && /^\|?\s*:?-{3,}/.test(lines[index+1]!.trim())) {
       flush(); const rows=[tableCells(line)]; index+=2;
       while(index<lines.length && lines[index]!.includes("|")){rows.push(tableCells(lines[index]!));index++;}
@@ -43,16 +55,17 @@ function parseBlocks(src:string):Block[] {
 
 function renderInline(text:string,keyPrefix:string):React.ReactNode {
   const segments:React.ReactNode[]=[];let counter=0,lastIndex=0;
-  const pattern=/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|\*\*([^*]+)\*\*|~~([^~]+)~~|\+\+([^+]+)\+\+|(?<!\*)\*([^*]+)\*(?!\*)|_([^_]+)_/g;
+  const pattern=/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|`([^`]+)`|\*\*([^*]+)\*\*|~~([^~]+)~~|\+\+([^+]+)\+\+|(?<!\*)\*([^*]+)\*(?!\*)|_([^_]+)_/g;
   let match:RegExpExecArray|null;
   const push=(node:React.ReactNode)=>segments.push(<Fragment key={`${keyPrefix}-${counter++}`}>{node}</Fragment>);
   while((match=pattern.exec(text))!==null){
     if(match.index>lastIndex)push(text.slice(lastIndex,match.index));
     if(match[1]&&match[2])push(<a href={match[2]} target="_blank" rel="noopener noreferrer">{match[1]}</a>);
-    else if(match[3])push(<strong>{match[3]}</strong>);
-    else if(match[4])push(<s>{match[4]}</s>);
-    else if(match[5])push(<u>{match[5]}</u>);
-    else push(<em>{match[6]??match[7]}</em>);
+    else if(match[3])push(<code>{match[3]}</code>);
+    else if(match[4])push(<strong>{match[4]}</strong>);
+    else if(match[5])push(<s>{match[5]}</s>);
+    else if(match[6])push(<u>{match[6]}</u>);
+    else push(<em>{match[7]??match[8]}</em>);
     lastIndex=pattern.lastIndex;
   }
   if(lastIndex<text.length)push(text.slice(lastIndex));
@@ -62,6 +75,17 @@ function renderInline(text:string,keyPrefix:string):React.ReactNode {
 export function Markdown({children,className=""}:MarkdownProps) {
   if(!children)return null;
   return <div className={`v12-markdown ${className}`}>{parseBlocks(children).map((block,index)=>{
+    if(block.type==="hr")return <hr key={index}/>;
+    if(block.type==="code")return <pre key={index}><code>{block.content[0]}</code></pre>;
+    if(block.type==="heading"){
+      const content=renderInline(block.content[0]??"",`h${index}`);
+      if(block.level===1)return <h1 key={index}>{content}</h1>;
+      if(block.level===2)return <h2 key={index}>{content}</h2>;
+      if(block.level===3)return <h3 key={index}>{content}</h3>;
+      if(block.level===4)return <h4 key={index}>{content}</h4>;
+      if(block.level===5)return <h5 key={index}>{content}</h5>;
+      return <h6 key={index}>{content}</h6>;
+    }
     if(block.type==="table")return <div className="v12-markdown-table-wrap" key={index}><table><thead><tr>{block.content[0]!.map((cell,i)=><th key={i}>{renderInline(cell,`t${index}h${i}`)}</th>)}</tr></thead><tbody>{block.content.slice(1).map((row,r)=><tr key={r}>{row.map((cell,c)=><td key={c}>{renderInline(cell,`t${index}r${r}c${c}`)}</td>)}</tr>)}</tbody></table></div>;
     if(block.type==="quote")return <blockquote key={index}>{renderInline(block.content[0]??"",`q${index}`)}</blockquote>;
     if(block.type==="ul"||block.type==="ol"){const Tag=block.type;return <Tag key={index}>{block.content.map((item,i)=><li key={i}>{renderInline(item,`l${index}-${i}`)}</li>)}</Tag>;}

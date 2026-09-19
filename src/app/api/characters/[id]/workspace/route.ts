@@ -1,30 +1,25 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
-import { db } from "@/db/client";
-import { characters } from "@/db/schema";
 import { readWorkspace } from "@/lib/character/workspace/read";
+import {
+  canResolveCharacter,
+  CharacterAccessDenied,
+} from "@/lib/character/can-resolve-character";
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { userId } = await auth.protect();
   const { id } = await params;
-  const character = await db.query.characters.findFirst({
-    where: eq(characters.id, id),
-    columns: { userId: true },
-  });
-  if (!character)
-    return NextResponse.json(
-      { error: "Character not found." },
-      { status: 404 },
-    );
-  if (character.userId !== userId)
-    return NextResponse.json(
-      { error: "You do not own this character." },
-      { status: 403 },
-    );
-  return NextResponse.json(await readWorkspace(id));
+  try {
+    await canResolveCharacter(userId, id);
+    return NextResponse.json(await readWorkspace(id));
+  } catch (error) {
+    if (error instanceof CharacterAccessDenied) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
+    throw error;
+  }
 }
 
 export async function POST(
