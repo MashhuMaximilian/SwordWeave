@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { InstrumentDialogFrame } from "@/components/ui/instrument-dialog";
 
 const ParentSurface = createContext<((covered: boolean) => void) | null>(null);
 
@@ -94,33 +94,20 @@ export function WorkspaceSurface({
         style={covered ? { visibility: "hidden" } : undefined}
         className="v12-modal-backdrop fixed inset-0 z-[60] flex items-end justify-center bg-black/70 sm:items-center sm:p-5"
         data-character-surface
-        onClick={onClose}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) onClose();
+        }}
       >
-        <div
+        <InstrumentDialogFrame
           ref={panel}
-          tabIndex={-1}
-          role="dialog"
-          aria-modal="true"
-          aria-label={title}
-          className="v12-modal-surface v12-workspace-modal v12-instrument flex max-h-[94dvh] w-full max-w-6xl flex-col overflow-hidden rounded-t-2xl border border-border bg-background shadow-2xl outline-none sm:rounded-2xl"
-          onClick={(e) => e.stopPropagation()}
+          title={title}
+          kicker={kicker}
+          onClose={onClose}
+          className="v12-workspace-modal max-h-[94dvh] max-w-6xl"
+          bodyClassName="v12-workspace-modal-body"
         >
-          <div className="v12-workspace-modal-head v12-section-head flex items-center justify-between border-b border-border px-5 py-3">
-            <div>
-              <p className="v12-kicker">{kicker}</p>
-              <span className="v12-workspace-modal-title font-subtitle font-medium">{title}</span>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close workspace dialog"
-              className="v12-workspace-modal-close rounded p-2 hover:bg-secondary"
-            >
-              <X className="size-5" />
-            </button>
-          </div>
-          <div className="v12-workspace-modal-body overflow-y-auto p-4 sm:p-6">{children}</div>
-        </div>
+          {children}
+        </InstrumentDialogFrame>
       </div>
     </ParentSurface.Provider>,
     document.body,

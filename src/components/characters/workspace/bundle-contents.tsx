@@ -105,7 +105,7 @@ export function BundleContents({
               {edge.isMirrored && <span className="is-mirrored v12-mirrored-label">Mirrored</span>}
             </div>}
             {child.kind === "primitive" && ruleText(child, mirrored) && ruleText(child, mirrored) !== child.description && <p className="v12-rule-text v12-rule-output">{ruleText(child, mirrored)}</p>}
-            {child.description && child.description !== "null" && <Markdown className={child.kind === "primitive" ? "v12-rule-text v12-rule-description" : "v12-expression-description"}>{child.description}</Markdown>}
+            {child.description && child.description !== "null" && <Markdown copyRole="narrative" className={child.kind === "primitive" ? "v12-rule-text v12-rule-description" : "v12-expression-description"}>{child.description}</Markdown>}
             {child.kind === "capability" && characterId && mode === "PLAY" && <CapabilityCard characterId={characterId} actionsOnly showPrimitives={false} showPreviewButton={false} capability={{ id: child.id, name: child.name, type: String(child.data["type"] ?? "Capability"), sourceType: String(child.data["sourceType"] ?? "Character"), acquiredAtLevel: Number(edge.data?.["acquiredAtLevel"] ?? 1), versionId: child.versionId, latestVersionId: child.latestVersionId, slotSource: null, verboseDescription: child.description, effectLinks: effects }} />}
             {child.kind === "capability" && <div className="v12-expression-recipe" aria-label={`${child.name} recipe`}>
               {graph.edges.filter(piece => piece.parent === child.key).sort((a,b)=>a.order-b.order).map(piece => {

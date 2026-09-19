@@ -1,6 +1,16 @@
 import { Fragment } from "react";
 
-interface MarkdownProps { children: string; className?: string }
+interface MarkdownProps {
+  children: string;
+  className?: string;
+  /**
+   * Semantic copy role used by dense entity cards.  The attribute is placed
+   * on the actual rendered block, rather than only on this component's
+   * wrapper, so a broad ancestor selector cannot silently change the visible
+   * paragraph's typography.
+   */
+  copyRole?: "mechanical" | "narrative";
+}
 type Block =
   | { type:"p"|"ul"|"ol"|"quote"; content:string[] }
   | { type:"heading"; level:number; content:string[] }
@@ -72,7 +82,7 @@ function renderInline(text:string,keyPrefix:string):React.ReactNode {
   return <>{segments}</>;
 }
 
-export function Markdown({children,className=""}:MarkdownProps) {
+export function Markdown({children,className="",copyRole}:MarkdownProps) {
   if(!children)return null;
   return <div className={`v12-markdown ${className}`}>{parseBlocks(children).map((block,index)=>{
     if(block.type==="hr")return <hr key={index}/>;
@@ -87,8 +97,8 @@ export function Markdown({children,className=""}:MarkdownProps) {
       return <h6 key={index}>{content}</h6>;
     }
     if(block.type==="table")return <div className="v12-markdown-table-wrap" key={index}><table><thead><tr>{block.content[0]!.map((cell,i)=><th key={i}>{renderInline(cell,`t${index}h${i}`)}</th>)}</tr></thead><tbody>{block.content.slice(1).map((row,r)=><tr key={r}>{row.map((cell,c)=><td key={c}>{renderInline(cell,`t${index}r${r}c${c}`)}</td>)}</tr>)}</tbody></table></div>;
-    if(block.type==="quote")return <blockquote key={index}>{renderInline(block.content[0]??"",`q${index}`)}</blockquote>;
-    if(block.type==="ul"||block.type==="ol"){const Tag=block.type;return <Tag key={index}>{block.content.map((item,i)=><li key={i}>{renderInline(item,`l${index}-${i}`)}</li>)}</Tag>;}
-    return <p key={index}>{renderInline(block.content[0]??"",`p${index}`)}</p>;
+    if(block.type==="quote")return <blockquote data-copy={copyRole} key={index}>{renderInline(block.content[0]??"",`q${index}`)}</blockquote>;
+    if(block.type==="ul"||block.type==="ol"){const Tag=block.type;return <Tag data-copy={copyRole} key={index}>{block.content.map((item,i)=><li data-copy={copyRole} key={i}>{renderInline(item,`l${index}-${i}`)}</li>)}</Tag>;}
+    return <p data-copy={copyRole} key={index}>{renderInline(block.content[0]??"",`p${index}`)}</p>;
   })}</div>;
 }

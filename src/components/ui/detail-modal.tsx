@@ -3,7 +3,7 @@
 import { createPortal } from "react-dom";
 
 import { useEffect, useId } from "react";
-import { X } from "lucide-react";
+import { InstrumentDialogFrame } from "@/components/ui/instrument-dialog";
 
 /**
  * Canonical modal component for library preview, sheet breakdowns,
@@ -66,41 +66,24 @@ export function DetailModal({
   return createPortal(
     <div
       className="v12-modal-backdrop fixed inset-0 z-50 flex items-end justify-center bg-black/80 p-0 sm:items-center sm:p-4"
-      onClick={onClose}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
     >
-      <div
-        className={`v12-modal-surface v12-instrument relative w-full overflow-hidden rounded-t-2xl bg-card shadow-2xl sm:rounded-2xl ${sizeClass} max-h-[95vh] flex flex-col`}
-        onClick={(e) => e.stopPropagation()}
+      <InstrumentDialogFrame
+        title={title}
+        {...(subtitle !== undefined ? { subtitle } : {})}
+        kicker="Character instrument"
+        titleId={titleId}
+        onClose={onClose}
+        className={`${sizeClass} max-h-[95dvh]`}
+        bodyClassName="px-4 py-4 sm:px-5"
       >
-        <header className="v12-section-head sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-border bg-card px-6 py-4">
-          <div className="min-w-0 flex-1">
-            <h2
-              id={titleId}
-              className="v12-entity-title truncate text-xl font-normal"
-            >
-              {title}
-            </h2>
-            {subtitle && (
-              <p className="mt-1 truncate text-sm text-muted-foreground">
-                {subtitle}
-              </p>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="shrink-0 rounded-md p-2 hover:bg-accent"
-            aria-label="Close detail view"
-          >
-            <X className="size-5" />
-          </button>
-        </header>
-
-        <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
-      </div>
+        {children}
+      </InstrumentDialogFrame>
     </div>, document.body
   );
 }

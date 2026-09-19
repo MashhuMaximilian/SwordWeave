@@ -782,7 +782,7 @@ export function ItemCard({
                             />
                           </div>
                           {cl.capability.verboseDescription && (
-                            <Markdown className="mt-1 text-muted-foreground line-clamp-3">{cl.capability.verboseDescription}</Markdown>
+                            <Markdown copyRole="narrative" className="mt-1 line-clamp-3">{cl.capability.verboseDescription}</Markdown>
                           )}
                         </button>
                         <ItemCapabilityToggle
@@ -827,7 +827,7 @@ export function ItemCard({
                           />
                         </div>
                         {el.effect.description && (
-                          <Markdown className="mt-1 text-muted-foreground line-clamp-2">{el.effect.description}</Markdown>
+                          <Markdown copyRole="narrative" className="mt-1 line-clamp-2">{el.effect.description}</Markdown>
                         )}
                       </button>
                     </li>
@@ -876,7 +876,7 @@ export function ItemCard({
                           />
                         </div>
                         {pl.primitive.narrativeRule && (
-                          <Markdown className="mt-1 text-muted-foreground line-clamp-2">{pl.primitive.narrativeRule}</Markdown>
+                          <Markdown copyRole="narrative" className="mt-1 line-clamp-2">{pl.primitive.narrativeRule}</Markdown>
                         )}
                       </button>
                     </li>

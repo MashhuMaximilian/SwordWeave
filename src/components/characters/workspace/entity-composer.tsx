@@ -8,7 +8,8 @@ import {
   type ReactNode,
   type ComponentProps,
 } from "react";
-import { createPortal } from "react-dom";
+import Link from "next/link";
+import { Eye, ExternalLink, Wrench } from "lucide-react";
 import { PrimitiveForm } from "@/components/sandbox/primitive-form";
 import { CapabilityForm } from "@/components/sandbox/capability-form";
 import { EffectForm } from "@/components/sandbox/effect-form";
@@ -50,7 +51,7 @@ export function EntityComposer({
   const [slotEvents] = useState(() => new EventTarget());
   const [extra, setExtra] = useState<WorkspaceNode[]>([]);
   const [library, setLibrary] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
+  const [studioTab, setStudioTab] = useState<"build" | "preview">("build");
   const [error, setError] = useState("");
   const [previewNode, setPreviewNode] = useState<ReactNode>(
     <div className="v12-workspace-preview-empty">
@@ -430,49 +431,37 @@ export function EntityComposer({
   );
   useDrawerSlot(useMemo(() => ({ build: authoringStudio, preview: previewNode }), [authoringStudio, previewNode]));
   return (
-    <div className="space-y-4">
-      <div className="v12-workspace-authoring-bridge">
-        <div><span>Atelier authoring</span><strong>{node ? `Editing ${node.name}` : `New ${kind}`}</strong></div>
-        <button
-          type="button"
-          onClick={() => setPreviewOpen(true)}
-        >
-          Open live preview
-        </button>
+    <section className="v12-character-atelier" data-active-pane={studioTab}>
+      <header className="v12-character-atelier-head">
+        <div>
+          <span>Character Atelier</span>
+          <strong>{node ? `Editing ${node.name}` : `New ${kind}`}</strong>
+          <p>The saved result attaches to this character after review.</p>
+        </div>
+        <nav aria-label="Build and preview panes">
+          <button type="button" aria-pressed={studioTab === "build"} onClick={() => setStudioTab("build")}>
+            <Wrench className="size-3.5" /> Build
+          </button>
+          <button type="button" aria-pressed={studioTab === "preview"} onClick={() => setStudioTab("preview")}>
+            <Eye className="size-3.5" /> Preview
+          </button>
+          <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("sw-open-build-drawer", { detail: studioTab }))}>
+            Focus
+          </button>
+          <Link href={`/atelier?build=${kind}${node ? `&edit=${encodeURIComponent(node.id)}&intent=load` : "&new=1"}`}>
+            <ExternalLink className="size-3.5" /> Edit in Atelier
+          </Link>
+        </nav>
+      </header>
+      <div className="v12-character-atelier-stage">
+        <div className="v12-character-atelier-build" data-atelier-pane="build" data-drawer-build>
+          {authoringStudio}
+        </div>
+        <aside className="v12-character-atelier-preview" data-atelier-pane="preview" aria-label="Live entity preview">
+          <div className="v12-character-atelier-preview-label"><span>Live preview</span><b>Global entity renderer</b></div>
+          {previewNode}
+        </aside>
       </div>
-      <div className="v12-workspace-drawer-guide">
-        <span>Atelier connected</span>
-        <h3>{node ? `${node.name} is ready to edit` : `New ${kind} authoring is ready`}</h3>
-        <p>The complete Atelier form, character pieces, Library browser, and live preview are now in Build &amp; Preview.</p>
-        <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("sw-open-build-drawer", { detail: "build" }))}>Open authoring studio</button>
-      </div>
-      {previewOpen && typeof document !== "undefined"
-        ? createPortal(
-            <div
-              className="v12-author-preview-backdrop"
-              role="dialog"
-              aria-modal="true"
-              aria-label={`Preview ${node?.name ?? kind}`}
-              onMouseDown={(event) => {
-                if (event.target === event.currentTarget) setPreviewOpen(false);
-              }}
-            >
-              <section className="v12-author-preview-modal">
-                <header>
-                  <div>
-                    <span>Build &amp; Preview</span>
-                    <h2>{node?.name ?? `New ${kind}`}</h2>
-                  </div>
-                  <button type="button" onClick={() => setPreviewOpen(false)}>
-                    Close
-                  </button>
-                </header>
-                <div className="v12-author-preview-body">{previewNode}</div>
-              </section>
-            </div>,
-            document.body,
-          )
-        : null}
-    </div>
+    </section>
   );
 }

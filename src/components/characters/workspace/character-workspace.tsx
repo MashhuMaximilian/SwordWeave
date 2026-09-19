@@ -8,7 +8,7 @@ import {
   type SetStateAction,
 } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, ArrowLeft, Plus, Search, Trash2 } from "lucide-react";
+import { ChevronRight, ArrowLeft, Eye, Plus, Search, Trash2 } from "lucide-react";
 import { BundleContents } from "./bundle-contents";
 import { WorkspaceSurface } from "./workspace-surface";
 import { WorkspaceEntityPreview } from "./workspace-entity-preview";
@@ -688,7 +688,7 @@ export function CharacterWorkspace({
   };
 
   return (
-    <div className="v12-character-workspace space-y-5" data-layout={layout} data-workspace-scope={items ? "items" : "capabilities"}>
+    <div className="v12-character-workspace space-y-5" data-layout={layout} data-mode={mode} data-workspace-scope={items ? "items" : "capabilities"}>
       {!items && <nav className="v12-projection-tabs" aria-label="Character information view">
         <div className="v12-projection-tab-list">
           <button aria-pressed={lens === "expressions"} onClick={() => { setLens("expressions"); chooseCategory("ALL"); setTypeFilter("all"); }}>
@@ -743,8 +743,27 @@ export function CharacterWorkspace({
           </button>
         ))}
       </nav>}
+      {mode === "BUILD" && (
+        <section className="v12-edit-destination" aria-label="Character edit destination">
+          <div>
+            <span>Character Atelier</span>
+            <strong>
+              {selected
+                ? `Editing destination · ${selected.name}`
+                : items
+                  ? "Editing destination · Inventory"
+                  : `Editing destination · ${currentCategory.toLowerCase()}`}
+            </strong>
+            <p>Browse, create, fork, bundle, move, remove, and preview without leaving the sheet.</p>
+          </div>
+          <div className="v12-edit-destination-path">
+            <small>Adding to</small>
+            <b>{selected?.name ?? (items ? "Character inventory" : `${currentCategory[0]}${currentCategory.slice(1).toLowerCase()}`)}</b>
+          </div>
+        </section>
+      )}
       <WorkspaceSurface
-        modal={!!selected || !!composer}
+        modal={preview || (mode === "PLAY" && !!composer)}
         kicker={preview ? "Read-only preview" : composer ? "Character atelier" : "Character archive"}
         title={
           composer
@@ -942,14 +961,26 @@ export function CharacterWorkspace({
               {mode === "BUILD" && !preview && (
                 <div className="flex flex-wrap gap-2">
                   {selected && (
-                    <button
-                      className={button}
-                      onClick={() =>
-                        setComposer({ kind: selected.kind, node: selected })
-                      }
-                    >
-                      Edit {selected.kind}
-                    </button>
+                    <>
+                      <button
+                        className={button}
+                        onClick={() => {
+                          setComposer(null);
+                          setPreview(true);
+                        }}
+                      >
+                        <Eye className="mr-1 inline size-3" />
+                        Preview {selected.kind}
+                      </button>
+                      <button
+                        className={button}
+                        onClick={() =>
+                          setComposer({ kind: selected.kind, node: selected })
+                        }
+                      >
+                        Edit {selected.kind}
+                      </button>
+                    </>
                   )}
                   {selected && selectedEdge?.parent === null && (
                     <button
@@ -1292,7 +1323,7 @@ export function CharacterWorkspace({
                               return <article className={`v12-mastery-item${mirrored ? " is-mirrored" : ""}`} key={node.key}>
                               <button onClick={() => { const nextPath = supplyPaths(graph, node.key)[0]?.edges.map((edge) => edge.id) ?? []; setPath(nextPath); setPreview(mode === "PLAY"); }}>
                                 <span><span className="v12-mastery-title"><span className="v12-workspace-version">{workspaceVersionLabel(node)}</span><b>{node.name}</b>{mirrored && <span className="v12-mirrored-label">Mirrored</span>}</span><small>{bundleBu(graph, node.key)} BU</small></span>
-                                <p>{workspaceRuleText(node, mirrored)}</p>
+                                <p data-copy="mechanical">{workspaceRuleText(node, mirrored)}</p>
                               </button>
                               <div className="v12-mastery-paths" aria-label={`Supply paths for ${node.name}`}>
                                 {displaySupplyPaths(graph, node.key).map(supply => <button key={supply.edges.map(e => e.id).join("/")} onClick={() => { setPath(supply.edges.map(e => e.id)); setPreview(mode === "PLAY"); }}>
@@ -1780,10 +1811,10 @@ function WorkspaceRow({
         </div>
       )}
       {node.kind === "primitive" && workspaceRuleText(node, mirrored) && workspaceRuleText(node, mirrored) !== node.description && (
-        <p className="v12-rule-text px-4 pb-3">{workspaceRuleText(node, mirrored)}</p>
+        <p data-copy="mechanical" className="v12-rule-text px-4 pb-3">{workspaceRuleText(node, mirrored)}</p>
       )}
       {node.kind !== "heritage" && node.description && node.description !== "null" && !open && (
-        <Markdown className="line-clamp-2 px-4 pb-3 text-sm text-muted-foreground">{node.description}</Markdown>
+        <Markdown {...(node.kind === "primitive" ? { copyRole: "narrative" as const } : {})} className="line-clamp-2 px-4 pb-3">{node.description}</Markdown>
       )}
       {node.kind !== "primitive" && (node.kind !== "heritage" || open) && (node.kind !== "capability" || open) && (
         <BundleContents

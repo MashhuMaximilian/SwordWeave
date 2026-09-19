@@ -661,7 +661,7 @@ function PrimitiveDetailToggle({
           </div>
         )}
         {narrativeRule && (
-          <Markdown className="v12-rule-description text-muted-foreground italic">{narrativeRule}</Markdown>
+          <Markdown copyRole="narrative" className="v12-rule-description">{narrativeRule}</Markdown>
         )}
       </div>
     </details>

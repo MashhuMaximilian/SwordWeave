@@ -2,6 +2,10 @@
 
 This plan implements the contract in [`docs/design/swordweave-aesthetic-system.md`](../design/swordweave-aesthetic-system.md). No further character-sheet visual patch should bypass the shared components defined here.
 
+## Rollback checkpoint
+
+The implementation began from commit `e837636`. The same commit is protected by the local annotated tag `character-sheet-pre-rebuild`. If visual review rejects this rebuild, that commit is the known pre-rebuild character-sheet state.
+
 ## Current failures and root causes
 
 ### Primitive typography

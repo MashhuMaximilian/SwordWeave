@@ -26,9 +26,9 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { ChevronRight, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { InstrumentDialogFrame } from "@/components/ui/instrument-dialog";
 
 const MAX_DEPTH = 4;
 
@@ -170,7 +170,7 @@ export function ModalStackScope() {
 }
 
 function ModalStackRenderer() {
-  const { stack, pop, popTo, scopeHost } = useModalStack();
+  const { stack, pop, scopeHost } = useModalStack();
   const [isDesktop, setIsDesktop] = useState(false);
 
   // Desktop and mobile both use an isolated modal surface. The rich V12
@@ -212,16 +212,18 @@ function ModalStackRenderer() {
               style={{ zIndex: z }}
               onClick={isTop ? (event) => { if (event.target === event.currentTarget) pop(); } : undefined}
             >
-              <div
+              <InstrumentDialogFrame
+                title={entry.label}
+                kicker={entry.category ?? "Archive preview"}
+                onClose={pop}
                 className={cn(
-                  "v12-modal-surface v12-instrument relative flex w-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl",
                   scopeHost ? "max-h-[calc(100%-8px)] max-w-full" : "max-h-[calc(100dvh-48px)] max-w-6xl",
                   !isTop && "max-w-5xl opacity-95",
                 )}
-                onClick={(event) => event.stopPropagation()}
+                bodyClassName={isScopedBodyClass(Boolean(scopeHost))}
               >
-                {renderModalBody(entry, isTop, stack, idx, pop, popTo, Boolean(scopeHost))}
-              </div>
+                {entry.content}
+              </InstrumentDialogFrame>
             </div>
           );
         }
@@ -245,19 +247,18 @@ function ModalStackRenderer() {
             style={{ zIndex: z }}
             onClick={isTop ? (e) => { if (e.target === e.currentTarget) pop(); } : undefined}
           >
-            <div
+            <InstrumentDialogFrame
+              title={entry.label}
+              kicker={entry.category ?? "Archive preview"}
+              onClose={pop}
               className={cn(
-                "v12-modal-surface v12-instrument relative flex w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-card shadow-2xl sm:rounded-2xl",
-                // Mobile: explicit top + bottom positioning so the modal
-                // never moves with body scroll. sm+: cap height with dvh
-                // and center vertically via the parent's `items-center`.
-                "inset-x-0 bottom-0 top-2 sm:inset-auto sm:max-h-[90dvh]",
+                "max-w-2xl max-h-[calc(100dvh-8px)] sm:max-h-[90dvh]",
                 !isTop && "max-w-md",
               )}
-              onClick={(e) => e.stopPropagation()}
+              bodyClassName={isScopedBodyClass(Boolean(scopeHost))}
             >
-              {renderModalBody(entry, isTop, stack, idx, pop, popTo, Boolean(scopeHost))}
-            </div>
+              {entry.content}
+            </InstrumentDialogFrame>
           </div>
         );
       })}
@@ -266,86 +267,6 @@ function ModalStackRenderer() {
   );
 }
 
-function renderModalBody(
-  entry: ModalEntry,
-  isTop: boolean,
-  stack: ModalEntry[],
-  idx: number,
-  pop: () => void,
-  popTo: (depth: number) => void,
-  isScoped: boolean,
-) {
-  return (
-    <>
-      {/* The modal header is rendered INSIDE the scroll container (below)
-          so it sticks to the top of the scroll when content is taller
-          than the viewport. Phase 9 round-2: 'If the thing has a lot of
-          info, the header goes above the max height of the screen thus
-          I cannot close it' — sticky inside the scroll container fixes
-          this. */}
-      {/* Mashu 2026-07-09: modal body baseline font set to text-sm so
-          the inherited text size matches the source-page preview's
-          `prose prose-sm` sizing. Without this, default browser font
-          (16px) inflated Markdown paragraphs + raw `<div>` content
-          compared to the library source page where `prose-sm` wraps
-          everything. Phase 9 round-2: the whole modal now scrolls as
-          ONE unit so the header sits at the top of the scroll and
-          remains reachable even when the content is taller than the
-          viewport (user-reported: 'If the thing has a lot of info,
-          the header goes above the max height of the screen thus
-          I cannot close it'). The header uses `sticky top-0` inside
-          the scroll container so it pins when content scrolls under it.
-      */}
-      {/* Phase 8.1 batch 13.2 (Mashu 2026-07-22): removed the
-          breadcrumb navigation row in the header. Per user: "instead
-          of opening in same modal with breadcrubs, it should just
-          stack another modal on top." Each modal in the stack now
-          renders as an independent panel with its own close button.
-          The stack depth is still tracked (so we can render up to 4
-          modals side-by-side on desktop), but there's no breadcrumb
-          UI — the user closes each modal independently by clicking
-          its X button. */}
-      <div className="min-h-0 flex-1 overflow-y-auto text-sm">
-        <header className={cn("v12-section-head sticky top-0 z-20 flex h-10 items-center justify-between gap-2 border-b border-border bg-card", isScoped ? "px-2" : "px-4")}>
-          {/* Phase 9 round-3: header now shows only the CATEGORY (uppercase
-              muted). The entity name is rendered inside the body (above
-              the type chips) so the user sees "PRIMITIVE" in the header
-              and "Domain of Storm" prominently in the preview body. */}
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            {entry.category ? (
-              <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {entry.category}
-              </span>
-            ) : null}
-          </div>
-          {/* Every modal in the stack is independently closeable — no
-              breadcrumb row, no "← Back" button. The user closes each
-              modal by clicking its X button (matches the user's stated
-              mental model: stacked panels, not breadcrumb navigation). */}
-          <button
-            type="button"
-            onClick={pop}
-            aria-label="Close"
-            className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
-            <X className="size-4" />
-          </button>
-        </header>
-        <div className={isScoped ? "p-2" : "p-4"}>
-          {/* Phase 9 round-3: entity name rendered INSIDE the body
-              (above the type chips + meta), not in the modal header.
-              User-feedback: 'the name is in the header (where close
-              button is) not the body of preview like I asked... Just
-              about "domain" for example from pictures'. The header
-              keeps just the category + close button. */}
-          {entry.label ? (
-            <h2 className="mb-3 text-lg font-semibold text-foreground">
-              {entry.label}
-            </h2>
-          ) : null}
-          {entry.content}
-        </div>
-      </div>
-    </>
-  );
+function isScopedBodyClass(scoped: boolean) {
+  return scoped ? "p-2 text-sm" : "p-3 sm:p-4 text-sm";
 }
