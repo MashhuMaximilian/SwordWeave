@@ -452,7 +452,8 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
                     editModeTrigger.click();
                     return;
                   }
-                  document.querySelector(".v12-character-workspace")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  window.dispatchEvent(new CustomEvent("sw-character-open-atelier"));
+                  window.setTimeout(() => openDrawer("build"), 0);
                 } else {
                   window.dispatchEvent(new CustomEvent("sw-navigate-away", { detail: "/atelier" }));
                 }

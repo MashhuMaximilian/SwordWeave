@@ -32,6 +32,7 @@ import { OP_SPECS } from "@/types/modifier";
 import { useToasts } from "@/components/ui/toast";
 import { useEntityPreview } from "@/components/characters/preview-modal";
 import { ConditionBadges } from "@/components/library/condition-badges";
+import { Markdown } from "@/components/ui/markdown";
 import { SlotSourceBadge } from "@/components/characters/slot-source-badge";
 import type { SlotSource } from "@/db/schema/characters";
 import {
@@ -660,7 +661,7 @@ function PrimitiveDetailToggle({
           </div>
         )}
         {narrativeRule && (
-          <p className="text-muted-foreground italic">{narrativeRule}</p>
+          <Markdown className="v12-rule-description text-muted-foreground italic">{narrativeRule}</Markdown>
         )}
       </div>
     </details>

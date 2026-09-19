@@ -373,7 +373,7 @@ function DrawerShell({
         // "Received an empty string for a boolean attribute `inert`" warning.
         inert={!isOpen}
         className={cn(
-          "v12-instrument fixed inset-x-0 bottom-0 z-[170] flex max-h-[90vh] flex-col rounded-t-2xl border-t border-border bg-card shadow-2xl transition-[transform,visibility] duration-300 ease-out sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[85vh] sm:max-w-4xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl",
+          "v12-build-preview-modal v12-instrument fixed inset-x-0 bottom-0 z-[170] flex max-h-[90vh] flex-col rounded-t-2xl border-t border-border bg-card shadow-2xl transition-[transform,visibility] duration-300 ease-out sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[88vh] sm:w-[min(1200px,calc(100vw-3rem))] sm:max-w-none sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl",
           isOpen
             ? "visible translate-y-0 sm:translate-y-[-50%]"
             : "invisible translate-y-full sm:translate-x-[-50%] sm:translate-y-[150%]",

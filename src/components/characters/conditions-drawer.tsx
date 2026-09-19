@@ -36,6 +36,7 @@ import { conditionActive } from "@/lib/character/condition-overrides";
 import { formatEquationValue } from "@/lib/engine/equation-formatter";
 import { parseCondition, conditionToBadges } from "@/lib/primitives/condition";
 import { mechanicalDescriptionFromModifiers } from "@/lib/primitives/mechanical-rule";
+import { Markdown } from "@/components/ui/markdown";
 
 type ConditionModifier = HardModifier;
 
@@ -284,11 +285,21 @@ export function ConditionCardItem({
             {title}
           </h4>
           {description && (
-            <p className="mt-0.5 truncate text-xs italic text-muted-foreground">
-              {description}
-            </p>
+            <Markdown className="mt-0.5 line-clamp-1 text-xs italic text-muted-foreground">{description}</Markdown>
           )}
         </div>
+        <button
+          type="button"
+          onClick={onToggle}
+          disabled={condition.status === "resolved"}
+          aria-pressed={active}
+          aria-label={active ? "Deactivate" : "Activate"}
+          title={active ? "Active — click to deactivate" : "Inactive — click to activate"}
+          className={`v12-condition-switch ${active ? "is-active" : "is-inactive"}`}
+        >
+          <Power className="size-3.5" />
+          {active ? "Active" : "Inactive"}
+        </button>
       </header>
 
       <button
@@ -328,18 +339,6 @@ export function ConditionCardItem({
                   Engine wants on
                 </span>
               )}
-              <button
-                type="button"
-                onClick={onToggle}
-                disabled={condition.status === "resolved"}
-                aria-pressed={active}
-                aria-label={active ? "Deactivate" : "Activate"}
-                title={active ? "Active — click to deactivate" : "Inactive — click to activate"}
-                className={`v12-condition-switch ${active ? "is-active" : "is-inactive"}`}
-              >
-                <Power className="size-3.5" />
-                {active ? "Active" : "Inactive"}
-              </button>
             </div>
           </div>
           <div className="v12-condition-runtime-meta">

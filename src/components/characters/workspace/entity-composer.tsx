@@ -240,21 +240,6 @@ export function EntityComposer({
       ),
     [capabilities, commitPreview, effects],
   );
-  useDrawerSlot(
-    useMemo(
-      () => ({
-        build: (
-          <div className="v12-workspace-drawer-guide">
-            <span>Character sheet authoring</span>
-            <h3>{node ? `Editing ${node.name}` : `Creating ${kind}`}</h3>
-            <p>The authoring form is open on the character sheet. Use Preview to inspect the live result while preserving the form state.</p>
-          </div>
-        ),
-        preview: previewNode,
-      }),
-      [kind, node, previewNode],
-    ),
-  );
   const links = graph.edges
     .filter((e) => e.parent === node?.key)
     .sort((a, b) => a.order - b.order);
@@ -395,6 +380,54 @@ export function EntityComposer({
   const kinds = (["primitive", "effect", "capability"] as EntityKind[]).filter(
     (child) => canContain(kind, child),
   );
+  const compositionStudio = kinds.length > 0 ? (
+    <section className="v12-composition-studio" aria-label={`Compose ${kind}`}>
+      <header className="v12-composition-studio-head">
+        <div><span>Composition studio</span><h3>Build this {kind}</h3></div>
+        <nav aria-label="Composition sources">
+          <button type="button" aria-pressed={!library} onClick={() => setLibrary(false)}>On this character</button>
+          <button type="button" aria-pressed={library} onClick={() => setLibrary(true)}>Library</button>
+        </nav>
+      </header>
+      {!library && (
+        <div className="v12-composition-source-grid">
+          {initialGraph.nodes.filter((n) => canContain(kind, n.kind)).length ? initialGraph.nodes
+            .filter((n) => canContain(kind, n.kind))
+            .map((n) => (
+              <article key={n.key} data-kind={n.kind}>
+                <div><span>{n.kind}</span><strong>{n.name}</strong></div>
+                <button type="button" onClick={() => void choose(n.key, n.name).catch((cause) => setError(cause instanceof Error ? cause.message : "Unable to add piece."))}>Add</button>
+              </article>
+            )) : <p className="v12-composition-source-empty">No compatible pieces are on this character yet. Open Library to bring one in.</p>}
+        </div>
+      )}
+      {library && (
+        <WorkspaceLibraryPicker
+          kinds={kinds}
+          category={category}
+          onSelect={(key, name) => {
+            void choose(key, name).catch((cause) => setError(cause instanceof Error ? cause.message : "Unable to add piece."));
+          }}
+        />
+      )}
+      {error && <p role="alert">{error}</p>}
+    </section>
+  ) : null;
+  const authoringStudio = (
+    <div className="v12-character-atelier-modal-body space-y-4">
+      {kind === "heritage" && !node && (
+        <label className="v12-heritage-kind-control flex items-center gap-3 font-medium">
+          Heritage type
+          <select aria-label="Heritage type" value={heritageKind} onChange={(event) => setHeritageKind(event.target.value as typeof heritageKind)}>
+            <option value="LINEAGE">Lineage</option><option value="UPBRINGING">Upbringing</option><option value="MANIFEST">Manifest</option>
+          </select>
+        </label>
+      )}
+      {compositionStudio}
+      {form}
+    </div>
+  );
+  useDrawerSlot(useMemo(() => ({ build: authoringStudio, preview: previewNode }), [authoringStudio, previewNode]));
   return (
     <div className="space-y-4">
       <div className="v12-workspace-authoring-bridge">
@@ -406,66 +439,12 @@ export function EntityComposer({
           Open live preview
         </button>
       </div>
-      {kind === "heritage" && !node && (
-        <label className="flex items-center gap-3 font-medium">
-          Heritage type
-          <select
-            aria-label="Heritage type"
-            className="rounded border border-border bg-card p-2"
-            value={heritageKind}
-            onChange={(e) =>
-              setHeritageKind(e.target.value as typeof heritageKind)
-            }
-          >
-            <option value="LINEAGE">Lineage</option>
-            <option value="UPBRINGING">Upbringing</option>
-            <option value="MANIFEST">Manifest</option>
-          </select>
-        </label>
-      )}
-      {kinds.length > 0 && (
-        <div className="space-y-2 rounded-lg border border-border bg-card p-3">
-          <p className="text-sm font-medium">Add to this {kind}</p>
-          <div className="flex flex-wrap gap-2">
-            <select
-              aria-label="Choose existing character content"
-              className="min-w-0 flex-1 rounded border border-border bg-background p-2"
-              value=""
-              onChange={(e) => {
-                const n = graph.nodes.find((n) => n.key === e.target.value);
-                if (n)
-                  void choose(n.key, n.name).catch((e) => setError(e.message));
-              }}
-            >
-              <option value="">On this character…</option>
-              {initialGraph.nodes
-                .filter((n) => canContain(kind, n.kind))
-                .map((n) => (
-                  <option key={n.key} value={n.key}>
-                    {n.name} · {n.kind}
-                  </option>
-                ))}
-            </select>
-            <button
-              className="rounded border border-border px-3 py-2 text-sm"
-              onClick={() => setLibrary(!library)}
-            >
-              Library
-            </button>
-          </div>
-          {library && (
-            <WorkspaceLibraryPicker
-              kinds={kinds}
-              category={category}
-              onSelect={(key, name) => {
-                void choose(key, name).catch((e) => setError(e.message));
-              }}
-            />
-          )}
-          {error && <p role="alert">{error}</p>}
-        </div>
-      )}
-      {form}
+      <div className="v12-workspace-drawer-guide">
+        <span>Atelier connected</span>
+        <h3>{node ? `${node.name} is ready to edit` : `New ${kind} authoring is ready`}</h3>
+        <p>The complete Atelier form, character pieces, Library browser, and live preview are now in Build &amp; Preview.</p>
+        <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("sw-open-build-drawer", { detail: "build" }))}>Open authoring studio</button>
+      </div>
       {previewOpen && typeof document !== "undefined"
         ? createPortal(
             <div

@@ -49,6 +49,7 @@ import {
   Layers,
   ZapIcon,
 } from "lucide-react";
+import { Markdown } from "@/components/ui/markdown";
 import {
   EmbeddedCapabilityForm,
   EmbeddedEffectForm,
@@ -664,9 +665,7 @@ export function InlinePrimitiveSheet({
                           {c.title}
                         </p>
                         {c.description && (
-                          <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                            {c.description}
-                          </p>
+                          <Markdown className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{c.description}</Markdown>
                         )}
                       </div>
                       <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
@@ -786,9 +785,7 @@ function Bucket({
                   <p className="truncate text-sm font-semibold text-foreground">
                     {r.name}
                   </p>
-                  <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-                    {r.description ?? r.category}
-                  </p>
+                  <Markdown className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{r.description ?? r.category}</Markdown>
                 </div>
                 <div className="flex shrink-0 items-center gap-2 text-[10px] text-muted-foreground">
                   <span className="rounded-full border border-border bg-card px-2 py-0.5 font-semibold uppercase tracking-wider">
@@ -943,9 +940,7 @@ function PrimitivePreviewModal({
             </span>
           </div>
           {row.description ? (
-            <p className="mb-3 text-sm leading-relaxed text-foreground">
-              {row.description}
-            </p>
+            <Markdown className="mb-3 text-sm leading-relaxed text-foreground">{row.description}</Markdown>
           ) : (
             <p className="mb-3 text-sm italic text-muted-foreground">
               No description.

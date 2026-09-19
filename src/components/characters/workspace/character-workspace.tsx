@@ -178,6 +178,15 @@ export function CharacterWorkspace({
   const toggles = useToggleState(characterId);
   const { conditions } = useRuntimeConditions(characterId);
   const restrictions = activeRestrictions(conditions);
+  useEffect(() => {
+    const openAtelier = () => {
+      setPath([]);
+      setPreview(false);
+      setComposer({ kind: items ? "item" : "primitive" });
+    };
+    window.addEventListener("sw-character-open-atelier", openAtelier);
+    return () => window.removeEventListener("sw-character-open-atelier", openAtelier);
+  }, [items]);
   const storageKey = `sw:workspace:${characterId}:${items ? "items" : "capabilities"}`;
   const reload = useCallback(async () => {
     const response = await fetch(`/api/characters/${characterId}/workspace`, {
@@ -1649,7 +1658,6 @@ function WorkspaceRow({
             >
               <span className="v12-workspace-entry-name">{node.name}</span>
             </button>
-            {node.description && node.description !== "null" && <Markdown>{node.description}</Markdown>}
           </div>
           <div className="v12-source-actions">
             <span className={state.available ? "is-available" : ""}>{state.available ? "Available" : "Unavailable"}</span>

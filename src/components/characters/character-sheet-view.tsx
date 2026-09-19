@@ -3717,8 +3717,8 @@ function ItemsTab({
     ? Math.min(100, Math.round((encumbrance.equipSlotsUsed / encumbrance.equipSlotsAvailable) * 100))
     : 0;
 
-  const renderCards = (sectionItems: typeof items) => (
-    <ul className="v12-sheet-item-grid">
+  const renderCards = (sectionItems: typeof items, role: "equipped" | "gear" | "pack") => (
+    <ul className="v12-sheet-item-grid" data-inventory-role={role}>
       {sectionItems.map((item) => (
         <li key={item.id}>
           <ItemCard
@@ -3784,19 +3784,19 @@ function ItemsTab({
       {equippedItems.length > 0 && (
         <section className="v12-inventory-section is-equipped">
           <div className="v12-inventory-section-head"><div><span>At hand</span><h3>Equipped</h3></div><b>{equippedItems.length}</b></div>
-          {renderCards(equippedItems)}
+          {renderCards(equippedItems, "equipped")}
         </section>
       )}
       {carriedGear.length > 0 && (
         <section className="v12-inventory-section is-gear">
           <div className="v12-inventory-section-head"><div><span>Ready to equip</span><h3>Gear & artifacts</h3></div><b>{carriedGear.length}</b></div>
-          {renderCards(carriedGear)}
+          {renderCards(carriedGear, "gear")}
         </section>
       )}
       {packItems.length > 0 && (
         <section className="v12-inventory-section is-pack">
           <div className="v12-inventory-section-head"><div><span>Carried</span><h3>Pack, supplies & currency</h3></div><b>{packItems.length}</b></div>
-          {renderCards(packItems)}
+          {renderCards(packItems, "pack")}
         </section>
       )}
     </div>

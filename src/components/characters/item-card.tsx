@@ -448,15 +448,19 @@ export function ItemCard({
 
   return (
     <div
+      data-item-kind={item.itemType.toLowerCase()}
+      data-has-construction={Boolean(nested && (nested.capabilityLinks.length || nested.effectLinks.length || nested.primitiveLinks.length))}
       className={cn(
-        "v12-inventory-card rounded-md border bg-card p-4 transition-colors",
+        "v12-inventory-card v12-item-dossier rounded-md border bg-card p-4 transition-colors",
         optimisticEquipped && "is-equipped",
         optimisticEquipped ? "border-primary/40" : "border-border",
       )}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h4 className="flex flex-wrap items-center gap-2 font-semibold">
+      <div className="v12-item-dossier-head flex items-start justify-between gap-2">
+        <span className="v12-item-glyph" aria-hidden="true">{item.itemType.slice(0, 1).toUpperCase()}</span>
+        <div className="min-w-0 flex-1">
+          <p className="v12-item-classification">{optimisticEquipped ? "Readied equipment" : item.isNotEquippable || item.isConsumable ? "Pack inventory" : "Carried equipment"}</p>
+          <h4 className="v12-item-title flex flex-wrap items-center gap-2 font-semibold">
             {/* Phase 8.5 H6 round 5 (Mashu 2026-08-03):
                 the item name is now a clickable preview
                 trigger — same affordance as the cap
@@ -561,7 +565,7 @@ export function ItemCard({
               </button>
             )}
           </h4>
-          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+          <div className="v12-item-meta mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
             <span>{item.rarity}</span>
             {item.isTwoHanded && <span>· Two-handed</span>}
             {item.isConsumable && <span>· Consumable</span>}
@@ -578,7 +582,7 @@ export function ItemCard({
               every item card so the math is transparent without
               opening the preview. TINY items show the pouch
               rule explicitly. */}
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
+          <div className="v12-item-metrics mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
             {/* Size chip */}
             <span className="rounded-full bg-secondary px-2 py-0.5 font-medium text-foreground">
               Size:{" "}
@@ -619,11 +623,11 @@ export function ItemCard({
             )}
           </div>
         </div>
-        <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">
+        <span className="v12-item-type shrink-0 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">
           {item.itemType}
         </span>
       </div>
-      <div className="mt-2">
+      <div className="v12-item-version mt-2">
         <SlotSourceBadge
           slotSource={item.slotSource}
           versionId={item.versionId}
@@ -644,7 +648,7 @@ export function ItemCard({
       )}
 
       {/* Action row */}
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="v12-item-actions mt-3 flex flex-wrap items-center gap-2">
         {/* Phase 8.5 / Session H6 (Mashu 2026-08-03): hide
             the Equip / Unequip toggle entirely when the
             item is marked not-equippable. Potions, scrolls,

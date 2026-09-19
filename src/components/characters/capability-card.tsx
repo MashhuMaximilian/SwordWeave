@@ -250,7 +250,7 @@ function EffectToggleRow({
   return (
     <li
       className={cn(
-        "rounded border border-border bg-background px-2 py-1",
+        "v12-compact-effect-row rounded border border-border bg-background px-2 py-1",
         isOff && "opacity-50",
       )}
     >
@@ -794,7 +794,7 @@ export function CapabilityCard({
           // but some browsers had rendering issues). Per user spec —
           // "we do not display all primitives all capabilities all effects
           // properly" — effects must be IMMEDIATELY visible on the card.
-          <div className="mt-2 rounded border border-border bg-muted/30 px-2 py-1 text-xs">
+          <div className="v12-compact-effects mt-2 rounded border border-border bg-muted/30 px-2 py-1 text-xs">
             <div className="mb-1 font-semibold uppercase tracking-wide text-muted-foreground">
               Effects ({capability.effectLinks.length})
             </div>

@@ -141,7 +141,7 @@ export function DmBonusEditor({
       <button
         type="button"
         onClick={() => setEditing(true)}
-        className="group inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-sm font-medium transition-colors hover:bg-secondary/70"
+        className="v12-dm-bonus-control group inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-sm font-medium transition-colors hover:bg-secondary/70"
         title="Click to edit DM bonus BU"
       >
         <span>{optimisticValue} BU</span>
@@ -157,7 +157,7 @@ export function DmBonusEditor({
 
   return (
     <span
-      className="relative inline-flex items-center gap-1 rounded-full border border-primary/40 bg-background px-2 py-1"
+      className="v12-dm-bonus-control is-editing relative inline-flex items-center gap-1 rounded-full border border-primary/40 bg-background px-2 py-1"
       // Click-away handler on the wrapper.
       onClick={(e) => e.stopPropagation()}
     >

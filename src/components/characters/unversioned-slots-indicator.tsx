@@ -74,8 +74,8 @@ export function UnversionedSlotsIndicator({
 
   const label =
     count === 1
-      ? "1 slot needs pinning"
-      : `${count} slots need pinning`;
+      ? "1 legacy slot · set baseline"
+      : `${count} legacy slots · set baselines`;
 
   const Tag = interactive ? "button" : "span";
 
@@ -86,10 +86,8 @@ export function UnversionedSlotsIndicator({
       disabled={pending}
       title={
         interactive
-          ? "Pin every unversioned slot to its entity's latest version"
-          : `${count} slot${
-              count === 1 ? "" : "s"
-            } have no version pinned (pre-Phase-3 legacy rows)`
+          ? "Save the current published version as the comparison baseline for every legacy slot. This does not install an update."
+          : `${count} legacy slot${count === 1 ? " has" : "s have"} no saved version baseline, so future updates cannot yet be compared.`
       }
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",

@@ -568,12 +568,10 @@ export function SheetIdentityHeader({
               <IdentityCell
                 label="Lineage"
                 value={lineageName ?? "—"}
-                note={lineageDescription}
               />
               <IdentityCell
                 label="Upbringing"
                 value={upbringingName ?? "—"}
-                note={upbringingDescription}
               />
               <IdentityCell label="Manifest" value={manifestName ?? "—"} />
               <IdentityCell

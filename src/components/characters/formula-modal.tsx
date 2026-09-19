@@ -411,10 +411,8 @@ export function FormulaModal({
           {/* Header */}
           <div className="v12-formula-head flex items-center justify-between border-b border-border px-4 py-3">
             <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                Formula
-              </h2>
-              <p className="mt-0.5 text-base font-semibold">{title}</p>
+              <span className="v12-modal-kicker">Character instrument</span>
+              <h2>{title}</h2>
               {subtitle && (
                 <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
               )}
@@ -433,9 +431,7 @@ export function FormulaModal({
           <div className="v12-formula-body flex-1 overflow-y-auto px-4 py-3 space-y-4">
             {/* Section 1 — Static formula */}
             <section>
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Formula
-              </p>
+              <p className="v12-formula-section-label">Rule</p>
               <p className="rounded-md border border-border bg-background p-2.5 font-mono text-sm leading-relaxed">
                 {formula}
               </p>
@@ -467,9 +463,7 @@ export function FormulaModal({
             {/* Section 2 — Provenance chain */}
             <section>
               <div className="mb-2 flex items-baseline justify-between gap-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Provenance
-                </p>
+                <p className="v12-formula-section-label">Live calculation</p>
                 <span className="font-mono text-xl font-bold tabular-nums">
                   {fmt(total)}
                 </span>

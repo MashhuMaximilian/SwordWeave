@@ -180,7 +180,6 @@ export function HeritageBundleView({
   heritageName,
   heritageKindLabel,
   heritageKindRaw,
-  heritageDescription,
   isMirrored,
   versionId = null,
   slotSource = null,
@@ -436,11 +435,6 @@ export function HeritageBundleView({
           <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
         )}
       </div>
-      {heritageDescription && (
-        <p className="px-3 py-2 text-xs text-muted-foreground border-b border-border">
-          {heritageDescription}
-        </p>
-      )}
       {error && (
         <p className="px-3 py-2 text-xs text-destructive border-b border-border">
           {error}

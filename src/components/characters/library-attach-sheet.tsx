@@ -25,6 +25,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { X, Loader2, Plus, Check } from "lucide-react";
 import type { LibraryItem } from "@/lib/publishing/library-query";
+import { Markdown } from "@/components/ui/markdown";
 
 export type LibraryEntityType = "heritage" | "capability" | "effect" | "item";
 
@@ -252,9 +253,9 @@ export function LibraryAttachSheet({
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{item.name}</p>
                       {item.description && (
-                        <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                        <Markdown className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
                           {item.description}
-                        </p>
+                        </Markdown>
                       )}
                     </div>
                     <button

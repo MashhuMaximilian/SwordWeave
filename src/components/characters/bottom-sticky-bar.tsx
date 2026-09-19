@@ -1684,7 +1684,7 @@ function EquipSlotsPanel({
     <button
       type="button"
       onClick={onClick}
-      className="block w-full bg-card p-3 text-left transition-colors hover:bg-secondary/30"
+      className="v12-equip-deck block w-full bg-card p-3 text-left transition-colors hover:bg-secondary/30"
       title="Show equip slots formula"
       aria-label="Show equip slots formula"
     >
@@ -1698,13 +1698,11 @@ function EquipSlotsPanel({
           / {slotCount}
         </span>
       </p>
-      <div className="mt-2 grid grid-cols-6 gap-1">
+      <div className="v12-equip-slots mt-2 grid gap-1" style={{ gridTemplateColumns: `repeat(${Math.max(1, slotCount)}, minmax(0, 1fr))` }}>
         {slots.map((filled, i) => (
           <div
             key={i}
-            className={`h-2 rounded-full ${
-              filled ? "bg-teal-500" : "bg-secondary"
-            }`}
+            className={`v12-equip-slot ${filled ? "is-filled" : "is-empty"}`}
             title={filled ? `Slot ${i + 1} (filled)` : `Slot ${i + 1} (empty)`}
           />
         ))}
@@ -1740,7 +1738,7 @@ function SpeedCard({
     <button
       type="button"
       onClick={onClick}
-      className="block w-full bg-card p-3 text-left transition-colors hover:bg-secondary/30"
+      className="v12-load-deck block w-full bg-card p-3 text-left transition-colors hover:bg-secondary/30"
       title="Show walking speed formula"
     >
       <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -1891,9 +1889,9 @@ function LoadCell({
           / {encumbrance.capacity}
         </span>
       </p>
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
+      <div className="v12-load-track mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
         <div
-          className={`h-full rounded-full transition-all ${
+          className={`v12-load-fill h-full rounded-full transition-all ${
             tone === "destructive"
               ? "bg-destructive"
               : tone === "warning"
@@ -2029,12 +2027,10 @@ function ModSaveProvenanceModal({
       >
         <div className="v12-formula-head flex items-center justify-between border-b border-border px-4 py-3">
           <div>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Formula
-            </h2>
-            <p className="mt-0.5 text-base font-semibold">
+            <span className="v12-modal-kicker">Character instrument</span>
+            <h2>
               {attr.toUpperCase()} mod + save
-            </p>
+            </h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
               {isProf ? "proficient attribute" : "non-proficient attribute"}
             </p>
@@ -2049,7 +2045,7 @@ function ModSaveProvenanceModal({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+        <div className="v12-formula-body flex-1 overflow-y-auto px-4 py-3 space-y-4">
           <FormulaModalSection
             target={attrTarget}
             resolver={resolver}
@@ -2448,10 +2444,8 @@ function PracticeDetailModal({
       >
         <div className="v12-formula-head flex items-center justify-between gap-2 border-b border-border bg-card px-4 py-3 shrink-0">
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Formula
-            </h2>
-            <p className="mt-0.5 text-base font-semibold">{practice.name}</p>
+            <span className="v12-modal-kicker">Character instrument</span>
+            <h2>{practice.name}</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
               {practice.attribute.toUpperCase()} practice
             </p>
@@ -2466,7 +2460,7 @@ function PracticeDetailModal({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+        <div className="v12-formula-body flex-1 overflow-y-auto px-4 py-3 space-y-4">
           {/* Phase 8.L round 16: practice description lives
               INSIDE the scroll area (was in the sticky header
               and forced the modal to overflow on mobile).
@@ -2802,10 +2796,8 @@ function EncumbranceFormulaModal({
       >
         <div className="v12-formula-head flex items-center justify-between border-b border-border px-4 py-3">
           <div>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Formula
-            </h2>
-            <p className="mt-0.5 text-base font-semibold">Encumbrance</p>
+            <span className="v12-modal-kicker">Character instrument</span>
+            <h2>Encumbrance</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
               Load vs Capacity for a {characterSize.toLowerCase()} character
             </p>
@@ -2820,12 +2812,10 @@ function EncumbranceFormulaModal({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+        <div className="v12-formula-body flex-1 overflow-y-auto px-4 py-3 space-y-4">
           {/* Static formula */}
           <section>
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Formula
-            </p>
+            <p className="v12-formula-section-label">Rule</p>
             <p className="rounded-md border border-border bg-background p-2.5 font-mono text-sm leading-relaxed">
               Capacity = Size base + (Physical Mod × 5) + item bonuses
               <br />

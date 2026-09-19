@@ -5,6 +5,7 @@ import { formatEquationValue } from "@/lib/engine/equation-formatter";
 import type { HardModifier } from "@/types/swordweave";
 import type { EntityKey } from "@/lib/character/workspace/model";
 import type { ConsequenceBehavior } from "@/lib/character/consequences/types";
+import { Markdown } from "@/components/ui/markdown";
 export type ConsequencePackagePreview = {
   name: string;
   hash: string;
@@ -121,7 +122,7 @@ export function ConsequencePackageAction({
           {preview.pieces.map((p, i) => (
             <div key={i} className="rounded border border-border p-3">
               <p className="font-medium">{p.title}</p>
-              <p>{p.description}</p>
+              <Markdown>{p.description}</Markdown>
               {p.behavior.restrictions.map((r, j) => (
                 <p key={j}>{r.reason || `Restricts ${r.kind}`}</p>
               ))}
