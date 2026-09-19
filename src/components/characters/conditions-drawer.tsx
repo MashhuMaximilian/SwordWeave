@@ -41,6 +41,8 @@ type ConditionModifier = HardModifier;
 
 function humanizeMechanicalDescription(value: string): string {
   return value
+    .replace(/when self is when related to/gi, "when the check is related to")
+    .replace(/when self is related to/gi, "when the check is related to")
     .replace(/when self is is_([a-z0-9_]+)/gi, (_, token: string) =>
       `when Self is ${token.replaceAll("_", " ")}`,
     )
@@ -112,7 +114,7 @@ export function ConditionsDrawer({ characterId, open, onClose, autoEvaluated }: 
         <header className="v12-conditions-head v12-section-head flex items-center justify-between border-b border-amber-500/30 bg-amber-500/5 px-4 py-3">
           <div>
             <p className="v12-kicker">Right drawer · runtime context</p>
-            <h2>Conditions · {conditions.length}</h2>
+            <h2>Consequences · {conditions.length}</h2>
           </div>
           <button
             type="button"
@@ -131,8 +133,20 @@ export function ConditionsDrawer({ characterId, open, onClose, autoEvaluated }: 
             className="v12-conditions-add mb-4 flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-amber-500/40 bg-amber-500/5 px-3 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-500/10 dark:text-amber-300"
           >
             <Plus className="size-4" />
-            Add condition with source and context
+            Add consequence
           </button>
+
+          <details className="v12-consequences-about mb-4">
+            <summary>
+              <span>What are consequences?</span>
+              <ChevronRight className="size-3" />
+            </summary>
+            <p>
+              Consequences are the costs, states, and ongoing effects created by
+              actions. They can change a roll, limit an option, or remain on the
+              character until their recovery is recorded.
+            </p>
+          </details>
 
           {syncError && <p role="alert" className="mb-3 text-sm text-destructive">{syncError} Your local changes are retained.<button className="block underline" onClick={() => void resolveConsequenceConflict(characterId, "local")}>Save my local changes against the latest state</button><button className="block underline" onClick={() => void resolveConsequenceConflict(characterId, "server")}>Use synced changes and keep a local backup</button></p>}
           {!hydrated && (
@@ -178,7 +192,7 @@ export function ConditionsDrawer({ characterId, open, onClose, autoEvaluated }: 
         </footer>
       </aside>
 
-      {resolving&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"><div role="dialog" aria-modal="true" aria-label="Record recovery" className="w-full max-w-lg space-y-3 rounded-lg border border-border bg-card p-5"><h2 className="text-xl font-semibold">Resolve {resolving.title}</h2><p>{resolving.recovery||'Record how this consequence was recovered.'}</p><label className="block text-sm">Recovery notes<textarea className="mt-1 w-full rounded border border-border bg-background p-2" value={recoveryNote} onChange={e=>setRecoveryNote(e.target.value)} /></label><p className="text-xs text-muted-foreground">This ends the ongoing effects and records recovery. Previously lost vitality is not refunded.</p><div className="flex gap-2"><button className="rounded bg-primary px-3 py-2 text-primary-foreground" onClick={()=>{update(resolving.id,{status:'resolved',resolvedAt:Date.now(),active:false,recoveryNote});setResolving(null);}}>Record recovery</button><button className="rounded border border-border px-3 py-2" onClick={()=>setResolving(null)}>Cancel</button></div></div></div>}
+      {resolving&&<div className="v12-formula-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"><div role="dialog" aria-modal="true" aria-label="Record recovery" className="v12-formula-modal w-full max-w-lg space-y-3 rounded-lg border border-border bg-card p-5"><h2 className="text-xl font-semibold">Resolve {resolving.title}</h2><p>{resolving.recovery||'Record how this consequence was recovered.'}</p><label className="block text-sm">Recovery notes<textarea className="mt-1 w-full rounded border border-border bg-background p-2" value={recoveryNote} onChange={e=>setRecoveryNote(e.target.value)} /></label><p className="text-xs text-muted-foreground">This ends the ongoing effects and records recovery. Previously lost vitality is not refunded.</p><div className="flex gap-2"><button className="rounded bg-primary px-3 py-2 text-primary-foreground" onClick={()=>{update(resolving.id,{status:'resolved',resolvedAt:Date.now(),active:false,recoveryNote});setResolving(null);}}>Record recovery</button><button className="rounded border border-border px-3 py-2" onClick={()=>setResolving(null)}>Cancel</button></div></div></div>}
       {promoting && <PromoteConsequence characterId={characterId} occurrence={promoting} onClose={() => setPromoting(null)} />}
       {composerOpen && (
         <ConditionComposer
@@ -242,6 +256,7 @@ export function ConditionCardItem({
   liveActive?: boolean | undefined;
   sourceKind?: string;
 }) {
+  const [mechanicsOpen, setMechanicsOpen] = useState(false);
   const { title, description, tags, modifiers, durationTier } = condition;
   const engineWantsOn = liveActive === true && !active;
   const mechanicalDescription = modifiers.length > 0
@@ -252,7 +267,7 @@ export function ConditionCardItem({
       ? "Long rest"
       : durationTier === "short_rest"
         ? "Short rest"
-        : "Manual";
+        : "Until resolved";
 
   return (
     <article
@@ -274,121 +289,90 @@ export function ConditionCardItem({
             </p>
           )}
         </div>
-        {/* Phase 9.5 follow-up (Mashu 2026-09-07): every
-            condition is now toggleable. Render the toggle
-            button unconditionally. The optional engine
-            hint (auto-managed badge) is shown next to it
-            when the engine re-evaluates this condition. */}
-        <div className="flex shrink-0 items-center gap-1">
-          {sourceKind === "sheet-auto" && (
-            <span
-              data-testid="auto-state"
-              aria-label="Automatically evaluated consequence"
-              title="Calculated from the character state. Manual overrides stay in effect until reset."
-              className="inline-flex items-center rounded bg-secondary px-1 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-            >
-              <Bot className="size-2.5" />
-            </span>
-          )}
-          {/* Phase 9.5 follow-up (Mashu 2026-09-07):
-              when the user has manually toggled OFF but
-              the engine's predicate is ON, show a small
-              "engine: on" hint so the user knows their
-              override is visible but the engine wants
-              the opposite. Previously the badge flipped
-              back without warning — felt broken. */}
-          {engineWantsOn && (
-            <span
-              data-testid="engine-hint"
-              aria-label="Engine wants ON"
-              title="Engine thinks this should be on. Your OFF override is honored until you toggle again."
-              className="rounded bg-amber-500/15 px-1 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300"
-            >
-              engine: on
-            </span>
-          )}
-          <button
-            type="button"
-            onClick={onToggle}
-            disabled={condition.status === "resolved"}
-            aria-pressed={active}
-            aria-label={active ? "Deactivate" : "Activate"}
-            title={active ? "Active — click to deactivate" : "Inactive — click to activate"}
-            className={`v12-condition-switch shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
-              active
-                ? "bg-amber-500/20 text-amber-700 dark:text-amber-300 hover:bg-amber-500/30"
-                : "bg-muted text-muted-foreground hover:bg-muted/70"
-            }`}
-          >
-            <Power className="inline size-3" />
-            {active ? "On" : "Off"}
-          </button>
-        </div>
       </header>
 
-      <p className="v12-condition-mechanics">{mechanicalDescription}</p>
+      <button
+        type="button"
+        className="v12-condition-mechanics-toggle"
+        aria-expanded={mechanicsOpen}
+        onClick={() => setMechanicsOpen((value) => !value)}
+      >
+        <span>{mechanicalDescription}</span>
+        <ChevronRight className={`size-3 transition-transform ${mechanicsOpen ? "rotate-90" : ""}`} />
+      </button>
 
-      {/* Phase 8.L round 53: per-modifier breakdown — target,
-          subtargets, op+value, stacking, triggers when. */}
-      <div className="space-y-2">
-        {modifiers.map((m, i) => (
-          <ModifierSummary key={i} modifier={m} />
-        ))}
+      <div className="v12-condition-mechanics-panel" hidden={!mechanicsOpen}>
+          <div className="v12-condition-runtime-controls">
+            <div className="v12-condition-runtime-meta">
+              <span>{durationLabel}</span>
+              <span>{condition.status === "resolved" ? "Resolved" : active ? "Engaged" : "Inactive"}</span>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              {sourceKind === "sheet-auto" && (
+                <span
+                  data-testid="auto-state"
+                  aria-label="Automatically evaluated consequence"
+                  title="Calculated from the character state. Manual overrides stay in effect until reset."
+                  className="v12-condition-auto-state"
+                >
+                  <Bot className="size-3" /> Automatic
+                </span>
+              )}
+              {engineWantsOn && (
+                <span
+                  data-testid="engine-hint"
+                  aria-label="Engine wants ON"
+                  title="Engine thinks this should be on. Your OFF override is honored until you toggle again."
+                  className="v12-condition-engine-hint"
+                >
+                  Engine wants on
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={onToggle}
+                disabled={condition.status === "resolved"}
+                aria-pressed={active}
+                aria-label={active ? "Deactivate" : "Activate"}
+                title={active ? "Active — click to deactivate" : "Inactive — click to activate"}
+                className={`v12-condition-switch ${active ? "is-active" : "is-inactive"}`}
+              >
+                <Power className="size-3.5" />
+                {active ? "Active" : "Inactive"}
+              </button>
+            </div>
+          </div>
+          <div className="v12-condition-runtime-meta">
+            <span>Applied rule</span>
+          </div>
+          {/* Phase 8.L round 53: per-modifier breakdown — target,
+              subtargets, op+value, stacking, triggers when. */}
+          <div className="space-y-2">
+            {modifiers.map((m, i) => (
+              <ModifierSummary key={i} modifier={m} />
+            ))}
+          </div>
+          <div className="v12-condition-supporting-copy">
+            {condition.recovery && <p><strong>Recovery:</strong> {condition.recovery}</p>}
+            {condition.restrictions?.map((restriction, index) => <p key={index}>{restriction.reason || `Blocks a ${restriction.kind}`}</p>)}
+            {condition.applicationSnapshot && condition.applicationSnapshot.vitalityDelta!==0 && <p>Vitality when applied: {condition.applicationSnapshot.vitalityDelta}</p>}
+            {condition.recoveryNote && <p>Recovery notes: {condition.recoveryNote}</p>}
+            {condition.status === "resolved" && <p>Resolved {condition.resolvedAt ? new Date(condition.resolvedAt).toLocaleString() : ""}</p>}
+          </div>
+          {tags.length > 0 && (
+            <div className="v12-condition-tags">
+              {tags.map((t) => <span key={t}>{t}</span>)}
+            </div>
+          )}
+          <footer className="v12-condition-actions">
+            {condition.promotedPrimitiveId && <a href={`/library/item/PRIMITIVE:${condition.promotedPrimitiveId}`}>Promoted definition</a>}
+            {onPromote && !condition.promotedPrimitiveId && <button type="button" onClick={onPromote}>Promote to primitive</button>}
+            {onResolve && condition.status !== "resolved" && <button type="button" onClick={onResolve}>Resolve</button>}
+            {onReset && <button type="button" onClick={onReset}>{sourceKind === "sheet-auto" ? "Use automatic state" : "Clear override"}</button>}
+            {onEdit && <button type="button" onClick={onEdit} aria-label="Edit consequence" title="Edit"><Pencil className="size-3" /> Edit</button>}
+            {onRemove && <button type="button" onClick={onRemove} className="is-destructive" aria-label="Delete consequence" title="Delete"><Trash2 className="size-3" /> Delete</button>}
+          </footer>
       </div>
-
-      {condition.recovery && <p className="mt-2 text-xs"><strong>Recovery:</strong> {condition.recovery}</p>}
-      {condition.restrictions?.map((restriction, index) => <p key={index} className="mt-1 text-xs">{restriction.reason || `Blocks a ${restriction.kind}`}</p>)}
-      {condition.applicationSnapshot && condition.applicationSnapshot.vitalityDelta!==0 && <p className="mt-2 text-xs">Vitality when applied: {condition.applicationSnapshot.vitalityDelta}</p>}
-      {condition.recoveryNote && <p className="mt-2 text-xs">Recovery notes: {condition.recoveryNote}</p>}
-      {condition.status === "resolved" && <p className="mt-2 text-xs">Resolved {condition.resolvedAt ? new Date(condition.resolvedAt).toLocaleString() : ""}</p>}
-      {tags.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {tags.map((t) => (
-            <span
-              key={t}
-              className="rounded bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground"
-            >
-              {t}
-            </span>
-          ))}
-        </div>
-      )}
-
-      <footer className="mt-2 flex items-center justify-between gap-1 text-[10px] text-muted-foreground">
-        <span>{durationLabel}</span>
-        <div className="flex items-center gap-1">
-          {condition.promotedPrimitiveId && <a className="rounded px-2 py-1 hover:bg-secondary/40" href={`/library/item/PRIMITIVE:${condition.promotedPrimitiveId}`}>Promoted definition</a>}
-          {onPromote && !condition.promotedPrimitiveId && <button type="button" className="rounded px-2 py-1 hover:bg-secondary/40" onClick={onPromote}>{condition.promotedPrimitiveId ? "Promoted definition" : "Promote to primitive"}</button>}
-          {onResolve && condition.status !== "resolved" && <button type="button" className="rounded px-2 py-1 hover:bg-secondary/40" onClick={onResolve}>Resolve</button>}
-          {onReset && (
-            <button type="button" onClick={onReset} className="rounded px-2 py-1 hover:bg-secondary/40">
-              {sourceKind === "sheet-auto" ? "Use automatic state" : "Clear override"}
-            </button>
-          )}
-          {onEdit && (
-            <button
-              type="button"
-              onClick={onEdit}
-              className="rounded p-1 transition-colors hover:bg-secondary/40"
-              aria-label="Edit consequence"
-              title="Edit"
-            >
-              <Pencil className="size-3" />
-            </button>
-          )}
-          {onRemove && (
-            <button
-              type="button"
-              onClick={onRemove}
-              className="rounded p-1 text-destructive transition-colors hover:bg-destructive/10"
-              aria-label="Delete consequence"
-              title="Delete"
-            >
-              <Trash2 className="size-3" />
-            </button>
-          )}
-        </div>
-      </footer>
     </article>
   );
 }

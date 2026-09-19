@@ -242,7 +242,7 @@ function renderConditionsSection(breakdown: ReadonlyArray<FormulaStep>, onShowRa
   return (
     <section>
       <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-        Conditions
+        Consequences
       </p>
       <ul className="space-y-1">
         {gated.map((step, i) => {
@@ -398,18 +398,18 @@ export function FormulaModal({
       {createPortal(
 
       <div
-        className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+        className="v12-formula-backdrop fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
         onClick={onClose}
         role="dialog"
         aria-modal="true"
         aria-label={`Formula for ${title}`}
       >
         <div
-          className="flex max-h-[75vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+          className="v12-formula-modal flex max-h-[75vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <div className="v12-formula-head flex items-center justify-between border-b border-border px-4 py-3">
             <div>
               <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 Formula
@@ -430,7 +430,7 @@ export function FormulaModal({
           </div>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+          <div className="v12-formula-body flex-1 overflow-y-auto px-4 py-3 space-y-4">
             {/* Section 1 — Static formula */}
             <section>
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">

@@ -1,16 +1,25 @@
 "use client";
 import {
+  useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
   type ComponentProps,
 } from "react";
+import { createPortal } from "react-dom";
 import { PrimitiveForm } from "@/components/sandbox/primitive-form";
 import { CapabilityForm } from "@/components/sandbox/capability-form";
 import { EffectForm } from "@/components/sandbox/effect-form";
 import { HeritageForm } from "@/components/sandbox/heritage-form";
 import { ItemForm } from "@/components/sandbox/item-form";
+import { PrimitiveFormPreview } from "@/components/sandbox/primitive-form-preview";
+import { CapabilityFormPreview } from "@/components/sandbox/capability-form-preview";
+import { EffectFormPreview } from "@/components/sandbox/effect-form-preview";
+import { HeritageFormPreview } from "@/components/sandbox/heritage-form-preview";
+import { ItemFormPreview } from "@/components/sandbox/item-form-preview";
+import { useDrawerSlot } from "@/components/layout/build-preview-drawer";
 import { WorkspaceLibraryPicker } from "./library-picker";
 import { canContain } from "@/lib/character/workspace/model";
 import type {
@@ -41,7 +50,15 @@ export function EntityComposer({
   const [slotEvents] = useState(() => new EventTarget());
   const [extra, setExtra] = useState<WorkspaceNode[]>([]);
   const [library, setLibrary] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [error, setError] = useState("");
+  const [previewNode, setPreviewNode] = useState<ReactNode>(
+    <div className="v12-workspace-preview-empty">
+      <span>Live preview</span>
+      <strong>Start authoring to preview this piece.</strong>
+      <p>The preview uses the same renderer as the Atelier and Library.</p>
+    </div>,
+  );
   const [delivery, setDelivery] = useState<{
     kind: EntityKind;
     id: string;
@@ -120,17 +137,124 @@ export function EntityComposer({
         })),
     [graph.nodes],
   );
-  const capabilities = graph.nodes
-    .filter((n) => n.kind === "capability")
-    .map((n) => ({
-      id: n.id,
-      name: n.name,
-      type: String(n.data["type"]),
-      sourceType: String(n.data["sourceType"]),
-    }));
-  const effects = graph.nodes
-    .filter((n) => n.kind === "effect")
-    .map((n) => ({ id: n.id, name: n.name }));
+  const capabilities = useMemo(
+    () =>
+      graph.nodes
+        .filter((n) => n.kind === "capability")
+        .map((n) => ({
+          id: n.id,
+          name: n.name,
+          type: String(n.data["type"]),
+          sourceType: String(n.data["sourceType"]),
+        })),
+    [graph.nodes],
+  );
+  const effects = useMemo(
+    () =>
+      graph.nodes
+        .filter((n) => n.kind === "effect")
+        .map((n) => ({ id: n.id, name: n.name })),
+    [graph.nodes],
+  );
+  const previewFingerprintRef = useRef("");
+  const commitPreview = useCallback((fingerprint: string, preview: ReactNode) => {
+    if (previewFingerprintRef.current === fingerprint) return;
+    previewFingerprintRef.current = fingerprint;
+    setPreviewNode(preview);
+  }, []);
+  const handlePrimitivePreview = useCallback<
+    NonNullable<ComponentProps<typeof PrimitiveForm>["onStateChange"]>
+  >(
+    (state) =>
+      commitPreview(
+        `primitive:${JSON.stringify(state)}`,
+        <PrimitiveFormPreview form={state.form} modifiers={state.modifiers} />,
+      ),
+    [commitPreview],
+  );
+  const handleCapabilityPreview = useCallback<
+    NonNullable<ComponentProps<typeof CapabilityForm>["onStateChange"]>
+  >(
+    (state) =>
+      commitPreview(
+        `capability:${JSON.stringify(state)}`,
+        <CapabilityFormPreview
+          form={state.form}
+          slots={state.slots}
+          effects={effects.filter((effect) =>
+            state.effectIds.includes(effect.id),
+          )}
+        />,
+      ),
+    [commitPreview, effects],
+  );
+  const handleEffectPreview = useCallback<
+    NonNullable<ComponentProps<typeof EffectForm>["onStateChange"]>
+  >(
+    (state) =>
+      commitPreview(
+        `effect:${JSON.stringify(state)}`,
+        <EffectFormPreview form={state.form} slots={state.slots} />,
+      ),
+    [commitPreview],
+  );
+  const handleHeritagePreview = useCallback<
+    NonNullable<ComponentProps<typeof HeritageForm>["onStateChange"]>
+  >(
+    (state) =>
+      commitPreview(
+        `heritage:${JSON.stringify(state)}`,
+        <HeritageFormPreview
+          form={state.form}
+          primitives={state.primitives}
+          capabilities={state.capabilities}
+        />,
+      ),
+    [commitPreview],
+  );
+  const handleItemPreview = useCallback<
+    NonNullable<ComponentProps<typeof ItemForm>["onStateChange"]>
+  >(
+    (state) =>
+      commitPreview(
+        `item:${JSON.stringify({
+          form: state.form,
+          primitiveSlots: state.primitiveSlots.map((slot) => ({
+            primitiveId: slot.primitiveId,
+            isMirrored: slot.isMirrored,
+          })),
+          capabilityIds: state.capabilityIds,
+          effectIds: state.effectIds,
+          isDirty: state.isDirty,
+        })}`,
+        <ItemFormPreview
+          form={state.form}
+          primitiveSlots={state.primitiveSlots}
+          capabilitySlots={capabilities.filter((capability) =>
+            state.capabilityIds.includes(capability.id),
+          )}
+          effectSlots={effects.filter((effect) =>
+            state.effectIds.includes(effect.id),
+          )}
+        />,
+      ),
+    [capabilities, commitPreview, effects],
+  );
+  useDrawerSlot(
+    useMemo(
+      () => ({
+        build: (
+          <div className="v12-workspace-drawer-guide">
+            <span>Character sheet authoring</span>
+            <h3>{node ? `Editing ${node.name}` : `Creating ${kind}`}</h3>
+            <p>The authoring form is open on the character sheet. Use Preview to inspect the live result while preserving the form state.</p>
+          </div>
+        ),
+        preview: previewNode,
+      }),
+      [kind, node, previewNode],
+    ),
+  );
   const links = graph.edges
     .filter((e) => e.parent === node?.key)
     .sort((a, b) => a.order - b.order);
@@ -184,6 +308,7 @@ export function EntityComposer({
         <PrimitiveForm
           {...shared}
           characterId={graph.characterId}
+          onStateChange={handlePrimitivePreview}
           initialPrimitive={
             (row ?? null) as Exclude<
               ComponentProps<typeof PrimitiveForm>["initialPrimitive"],
@@ -197,6 +322,7 @@ export function EntityComposer({
       form = (
         <CapabilityForm
           {...shared}
+          onStateChange={handleCapabilityPreview}
           initialCapability={
             (row ?? null) as Exclude<
               ComponentProps<typeof CapabilityForm>["initialCapability"],
@@ -214,6 +340,7 @@ export function EntityComposer({
       form = (
         <EffectForm
           {...shared}
+          onStateChange={handleEffectPreview}
           initialEffect={
             (row ?? null) as Exclude<
               ComponentProps<typeof EffectForm>["initialEffect"],
@@ -229,6 +356,7 @@ export function EntityComposer({
       form = (
         <HeritageForm
           {...shared}
+          onStateChange={handleHeritagePreview}
           initialTemplate={
             (row ?? null) as Exclude<
               ComponentProps<typeof HeritageForm>["initialTemplate"],
@@ -247,6 +375,7 @@ export function EntityComposer({
       form = (
         <ItemForm
           {...shared}
+          onStateChange={handleItemPreview}
           initialItem={
             (row ?? null) as Exclude<
               ComponentProps<typeof ItemForm>["initialItem"],
@@ -268,6 +397,15 @@ export function EntityComposer({
   );
   return (
     <div className="space-y-4">
+      <div className="v12-workspace-authoring-bridge">
+        <div><span>Atelier authoring</span><strong>{node ? `Editing ${node.name}` : `New ${kind}`}</strong></div>
+        <button
+          type="button"
+          onClick={() => setPreviewOpen(true)}
+        >
+          Open live preview
+        </button>
+      </div>
       {kind === "heritage" && !node && (
         <label className="flex items-center gap-3 font-medium">
           Heritage type
@@ -328,6 +466,33 @@ export function EntityComposer({
         </div>
       )}
       {form}
+      {previewOpen && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              className="v12-author-preview-backdrop"
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Preview ${node?.name ?? kind}`}
+              onMouseDown={(event) => {
+                if (event.target === event.currentTarget) setPreviewOpen(false);
+              }}
+            >
+              <section className="v12-author-preview-modal">
+                <header>
+                  <div>
+                    <span>Build &amp; Preview</span>
+                    <h2>{node?.name ?? `New ${kind}`}</h2>
+                  </div>
+                  <button type="button" onClick={() => setPreviewOpen(false)}>
+                    Close
+                  </button>
+                </header>
+                <div className="v12-author-preview-body">{previewNode}</div>
+              </section>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

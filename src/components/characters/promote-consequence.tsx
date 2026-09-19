@@ -87,14 +87,14 @@ export function PromoteConsequence({
     );
   };
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 p-4">
+    <div className="v12-formula-backdrop fixed inset-0 z-50 overflow-y-auto bg-black/60 p-4">
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Promote consequence to primitive"
-        className="mx-auto max-w-3xl space-y-3 rounded-lg border border-border bg-card p-5"
+        className="v12-formula-modal mx-auto max-w-3xl space-y-3 rounded-lg border border-border bg-card p-5"
       >
-        <div className="flex justify-between">
+        <div className="v12-formula-head flex justify-between">
           <h2 className="text-xl font-semibold">Promote to primitive</h2>
           <button onClick={onClose}>Close</button>
         </div>

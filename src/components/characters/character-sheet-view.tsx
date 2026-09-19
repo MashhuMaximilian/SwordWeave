@@ -57,6 +57,7 @@ import { UpdateAllModal } from "@/components/characters/update-all-modal";
 import { PrimitivePreviewCard } from "@/components/characters/primitive-preview-card";
 import { BottomStickyBar } from "@/components/characters/bottom-sticky-bar";
 import { CharacterWorkspace } from "@/components/characters/workspace/character-workspace";
+import { BuildModeBanner } from "@/components/characters/build-mode-banner";
 import { ConditionsDrawer } from "@/components/characters/conditions-drawer";
 import { AccordionFooterActions } from "@/components/characters/accordion-footer-actions";
 import { FormulaModal, type FormulaStep } from "@/components/characters/formula-modal";
@@ -1210,10 +1211,9 @@ export function CharacterSheetView(props: CharacterSheetProps) {
           </TabErrorBoundary>
         )}
         {tab === "items" && (
-          <div className="space-y-6">
-          <CharacterWorkspace characterId={props.id} mode={props.mode ?? "PLAY"} items />
           <ItemsTab
             characterId={props.id}
+            mode={props.mode ?? "PLAY"}
             items={props.itemLinks.map((l) => ({
               ...l.item,
               equipped: l.equipped,
@@ -1230,7 +1230,6 @@ export function CharacterSheetView(props: CharacterSheetProps) {
             // chips can render "Pinned v:XXXX".
             latestVersions={latestVersions}
           />
-          </div>
         )}
         {tab === "notes" && (
           <NotesTab
@@ -1296,13 +1295,13 @@ export function CharacterSheetView(props: CharacterSheetProps) {
       {/* Level-up confirmation modal */}
       {levelUpConfirm && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          className="v12-formula-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
           role="dialog"
           aria-modal="true"
           onClick={() => setLevelUpConfirm(false)}
         >
           <div
-            className="w-full max-w-md rounded-md border border-border bg-card p-6"
+            className="v12-formula-modal w-full max-w-md rounded-md border border-border bg-card p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-xl font-semibold">Level up to L{props.level + 1}?</h2>
@@ -3627,6 +3626,7 @@ function DirectPrimitivesCard({
 
 function ItemsTab({
   characterId,
+  mode,
   items,
   encumbrance,
   // Phase 8.5 / Session H6 round 10 (Mashu
@@ -3637,6 +3637,7 @@ function ItemsTab({
   latestVersions,
 }: {
   characterId: string;
+  mode: "BUILD" | "PLAY";
   items: Array<{
     id: string;
     name: string;
@@ -3647,6 +3648,7 @@ function ItemsTab({
     slotCost: number;
     isTwoHanded: boolean;
     isConsumable: boolean;
+    isNotEquippable?: boolean;
     equipped: boolean;
     quantity: number;
     // Phase 5 (T5.C.3): slot metadata for the badge.
@@ -3695,62 +3697,108 @@ function ItemsTab({
   encumbrance: CharacterSheetProps["encumbrance"];
   latestVersions: Map<VersionKey, string>;
 }) {
-  if (items.length === 0) {
-    return (
-      <div className="rounded-md border border-dashed border-border bg-card/50 px-6 py-12 text-center">
-        <Package className="mx-auto size-10 text-muted-foreground" />
-        <h3 className="mt-4 text-lg font-semibold">No items</h3>
-        <p className="mt-2 text-sm text-muted-foreground">
-          This character isn't carrying anything yet.
-        </p>
-      </div>
-    );
-  }
   const atCapacity =
     encumbrance.equipSlotsUsed >= encumbrance.equipSlotsAvailable;
+  const hasConstruction = (item: (typeof items)[number]) =>
+    item.capabilityLinks.length > 0 ||
+    item.effectLinks.length > 0 ||
+    item.primitiveLinks.length > 0;
+  const isPackItem = (item: (typeof items)[number]) =>
+    item.isNotEquippable === true ||
+    item.isConsumable ||
+    (!hasConstruction(item) && /coin|token|trinket|pouch|bag|container|supply|consumable/i.test(item.itemType));
+  const equippedItems = items.filter((item) => item.equipped);
+  const carriedGear = items.filter((item) => !item.equipped && !isPackItem(item));
+  const packItems = items.filter((item) => !item.equipped && isPackItem(item));
+  const loadPercent = encumbrance.capacity > 0
+    ? Math.min(100, Math.round((encumbrance.load / encumbrance.capacity) * 100))
+    : 0;
+  const slotPercent = encumbrance.equipSlotsAvailable > 0
+    ? Math.min(100, Math.round((encumbrance.equipSlotsUsed / encumbrance.equipSlotsAvailable) * 100))
+    : 0;
+
+  const renderCards = (sectionItems: typeof items) => (
+    <ul className="v12-sheet-item-grid">
+      {sectionItems.map((item) => (
+        <li key={item.id}>
+          <ItemCard
+            characterId={characterId}
+            item={item}
+            atCapacity={atCapacity}
+            nested={{
+              capabilityLinks: item.capabilityLinks,
+              effectLinks: item.effectLinks,
+              primitiveLinks: item.primitiveLinks,
+            }}
+            latestVersions={latestVersions}
+          />
+        </li>
+      ))}
+    </ul>
+  );
+
   return (
     <div className="v12-sheet-items">
+      <section className="v12-inventory-command" aria-label="Inventory status and mode">
+        <div className="v12-inventory-command-copy">
+          <p className="v12-kicker">Character inventory</p>
+          <h3>{mode === "BUILD" ? "Inventory workshop" : "Readied gear and carried goods"}</h3>
+          <p>{mode === "BUILD" ? "Create, bring in, equip, and inspect items without leaving the sheet." : "Equipment that changes play stays separate from supplies, currency, and keepsakes."}</p>
+        </div>
+        <BuildModeBanner characterId={characterId} initialMode={mode} />
+      </section>
+
+      {mode === "BUILD" && (
+        <details className="v12-inventory-workshop" aria-label="Item authoring workspace">
+          <summary className="v12-inventory-section-head">
+            <div><span>Workshop</span><h3>Add, create, or edit an item</h3></div>
+            <p>The same item authoring and Library flow used in the Atelier.</p>
+          </summary>
+          <div className="v12-inventory-workshop-body"><CharacterWorkspace characterId={characterId} mode={mode} items /></div>
+        </details>
+      )}
+
       <div className="v12-sheet-load-deck">
-        <span className="font-semibold uppercase text-muted-foreground">
-          Load:{" "}
-        </span>
-        {encumbrance.load} / {encumbrance.capacity} ·{" "}
-        <span className="font-semibold uppercase text-muted-foreground">
-          Equip slots:{" "}
-        </span>
-        {encumbrance.equipSlotsUsed} / {encumbrance.equipSlotsAvailable}
+        <div className="v12-inventory-meter">
+          <span><b>Load</b><strong>{encumbrance.load} / {encumbrance.capacity}</strong></span>
+          <i><b style={{ width: `${loadPercent}%` }} /></i>
+        </div>
+        <div className="v12-inventory-meter">
+          <span><b>Equipped slots</b><strong>{encumbrance.equipSlotsUsed} / {encumbrance.equipSlotsAvailable}</strong></span>
+          <i><b style={{ width: `${slotPercent}%` }} /></i>
+        </div>
+        <div className="v12-inventory-tally">
+          <span>{equippedItems.length}<small>ready</small></span>
+          <span>{carriedGear.length}<small>gear</small></span>
+          <span>{packItems.length}<small>pack</small></span>
+        </div>
       </div>
-      <ul className="v12-sheet-item-grid">
-        {items.map((i) => (
-          <li key={i.id}>
-            {/* Phase 8.2 batch 4: each item is now an interactive
-                card with an equip/unequip toggle. The card owns
-                its own optimistic state and dispatches the API.
-                Phase 8.4 v22 (Mashu 2026-07-29): T2 — `nested`
-                is the item's primitives/caps/effects bundle,
-                rendered inline as collapsible accordions below
-                the equip/preview row. Per Mashu's spec these
-                are item-scoped (not in the character's general
-                primitive pool). */}
-            <ItemCard
-              characterId={characterId}
-              item={i}
-              atCapacity={atCapacity}
-              nested={{
-                capabilityLinks: i.capabilityLinks,
-                effectLinks: i.effectLinks,
-                primitiveLinks: i.primitiveLinks,
-              }}
-              // Phase 8.5 / Session H6 round 10 (Mashu
-              // 2026-08-03): forward the latest-version
-              // map so the nested CAPABILITIES /
-              // EFFECTS / PRIMITIVES chips render
-              // "Pinned v:XXXX" instead of just "Pinned".
-              latestVersions={latestVersions}
-            />
-          </li>
-        ))}
-      </ul>
+
+      {items.length === 0 ? (
+        <div className="v12-inventory-empty">
+          <Package className="size-9" />
+          <div><h3>No items carried</h3><p>Open edit mode to create an item or bring one in from the Library.</p></div>
+        </div>
+      ) : null}
+
+      {equippedItems.length > 0 && (
+        <section className="v12-inventory-section is-equipped">
+          <div className="v12-inventory-section-head"><div><span>At hand</span><h3>Equipped</h3></div><b>{equippedItems.length}</b></div>
+          {renderCards(equippedItems)}
+        </section>
+      )}
+      {carriedGear.length > 0 && (
+        <section className="v12-inventory-section is-gear">
+          <div className="v12-inventory-section-head"><div><span>Ready to equip</span><h3>Gear & artifacts</h3></div><b>{carriedGear.length}</b></div>
+          {renderCards(carriedGear)}
+        </section>
+      )}
+      {packItems.length > 0 && (
+        <section className="v12-inventory-section is-pack">
+          <div className="v12-inventory-section-head"><div><span>Carried</span><h3>Pack, supplies & currency</h3></div><b>{packItems.length}</b></div>
+          {renderCards(packItems)}
+        </section>
+      )}
     </div>
   );
 }

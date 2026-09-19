@@ -77,8 +77,12 @@ export function WorkspaceLibraryPicker({
     };
   }, [kind, query, heritageType, revision]);
   return (
-    <div className="space-y-3 rounded-lg border border-border p-4">
-      <div className="flex gap-2">
+    <div className="v12-workspace-library space-y-3 rounded-lg border border-border p-4">
+      <header className="v12-workspace-library-head">
+        <div><span>Shared catalogue</span><h3>Library</h3></div>
+        <p>Preview the complete piece, then add the exact version to this character.</p>
+      </header>
+      <div className="v12-workspace-library-tools flex gap-2">
         <select
           aria-label="Library piece type"
           className="rounded border border-border bg-card p-2"
@@ -154,11 +158,11 @@ export function WorkspaceLibraryPicker({
           )}
         </WorkspaceSurface>
       )}
-      <ul className="max-h-72 space-y-2 overflow-y-auto">
+      <ul className="v12-workspace-library-results max-h-72 space-y-2 overflow-y-auto">
         {items.map((item) => (
           <li
             key={item.id}
-            className="flex flex-wrap items-center gap-2 rounded border border-border p-3"
+            className="v12-workspace-library-row flex flex-wrap items-center gap-2 rounded border border-border p-3"
           >
             <span className="min-w-0 flex-1 font-medium">{item.name}</span>
             <span className="text-xs">{item.buCost ?? 0} BU</span>

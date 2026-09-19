@@ -712,7 +712,7 @@ export function BottomStickyBar({
 
   return (
     <div
-      className="v12-instrument fixed bottom-12 left-0 right-0 z-30 border-t border-border bg-background/95 backdrop-blur-md"
+      className="v12-bottom-drawer v12-instrument fixed bottom-12 left-0 right-0 z-30 border-t border-border bg-background/95 backdrop-blur-md"
       data-testid="bottom-sticky-bar"
       data-character-surface
       data-expanded={expanded}
@@ -725,7 +725,7 @@ export function BottomStickyBar({
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 border-b border-border pl-3 pr-16 py-1.5 text-sm hover:bg-secondary/30"
+        className="v12-bottom-drawer-toggle flex w-full items-center justify-between gap-2 border-b border-border pl-3 pr-16 py-1.5 text-sm hover:bg-secondary/30"
         aria-expanded={expanded}
         aria-label={expanded ? "Collapse quick dock" : "Expand quick dock"}
       >
@@ -801,7 +801,7 @@ export function BottomStickyBar({
           is essentially the entire visible viewport. */}
       {expanded && (
         <div
-          className="px-2 pb-3 pt-1.5 max-h-[70dvh] overflow-y-auto"
+          className="v12-bottom-drawer-body px-2 pb-3 pt-1.5 max-h-[70dvh] overflow-y-auto"
           data-testid="bottom-sticky-bar-drawer"
         >
           {/* 1. Vitality header + bar + buttons.
@@ -809,7 +809,7 @@ export function BottomStickyBar({
               to open the max-vitality provenance modal.
               The Damage/Heal/Long-rest/Short-rest buttons
               live in their own row to avoid click conflicts. */}
-          <div className="mt-2 rounded-md border border-border bg-card px-2 py-1.5">
+          <div className="v12-vitality-deck mt-2 rounded-md border border-border bg-card px-2 py-1.5">
             <button
               type="button"
               onClick={openVitalityModal}
@@ -831,9 +831,9 @@ export function BottomStickyBar({
                   / {maxVitality}
                 </span>
               </p>
-              <div className="mt-1 h-1 overflow-hidden rounded-full bg-secondary">
+              <div className="v12-vitality-track mt-1 h-1 overflow-hidden rounded-full bg-secondary">
                 <div
-                  className={`h-full rounded-full transition-all ${vitalityColor}`}
+                  className={`v12-vitality-fill h-full rounded-full transition-all ${vitalityColor}`}
                   style={{ width: `${vitalityPercent}%` }}
                 />
               </div>
@@ -1026,10 +1026,17 @@ export function BottomStickyBar({
                   const isProf = proficientAttribute === attr;
                   const attrLower = attr.toLowerCase() as "physical" | "mental" | "magical";
                   return (
-                    <button
+                    <div
                       key={attr}
-                      type="button"
+                      role="button"
+                      tabIndex={0}
                       onClick={() => openPracticeModal(attrLower)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          openPracticeModal(attrLower);
+                        }
+                      }}
                       className={`rounded border-2 bg-card px-2 py-1.5 text-left transition-colors hover:bg-secondary/30 ${
                         isProf ? "border-teal-500" : "border-border"
                       }`}
@@ -1119,6 +1126,7 @@ export function BottomStickyBar({
                                   e.stopPropagation();
                                   openPracticeDetailModal({ ...p, total });
                                 }}
+                                onKeyDown={(e) => e.stopPropagation()}
                                 className="flex w-full items-center justify-between gap-1 rounded px-1 py-0.5 text-left hover:bg-secondary/30"
                                 title={`Show provenance for ${p.name}`}
                               >
@@ -1135,7 +1143,7 @@ export function BottomStickyBar({
                           })}
                         </ul>
                       )}
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -2009,17 +2017,17 @@ function ModSaveProvenanceModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 pt-16 pb-24 backdrop-blur-sm overflow-y-auto"
+      className="v12-formula-backdrop fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 pt-16 pb-24 backdrop-blur-sm overflow-y-auto"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label={`Formula for ${attr.toUpperCase()} mod + save`}
     >
       <div
-        className="flex max-h-[75vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+        className="v12-formula-modal flex max-h-[75vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <div className="v12-formula-head flex items-center justify-between border-b border-border px-4 py-3">
           <div>
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Formula
@@ -2428,17 +2436,17 @@ function PracticeDetailModal({
   return (
     <Fragment>
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 pt-16 pb-24 backdrop-blur-sm overflow-y-auto"
+      className="v12-formula-backdrop fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 pt-16 pb-24 backdrop-blur-sm overflow-y-auto"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label={`Formula for ${practice.name}`}
     >
       <div
-        className="flex max-h-[75vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+        className="v12-formula-modal flex max-h-[75vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between gap-2 border-b border-border bg-card px-4 py-3 shrink-0">
+        <div className="v12-formula-head flex items-center justify-between gap-2 border-b border-border bg-card px-4 py-3 shrink-0">
           <div className="min-w-0">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Formula
@@ -2563,7 +2571,7 @@ function PracticeDetailModal({
 
           <section>
             <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Conditions
+              Consequences
             </p>
             {(() => {
               const allContribs = [
@@ -2571,7 +2579,7 @@ function PracticeDetailModal({
                 ...(byTarget[practiceTarget] ?? []),
               ].filter((c) => c.hasCondition);
               if (allContribs.length === 0)
-                return <p className="text-xs text-muted-foreground">No active conditions.</p>;
+                return <p className="text-xs text-muted-foreground">No active consequences.</p>;
               return (
                 <ul className="space-y-1">
                   {allContribs.map((c, i) => (
@@ -2782,17 +2790,17 @@ function EncumbranceFormulaModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 pt-16 pb-24 backdrop-blur-sm overflow-y-auto"
+      className="v12-formula-backdrop fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 pt-16 pb-24 backdrop-blur-sm overflow-y-auto"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label={`Formula for Encumbrance`}
     >
       <div
-        className="flex max-h-[75vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+        className="v12-formula-modal flex max-h-[75vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <div className="v12-formula-head flex items-center justify-between border-b border-border px-4 py-3">
           <div>
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Formula

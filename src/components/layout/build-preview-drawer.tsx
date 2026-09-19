@@ -24,11 +24,23 @@ type DrawerTab = "build" | "preview";
 interface DrawerSlotState {
   build: ReactNode;
   preview: ReactNode;
+  buildOwner: symbol | undefined;
+  previewOwner: symbol | undefined;
 }
-const EMPTY_DRAWER_SLOT: DrawerSlotState = { build: null, preview: null };
+const EMPTY_DRAWER_SLOT: DrawerSlotState = {
+  build: null,
+  preview: null,
+  buildOwner: undefined,
+  previewOwner: undefined,
+};
 
 const DrawerSlotCtx = (() => {
-  let state: DrawerSlotState = { build: null, preview: null };
+  let state: DrawerSlotState = {
+    build: null,
+    preview: null,
+    buildOwner: undefined,
+    previewOwner: undefined,
+  };
   const listeners = new Set<() => void>();
   return {
     set: (next: DrawerSlotState) => {
@@ -73,6 +85,7 @@ const DrawerSlotCtx = (() => {
  *      instance last set, so other pages' slots survive.
  */
 export function useDrawerSlot(content: Partial<DrawerSlotState>) {
+  const owner = useRef(Symbol("drawer-slot"));
   // Track which keys this hook instance last set, so the
   // unmount cleanup can clear only those keys without
   // wiping slots registered by other pages.
@@ -88,7 +101,14 @@ export function useDrawerSlot(content: Partial<DrawerSlotState>) {
       content.build !== undefined ? content.build : previous.build;
     const previewNext =
       content.preview !== undefined ? content.preview : previous.preview;
-    DrawerSlotCtx.set({ build: buildNext, preview: previewNext });
+    DrawerSlotCtx.set({
+      build: buildNext,
+      preview: previewNext,
+      buildOwner:
+        content.build !== undefined ? owner.current : previous.buildOwner,
+      previewOwner:
+        content.preview !== undefined ? owner.current : previous.previewOwner,
+    });
     lastSet.current = {
       build: content.build !== undefined,
       preview: content.preview !== undefined,
@@ -100,11 +120,26 @@ export function useDrawerSlot(content: Partial<DrawerSlotState>) {
 
   // Teardown effect — runs ONLY on real unmount.
   useEffect(() => {
+    const slotOwner = owner.current;
     return () => {
       const current = DrawerSlotCtx.get();
       DrawerSlotCtx.set({
-        build: lastSet.current.build ? null : current.build,
-        preview: lastSet.current.preview ? null : current.preview,
+        build:
+          lastSet.current.build && current.buildOwner === slotOwner
+            ? null
+            : current.build,
+        preview:
+          lastSet.current.preview && current.previewOwner === slotOwner
+            ? null
+            : current.preview,
+        buildOwner:
+          lastSet.current.build && current.buildOwner === slotOwner
+            ? undefined
+            : current.buildOwner,
+        previewOwner:
+          lastSet.current.preview && current.previewOwner === slotOwner
+            ? undefined
+            : current.previewOwner,
       });
     };
   }, []);
@@ -300,7 +335,7 @@ function DrawerShell({
       <div
         onClick={onClose}
         className={cn(
-          "fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity duration-200",
+          "fixed inset-0 z-[170] bg-black/60 backdrop-blur-sm transition-opacity duration-200",
           isOpen ? "opacity-100" : "pointer-events-none opacity-0",
         )}
         aria-hidden="true"
@@ -338,7 +373,7 @@ function DrawerShell({
         // "Received an empty string for a boolean attribute `inert`" warning.
         inert={!isOpen}
         className={cn(
-          "v12-instrument fixed inset-x-0 bottom-0 z-50 flex max-h-[90vh] flex-col rounded-t-2xl border-t border-border bg-card shadow-2xl transition-[transform,visibility] duration-300 ease-out sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[85vh] sm:max-w-4xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl",
+          "v12-instrument fixed inset-x-0 bottom-0 z-[170] flex max-h-[90vh] flex-col rounded-t-2xl border-t border-border bg-card shadow-2xl transition-[transform,visibility] duration-300 ease-out sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[85vh] sm:max-w-4xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl",
           isOpen
             ? "visible translate-y-0 sm:translate-y-[-50%]"
             : "invisible translate-y-full sm:translate-x-[-50%] sm:translate-y-[150%]",

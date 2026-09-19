@@ -65,14 +65,14 @@ export function BuildModeBanner({
 
   if (mode === "BUILD") {
     return (
-      <div className="v12-character-mode-panel flex flex-row items-center justify-between gap-3 rounded-2xl border border-primary/40 bg-primary/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
+      <div data-mode="BUILD" className="v12-character-mode-panel is-build flex flex-row items-center justify-between gap-3 rounded-2xl border border-primary/40 bg-primary/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
         <div className="flex items-start gap-3">
           <span className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
             <Hammer className="size-5" aria-hidden />
           </span>
           <div className="space-y-0.5">
             <p className="text-sm font-semibold text-foreground">
-              Edit mode
+              Character edit mode
             </p>
             <p className="hidden text-xs leading-5 text-muted-foreground sm:block sm:text-sm">
               Create pieces in the workspace, reuse pieces on this character,
@@ -103,7 +103,7 @@ export function BuildModeBanner({
   }
 
   return (
-    <div className="v12-character-mode-panel flex flex-row items-center justify-between gap-3 rounded-2xl border border-border bg-card/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
+    <div data-mode="PLAY" className="v12-character-mode-panel is-play flex flex-row items-center justify-between gap-3 rounded-2xl border border-border bg-card/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
       <div className="flex items-start gap-3">
         <span className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
           <ShieldCheck className="size-5" aria-hidden />

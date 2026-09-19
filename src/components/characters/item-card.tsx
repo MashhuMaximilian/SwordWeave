@@ -720,9 +720,16 @@ export function ItemCard({
         (nested.capabilityLinks.length > 0 ||
           nested.effectLinks.length > 0 ||
           nested.primitiveLinks.length > 0) && (
-          <div className="mt-3 space-y-2 border-t border-border/40 pt-3">
+          <details className="v12-inventory-construction">
+            <summary>
+              <span>Granted abilities &amp; construction</span>
+              <b>
+                {nested.capabilityLinks.length + nested.effectLinks.length + nested.primitiveLinks.length}
+              </b>
+            </summary>
+            <div className="v12-inventory-construction-body">
             {nested.capabilityLinks.length > 0 && (
-              <details className="text-xs">
+              <details className="text-xs" open>
                 <summary className="cursor-pointer select-none text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Capabilities ({nested.capabilityLinks.length})
                 </summary>
@@ -822,7 +829,7 @@ export function ItemCard({
               </details>
             )}
             {nested.primitiveLinks.length > 0 && (
-              <details className="text-xs">
+              <details className="text-xs" open>
                 <summary className="cursor-pointer select-none text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Primitives ({nested.primitiveLinks.length})
                 </summary>
@@ -870,7 +877,8 @@ export function ItemCard({
                 </ul>
               </details>
             )}
-          </div>
+            </div>
+          </details>
         )}
     </div>
   );

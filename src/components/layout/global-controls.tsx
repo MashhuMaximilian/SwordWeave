@@ -287,20 +287,37 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
 
   // Filter side panel.
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  // Build & Preview drawer.
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerTab, setDrawerTab] = useState<"build" | "preview">("build");
   // Close on route change.
   useEffect(() => {
     setFilterPanelOpen(false);
     setDrawerOpen(false);
   }, [pathname]);
 
-  // Build & Preview drawer.
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerTab, setDrawerTab] = useState<"build" | "preview">("build");
   const openDrawer = useCallback((tab: "build" | "preview" = "build") => {
     setDrawerTab(tab);
     setDrawerOpen(true);
   }, []);
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
+  useEffect(() => {
+    const bridgeWindow = window as Window & {
+      __swOpenBuildDrawer?: (tab: "build" | "preview") => void;
+    };
+    bridgeWindow.__swOpenBuildDrawer = openDrawer;
+    const handleOpenDrawer = (event: Event) => {
+      const requested = (event as CustomEvent<"build" | "preview">).detail;
+      openDrawer(requested === "build" ? "build" : "preview");
+    };
+    window.addEventListener("sw-open-build-drawer", handleOpenDrawer);
+    return () => {
+      window.removeEventListener("sw-open-build-drawer", handleOpenDrawer);
+      if (bridgeWindow.__swOpenBuildDrawer === openDrawer) {
+        delete bridgeWindow.__swOpenBuildDrawer;
+      }
+    };
+  }, [openDrawer]);
 
   // Fullscreen.
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -369,6 +386,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
   // is hidden there.
   const isSplitableSandboxRoute =
     pathname?.startsWith("/atelier");
+  const isCharacterSheetRoute = pathname?.startsWith("/characters/") === true;
 
   // Filters only appear on routes that actually open the filter panel
   // via setFilterPanelOpen: the library browse view and the sandbox
@@ -419,6 +437,22 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         onClick: () => {
                 if (pathname === "/atelier") {
                   openDrawer(isMobile && sandboxSplit ? "preview" : "build");
+                } else if (isCharacterSheetRoute) {
+                  const previewTrigger = document.querySelector<HTMLButtonElement>(
+                    ".v12-workspace-authoring-bridge button",
+                  );
+                  if (previewTrigger) {
+                    previewTrigger.click();
+                    return;
+                  }
+                  const editModeTrigger = document.querySelector<HTMLButtonElement>(
+                    ".v12-character-mode-panel.is-play > button",
+                  );
+                  if (editModeTrigger) {
+                    editModeTrigger.click();
+                    return;
+                  }
+                  document.querySelector(".v12-character-workspace")?.scrollIntoView({ behavior: "smooth", block: "start" });
                 } else {
                   window.dispatchEvent(new CustomEvent("sw-navigate-away", { detail: "/atelier" }));
                 }
@@ -439,7 +473,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
       // Phase 8.1 batch 1: wire the Character FAB to the persistent
       // character modal. toggle() opens if closed, closes if open.
       // (Replaces the previous no-op that rev 10 left as a placeholder.)
-      {
+      ...(!isCharacterSheetRoute ? [{
       kind: "action" as const,
       key: "character",
       label: "Character",
@@ -449,7 +483,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
       onClick: () => {
         characterModal.toggle();
       },
-    },
+    }] : []),
       {
         kind: "action",
         key: "fullscreen",
@@ -500,6 +534,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
     dark,
     toggleDark,
     pathname,
+    isCharacterSheetRoute,
   ]);
 
   const ctxValue: GlobalControlsState = {

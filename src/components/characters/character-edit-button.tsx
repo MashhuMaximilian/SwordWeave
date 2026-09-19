@@ -32,12 +32,14 @@ export interface CharacterEditButtonProps {
   readonly characterId: string;
   readonly className?: string;
   readonly title?: string;
+  readonly label?: string;
 }
 
 export function CharacterEditButton({
   characterId,
   className,
   title = "Edit in the atelier's character builder modal",
+  label = "Edit in Atelier",
 }: CharacterEditButtonProps) {
   const router = useRouter();
   const { openForEditFromStore } = useCharacterModal();
@@ -74,7 +76,7 @@ export function CharacterEditButton({
       title={title}
     >
       <Pencil className="size-3.5" />
-      Edit
+      {label}
     </button>
   );
 }

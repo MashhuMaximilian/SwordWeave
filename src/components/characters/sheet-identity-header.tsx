@@ -266,7 +266,7 @@ export function SheetIdentityHeader({
   // The Budget + Debt bars are clickable; opening the popup
   // explains the formula in the same FormulaModal pattern
   // used by the rest of the sheet.
-  const [buPopup, setBuPopup] = useState<"budget" | "debt" | null>(null);
+  const [buPopup, setBuPopup] = useState<"budget" | "debt" | "pools" | null>(null);
   // PLAN Eilxina Part F (Mashu 2026-09-10): the "Update all stale slots"
   // modal opens when the owner taps the stale-updates chip in this drawer.
   // Reachable from both the expanded panel button AND the in-page header
@@ -293,9 +293,10 @@ export function SheetIdentityHeader({
   // Phase 8.4 v26.8: show actual debt used (capped at overflow),
   // not total mirror credit.
   const debtUsed = debtUsedValue;
-  const debtAvailable = Math.max(0, volatility.ceiling - debtUsed);
+  const debtAvailable = Math.max(0, Math.min(volatility.rating, volatility.ceiling) - debtUsed);
   const debtMax = volatility.ceiling;
   const debtDisplay = `${debtUsed} / ${debtMax} (${volatility.levelBracket})`;
+  const remainingBu = Math.max(0, buBalance.progressionPool - buBalance.progressionSpent);
 
   return (
     <div
@@ -391,7 +392,7 @@ export function SheetIdentityHeader({
               editable in place via DmBonusEditor. Mashu 2026-07-28:
               "In the expanded we need to modify the DM bonus too." */}
           <div className="v12-identity-metrics mb-2 flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1">
+            <span className="v12-identity-pool-card inline-flex items-center gap-1">
               <span className="font-semibold uppercase text-muted-foreground">
                 DM Bonus
               </span>
@@ -399,23 +400,24 @@ export function SheetIdentityHeader({
                 characterId={characterId}
                 initialValue={buBalance.dmBonusBu}
               />
+              <button type="button" onClick={() => setBuPopup("pools")} aria-label="Explain BU pools">?</button>
             </span>
-            <span className="inline-flex items-center gap-1">
+            <button type="button" onClick={() => setBuPopup("pools")} className="v12-identity-pool-card inline-flex items-center gap-1">
               <span className="font-semibold uppercase text-muted-foreground">
                 Item BU
               </span>
               <span className="rounded-full bg-secondary px-2 py-0.5 font-mono">
                 {buBalance.itemBuSpent} (separate)
               </span>
-            </span>
-            <span className="inline-flex items-center gap-1">
+            </button>
+            <button type="button" onClick={() => setBuPopup("pools")} className="v12-identity-pool-card inline-flex items-center gap-1">
               <span className="font-semibold uppercase text-muted-foreground">
                 Remaining
               </span>
               <span className="rounded-full bg-secondary px-2 py-0.5 font-mono">
-                {volatility.remaining} BU
+                {remainingBu} BU
               </span>
-            </span>
+            </button>
           </div>
 
           {/* Budget Usage Bar — clickable to open formula popup.
@@ -586,28 +588,34 @@ export function SheetIdentityHeader({
           {/* Edit / Clone / Level Up — Mashu 2026-07-28:
               "we need the clone and level up buttons too there." */}
           <div className="v12-identity-actions mt-3 flex flex-wrap items-center gap-2">
-            <CharacterEditButton
-              characterId={characterId}
-              className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium hover:bg-secondary"
-            />
-            <Link
-              href={`/characters/${characterId}/clone`}
-              className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium hover:bg-secondary"
-              title="Clone this character"
-            >
-              <Pencil className="size-3" />
-              Clone
-            </Link>
-            {canLevelUp && onLevelUp ? (
-              <button
-                type="button"
-                onClick={onLevelUp}
-                className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+            <div className="v12-identity-action-group is-atelier">
+              <CharacterEditButton
+                characterId={characterId}
+                label="Edit in Atelier"
+                className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium hover:bg-secondary"
+              />
+            </div>
+            <div className="v12-identity-action-group is-character">
+              <Link
+                href={`/characters/${characterId}/clone`}
+                className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium hover:bg-secondary"
+                title="Clone this character"
               >
-                <ArrowUp className="size-3" />
-                Level Up
-              </button>
-            ) : null}
+                <Pencil className="size-3" />
+                Clone
+              </Link>
+              {canLevelUp && onLevelUp ? (
+                <button
+                  type="button"
+                  onClick={onLevelUp}
+                  className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                >
+                  <ArrowUp className="size-3" />
+                  Level Up
+                </button>
+              ) : null}
+            </div>
+            <div className="v12-identity-action-group is-access">
             {/* PLAN Eilxina Part A (Mashu 2026-09-09): mobile visibility
                 picker inside the expanded panel. Same component used
                 in the in-page header (desktop); only difference is the
@@ -664,6 +672,7 @@ export function SheetIdentityHeader({
                 }))}
               />
             )}
+            </div>
           </div>
           {!canLevelUp ? (
             <p className="mt-2 text-[10px] text-muted-foreground">
@@ -720,7 +729,7 @@ export function SheetIdentityHeader({
 // show up. When we consolidate the two footers we'll extract
 // this to a shared module.
 interface BuHeaderFormulaModalProps {
-  readonly mode: "budget" | "debt";
+  readonly mode: "budget" | "debt" | "pools";
   readonly level: number;
   readonly progressionSpent: number;
   readonly progressionPool: number;
@@ -765,6 +774,39 @@ function BuHeaderFormulaModal({
   const baseBu = 25 + 10 * (level - 1);
   const spikesTotal = spikesUpToLevel(level);
   const lifetimeBu = baseBu + spikesTotal;
+
+  if (mode === "pools") {
+    const remainingBu = Math.max(0, progressionPool - progressionSpent);
+    const debtUsed = Math.min(Math.max(0, progressionSpent - progressionPool), volatilityRating);
+    const debtAvailable = Math.max(0, Math.min(volatilityRating, volatilityCeiling) - debtUsed);
+    return (
+      <FormulaModal
+        title="BU pools"
+        subtitle={`What each number means at level ${level}`}
+        total={remainingBu}
+        formula="Remaining progression BU = progression pool − progression spend. Item BU stays separate."
+        breakdown={[
+          { label: "Progression pool", value: progressionPool },
+          { label: "Progression spent", value: -progressionSpent },
+          { label: "Progression BU remaining", value: remainingBu },
+          { label: "Item BU (separate)", value: itemBuSpent },
+        ]}
+        info={{
+          title: "Progression, items, and debt",
+          body: (
+            <div className="v12-bu-guide">
+              <section><h4>DM Bonus BU · {dmBonusBu}</h4><p>The DM grants this instead of experience points. It increases the character’s spendable progression pool and can be used immediately, including during a combat round, to create or purchase a primitive.</p></section>
+              <section><h4>Item BU · {itemBuSpent}</h4><p>This is the total BU cost of the character’s items and their included construction. Item BU belongs to a separate item pool and never consumes the character’s progression budget.</p></section>
+              <section><h4>Remaining BU · {remainingBu}</h4><p>This is the progression BU still free to spend. The normal progression pool is spent first. Once it reaches zero, eligible overflow can draw from available debt.</p></section>
+              <section><h4>Debt · {debtUsed} used / {debtAvailable} available / {volatilityCeiling} max</h4><p>Mirrored primitives create debt headroom. “Available” is the headroom the character has actually earned from mirrors; “max” is the level bracket limit. Spending beyond the available amount returns to over-budget territory and is shown as a warning for DM approval.</p></section>
+              <aside><strong>Example:</strong> A 120 BU progression pool with 12 available debt can support 132 BU before further spend becomes over-budget. A 135 BU build reads as 120 progression + 12 debt + 3 requiring approval.</aside>
+            </div>
+          ),
+        }}
+        onClose={onClose}
+      />
+    );
+  }
 
   if (mode === "budget") {
     const breakdown: FormulaStep[] = [
@@ -898,19 +940,18 @@ function BuHeaderFormulaModal({
               <strong className="text-foreground">Cascade rule:</strong> when
               you slot a primitive, the engine first tries to deduct from
               your <strong className="text-foreground">available BU budget</strong>.
-              Once your available BU is zero, additional slots overflow into{" "}
-              <strong className="text-foreground">mirror debt</strong>. Going
-              into debt is allowed up to your bracket ceiling — beyond that,
-              the DM must intervene.
+              Once the progression pool reaches zero, additional spend can use
+              debt headroom earned from mirrored primitives. The bracket ceiling
+              limits how much headroom can exist; spending beyond the earned
+              headroom remains possible with an over-budget warning for DM approval.
             </p>
             <p className="text-[11px] text-muted-foreground mb-2">
               <strong className="text-foreground">What counts as debt?</strong>{" "}
               Every primitive you <em>mirrored</em> contributes its{" "}
               <span className="font-mono text-foreground">mirrorBuCredit</span>{" "}
-              (negative BU) to your total. The engine adds the same amount as
-              positive expansion to your available pool, so the net cost is
-              zero — but the volatility tracking remains so you can audit how
-              much of your build is built on debt.
+              as available debt. Mirroring creates the option to exceed the normal
+              progression pool; debt is counted as used only when progression
+              spending actually crosses that pool.
             </p>
             <table className="w-full text-xs mt-2">
               <thead>

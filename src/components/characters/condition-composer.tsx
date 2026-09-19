@@ -438,11 +438,11 @@ export function ConditionComposer({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="v12-formula-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-amber-500/40 bg-card p-5 shadow-2xl"
+        className="v12-formula-modal v12-consequence-author relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-amber-500/40 bg-card p-5 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -453,14 +453,16 @@ export function ConditionComposer({
         >
           <X className="size-4" />
         </button>
-        <h2 className="mb-3 text-lg font-semibold text-foreground">
-          {initial ? "Edit consequence" : "Add consequence"}
-        </h2>
-        <p className="mb-4 text-xs text-muted-foreground">
-          Consequences sync with your character. Resolve them after recovery; rest does not clear them automatically.
-        </p>
+        <header className="v12-consequence-author-head">
+          <p className="v12-kicker">Runtime rule authoring</p>
+          <h2>{initial ? "Edit consequence" : "Create consequence"}</h2>
+          <p>Build the consequence like a character-scoped primitive. It can remain on this sheet or be promoted to a reusable primitive later.</p>
+        </header>
 
         <div className="space-y-4">
+          <section className="v12-author-chapter v12-consequence-author-section">
+            <div className="v12-consequence-chapter-head"><span>01</span><div><h3>Identity</h3><p>Name the consequence and record its narrative context.</p></div></div>
+            <div className="v12-consequence-field-grid">
           <label className="block text-sm font-medium">
             Title
             <input
@@ -491,7 +493,11 @@ export function ConditionComposer({
               placeholder="poison, beast, save_vs_fortitude"
             />
           </label>
+            </div>
+          </section>
 
+          <section className="v12-author-chapter v12-consequence-author-section">
+            <div className="v12-consequence-chapter-head"><span>02</span><div><h3>Lifecycle</h3><p>Define what limits the consequence and how it can be resolved.</p></div></div>
           <ConsequenceRestrictionsEditor characterId={characterId} value={restrictions} onChange={setRestrictions} />
           <label className="block text-sm font-medium">Recovery requirements<textarea className="mt-1 w-full rounded border border-input bg-background p-2" value={recovery} onChange={e => setRecovery(e.target.value)} placeholder="What must happen before this is resolved?" /></label>
 
@@ -525,10 +531,12 @@ export function ConditionComposer({
               ))}
             </div>
           </fieldset>
+          </section>
 
-          <div className="space-y-3">
+          <section className="v12-author-chapter v12-consequence-author-section space-y-3">
+            <div className="v12-consequence-chapter-head"><span>03</span><div><h3>Mechanical rules</h3><p>Add the same targets, operations, values, and conditions used by primitive authoring.</p></div></div>
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium">Modifiers</h3>
+              <h4 className="text-sm font-medium">Modifiers</h4>
               <button
                 type="button"
                 onClick={addModifier}
@@ -549,10 +557,10 @@ export function ConditionComposer({
                 onToggleTargetValue={toggleTargetValue}
               />
             ))}
-          </div>
+          </section>
         </div>
 
-        <div className="mt-5 flex justify-end gap-2">
+        <div className="v12-consequence-author-actions mt-5 flex justify-end gap-2">
           <button
             type="button"
             onClick={onClose}
