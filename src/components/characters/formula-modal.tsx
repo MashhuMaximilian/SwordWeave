@@ -430,11 +430,12 @@ export function FormulaModal({
           {/* Body */}
           <div className="v12-formula-body flex-1 overflow-y-auto px-4 py-3 space-y-4">
             {/* Section 1 — Static formula */}
-            <section>
+            <section className="v12-formula-rule-panel">
               <p className="v12-formula-section-label">Rule</p>
-              <p className="rounded-md border border-border bg-background p-2.5 font-mono text-sm leading-relaxed">
-                {formula}
-              </p>
+              <div className="v12-formula-rule-plate">
+                <p>{formula}</p>
+                <strong>{fmt(total)}</strong>
+              </div>
             </section>
 
             {/* Phase 8.M — Multi-attribute selector (for attack_bonus /
@@ -442,7 +443,7 @@ export function FormulaModal({
                 Per Mashu 2026-08-12: must render BEFORE provenance
                 so the user picks the attribute first. */}
             {selector && (
-              <section>
+              <section className="v12-formula-selector-panel">
                 <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                   {selector.label}
                 </label>
@@ -461,7 +462,7 @@ export function FormulaModal({
             )}
 
             {/* Section 2 — Provenance chain */}
-            <section>
+            <section className="v12-formula-ledger-panel">
               <div className="mb-2 flex items-baseline justify-between gap-2">
                 <p className="v12-formula-section-label">Live calculation</p>
                 <span className="font-mono text-xl font-bold tabular-nums">
@@ -474,7 +475,7 @@ export function FormulaModal({
                 </p>
               ) : (
                 <>
-                  <ul className="space-y-2">
+                  <ul className="v12-formula-ledger">
                     {breakdown.map((step, i) => (
                       <StepRow key={`${step.label}-${i}`} step={step} offCapabilityIds={offCapabilityIds} />
                     ))}
@@ -490,7 +491,7 @@ export function FormulaModal({
 
             {/* Section 3 — Optional info panel */}
             {info && (
-              <section>
+              <section className="v12-formula-reference-panel">
                 <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                   {info.title}
                 </p>
@@ -551,7 +552,7 @@ function StepRow({ step, offCapabilityIds }: { step: FormulaStep; offCapabilityI
   if (step.contribution) {
     const c = step.contribution;
     return (
-      <li className="rounded-md border border-border bg-background p-2.5">
+      <li className="v12-formula-ledger-row">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0 flex-1">
             <p className={cn(
@@ -644,7 +645,7 @@ function StepRow({ step, offCapabilityIds }: { step: FormulaStep; offCapabilityI
   // operator symbol. Style consistent with the other rows:
   // smaller gray text, no operator glyph.
   return (
-    <li className="rounded-md border border-border bg-background p-2.5">
+    <li className="v12-formula-ledger-row">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium" title={step.label}>
@@ -688,7 +689,7 @@ export function SummaryLine({
   // a bare number). All subsequent steps are prefixed with
   // their sign.
   return (
-    <p className="mt-3 rounded-md border border-dashed border-border bg-background/50 p-2 font-mono text-[11px] text-muted-foreground">
+    <p className="v12-formula-ledger-total">
       {activeSteps.map((step, i) => {
         if (step.value === null || step.value === undefined) {
           // Phase 8.L round 115 (Mashu): for multiply/divide

@@ -448,270 +448,120 @@ export function ItemCard({
     showToast,
   ]);
 
+  const itemSize = (item as { size?: CharacterSize }).size ?? "SMALL";
+  const itemLoad = itemSize === "TINY"
+    ? Math.ceil(item.quantity / TINY_ITEMS_PER_POUCH)
+    : SIZE_LOAD[itemSize] * item.quantity;
+  const equippedSlots = Math.max(item.isTwoHanded ? 2 : 1, item.slotCost ?? 1) * item.quantity;
+  const constructionCount = nested
+    ? nested.capabilityLinks.length + nested.effectLinks.length + nested.primitiveLinks.length
+    : 0;
+
+  const quantityControl = editingQty ? (
+    <span className="v12-item-quantity is-editing" title="Type a positive integer, then confirm.">
+      <span aria-hidden="true">×</span>
+      <input
+        type="number"
+        min={1}
+        value={qtyInput}
+        onChange={(e) => setQtyInput(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") { e.preventDefault(); void handleConfirmQuantity(); }
+          if (e.key === "Escape") { e.preventDefault(); handleCancelQuantity(); }
+        }}
+        autoFocus
+        disabled={pending}
+        aria-label="Item quantity"
+      />
+      <button type="button" onClick={() => void handleConfirmQuantity()} disabled={pending} title="Save quantity" aria-label="Save quantity"><Check /></button>
+      <button type="button" onClick={handleCancelQuantity} disabled={pending} title="Cancel" aria-label="Cancel quantity edit"><X /></button>
+    </span>
+  ) : (
+    <button
+      type="button"
+      onClick={() => { setQtyInput(String(item.quantity)); setEditingQty(true); }}
+      title="Edit quantity"
+      aria-label="Edit quantity"
+      className="v12-item-quantity"
+    >
+      <span aria-hidden="true">×</span><b>{item.quantity}</b><Pencil />
+    </button>
+  );
+
   return (
     <div
       data-item-kind={item.itemType.toLowerCase()}
       data-inventory-role={displayRole}
-      data-has-construction={Boolean(nested && (nested.capabilityLinks.length || nested.effectLinks.length || nested.primitiveLinks.length))}
+      data-has-construction={constructionCount > 0}
       className={cn(
-        "v12-inventory-card v12-item-dossier rounded-md border bg-card p-4 transition-colors",
+        "v12-inventory-card v12-item-dossier transition-colors",
         optimisticEquipped && "is-equipped",
-        optimisticEquipped ? "border-primary/40" : "border-border",
       )}
     >
-      <div className="v12-item-dossier-head flex items-start justify-between gap-2">
-        <span className="v12-item-glyph" aria-hidden="true">{item.itemType.slice(0, 1).toUpperCase()}</span>
-        <div className="min-w-0 flex-1">
-          <p className="v12-item-classification">{optimisticEquipped ? "Readied equipment" : item.isNotEquippable || item.isConsumable ? "Pack inventory" : "Carried equipment"}</p>
-          <h4 className="v12-item-title flex flex-wrap items-center gap-2 font-semibold">
-            {/* Phase 8.5 H6 round 5 (Mashu 2026-08-03):
-                the item name is now a clickable preview
-                trigger — same affordance as the cap
-                cards. The standalone Preview button at
-                the bottom of the card was removed because
-                naming the item should open the preview
-                the same way it does for caps / primitives
-                / effects / heritages. */}
-            <button
-              type="button"
-              onClick={() => void openItemPreview()}
-              disabled={previewPending}
-              aria-label={`Open preview for ${item.name}`}
-              title="Open preview"
-              className="cursor-pointer hover:underline disabled:opacity-50"
-            >
-              {item.name}
-            </button>
-            {/* Phase 8.5 / Session H6 round 4 (Mashu
-                2026-08-03): CHECKBOX-CONFIRM quantity
-                pattern. The instant-save version was
-                wonky — typing into the field triggered
-                SC refreshes that re-arranged cards, and
-                the user couldn't cleanly delete and
-                retype. Now the field has two modes:
-                  - display mode (default): a "× N" pill
-                    + a pencil edit button
-                  - edit mode: a number input + a small
-                    checkbox (save) + an X (cancel)
-                The save fires only when the user clicks
-                the checkbox. The input is a scratchpad;
-                empty / non-numeric values are rejected
-                with a toast and the input stays open. */}
-            {editingQty ? (
-              <span
-                className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-1.5 py-0.5 text-xs font-bold text-foreground"
-                title="Type a positive integer, then click the checkbox to save."
-              >
-                <span className="text-[10px] font-semibold uppercase text-muted-foreground">
-                  ×
-                </span>
-                <input
-                  type="number"
-                  min={1}
-                  value={qtyInput}
-                  onChange={(e) => setQtyInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      void handleConfirmQuantity();
-                    }
-                    if (e.key === "Escape") {
-                      e.preventDefault();
-                      handleCancelQuantity();
-                    }
-                  }}
-                  autoFocus
-                  disabled={pending}
-                  className="w-14 border-0 bg-transparent p-0 text-xs font-bold tabular-nums text-foreground outline-none"
-                />
-                {/* Confirm checkbox */}
-                <button
-                  type="button"
-                  onClick={() => void handleConfirmQuantity()}
-                  disabled={pending}
-                  title="Save quantity"
-                  aria-label="Save quantity"
-                  className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border border-emerald-500/50 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-300"
-                >
-                  <Check className="size-3" />
-                </button>
-                {/* Cancel X */}
-                <button
-                  type="button"
-                  onClick={handleCancelQuantity}
-                  disabled={pending}
-                  title="Cancel"
-                  aria-label="Cancel quantity edit"
-                  className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border border-destructive/50 bg-destructive/10 text-destructive hover:bg-destructive/20 disabled:opacity-50"
-                >
-                  <X className="size-3" />
-                </button>
-              </span>
-            ) : (
+      <div className="v12-item-spine" aria-hidden="true">
+        <span className="v12-item-glyph">{item.itemType.slice(0, 1).toUpperCase()}</span>
+        <span className="v12-item-spine-line" />
+        <small>{optimisticEquipped ? "READY" : displayRole === "pack" ? "PACK" : "GEAR"}</small>
+      </div>
+
+      <div className="v12-item-core">
+        <header className="v12-item-identity">
+          <div className="v12-item-heading-copy">
+            <p className="v12-item-classification">{optimisticEquipped ? "Readied equipment" : item.isNotEquippable || item.isConsumable ? "Pack inventory" : "Carried equipment"}</p>
+            <h4 className="v12-item-title">
+              <button type="button" onClick={() => void openItemPreview()} disabled={previewPending} aria-label={`Open preview for ${item.name}`} title="Open preview">
+                {item.name}
+              </button>
+              {quantityControl}
+            </h4>
+            <p className="v12-item-meta">
+              <span>{item.rarity}</span>
+              {item.isTwoHanded && <span>Two-handed</span>}
+              {item.isConsumable && <span>Consumable</span>}
+            </p>
+          </div>
+          <span className="v12-item-type">{item.itemType}</span>
+        </header>
+
+        <div className="v12-item-readings" aria-label="Item measurements">
+          <span><small>SIZE</small><b>{itemSize}</b></span>
+          <span><small>LOAD</small><b>{itemLoad}</b></span>
+          {!item.isNotEquippable && <span><small>SLOTS</small><b>{equippedSlots}</b></span>}
+          <span><small>BUILD</small><b>{constructionCount}</b></span>
+        </div>
+
+        {item.description && <Markdown className="v12-inventory-description line-clamp-2">{item.description}</Markdown>}
+
+        <div className="v12-item-command-rail">
+          <div className="v12-item-version">
+            <SlotSourceBadge
+              slotSource={item.slotSource}
+              versionId={item.versionId}
+              latestVersionId={item.latestVersionId}
+              targetType="ITEM"
+              targetId={item.id}
+              characterId={characterId}
+              slotKind="item"
+              slotEntityId={item.id}
+            />
+          </div>
+          <div className="v12-item-actions">
+            {!item.isNotEquippable ? (
               <button
                 type="button"
-                onClick={() => {
-                  setQtyInput(String(item.quantity));
-                  setEditingQty(true);
-                }}
-                title="Edit quantity"
-                aria-label="Edit quantity"
-                className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-1.5 py-0.5 text-xs font-bold text-foreground transition-colors hover:bg-secondary/70"
+                onClick={handleToggleEquip}
+                disabled={pending || (!optimisticEquipped && atCapacity)}
+                aria-pressed={optimisticEquipped}
+                title={!optimisticEquipped && atCapacity ? "Equip slots are full — unequip something first" : optimisticEquipped ? "Click to unequip" : "Click to equip"}
               >
-                <span className="text-[10px] font-semibold uppercase text-muted-foreground">
-                  ×
-                </span>
-                <span className="text-xs font-bold tabular-nums text-foreground">
-                  {item.quantity}
-                </span>
-                <Pencil className="size-3 text-muted-foreground" />
+                {optimisticEquipped ? <Shield /> : <ShieldOff />}
+                {pending ? (optimisticEquipped ? "Unequipping…" : "Equipping…") : optimisticEquipped ? "Equipped" : "Equip"}
               </button>
-            )}
-          </h4>
-          <div className="v12-item-meta mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-            <span>{item.rarity}</span>
-            {item.isTwoHanded && <span>· Two-handed</span>}
-            {item.isConsumable && <span>· Consumable</span>}
-            {optimisticEquipped && (
-              <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-700 dark:text-green-300">
-                Equipped
-              </span>
-            )}
-          </div>
-
-          {/* Phase 8.5 / Session H6 round 5 (Mashu 2026-08-03):
-              per-card encumbrance metadata. The user wants
-              size, load value, and equipped slots visible on
-              every item card so the math is transparent without
-              opening the preview. TINY items show the pouch
-              rule explicitly. */}
-          <div className="v12-item-metrics mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
-            {/* Size chip */}
-            <span className="rounded-full bg-secondary px-2 py-0.5 font-medium text-foreground">
-              Size:{" "}
-              <span className="font-mono">
-                {(item as { size?: CharacterSize }).size ?? "SMALL"}
-              </span>
-            </span>
-            {/* Load value chip — TINY uses pouch rule */}
-            <span className="rounded-full bg-secondary px-2 py-0.5 text-foreground">
-              Load:{" "}
-              <span className="font-mono">
-                {(item as { size?: CharacterSize }).size === "TINY"
-                  ? Math.ceil(item.quantity / TINY_ITEMS_PER_POUCH)
-                  : SIZE_LOAD[
-                      (item as { size?: CharacterSize }).size ?? "SMALL"
-                    ] * item.quantity}
-              </span>
-            </span>
-            {/* Equipped slots chip — hidden for non-equippable
-                items. Carried-but-never-equipped means the
-                item takes inventory load but no equip slot.
-                Showing "Equipped slots: N" for potions / scrolls
-                / coins was misleading because the value has no
-                meaning on those items. */}
-            {!item.isNotEquippable && (
-              <span className="rounded-full bg-secondary px-2 py-0.5 text-foreground">
-                Equipped slots:{" "}
-                <span className="font-mono">
-                  {(() => {
-                    const is2H = item.isTwoHanded === true;
-                    const baseline = is2H ? 2 : 1;
-                    const stored = item.slotCost ?? 1;
-                    const effective = Math.max(baseline, stored);
-                    return effective * item.quantity;
-                  })()}
-                </span>
-              </span>
+            ) : (
+              <span className="v12-item-carried-state">Carried only</span>
             )}
           </div>
         </div>
-        <span className="v12-item-type shrink-0 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">
-          {item.itemType}
-        </span>
-      </div>
-      <div className="v12-item-version mt-2">
-        <SlotSourceBadge
-          slotSource={item.slotSource}
-          versionId={item.versionId}
-          latestVersionId={item.latestVersionId}
-          targetType="ITEM"
-          targetId={item.id}
-          // PLAN Eilxina Part D+ follow-up (Mashu 2026-09-09):
-          // self-bump on stale. characterId already lives on
-          // the card; item.id is the slot entity id the bump
-          // endpoint expects.
-          characterId={characterId}
-          slotKind="item"
-          slotEntityId={item.id}
-        />
-      </div>
-      {item.description && (
-        <Markdown className="v12-inventory-description line-clamp-3">{item.description}</Markdown>
-      )}
-
-      {/* Action row */}
-      <div className="v12-item-actions mt-3 flex flex-wrap items-center gap-2">
-        {/* Phase 8.5 / Session H6 (Mashu 2026-08-03): hide
-            the Equip / Unequip toggle entirely when the
-            item is marked not-equippable. Potions, scrolls,
-            and ammo pouches have no "equipped" state — they
-            just sit in the inventory. The "Not equippable"
-            pill below replaces the button so the user
-            understands why it's gone. */}
-        {!item.isNotEquippable && (
-          <button
-            type="button"
-            onClick={handleToggleEquip}
-            disabled={pending || (!optimisticEquipped && atCapacity)}
-            aria-pressed={optimisticEquipped}
-            className={cn(
-              "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-              optimisticEquipped
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border bg-background hover:bg-secondary",
-            )}
-            title={
-              !optimisticEquipped && atCapacity
-                ? "Equip slots are full — unequip something first"
-                : optimisticEquipped
-                  ? "Click to unequip"
-                  : "Click to equip (affects encumbrance and defense)"
-            }
-          >
-            {optimisticEquipped ? (
-              <Shield className="size-3" />
-            ) : (
-              <ShieldOff className="size-3" />
-            )}
-            {pending
-              ? optimisticEquipped
-                ? "Unequipping…"
-              : "Equipping…"
-            : optimisticEquipped
-              ? "Equipped"
-              : "Equip"}
-          </button>
-        )}
-        {/* Phase 8.5 / Session H6 (Mashu 2026-08-03): pill
-            replacement for the Equip button on items that
-            are not equippable. Shows the user the meta
-            reason the button is missing. */}
-        {item.isNotEquippable && (
-          <span
-            className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-700 dark:text-amber-300"
-            title="Carried but never equipped. Set on the item's edit form."
-          >
-            Not equippable
-          </span>
-        )}
-        {/* Phase 8.5 H6 round 5 (Mashu 2026-08-03):
-            the standalone Preview button was removed.
-            Clicking the item name (top of the card) opens
-            the preview — same pattern as the cap cards.
-            The user explicitly asked for the preview button
-            to be gone so the card has two single-purpose
-            buttons: Equip toggle + the name (preview). */}
       </div>
 
       {/* Phase 8.4 v22 (Mashu 2026-07-29): T2 — nested

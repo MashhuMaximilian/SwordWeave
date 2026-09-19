@@ -929,7 +929,7 @@ export function BottomStickyBar({
             </div>
           </div>
 
-          {/* 3. PB (left) + Attack Bonus (mid) + Save DC (right)
+          {/* 3. PB (left) + Attack Bonus (mid) + DC (right)
               — three teal-accented "meta-stat" cards on a
               single row at all widths. Phase 8.5 H7 (Mashu
               2026-08-03): PB joined ATK + Save DC here; it was
@@ -981,13 +981,13 @@ export function BottomStickyBar({
               type="button"
               onClick={openDcModal}
               className="block w-full rounded-md border border-border bg-card px-2 py-2 text-left transition-colors hover:bg-secondary/30"
-              title="Show provenance for Save DC"
-              aria-label="Show save DC formula"
+              title="Show provenance for DC"
+              aria-label="Show DC formula"
             >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Save DC
+                    DC
                   </p>
                   <p className="text-[9px] text-muted-foreground">
                     from {primaryAttrLabel}
@@ -1303,10 +1303,10 @@ export function BottomStickyBar({
             const dcTotal = resolver?.totals["save_dc"] ?? 8 + pb + dcAttrBase;
             return (
           <FormulaModal
-            title={`Save DC (${dcAttrLabel})`}
+            title={`DC (${dcAttrLabel})`}
             subtitle="from the chosen attribute"
             total={dcTotal}
-            formula={`Save DC = ${dcTotal} (= 8 + PB + ${dcAttrLabel} attribute + save_dc.${dcAttr} primitives)`}
+            formula={`DC = ${dcTotal} (= 8 + PB + ${dcAttrLabel} attribute + save_dc.${dcAttr} primitives)`}
             breakdown={[
               { label: "Base", value: 8 },
               { label: "PB", value: pb },

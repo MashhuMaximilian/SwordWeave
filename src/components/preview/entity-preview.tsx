@@ -210,7 +210,7 @@ function ComposedList({
   if (items.length === 0) return null;
   return (
     <Section heading={title}>
-      <ul className="grid gap-1.5 sm:grid-cols-2">
+      <ul className="v12-composed-ledger">
         {items.map((it, index) => (
           <li
             // The same primitive may deliberately appear more than once
@@ -243,16 +243,18 @@ function ComposedList({
                   }
                 : undefined
             }
-            className={onSubLink ? "flex min-w-0 items-center justify-between gap-2 rounded-md border border-border bg-card/40 p-2 text-sm transition-colors hover:bg-accent/40 cursor-pointer" : "flex min-w-0 items-center justify-between gap-2 rounded-md border border-border bg-card/40 p-2 text-sm"}
+            className={`v12-composed-ledger-row${onSubLink ? " is-actionable" : ""}`}
           >
-            <div className="min-w-0 flex-1 text-left">
+            <div className="v12-composed-ledger-index" aria-hidden="true">
               <VersionChip versionNumber={it.versionNumber} />
-              <span className="block truncate font-semibold text-foreground hover:underline">{it.name}</span>
-              {it.subText ? <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">{it.subText}</div> : null}
-              {it.note ? <Markdown className="mt-1 line-clamp-2 text-xs text-muted-foreground">{it.note}</Markdown> : null}
             </div>
-            <span className="shrink-0 font-mono text-xs text-foreground">{it.bu} BU</span>
-            {onSubLink ? <ChevronRight className="size-4 shrink-0 text-muted-foreground" /> : null}
+            <div className="v12-composed-ledger-copy">
+              <span className="v12-composed-ledger-name">{it.name}</span>
+              {it.note ? <Markdown copyRole="mechanical" className="v12-composed-ledger-rule line-clamp-2">{it.note}</Markdown> : null}
+              {it.subText ? <div className="v12-composed-ledger-source">{it.subText}</div> : null}
+            </div>
+            <span className="v12-composed-ledger-bu"><b>{it.bu}</b><small>BU</small></span>
+            {onSubLink ? <ChevronRight className="v12-composed-ledger-arrow" /> : null}
           </li>
         ))}
       </ul>
