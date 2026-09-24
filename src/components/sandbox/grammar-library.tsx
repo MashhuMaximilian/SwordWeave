@@ -1317,6 +1317,7 @@ function SandboxPreviewBody({
           onFork,
         }}
         actionBar={actionBar}
+        actionPlacement="top"
       />
     </div>
   );

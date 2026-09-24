@@ -152,7 +152,7 @@ export function CharacterSharePanel({
         <UserPlus className="size-4" />
         Share
         {shares.length > 0 && (
-          <span className="ml-1 rounded-full bg-secondary px-1.5 py-0 text-[10px] font-bold text-secondary-foreground">
+          <span className="ml-1 rounded-full bg-secondary px-1.5 py-0 text-xs font-bold text-secondary-foreground">
             {shares.length}
           </span>
         )}
@@ -257,7 +257,7 @@ export function CharacterSharePanel({
                       <div className="flex items-center gap-2">
                         <span
                           className={cn(
-                            "flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold",
+                            "flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold",
                             s.canEdit
                               ? "bg-primary/15 text-primary"
                               : "bg-secondary text-secondary-foreground",

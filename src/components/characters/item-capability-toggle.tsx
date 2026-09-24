@@ -30,10 +30,9 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, Loader2, Power, Zap } from "lucide-react";
 import { useToasts } from "@/components/ui/toast";
 import { emitCharacterLogAdded } from "@/lib/character/character-events";
-import { cn } from "@/lib/utils";
+import { CapabilityActionButtons } from "@/components/characters/capability-card";
 
 export interface ItemCapabilityToggleProps {
   characterId: string;
@@ -231,41 +230,12 @@ export function ItemCapabilityToggle({
   ]);
 
   return (
-    <div className="v12-item-capability-actions flex shrink-0 flex-wrap items-center justify-end gap-1">
-      <button
-        type="button"
-        onClick={handleToggle}
-        disabled={toggling}
-        aria-pressed={active}
-        className={cn(
-          "inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-medium transition-colors disabled:opacity-50",
-          active
-            ? "border-primary bg-primary/10 text-primary"
-            : "border-border bg-background hover:bg-secondary",
-        )}
-        title={active ? "Click to deactivate" : "Click to activate"}
-      >
-        {active ? (
-          <CheckCircle2 className="size-3" />
-        ) : (
-          <Power className="size-3" />
-        )}
-        {active ? "Active" : "Inactive"}
-      </button>
-      <button
-        type="button"
-        onClick={handleTrigger}
-        disabled={triggerPending}
-        className="inline-flex items-center gap-1 rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-medium transition-colors hover:bg-secondary disabled:opacity-50"
-        title="Trigger (one-shot fire-and-revert)"
-      >
-        {triggerPending ? (
-          <Loader2 className="size-3 animate-spin" />
-        ) : (
-          <Zap className="size-3" />
-        )}
-        Trigger
-      </button>
-    </div>
+    <CapabilityActionButtons
+      active={active}
+      togglePending={toggling}
+      triggerPending={triggerPending}
+      onToggle={() => void handleToggle()}
+      onTrigger={() => void handleTrigger()}
+    />
   );
 }

@@ -107,7 +107,7 @@ export function CoreStatsCard({
           isProficient={proficientAttribute === "MAGICAL"}
         />
         <div className="px-1 py-2">
-          <div className="text-[10px] font-semibold uppercase text-muted-foreground">
+          <div className="text-xs font-semibold uppercase text-muted-foreground">
             PROF
           </div>
           <div className="font-mono text-lg font-bold text-foreground">
@@ -115,7 +115,7 @@ export function CoreStatsCard({
           </div>
           <div
             className={cn(
-              "text-[10px] font-medium",
+              "text-xs font-medium",
               proficientAttribute
                 ? "text-teal-600 dark:text-teal-400"
                 : "text-muted-foreground",
@@ -150,7 +150,7 @@ function StatBlock({
     : "text-muted-foreground";
   return (
     <div className="px-1 py-2">
-      <div className="text-[10px] font-semibold uppercase text-muted-foreground">
+      <div className="text-xs font-semibold uppercase text-muted-foreground">
         {label}
       </div>
       <div
@@ -164,7 +164,7 @@ function StatBlock({
       >
         {fmt(modifier)}
       </div>
-      <div className={cn("text-[10px] font-medium", saveColor)}>
+      <div className={cn("text-xs font-medium", saveColor)}>
         save {fmt(saveModifier)}
       </div>
     </div>

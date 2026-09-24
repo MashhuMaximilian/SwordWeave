@@ -651,6 +651,7 @@ export default async function CharacterSheetPage({
       level={row.level}
       size={sheet.resolvedSize ?? row.size}
       portraitUrl={row.portraitUrl}
+      portraitFrame={row.portraitFrame}
       notes={row.notes}
       dmNotes={row.dmNotes}
       lineageName={row.lineageName}
@@ -746,6 +747,8 @@ export default async function CharacterSheetPage({
           // (ConditionBadges) parses both legacy and v1 condition
           // shapes, so we pass through the raw array.
           hardModifiers: l.primitive.consequenceBehavior ? [] : l.primitive.hardModifiers ?? [],
+          mechanicalRule: l.primitive.mechanicalRule ?? {},
+          mechanicalOutputText: l.primitive.mechanicalOutputText ?? "",
         },
       }))}
       conditionContext={conditionContext}

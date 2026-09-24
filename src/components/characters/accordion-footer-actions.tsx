@@ -82,7 +82,7 @@ export function AccordionFooterActions({
           >
             <Hammer className="size-3.5" />
             Formalize as heritage
-            <span className="ml-1 text-[10px] font-mono text-muted-foreground">
+            <span className="ml-1 text-xs font-mono text-muted-foreground">
               ({slottedCount})
             </span>
           </button>
@@ -96,7 +96,7 @@ export function AccordionFooterActions({
           >
             <Package className="size-3.5" />
             Wrap as item
-            <span className="ml-1 text-[10px] font-mono text-muted-foreground">
+            <span className="ml-1 text-xs font-mono text-muted-foreground">
               ({slottedCount})
             </span>
           </button>

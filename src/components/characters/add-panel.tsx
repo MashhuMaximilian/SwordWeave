@@ -451,7 +451,7 @@ function PanelBody({
           </button>
         ))}
       </div>
-      <p className="mt-1 text-[10px] text-muted-foreground">
+      <p className="mt-1 text-xs text-muted-foreground">
         Tip: long-press any primitive on a mobile device to move, mirror, or
         remove it. Drop targets in each accordion show a blue outline on hover.
       </p>
@@ -475,7 +475,7 @@ function AccordionPicker({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         Target accordion
       </span>
       <div

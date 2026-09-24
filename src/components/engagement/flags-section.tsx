@@ -160,7 +160,7 @@ export function FlagsSection(props: {
           <FlagPie distribution={props.distribution} />
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+              <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <th className="py-1 pr-2 font-semibold">Reason</th>
                 <th className="py-1 pr-2 text-right font-semibold">Count</th>
                 <th className="py-1 text-right font-semibold">%</th>
@@ -413,7 +413,7 @@ export function FlagNotesModal(props: {
                 className="rounded-md border border-border bg-background p-3 text-sm"
               >
                 <p className="whitespace-pre-wrap text-foreground">{n.note}</p>
-                <p className="mt-2 text-[10px] uppercase tracking-wide text-muted-foreground">
+                <p className="mt-2 text-xs uppercase tracking-wide text-muted-foreground">
                   {new Date(n.reportedAt).toLocaleString()}
                 </p>
               </div>

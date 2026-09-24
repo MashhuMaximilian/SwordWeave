@@ -74,6 +74,7 @@ import {
   isConditionComputable,
   type ConditionContext,
 } from "./condition-evaluator";
+import { hasMeaningfulCondition } from "./condition-dictionary";
 
 // =============================================================================
 // Public types
@@ -558,7 +559,7 @@ const eq = resolveEquation(operandsRaw as never, ctx);
       // When the slot's cap is toggled off, skip entirely (no entry).
       const conditionContext = input.conditionContext;
       let conditionActive = true;
-      const hasCondition = !!mod.condition;
+      const hasCondition = hasMeaningfulCondition(mod.condition);
       // i3e: distinguish computable vs non-computable conditions.
       // - Computable + true → include (active)
       // - Computable + false → suppress value, keep attribution
@@ -574,7 +575,7 @@ const eq = resolveEquation(operandsRaw as never, ctx);
       // tools can still opt back in via the conditions
       // drawer.
       let conditionComputable = true;
-      if (conditionContext && mod.condition) {
+      if (conditionContext && hasCondition) {
         conditionComputable = isConditionComputable(mod.condition as import("@/types/condition").ModifierCondition, conditionContext);
         conditionActive = conditionComputable
           ? evaluateCondition(mod.condition as import("@/types/condition").ModifierCondition, conditionContext)
@@ -652,7 +653,7 @@ const eq = resolveEquation(operandsRaw as never, ctx);
   for (const entry of entries) {
     const { slot, mod, target, effectiveValue, preMirrorValue, tags, scopedTargets, hasCondition, conditionActive, conditionComputable } = entry;
     // Phase 8.I POST C1: capture the raw condition for readable display.
-    const conditionRaw = mod.condition ?? null;
+    const conditionRaw = hasCondition ? mod.condition ?? null : null;
 
     if (!Number.isFinite(effectiveValue)) continue;
     // Phase 8.L round 41: inhibited contributions still land in

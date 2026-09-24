@@ -216,7 +216,7 @@ export function LongPressMenu({
                     <span>
                       Move to {target.toLowerCase()}
                       {target === currentSource && (
-                        <span className="ml-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        <span className="ml-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                           (current)
                         </span>
                       )}

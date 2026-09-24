@@ -165,7 +165,7 @@ function modifierBlock(modifier: ModifierDraft): React.ReactElement {
     // version for readability (Mashu: "on one row or more").
     if ((modifier.operands as Operand[]).length > 3) {
       valueLine2 = (
-        <p className="mt-0.5 break-all font-mono text-[10px] text-muted-foreground">
+        <p className="mt-0.5 break-all font-mono text-xs text-muted-foreground">
           {eqText}
         </p>
       );
@@ -193,7 +193,7 @@ function modifierBlock(modifier: ModifierDraft): React.ReactElement {
   const narrow = modifier.freeTextNarrowFocus ?? "";
   const scopeLine: React.ReactElement | null =
     tv.length > 0 || narrow.length > 0 ? (
-      <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+      <div className="flex flex-wrap items-center gap-1.5 text-xs">
         <span className="font-semibold uppercase tracking-wide text-muted-foreground">
           Scope:
         </span>
@@ -267,7 +267,7 @@ function modifierBlock(modifier: ModifierDraft): React.ReactElement {
         </span>
         <span className="font-mono text-xs text-primary">{op}</span>
         {valueLine}
-        <span className="ml-auto shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] text-secondary-foreground">
+        <span className="ml-auto shrink-0 rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
           {modifier.stacking ?? "stack"}
         </span>
       </div>
@@ -280,7 +280,7 @@ function modifierBlock(modifier: ModifierDraft): React.ReactElement {
       {/* Mirror info — explicit "mirrors to X" label so the
           user can see the inverse op at a glance. Mashu: "in
           mirror we'd have mirrors to subtract". */}
-      <p className="text-[10px] text-muted-foreground">
+      <p className="text-xs text-muted-foreground">
         {mirror.mirrorable ? "📊 " : "🏛 "}
         {mirror.summary}
       </p>
@@ -532,7 +532,7 @@ function renderConditionLine(
     }
 
     return (
-      <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+      <div className="flex flex-wrap items-center gap-1.5 text-xs">
         <span className="font-semibold uppercase tracking-wide text-muted-foreground">
           When:
         </span>
@@ -575,7 +575,7 @@ function renderConditionLine(
   // (single condition = always true together).
   if (modifier.conditionKey || modifier.conditionValue) {
     return (
-      <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+      <div className="flex flex-wrap items-center gap-1.5 text-xs">
         <span className="font-semibold uppercase tracking-wide text-muted-foreground">
           When:
         </span>

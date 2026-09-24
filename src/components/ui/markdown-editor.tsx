@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 
 type Command={label:string;before:string;after?:string;placeholder:string};
 const COMMANDS:Command[]=[
+  {label:"Title",before:"# ",placeholder:"Title"},{label:"Heading",before:"## ",placeholder:"Heading"},{label:"Subheading",before:"### ",placeholder:"Subheading"},
   {label:"Bold",before:"**",after:"**",placeholder:"bold text"},{label:"Italic",before:"*",after:"*",placeholder:"italic text"},
   {label:"Strike",before:"~~",after:"~~",placeholder:"struck text"},{label:"Underline",before:"++",after:"++",placeholder:"underlined text"},
   {label:"Bullets",before:"- ",placeholder:"list item"},{label:"Numbers",before:"1. ",placeholder:"list item"},
@@ -20,7 +21,7 @@ export function MarkdownEditor({value,onChange,placeholder,rows=4,className=""}:
   };
   return <div className={`v12-markdown-editor ${className}`}>
     <div className="v12-markdown-toolbar" aria-label="Text formatting">
-      {COMMANDS.slice(0,7).map(command=><button type="button" key={command.label} title={command.label} onClick={()=>apply(command)}>{command.label==="Bold"?<b>B</b>:command.label==="Italic"?<i>I</i>:command.label==="Strike"?<s>S</s>:command.label==="Underline"?<u>U</u>:command.label}</button>)}
+      {COMMANDS.slice(0,10).map(command=><button type="button" key={command.label} title={command.label} aria-label={command.label} onClick={()=>apply(command)}>{command.label==="Title"?"H1":command.label==="Heading"?"H2":command.label==="Subheading"?"H3":command.label==="Bold"?<b>B</b>:command.label==="Italic"?<i>I</i>:command.label==="Strike"?<s>S</s>:command.label==="Underline"?<u>U</u>:command.label==="Bullets"?"• List":command.label==="Numbers"?"1. List":command.label}</button>)}
       <button type="button" onClick={()=>setOpen(value=>!value)} aria-expanded={open}>/</button>
     </div>
     {open?<div className="v12-markdown-command-menu">{COMMANDS.map(command=><button type="button" key={command.label} onClick={()=>apply(command)}>{command.label}</button>)}</div>:null}

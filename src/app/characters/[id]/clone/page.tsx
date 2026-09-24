@@ -64,6 +64,7 @@ export default async function CloneCharacterPage({
           notes: source.notes,
           dmNotes: null,
           portraitUrl: source.portraitUrl,
+          portraitFrame: source.portraitFrame,
           isPublic: false,
           sourceOrigin: `clone:${source.id}`,
         })

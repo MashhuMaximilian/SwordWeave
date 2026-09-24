@@ -398,7 +398,7 @@ export function SlotReceiverTab({
             <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Active Primitives ({directRows.length + inheritedRows.length})
             </h4>
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               Mirror, expand, or duplicate — all from here
             </span>
           </header>
@@ -534,7 +534,7 @@ export function SlotReceiverTab({
             <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Source Bundles ({totalBundleCount})
             </h4>
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               Provenance — click [v] to inspect
             </span>
           </header>
@@ -636,11 +636,11 @@ function InheritedPrimitiveRow({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium text-foreground">{primitive.name}</span>
-            <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-700 dark:text-emerald-300">
+            <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold uppercase text-emerald-700 dark:text-emerald-300">
               Inherited
             </span>
             {isMirrorActive ? (
-              <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase text-amber-700 dark:text-amber-300">
+              <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-semibold uppercase text-amber-700 dark:text-amber-300">
                 Mirrored
               </span>
             ) : null}
@@ -698,7 +698,7 @@ function InheritedPrimitiveRow({
           </button>
           {isMirrorable && primitive.hardModifiers.length > 0 ? (
             <div className="space-y-1 border-t border-border/40 pt-2">
-              <div className="text-[10px] font-semibold uppercase text-muted-foreground">
+              <div className="text-xs font-semibold uppercase text-muted-foreground">
                 {isMirrorActive ? "Modifier (mirrored)" : "Modifier"}
               </div>
               <ModifierChips
@@ -782,7 +782,7 @@ function DirectPrimitiveRow({
             {isMirrorable ? (
               <span
                 className={
-                  "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase " +
+                  "rounded-full px-2 py-0.5 text-xs font-semibold uppercase " +
                   (mirrored
                     ? "bg-amber-500/20 text-amber-700 dark:text-amber-300"
                     : "bg-secondary text-secondary-foreground")
@@ -854,7 +854,7 @@ function DirectPrimitiveRow({
           </button>
           {isMirrorable && (slot.hardModifiers?.length ?? 0) > 0 ? (
             <div className="space-y-1 border-t border-border/40 pt-2">
-              <div className="text-[10px] font-semibold uppercase text-muted-foreground">
+              <div className="text-xs font-semibold uppercase text-muted-foreground">
                 {mirrored ? "Modifier (mirrored)" : "Modifier"}
               </div>
               <ModifierChips
@@ -947,7 +947,7 @@ function ModifierChips({
             {mod.stacking ? (
               <span
                 className={
-                  "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase " +
+                  "rounded-full px-2 py-0.5 text-xs font-semibold uppercase " +
                   (mirrored
                     ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
                     : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300")
@@ -957,7 +957,7 @@ function ModifierChips({
               </span>
             ) : null}
             {!mirrored && (
-              <span className="ml-1 text-[10px] italic text-muted-foreground">
+              <span className="ml-1 text-xs italic text-muted-foreground">
                 Mirrors to {describeMirrorOp(baseOp)}
               </span>
             )}
@@ -1180,7 +1180,7 @@ return (
             <span className="font-medium text-foreground">
               {bundle?.name ?? slot.name}
             </span>
-            <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase text-secondary-foreground">
+            <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-semibold uppercase text-secondary-foreground">
               {slot.heritageKind}
             </span>
             <span className="font-mono text-sm font-bold text-foreground">
@@ -1249,7 +1249,7 @@ return (
 
           {bundle.capabilityLinks.length > 0 ? (
             <div>
-              <div className="text-[10px] font-semibold uppercase text-muted-foreground">
+              <div className="text-xs font-semibold uppercase text-muted-foreground">
                 Bundled Capabilities ({bundle.capabilityLinks.length})
               </div>
               <ul className="mt-1 space-y-1">
@@ -1262,7 +1262,7 @@ return (
                       <span className="font-medium">
                         {cl.capability?.name ?? "Unknown capability"}
                       </span>
-                      <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] uppercase text-secondary-foreground">
+                      <span className="rounded-full bg-secondary px-1.5 py-0.5 text-xs uppercase text-secondary-foreground">
                         {cl.effectLinks.length} effect
                         {cl.effectLinks.length === 1 ? "" : "s"}
                       </span>
@@ -1278,7 +1278,7 @@ return (
                               {el.effect?.name ?? "(unnamed effect)"}
                             </span>
                             {el.effect?.description ? (
-                              <span className="text-[10px] italic">
+                              <span className="text-xs italic">
                                 — {el.effect.description}
                               </span>
                             ) : null}
@@ -1479,7 +1479,7 @@ return (
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium text-foreground">{label}</span>
-            <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase text-secondary-foreground">
+            <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-semibold uppercase text-secondary-foreground">
               {kindLabel}
             </span>
             <span className="font-mono text-sm font-bold text-foreground">
@@ -1532,7 +1532,7 @@ return (
         <div className="space-y-2 border-t border-border bg-muted/30 px-3 py-2 text-xs">
           {bundle.effectLinks.length > 0 ? (
             <div>
-              <div className="text-[10px] font-semibold uppercase text-muted-foreground">
+              <div className="text-xs font-semibold uppercase text-muted-foreground">
                 Effects ({bundle.effectLinks.length})
               </div>
               <ul className="mt-1 space-y-1">

@@ -107,7 +107,7 @@ export function VisibilitySelect({
           );
         })}
         {error ? (
-          <p className="col-span-3 text-[10px] text-rose-400" role="alert">
+          <p className="col-span-3 text-xs text-rose-400" role="alert">
             {error}
           </p>
         ) : null}
@@ -118,11 +118,11 @@ export function VisibilitySelect({
   return (
     <div className="rounded-md border border-border bg-card/50 p-2.5" data-testid="visibility-select">
       <div className="mb-1.5 flex items-center justify-between">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Visibility
         </p>
         {pending ? (
-          <span className="text-[10px] text-muted-foreground">saving…</span>
+          <span className="text-xs text-muted-foreground">saving…</span>
         ) : null}
       </div>
       <div className="grid grid-cols-3 gap-1.5">
@@ -138,7 +138,7 @@ export function VisibilitySelect({
               aria-pressed={active}
               title={opt.hint}
               className={cn(
-                "flex flex-col items-center gap-1 rounded-md border px-2 py-2 text-[10px] font-medium transition-all",
+                "flex flex-col items-center gap-1 rounded-md border px-2 py-2 text-xs font-medium transition-all",
                 active
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border bg-background text-muted-foreground hover:border-primary hover:text-foreground",
@@ -152,7 +152,7 @@ export function VisibilitySelect({
         })}
       </div>
       {error ? (
-        <p className="mt-1.5 text-[10px] text-rose-400" role="alert">
+        <p className="mt-1.5 text-xs text-rose-400" role="alert">
           {error}
         </p>
       ) : null}

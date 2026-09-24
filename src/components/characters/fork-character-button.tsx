@@ -89,7 +89,7 @@ export function ForkCharacterButton({
         {isPending ? "Forking…" : "Fork as my own"}
       </button>
       {error && (
-        <span className="text-[10px] font-medium text-destructive" role="alert">
+        <span className="text-xs font-medium text-destructive" role="alert">
           {error}
         </span>
       )}

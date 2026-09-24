@@ -320,7 +320,7 @@ export function CreationsClient({
             })}
           </div>
         </div>
-        <p className="text-[10px] text-muted-foreground/80">
+        <p className="text-xs text-muted-foreground/80">
           Tip: cards open a preview modal. Click &quot;Open source page&quot; inside to
           visit the full canonical detail page.
         </p>

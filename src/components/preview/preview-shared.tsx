@@ -98,7 +98,7 @@ export function VersionChip({
   if (versionNumber == null) return null;
   return (
     <span
-      className="mr-1.5 inline-flex shrink-0 items-center rounded-full border border-border/60 bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+      className="mr-1.5 inline-flex shrink-0 items-center rounded-full border border-border/60 bg-muted/40 px-1.5 py-0.5 font-mono text-xs font-semibold uppercase tracking-wide text-muted-foreground"
       title={`Latest published version v${versionNumber}`}
     >
       v{versionNumber}
@@ -290,7 +290,7 @@ export function ConditionLine({
     const pills = v1.pills as V1Pill[];
     const operators = v1.operators ?? [];
     return (
-      <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+      <div className="flex flex-wrap items-center gap-1.5 text-xs">
         <span className="font-semibold uppercase tracking-wide text-muted-foreground">When:</span>
         {pills.map((pill, i) => (
           <Fragment key={`pill-${i}-${pill.label}`}>
@@ -328,7 +328,7 @@ export function ConditionLine({
   if (badges.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+    <div className="flex flex-wrap items-center gap-1.5 text-xs">
       <span className="font-semibold uppercase tracking-wide text-muted-foreground">When:</span>
       {badges.map((b, i) => {
         if (b.kind === "narrative") {
@@ -543,7 +543,7 @@ export function PreviewActions(props: PreviewActionProps) {
   }
 
   return (
-    <div className="sticky bottom-0 z-10 space-y-3 border-t border-border bg-card px-1 pb-3 pt-3">
+    <div className="v12-preview-actions sticky bottom-0 z-10 space-y-3 border-t border-border bg-card px-1 pb-3 pt-3">
       {onVisibilityChange && visibility ? (
         <VisibilitySelect
           value={visibility}
@@ -613,7 +613,7 @@ export function PreviewActions(props: PreviewActionProps) {
             Delete
           </button>
         ) : (
-          <p className="mt-2 rounded-md border border-dashed border-border bg-card/30 px-3 py-2 text-center text-[10px] text-muted-foreground">
+          <p className="mt-2 rounded-md border border-dashed border-border bg-card/30 px-3 py-2 text-center text-xs text-muted-foreground">
             Set visibility to <span className="font-semibold">Private</span> to enable deletion
           </p>
         )

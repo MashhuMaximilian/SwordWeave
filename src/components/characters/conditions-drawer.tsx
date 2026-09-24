@@ -142,11 +142,31 @@ export function ConditionsDrawer({ characterId, open, onClose, autoEvaluated }: 
               <span>What are consequences?</span>
               <ChevronRight className="size-3" />
             </summary>
-            <p>
-              Consequences are the costs, states, and ongoing effects created by
-              actions. They can change a roll, limit an option, or remain on the
-              character until their recovery is recorded.
-            </p>
+            <div className="v12-consequences-explainer">
+              <p>
+                Consequences are the price an action leaves behind. Before a risky
+                intent resolves, the table agrees what forcing it into the fiction
+                may cost. That cost remains meaningful whether the roll succeeds or
+                fails, and the player can accept it, reduce the intent, negotiate a
+                different cost, or abort before rolling.
+              </p>
+              <p>
+                A consequence can change a number, spend Vitality or another
+                resource, damage equipment, reshape the environment, create an
+                ongoing hazard, or temporarily suppress access to a capability,
+                source, primitive, practice proficiency, item slot, or other option.
+                Conditions such as Blinded, Stunned, and Poisoned are consequences
+                too: the table defines their exact limits, duration, recovery, and
+                removal when they enter play.
+              </p>
+              <p>
+                An ordinary attack may carry little lasting cost. Compressing a
+                devastating 10d10 attack into the same moment creates much greater
+                scale, impact, and complexity, so its consequence might be severe:
+                major Vitality loss, broken focus, a locked capability, dangerous
+                feedback, or a persistent change to the scene.
+              </p>
+            </div>
           </details>
 
           {syncError && <p role="alert" className="mb-3 text-sm text-destructive">{syncError} Your local changes are retained.<button className="block underline" onClick={() => void resolveConsequenceConflict(characterId, "local")}>Save my local changes against the latest state</button><button className="block underline" onClick={() => void resolveConsequenceConflict(characterId, "server")}>Use synced changes and keep a local backup</button></p>}
@@ -224,7 +244,7 @@ function Section({
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="v12-condition-group-toggle mb-2 flex w-full items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground"
+        className="v12-condition-group-toggle mb-2 flex w-full items-center justify-between gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground"
       >
         <span className="flex items-center gap-2">
           <ChevronRight
@@ -232,7 +252,7 @@ function Section({
           />
           {title}
           {typeof count === "number" && (
-            <span className="rounded-full bg-muted px-1.5 text-[10px] font-normal normal-case tracking-normal text-muted-foreground">
+            <span className="rounded-full bg-muted px-1.5 text-xs font-normal normal-case tracking-normal text-muted-foreground">
               {count}
             </span>
           )}
@@ -438,7 +458,7 @@ function ModifierSummary({ modifier }: { modifier: ConditionModifier }) {
           {opAndValue}
         </span>
       </div>
-      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
+      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
         <span>
           <span className="font-semibold uppercase">Stack:</span> {stacking}
         </span>

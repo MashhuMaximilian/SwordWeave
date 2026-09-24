@@ -427,7 +427,7 @@ function FabGridAction({ action, badgeCount }: { action: FabAction; badgeCount: 
       aria-label={action.label}
       title={action.label}
       className={cn(
-        "relative flex h-9 w-full items-center justify-center rounded-md border text-[10px] font-medium transition-all active:scale-95",
+        "relative flex h-9 w-full items-center justify-center rounded-md border text-xs font-medium transition-all active:scale-95",
         action.active
           ? "border-primary bg-primary text-primary-foreground"
           : "border-border bg-background text-muted-foreground hover:border-primary hover:text-foreground",
@@ -462,7 +462,7 @@ function FabAccountAvatar({ user }: { user: FabAccountUser }) {
   return (
     <span
       aria-hidden="true"
-      className="sw-fab__account-avatar flex size-6 items-center justify-center rounded-full border border-primary/60 bg-primary/10 text-[10px] font-bold text-primary"
+      className="sw-fab__account-avatar flex size-6 items-center justify-center rounded-full border border-primary/60 bg-primary/10 text-xs font-bold text-primary"
     >
       {fallback[0]?.toUpperCase() ?? "?"}
     </span>

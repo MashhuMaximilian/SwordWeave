@@ -42,6 +42,10 @@ describe("canonical mechanical sentences", () => {
     expect(renderMechanicalRule({family:"DOMAIN_ACCESS",operation:"revoke",recipient:"TARGET",bindings:{domain:"fire"}})).toBe("Revoke [fire] domain access from target.");
     expect(renderMechanicalRule({family:"DOMAIN_ACCESS",operation:"grant",recipient:"SELF",bindings:{domain:"metal",tier:"Tier III"}})).toBe("Grant [metal] domain access at Tier III.");
   });
+  it("renders behavior permissions separately from behavior counters", () => {
+    expect(renderMechanicalRule({family:"BEHAVIOR_ACCESS",operation:"grant",bindings:{behavior:"Trigger Interceptive"}})).toBe("Grant the Trigger Interceptive behavior.");
+    expect(renderMechanicalRule({family:"BEHAVIOR_COUNTER",operation:"add",value:1,bindings:{behavior:"Legendary Resistance"}})).toBe("Add 1 Legendary Resistance use.");
+  });
   it("accepts only authorable typed composition shapes", () => {
     expect(parseAuthorableCompositionRule({family:"VERB_ACCESS",operation:"grant",recipient:"SELF",bindings:{tier:"Tier II"}})).toEqual({family:"VERB_ACCESS",operation:"grant",recipient:"SELF",bindings:{tier:"Tier II"}});
     expect(parseAuthorableCompositionRule({family:"DOMAIN_ACCESS",operation:"grant",recipient:"SELF",bindings:{domain:"metal",tier:"Tier III"}})).toEqual({family:"DOMAIN_ACCESS",operation:"grant",recipient:"SELF",bindings:{domain:"metal",tier:"Tier III"}});

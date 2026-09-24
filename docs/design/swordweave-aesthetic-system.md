@@ -51,6 +51,20 @@ Metal is created through edge contrast rather than flat color:
 
 Large text surfaces remain calm. Metallic gradients belong on frames, rails, medallions, tabs, meters, and commands.
 
+### Gold instrument construction
+
+The production Library, Atelier, and character sheet define the minimum visual fidelity for every new SwordWeave surface. New work must look as though it belongs to the same physical apparatus, not like a neutral web form placed on the same dark background.
+
+A principal gold edge is constructed from all of the following:
+
+1. a near-black outer keyline and cast shadow;
+2. a warm brass body that moves through brown-gold, amber, and pale gold along the component geometry;
+3. a narrow bright highlight on the lit edge;
+4. a darker reflected band or inner shadow on the opposite edge;
+5. engraved corners, junction marks, medallions, or short ornamental rules at structural moments rather than decoration on every edge.
+
+Broad flat grey panels, uniform one-pixel outlines, generic rounded cards, and large unstructured empty areas are not acceptable substitutes. Obsidian work planes stay quiet so that the metallic chassis, authored text, and live readings carry the hierarchy. Teal remains a selected or live-state material inside this gold and platinum structure.
+
 ## Typography contract
 
 | Role | Face | Required treatment |
@@ -181,6 +195,29 @@ Every edit action must state its destination:
 
 The Build & Preview surface is a visible part of edit mode. It cannot depend on discovering a FAB button.
 
+## Character creation
+
+Character creation is a guided instrument, separate from the Atelier sandbox. Entry points on the character roster and Creations page open this flow; Atelier keeps its exploratory character modal.
+
+The creation instrument has four required stages:
+
+1. **Identity:** name, size, private notes, and portrait by upload or image link. Size displays its carry capacity and base walking, swimming, and climbing speed in the control itself; the player must not need a later rules screen to understand the choice.
+2. **Attributes:** Physical, Mental, Magical, proficient Attribute, and level-derived or agreed custom BU.
+3. **Backstory:** origin and history, motivation and goals, ties and allies, and flaw and conflict.
+4. **Starting access:** independent multi-selection of Domain, Verb Tier, Range, and Output Die primitives drawn from the real Library. A character may begin with several primitives in any family. The interface does not invent package counts or force one Domain, Verb Tier, Range, and Output Die into repeated bundles.
+
+Desktop uses a progress rail beside one focused workbench. Mobile converts the rail into a compact, sticky step navigator and keeps Previous, Continue, and Forge controls reachable at the bottom. The flow must show live BU committed and remaining. Starting-access choices are saved as actual character primitive instances; presentation may not invent a second, decorative source of mechanical truth.
+
+The Starting access stage embeds the production Library selection experience inside the creation instrument. On desktop it uses the Library's middle-column grammar: family tabs, search and relevant filters, dense selectable entry cards, mechanical and narrative copy, icon, tier, provenance, BU, and a selected-state rail. Domain selection opens prefiltered to Domain Access. Selection happens in place; creation does not send the player to Library or Atelier. On mobile the corpus becomes one readable list and its detail preview opens as a sheet. A compact sticky ledger keeps selected primitives, total BU, and remaining BU visible.
+
+Native select menus and simplified name-only dropdowns are not acceptable for Library primitives. The creation flow reuses the production Library entry and preview components or their shared foundations so that choosing a primitive provides the same information as browsing it elsewhere.
+
+The portrait control is a framing instrument after an upload or link is supplied. The player can drag the image within the frame using pointer or touch input and adjust zoom with visible controls. The frame stores image scale and x/y focal position as character data; it does not destructively rewrite the source image. Every roster, header, sheet, and preview that presents the portrait honors the saved crop. Provide reset and accessible keyboard controls, and keep removal separate from framing.
+
+Creation surfaces use the same obsidian, engraved metal, typography, controls, and semantic colors as Library and Atelier. Generic dashboard forms, teal commit buttons, phase labels, and implementation language such as route names or BUILD mode are not user-facing creation copy.
+
+The creation chassis uses the gold instrument construction above: a continuous principal frame, deliberate corner and junction ornaments, brass commit controls, platinum secondary controls, inset obsidian fields, and teal only for focus, valid, or selected state. A collection of grey form panels with colored left borders fails this requirement even when the content is correct.
+
 ## Library inside character editing
 
 The character Library reuses the production Library entry and preview components. It does not maintain a simplified parallel card system.
@@ -212,6 +249,8 @@ Items containing capabilities, effects, or primitives use the same nested entity
 - Modal controls and destination actions remain visible without horizontal scrolling.
 - Touch targets remain at least 40px even when the visual glyph is smaller.
 - Decorative detail may reduce on mobile; hierarchy and material semantics do not.
+- Starting-access family tabs remain horizontally reachable, selected access remains visible, and Library entries become a single column before their text or touch targets are reduced.
+- Portrait pan uses one-finger drag and zoom remains operable without a precision gesture.
 
 ## Acceptance requirements
 
@@ -240,4 +279,3 @@ Passing TypeScript or unit tests does not validate the visual system.
 - bordered micro-card grids for every drawer value;
 - runtime controls inside read-only previews;
 - hidden critical edit flows that depend on the global FAB.
-

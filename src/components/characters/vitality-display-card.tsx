@@ -243,7 +243,7 @@ export function VitalityDisplayCard({
                   save
                 </span>{" "}
                 <span
-                  className={`font-mono text-[10px] font-semibold tabular-nums ${
+                  className={`font-mono text-xs font-semibold tabular-nums ${
                     isProficient
                       ? "text-teal-700 dark:text-teal-200"
                       : "text-foreground"

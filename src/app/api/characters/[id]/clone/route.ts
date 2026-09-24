@@ -68,6 +68,7 @@ export async function POST(
           notes: source.notes,
           dmNotes: null, // DM notes never carry over
           portraitUrl: source.portraitUrl,
+          portraitFrame: source.portraitFrame,
           isPublic: false,
           sourceOrigin: `clone:${source.id}`,
         })

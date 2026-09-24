@@ -718,12 +718,12 @@ export function CapabilityForm({
     const selectedPrimitive = selectedEntry?.slot.primitive;
     return <article className="group min-w-0 rounded-md border border-border bg-background/80 px-2.5 py-2 transition-colors hover:border-[#b88a39]" data-dedicated-role={role}>
       <div className="flex min-w-0 items-center gap-2">
-        <p className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
+        <p className="shrink-0 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
         <details className="relative min-w-0 flex-1">
           <summary className="flex min-w-0 cursor-pointer list-none items-center gap-1.5 rounded px-1 py-0.5 text-left text-xs hover:bg-accent/60">
             <span className={selectedPrimitive ? "min-w-0 flex-1 truncate font-medium text-foreground" : "min-w-0 flex-1 truncate text-muted-foreground"}>{selectedPrimitive?.name ?? `Choose ${label.toLowerCase()}`}</span>
-            {selectedPrimitive ? <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{selectedPrimitive.buCost} BU</span> : null}
-            <span className="shrink-0 text-[10px] text-primary">{selectedPrimitive ? "edit" : "add"}</span>
+            {selectedPrimitive ? <span className="shrink-0 font-mono text-xs text-muted-foreground">{selectedPrimitive.buCost} BU</span> : null}
+            <span className="shrink-0 text-xs text-primary">{selectedPrimitive ? "edit" : "add"}</span>
           </summary>
           <div className="v12-foundation-menu">
             <button type="button" onClick={() => chooseRulePrimitive(role, null)}>Open / none</button>
@@ -815,7 +815,7 @@ export function CapabilityForm({
             <p className="v12-kicker">Mechanical references</p>
             <p className="mt-0.5 text-xs text-muted-foreground">Vocabulary, reach, and output.</p>
           </div>
-          <span className="shrink-0 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">Optional</span>
+          <span className="shrink-0 text-xs uppercase tracking-[0.14em] text-muted-foreground">Optional</span>
         </header>
         <div className="v12-dedicated-slot-grid grid grid-cols-1 gap-1.5 sm:grid-cols-2 xl:grid-cols-4">
           {renderDedicatedSlot("VERB", "Verb tier", (primitive) => primitive.category === "VERB_TIER")}

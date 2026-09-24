@@ -10,35 +10,70 @@
  * throwing.
  */
 
-import type { ModifierCondition } from "@/types/condition";
+import { CONDITION_PRESETS, type ModifierCondition } from "@/types/condition";
+
+export function hasMeaningfulCondition(condition: unknown): condition is ModifierCondition {
+  if (!condition || typeof condition !== "object") return false;
+  const value = condition as {
+    kind?: unknown;
+    text?: unknown;
+    customTags?: unknown;
+    tokens?: unknown;
+    presetKey?: unknown;
+  };
+  if (value.kind === "narrative") return typeof value.text === "string" && value.text.trim().length > 0;
+  if (value.kind === "tags") return Array.isArray(value.customTags) && value.customTags.some((tag) => typeof tag === "string" && tag.trim().length > 0);
+  if (value.kind === "compound") return Array.isArray(value.tokens) && value.tokens.some((token) => typeof token === "string" && token.trim() !== "" && token !== "AND" && token !== "OR");
+  if (value.kind === "preset") return typeof value.presetKey === "string" && value.presetKey.trim().length > 0;
+  return false;
+}
 
 /**
  * Human-readable single-token. AND/OR pass through unchanged so callers
  * can join compound tokens with the operator.
  */
 export function humanReadableToken(token: string): string {
+  const trimmed = token.trim();
+  if (!trimmed) return "";
+  token = trimmed;
   if (token === "AND") return "AND";
   if (token === "OR") return "OR";
 
-  // self:proficient_in(X)
-  const mProf = token.match(/^self:proficient_in\((\w+)\)$/);
-  if (mProf) return `Proficient in ${mProf[1]}`;
+  const preset = CONDITION_PRESETS.find((entry) => entry.key === token);
+  if (preset) {
+    return preset.label
+      .replace("Actor < 50% HP", "Actor is below 50% vitality")
+      .replace("Target < 50% HP", "Target is below 50% vitality");
+  }
+
+  const subjectMatch = token.match(/^(self|actor):(.+)$/i);
+  const subject = subjectMatch?.[1]?.toLowerCase() === "actor" ? "Actor" : "Character";
+  const expression = subjectMatch?.[2] ?? token;
+
+  if (expression === "proficient_in(all_practices)") return `${subject} is proficient in every practice`;
+  if (expression === "not_proficient_in(all_practices)") return `${subject} is not proficient in every practice`;
+  if (expression === "proficient_in(all_saves)") return `${subject} is proficient in every save`;
+  if (expression === "not_proficient_in(all_saves)") return `${subject} is not proficient in every save`;
+
+  const mProf = expression.match(/^proficient_in\(([^)]+)\)$/i);
+  if (mProf?.[1]) return `${subject} is proficient in ${humanizeName(mProf[1])}`;
+  const mNotProf = expression.match(/^not_proficient_in\(([^)]+)\)$/i);
+  if (mNotProf?.[1]) return `${subject} is not proficient in ${humanizeName(mNotProf[1])}`;
 
   // self:proficient_in_attribute(X) and self:not_proficient_in_attribute(X)
-  const mProfAttr = token.match(/^self:proficient_in_attribute\((\w+)\)$/);
-  if (mProfAttr) return `Proficient in attribute ${mProfAttr[1]}`;
-  const mNotProfAttr = token.match(
-    /^self:not_proficient_in_attribute\((\w+)\)$/,
-  );
-  if (mNotProfAttr) return `Not proficient in attribute ${mNotProfAttr[1]}`;
+  const mProfAttr = expression.match(/^proficient_in_attribute\(([^)]+)\)$/i);
+  if (mProfAttr?.[1]) return `${subject} is proficient in the ${humanizeTag(mProfAttr[1])} attribute`;
+  const mNotProfAttr = expression.match(/^not_proficient_in_attribute\(([^)]+)\)$/i);
+  if (mNotProfAttr?.[1]) return `${subject} is not proficient in the ${humanizeTag(mNotProfAttr[1])} attribute`;
 
-  // self:stat|vitality_pct|<|0.5  (and >, <=, >=)
-  const mVital = token.match(
-    /^self:stat\|vitality_pct\|(>=|<=|>|<|=)\|(\d+(?:\.\d+)?)$/,
+  // actor/self:stat|vitality_pct|<|0.5  (and >, <=, >=)
+  const mVital = expression.match(
+    /^stat\|vitality_pct\|(>=|<=|>|<|={1,2})\|(\d+(?:\.\d+)?)$/i,
   );
   if (mVital && mVital[1] && mVital[2]) {
     const op = mVital[1];
-    const pct = Math.round(parseFloat(mVital[2]) * 100);
+    const raw = parseFloat(mVital[2]);
+    const pct = Math.round(raw <= 1 ? raw * 100 : raw);
     const opLabel =
       op === "<"
         ? "below"
@@ -49,45 +84,31 @@ export function humanReadableToken(token: string): string {
             : op === ">="
               ? "at or above"
               : "equal to";
-    return `HP ${opLabel} ${pct}%`;
+    return `${subject} is ${opLabel} ${pct}% vitality`;
   }
 
   // self:stat|name|<op>|value (generic stat)
-  const mStat = token.match(/^self:stat\|(\w+)\|(>=|<=|>|<|=)\|(\S+)$/);
+  const mStat = expression.match(/^stat\|([^|]+)\|(>=|<=|>|<|={1,2})\|(.+)$/i);
   if (mStat) {
-    const stat = mStat[1];
+    const stat = humanizeTag(mStat[1] ?? "stat");
     const op = mStat[2];
-    const val = mStat[3];
-    return `${stat} ${op} ${val}`;
+    const val = humanizeTag(mStat[3] ?? "value");
+    const opLabel = op === ">" ? "above" : op === "<" ? "below" : op === ">=" ? "at least" : op === "<=" ? "at most" : "equal to";
+    return `${subject}'s ${stat} is ${opLabel} ${val}`;
   }
 
-  // self:is_tracking
-  if (token === "self:is_tracking") return "Tracking an active mark";
+  if (expression === "is_tracking" || expression === "flag|is_tracking") return `${subject} is tracking an active mark`;
+  if (expression === "is_prone" || expression === "prone") return `${subject} is prone`;
+  if (expression === "is_stunned" || expression === "stunned") return `${subject} is stunned`;
+  if (expression === "mounted") return `${subject} is mounted`;
 
-  // self:not_proficient
-  if (token === "self:not_proficient") return "Not proficient";
-  // self:not_proficient_in(X)
-  const mNotProf = token.match(/^self:not_proficient_in\((\w+)\)$/);
-  if (mNotProf) return `Not proficient in ${mNotProf[1]}`;
-
-  // self:proficient_in(all_practices) / self:not_proficient_in(all_practices)
-  if (token === "self:proficient_in(all_practices)")
-    return "Proficient in every practice";
-  if (token === "self:not_proficient_in(all_practices)")
-    return "Not proficient in every practice";
-
-  // self:proficient_in(all_saves) / self:not_proficient_in(all_saves)
-  if (token === "self:proficient_in(all_saves)")
-    return "Proficient in every save";
-  if (token === "self:not_proficient_in(all_saves)")
-    return "Not proficient in every save";
+  if (expression === "not_proficient") return `${subject} is not proficient`;
+  if (expression === "proficient") return `${subject} is proficient`;
 
   // actor:* legacy preset aliases (act on character)
-  if (token === "actor:damaged-last-round") return "Damaged last round";
-  if (token === "actor:prone") return "Prone";
-  if (token === "actor:stance") return "Has a stance";
-  if (token === "actor-below-half-hp") return "HP below 50%";
-  if (token === "actor-stance") return "Has a stance";
+  if (token === "actor:damaged-last-round" || token === "actor-damaged-last-round") return "Actor was damaged last round";
+  if (token === "actor:stance" || token === "actor-stance") return "Actor has a stance";
+  if (token === "actor-below-half-hp") return "Actor is below 50% vitality";
 
   // target:* axis tags
   if (token.startsWith("target:")) {
@@ -108,18 +129,23 @@ export function humanReadableToken(token: string): string {
  * Renders AND/OR chains naturally.
  */
 export function humanReadableCondition(condition: ModifierCondition | null | undefined): string {
-  if (!condition) return "Always active";
-  if (condition.kind === "narrative") return condition.text;
+  if (!hasMeaningfulCondition(condition)) return "";
+  if (condition.kind === "narrative") return condition.text.trim();
   if (condition.kind === "preset") {
-    return humanReadableToken(`actor:${condition.presetKey}`);
+    return [humanReadableToken(condition.presetKey), ...condition.customTags.map(humanReadableToken)]
+      .filter(Boolean)
+      .join(" AND ");
   }
   if (condition.kind === "tags") {
-    return condition.customTags.map(humanReadableToken).join(" AND ");
+    return condition.customTags.map(humanReadableToken).filter(Boolean).join(" AND ");
   }
   if (condition.kind === "compound") {
-    return condition.tokens.map(humanReadableToken).join(" ");
+    const rendered = condition.tokens.map(humanReadableToken).filter(Boolean);
+    while (rendered[0] === "AND" || rendered[0] === "OR") rendered.shift();
+    while (rendered.at(-1) === "AND" || rendered.at(-1) === "OR") rendered.pop();
+    return rendered.join(" ");
   }
-  return "Unknown condition";
+  return "";
 }
 
 function humanizeTag(tag: string): string {
@@ -127,4 +153,9 @@ function humanizeTag(tag: string): string {
     .toLowerCase()
     .replace(/_/g, " ")
     .replace(/-/g, " ");
+}
+
+function humanizeName(value: string): string {
+  const words = humanizeTag(value);
+  return words ? `${words[0]?.toUpperCase() ?? ""}${words.slice(1)}` : "";
 }

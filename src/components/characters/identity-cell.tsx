@@ -25,7 +25,7 @@ export function IdentityCell({
 }: IdentityCellProps) {
   return (
     <div className="bg-card p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
       <p

@@ -90,7 +90,7 @@ export function CharacterVisibilityControl({
       />
       {error ? (
         <p
-          className="text-[10px] text-rose-500 dark:text-rose-400"
+          className="text-xs text-rose-500 dark:text-rose-400"
           role="alert"
         >
           {error}

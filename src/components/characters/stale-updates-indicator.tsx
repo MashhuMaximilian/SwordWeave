@@ -53,7 +53,7 @@ export function StaleUpdatesIndicator({
         {count} update{count === 1 ? "" : "s"} available
       </span>
       {interactive && onUpdateAll ? (
-        <span className="text-[10px] font-semibold uppercase tracking-wide opacity-80">
+        <span className="text-xs font-semibold uppercase tracking-wide opacity-80">
           update all
         </span>
       ) : null}

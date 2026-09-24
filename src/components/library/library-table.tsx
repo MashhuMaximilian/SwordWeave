@@ -233,7 +233,7 @@ function ListItem({
           <div
             aria-hidden
             className={cn(
-              "flex size-9 items-center justify-center border border-dashed border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wide text-muted-foreground",
+              "flex size-9 items-center justify-center border border-dashed border-border bg-muted/30 text-xs font-medium uppercase tracking-wide text-muted-foreground",
               isAtelier ? "size-10 rounded-full border-[#8f6b36] bg-black/25" : "rounded-md",
             )}
           >
@@ -241,7 +241,7 @@ function ListItem({
           </div>
         )}
         {item.buCost !== null && (
-          <span className={cn("rounded-full px-1.5 py-0 text-center font-mono text-[10px] font-semibold", isAtelier ? "border border-border bg-black/25 text-[#72d5cf]" : "bg-primary/10 text-primary")}>
+          <span className={cn("rounded-full px-1.5 py-0 text-center font-mono text-xs font-semibold", isAtelier ? "border border-border bg-black/25 text-[#72d5cf]" : "bg-primary/10 text-primary")}>
             {item.buCost} BU
           </span>
         )}
@@ -249,7 +249,7 @@ function ListItem({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-1.5">
           <h3 className={cn("truncate font-semibold leading-tight", isAtelier ? "text-[15px]" : "text-sm")}>{item.name}</h3>
-          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">
             {item.targetType.replace(/_/g, " ").toLowerCase()}
             {item.category ? ` · ${item.category.replace(/_/g, " ")}` : ""}
           </span>
@@ -259,7 +259,7 @@ function ListItem({
             <Markdown>{item.description}</Markdown>
           </div>
         )}
-        <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
+        <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
           <span>♥ {item.likesCount}</span>
           <span>⑂ {item.forkCount}</span>
           {authorDisplayUsername(item) && (
@@ -374,7 +374,7 @@ function GridCard({
             </div>
           )}
           {item.buCost !== null && (
-            <span className={cn("rounded-full px-1 py-0 text-center font-mono text-[10px] font-semibold", isAtelier ? "border border-border bg-black/25 text-[#72d5cf]" : "bg-primary/10 text-primary")}>
+            <span className={cn("rounded-full px-1 py-0 text-center font-mono text-xs font-semibold", isAtelier ? "border border-border bg-black/25 text-[#72d5cf]" : "bg-primary/10 text-primary")}>
               {item.buCost} BU
             </span>
           )}
@@ -383,7 +383,7 @@ function GridCard({
           <h3 className="truncate text-base font-semibold leading-tight md:text-sm">
             {item.name}
           </h3>
-          <p className="mt-0 flex min-w-0 flex-wrap items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+          <p className="mt-0 flex min-w-0 flex-wrap items-center gap-1 text-xs uppercase tracking-wide text-muted-foreground">
             <span data-library-meta="type">
               {item.targetType.replace(/_/g, " ").toLowerCase()}
             </span>
@@ -407,7 +407,7 @@ function GridCard({
           {item.tags.slice(0, 4).map((tag) => (
             <span
               key={tag}
-              className="rounded-full bg-secondary px-1.5 py-0 text-[10px]"
+              className="rounded-full bg-secondary px-1.5 py-0 text-xs"
             >
               {tag}
             </span>

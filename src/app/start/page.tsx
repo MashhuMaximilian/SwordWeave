@@ -163,7 +163,7 @@ export default function StartPage() {
     <div className="sw-home relative mx-auto w-full max-w-[1400px] px-4 pb-24 pt-16 sm:px-6 sm:pt-16 lg:px-10 lg:pt-16">
       <PublicNav />
       {/* Top marginalia bar — same as homepage */}
-      <div className="sw-marginalia sw-marginalia--top mb-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-border pb-3 text-[10px] uppercase tracking-[0.22em] text-muted-foreground sm:text-xs">
+      <div className="sw-marginalia sw-marginalia--top mb-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-border pb-3 text-xs uppercase tracking-[0.22em] text-muted-foreground sm:text-xs">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
           <Link href="/" className="font-display text-foreground hover:text-primary">
             Sword<span className="text-primary">·</span>Weave
@@ -191,7 +191,7 @@ export default function StartPage() {
         </div>
 
         <div className="min-w-0">
-          <div className="mb-3 inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] text-primary lg:hidden">
+          <div className="mb-3 inline-flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-primary lg:hidden">
             <span className="size-1.5 rounded-full bg-primary" />
             The walkthrough
           </div>
@@ -254,7 +254,7 @@ export default function StartPage() {
                 <span className="font-display text-4xl font-bold leading-none text-primary sm:text-5xl">
                   {step.n}
                 </span>
-                <span className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                <span className="font-display text-xs uppercase tracking-[0.22em] text-muted-foreground">
                   §{i}0
                 </span>
               </header>
@@ -279,7 +279,7 @@ export default function StartPage() {
                   <div className="mt-6 grid gap-3 border border-border bg-card p-5 sm:grid-cols-3 sm:gap-4">
                     {step.dials.map((dial) => (
                       <div key={dial.name} className="border-l-2 border-primary pl-3">
-                        <p className="font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+                        <p className="font-display text-xs uppercase tracking-[0.22em] text-primary">
                           {dial.name}
                         </p>
                         <p className="mt-1 font-display text-base uppercase tracking-tight">
@@ -304,7 +304,7 @@ export default function StartPage() {
                 {/* Optional example card (not step 7) */}
                 {"example" in step && step.example && (
                   <figure className="sw-recipe mt-6 border border-border bg-card p-5 sm:p-6">
-                    <figcaption className="font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+                    <figcaption className="font-display text-xs uppercase tracking-[0.22em] text-primary">
                       {step.example.label}
                     </figcaption>
                     <pre className="mt-3 whitespace-pre-wrap font-display text-xs leading-[1.7] text-foreground sm:text-sm">
@@ -333,7 +333,7 @@ export default function StartPage() {
             className="sw-codex-card group flex items-baseline justify-between gap-4 border border-border bg-card p-5 transition-colors hover:border-primary/60 sm:p-6"
           >
             <div className="min-w-0">
-              <p className="font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+              <p className="font-display text-xs uppercase tracking-[0.22em] text-primary">
                 After the walkthrough
               </p>
               <p className="mt-1 font-display text-2xl font-bold uppercase leading-none sm:text-3xl">
@@ -352,7 +352,7 @@ export default function StartPage() {
             className="sw-codex-card group flex items-baseline justify-between gap-4 border border-border bg-card p-5 transition-colors hover:border-primary/60 sm:p-6"
           >
             <div className="min-w-0">
-              <p className="font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+              <p className="font-display text-xs uppercase tracking-[0.22em] text-primary">
                 Ready to build
               </p>
               <p className="mt-1 font-display text-2xl font-bold uppercase leading-none sm:text-3xl">
@@ -395,7 +395,7 @@ function SectionHeading({
         <span className="mb-2 hidden text-xs uppercase tracking-[0.22em] text-muted-foreground lg:inline">
           {eyebrow}
         </span>
-        <span className="font-display text-[10px] uppercase tracking-[0.28em] text-primary lg:hidden">
+        <span className="font-display text-xs uppercase tracking-[0.28em] text-primary lg:hidden">
           {index} · {eyebrow}
         </span>
         <h2 className="font-display text-3xl font-bold uppercase leading-[0.95] tracking-tight sm:text-5xl lg:text-6xl">

@@ -32,6 +32,7 @@ import { aggregateCharacterSheet } from "@/lib/engine";
 import { queryLibrary } from "@/lib/publishing/library-query";
 import { listSharedCharacters } from "@/lib/character/list-shared-characters";
 import { resolveLocalAuthorIdentity } from "@/lib/auth/author-resolver";
+import { portraitFrameStyle } from "@/lib/character/portrait-frame";
 
 export const dynamic = "force-dynamic";
 
@@ -303,6 +304,7 @@ async function CharacterCard({
               src={portrait}
               alt={character.name}
               className="v12-roster-avatar"
+              style={portraitFrameStyle(character.portraitFrame)}
             />
           ) : (
             <div className="v12-roster-avatar v12-roster-avatar--fallback">

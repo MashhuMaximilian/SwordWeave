@@ -314,6 +314,7 @@ async function handlePATCH(
     if ("notes" in values) updatePayload["notes"] = emptyToNull(values["notes"]);
     if ("dmNotes" in values) updatePayload["dmNotes"] = emptyToNull(values["dmNotes"]);
     if ("portraitUrl" in values) updatePayload["portraitUrl"] = emptyToNull(values["portraitUrl"]);
+    if ("portraitFrame" in values && values["portraitFrame"] && typeof values["portraitFrame"] === "object" && !Array.isArray(values["portraitFrame"])) updatePayload["portraitFrame"] = values["portraitFrame"];
     if ("currentVitality" in values) {
       const v = parseIntInRange(values["currentVitality"], 0, 9999);
       if (v === null) return NextResponse.json({ error: "currentVitality must be a non-negative integer." }, { status: 400 });

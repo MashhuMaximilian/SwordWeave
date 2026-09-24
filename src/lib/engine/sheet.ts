@@ -839,7 +839,12 @@ export function aggregateCharacterSheet(
     })),
   );
   const maxVitality = computeMaxVitality(input.level, vitalityModifiers);
-  const vitalityCurrent = input.currentVitality;
+  // Current vitality is persistent damage state, while max vitality is derived
+  // from the live primitive graph. A max reduction must never leave the sheet
+  // showing an impossible current value above that derived maximum.
+  const vitalityCurrent = input.currentVitality === null
+    ? null
+    : Math.max(0, Math.min(input.currentVitality, maxVitality));
   const vitalityPercent =
     vitalityCurrent === null
       ? null

@@ -660,7 +660,7 @@ function DetailShell({
               ) : (
                 <div
                   aria-hidden="true"
-                  className="flex size-14 items-center justify-center rounded-md border border-dashed border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+                  className="flex size-14 items-center justify-center rounded-md border border-dashed border-border bg-muted/30 text-xs font-medium uppercase tracking-wide text-muted-foreground"
                 >
                   {typeLabel.split(" ")[0]?.slice(0, 3) ?? "?"}
                 </div>
@@ -2286,7 +2286,7 @@ function SourceVersionChip({
   // VersionChip so the visual identity is identical in both places.
   return (
     <span
-      className="mr-1.5 inline-flex shrink-0 items-center rounded-full border border-border/60 bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+      className="mr-1.5 inline-flex shrink-0 items-center rounded-full border border-border/60 bg-muted/40 px-1.5 py-0.5 font-mono text-xs font-semibold uppercase tracking-wide text-muted-foreground"
       title={`Latest published version v${versionNumber}`}
     >
       v{versionNumber}

@@ -23,6 +23,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
@@ -58,6 +59,20 @@ interface ModalStackState {
 }
 
 const StackCtx = createContext<ModalStackState | null>(null);
+
+function subscribeDesktopViewport(onStoreChange: () => void) {
+  const media = window.matchMedia("(min-width: 1024px)");
+  media.addEventListener("change", onStoreChange);
+  return () => media.removeEventListener("change", onStoreChange);
+}
+
+function desktopViewportSnapshot() {
+  return window.matchMedia("(min-width: 1024px)").matches;
+}
+
+function desktopViewportServerSnapshot() {
+  return false;
+}
 
 export function useModalStack(): ModalStackState {
   const ctx = useContext(StackCtx);
@@ -171,17 +186,11 @@ export function ModalStackScope() {
 
 function ModalStackRenderer() {
   const { stack, pop, scopeHost } = useModalStack();
-  const [isDesktop, setIsDesktop] = useState(false);
-
-  // Desktop and mobile both use an isolated modal surface. The rich V12
-  // instrument background must never show through long preview content.
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1024px)");
-    setIsDesktop(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
+  const isDesktop = useSyncExternalStore(
+    subscribeDesktopViewport,
+    desktopViewportSnapshot,
+    desktopViewportServerSnapshot,
+  );
 
   if (stack.length === 0) return null;
 
@@ -206,9 +215,17 @@ function ModalStackRenderer() {
             <div
               key={entry.key}
               role="dialog"
-              aria-modal="true"
+              aria-modal={isTop ? "true" : undefined}
               aria-label={entry.label}
-              className={cn("v12-modal-backdrop inset-0 flex items-center justify-center", scopeHost ? "pointer-events-auto absolute p-0" : "fixed p-6")}
+              aria-hidden={!isTop}
+              inert={!isTop}
+              data-modal-stack-depth={idx}
+              data-modal-stack-top={isTop ? "true" : "false"}
+              className={cn(
+                "v12-modal-backdrop inset-0 flex items-center justify-center",
+                scopeHost ? "absolute p-0" : "fixed p-4 xl:p-6",
+                isTop ? "pointer-events-auto" : "pointer-events-none",
+              )}
               style={{ zIndex: z }}
               onClick={isTop ? (event) => { if (event.target === event.currentTarget) pop(); } : undefined}
             >
@@ -217,8 +234,10 @@ function ModalStackRenderer() {
                 kicker={entry.category ?? "Archive preview"}
                 onClose={pop}
                 className={cn(
-                  scopeHost ? "max-h-[calc(100%-8px)] max-w-full" : "max-h-[calc(100dvh-48px)] max-w-6xl",
-                  !isTop && "max-w-5xl opacity-95",
+                  scopeHost
+                    ? "h-auto max-h-[calc(100%-8px)] w-[calc(100%-8px)] max-w-full"
+                    : "h-auto max-h-[calc(100dvh-32px)] w-[min(calc(100vw-40px),1180px)] max-w-none xl:max-h-[calc(100dvh-48px)]",
+                  !isTop && "opacity-90",
                 )}
                 bodyClassName={isScopedBodyClass(Boolean(scopeHost))}
               >
@@ -241,9 +260,17 @@ function ModalStackRenderer() {
           <div
             key={entry.key}
             role="dialog"
-            aria-modal="true"
+            aria-modal={isTop ? "true" : undefined}
             aria-label={entry.label}
-            className={cn("v12-modal-backdrop inset-0 z-50 flex justify-center bg-black/80 sm:items-center sm:p-4", scopeHost ? "pointer-events-auto absolute" : "fixed")}
+            aria-hidden={!isTop}
+            inert={!isTop}
+            data-modal-stack-depth={idx}
+            data-modal-stack-top={isTop ? "true" : "false"}
+            className={cn(
+              "v12-modal-backdrop inset-0 z-50 flex justify-center bg-black/80 sm:items-center sm:p-4",
+              scopeHost ? "absolute" : "fixed",
+              isTop ? "pointer-events-auto" : "pointer-events-none",
+            )}
             style={{ zIndex: z }}
             onClick={isTop ? (e) => { if (e.target === e.currentTarget) pop(); } : undefined}
           >
@@ -252,7 +279,7 @@ function ModalStackRenderer() {
               kicker={entry.category ?? "Archive preview"}
               onClose={pop}
               className={cn(
-                "max-w-2xl max-h-[calc(100dvh-8px)] sm:max-h-[90dvh]",
+                "w-[calc(100%-8px)] max-w-[1180px] max-h-[calc(100dvh-8px)] sm:max-h-[90dvh]",
                 !isTop && "max-w-md",
               )}
               bodyClassName={isScopedBodyClass(Boolean(scopeHost))}

@@ -367,16 +367,16 @@ function ProfileEntryRow({
       >
         {item.name}
       </Link>
-      <span className="rounded-full bg-sword-bg px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-sword-muted">
+      <span className="rounded-full bg-sword-bg px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-sword-muted">
         {item.targetType.toLowerCase().replace("_template", "")}
       </span>
       {isFork ? (
-        <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
+        <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-accent">
           Fork
         </span>
       ) : null}
       {item.visibility && item.visibility !== "PRIVATE" ? (
-        <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-secondary-foreground">
+        <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-secondary-foreground">
           {item.visibility === "PUBLIC" ? "Public" : "Followers"}
         </span>
       ) : null}

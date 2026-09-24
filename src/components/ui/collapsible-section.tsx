@@ -44,7 +44,7 @@ export function CollapsibleSection({
       className="rounded"
     >
       <summary
-        className="flex cursor-pointer select-none items-center justify-between gap-2 rounded px-1 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground hover:bg-accent/50"
+        className="flex cursor-pointer select-none items-center justify-between gap-2 rounded px-1 py-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:bg-accent/50"
         title={isOpen ? "Click to collapse" : "Click to expand"}
       >
         <span className="flex items-center gap-1.5">

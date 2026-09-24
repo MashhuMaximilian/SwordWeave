@@ -79,6 +79,7 @@ import {
 // growing). We show a wider window — every bracket from L1
 // through L29+ — so high-level characters still see their row.
 import { maxBuDebtForLevel } from "@/lib/engine/bu";
+import { portraitFrameStyle } from "@/lib/character/portrait-frame";
 const PROGRESSION_SPIKES = [
   { level: 4, spike: 4 },
   { level: 8, spike: 8 },
@@ -182,6 +183,7 @@ export interface SheetIdentityHeaderProps {
    */
   readonly attrSum: number;
   readonly portraitUrl: string | null;
+  readonly portraitFrame: unknown;
   readonly canLevelUp: boolean;
   /**
    * Phase 8.4: when the user taps the Level Up button in the
@@ -252,6 +254,7 @@ export function SheetIdentityHeader({
   mode,
   attrSum,
   portraitUrl,
+  portraitFrame,
   canLevelUp,
   onLevelUp,
   buBalance,
@@ -333,6 +336,7 @@ export function SheetIdentityHeader({
               src={portraitUrl}
               alt={`${name}'s portrait`}
               className="size-full object-cover"
+              style={portraitFrameStyle(portraitFrame)}
             />
           ) : (
             <div className="flex size-full items-center justify-center text-sm font-bold text-muted-foreground">
@@ -343,12 +347,12 @@ export function SheetIdentityHeader({
         <div className="min-w-0 flex-1 text-left">
           <div className="flex items-baseline gap-1.5">
             <span className="truncate font-semibold">{name}</span>
-            <span className="shrink-0 rounded-full bg-secondary px-1.5 py-0.5 font-mono text-[10px] font-bold text-secondary-foreground">
+            <span className="shrink-0 rounded-full bg-secondary px-1.5 py-0.5 font-mono text-xs font-bold text-secondary-foreground">
               L{level}
             </span>
-            <span className="text-[10px] text-muted-foreground">{size}</span>
+            <span className="text-xs text-muted-foreground">{size}</span>
           </div>
-          <div className="truncate text-[10px] text-muted-foreground">
+          <div className="truncate text-xs text-muted-foreground">
             {lineageName ?? ""}
             {lineageName && manifestName ? " · " : ""}
             {manifestName ?? ""}
@@ -435,7 +439,7 @@ export function SheetIdentityHeader({
             title="Show BU budget formula"
             aria-label="Show BU budget formula"
           >
-            <div className="mb-1 flex items-center justify-between text-[10px] uppercase tracking-wide text-muted-foreground">
+            <div className="mb-1 flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground">
               <span>Budget usage</span>
               <span>
                 {buBalance.progressionPool > 0
@@ -463,7 +467,7 @@ export function SheetIdentityHeader({
               />
             </div>
             {trulyOverBudget ? (
-              <p className="mt-1 text-[10px] text-destructive">
+              <p className="mt-1 text-xs text-destructive">
                 BU spent exceeds progression cap by {budgetOverflowRemainder}
               </p>
             ) : null}
@@ -492,7 +496,7 @@ export function SheetIdentityHeader({
             title="Show volatility / debt formula"
             aria-label="Show volatility / debt formula"
           >
-            <div className="mb-1 flex items-center justify-between text-[10px] uppercase tracking-wide text-muted-foreground">
+            <div className="mb-1 flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground">
               <span>Debt usage</span>
               <span>
                 {volatility.ceiling > 0
@@ -517,7 +521,7 @@ export function SheetIdentityHeader({
               line as "Debt 8 used | 0 available | 8 max allowed".
               The previous "8 / 0 avail / 8 max" was ambiguous —
               the user wanted used / available / max explicitly. */}
-          <div className="mt-2 flex items-center gap-2 text-[10px] text-muted-foreground">
+          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
             <span className="rounded-full bg-secondary px-1.5 py-0.5 font-mono">
               {volatility.levelBracket}
             </span>
@@ -531,7 +535,7 @@ export function SheetIdentityHeader({
           {/* Mirrored primitives accordion (NEW v3) */}
           {volatility.mirroredPrimitives && volatility.mirroredPrimitives.length > 0 ? (
             <details className="v12-identity-mirrors mt-3 rounded-md border border-border bg-background/50">
-              <summary className="cursor-pointer list-none px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <summary className="cursor-pointer list-none px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 <span className="inline-flex items-center gap-1">
                   <RotateCcw className="size-3" />
                   {volatility.mirroredPrimitives.length} mirrored primitive
@@ -547,7 +551,7 @@ export function SheetIdentityHeader({
                     <span className="truncate">{p.name}</span>
                     <span className="shrink-0 font-mono text-muted-foreground">
                       −{p.mirrorBuCredit} BU
-                      <span className="ml-2 text-[10px]">L{p.acquiredAtLevel}</span>
+                      <span className="ml-2 text-xs">L{p.acquiredAtLevel}</span>
                     </span>
                   </li>
                 ))}
@@ -673,7 +677,7 @@ export function SheetIdentityHeader({
             </div>
           </div>
           {!canLevelUp ? (
-            <p className="mt-2 text-[10px] text-muted-foreground">
+            <p className="mt-2 text-xs text-muted-foreground">
               Max level reached.
             </p>
           ) : null}

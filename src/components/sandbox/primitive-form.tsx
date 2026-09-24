@@ -960,6 +960,12 @@ export function PrimitiveForm({
       category: family?.categories[0] ?? initialCategory ?? blankForm.category,
     };
   }, [initialCategory]);
+  const contextualCompositionFamily = useMemo<AuthorableCompositionFamily | null>(
+    () => compositionOptions.some((option) => option.value === initialCategory)
+      ? initialCategory as AuthorableCompositionFamily
+      : null,
+    [initialCategory],
+  );
   const [form, setForm] = useState<PrimitiveFormState>(
     () => contextualBlankForm,
   );
@@ -973,9 +979,9 @@ export function PrimitiveForm({
       MARKET_FAMILIES[0]!.key
     );
   });
-  const [ruleKind, setRuleKind] = useState<RuleKind>(null);
+  const [ruleKind, setRuleKind] = useState<RuleKind>(() => contextualCompositionFamily);
   const [composition, setComposition] =
-    useState<CompositionDraft>(blankComposition);
+    useState<CompositionDraft>(() => contextualCompositionFamily ? { ...blankComposition, family: contextualCompositionFamily } : blankComposition);
   const [modifierCounter, setModifierCounter] = useState(1);
   const [modifiers, setModifiers] = useState<ModifierDraft[]>([]);
   const [showJsonPreview, setShowJsonPreview] = useState(false);
@@ -1205,8 +1211,8 @@ export function PrimitiveForm({
       familyForCategory(contextualBlankForm.category)?.key ??
         MARKET_FAMILIES[0]!.key,
     );
-    setRuleKind(null);
-    setComposition(blankComposition);
+    setRuleKind(contextualCompositionFamily);
+    setComposition(contextualCompositionFamily ? { ...blankComposition, family: contextualCompositionFamily } : blankComposition);
     setModifierCounter(1);
     setModifiers([]);
     setShowJsonPreview(false);

@@ -246,7 +246,7 @@ function ValueCell({
   // Object/array — pretty-print
   return (
     <pre
-      className={`overflow-x-auto rounded bg-muted/50 p-2 font-mono text-[10px] leading-tight ${cls}`}
+      className={`overflow-x-auto rounded bg-muted/50 p-2 font-mono text-xs leading-tight ${cls}`}
     >
       {JSON.stringify(value, null, 2)}
     </pre>

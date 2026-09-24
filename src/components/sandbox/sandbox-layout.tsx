@@ -914,7 +914,7 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
                       aria-selected={sandboxBottomTab === "build"}
                       onClick={() => setSandboxBottomTab("build")}
                       className={cn(
-                        "flex items-center gap-1 rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors",
+                        "flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold uppercase tracking-wide transition-colors",
                         sandboxBottomTab === "build"
                           ? "bg-primary text-primary-foreground"
                           : "text-muted-foreground hover:text-foreground",
@@ -934,7 +934,7 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
                       aria-selected={sandboxBottomTab === "preview"}
                       onClick={() => setSandboxBottomTab("preview")}
                       className={cn(
-                        "flex items-center gap-1 rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors",
+                        "flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold uppercase tracking-wide transition-colors",
                         sandboxBottomTab === "preview"
                           ? "bg-primary text-primary-foreground"
                           : "text-muted-foreground hover:text-foreground",
@@ -946,7 +946,7 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
                   <button
                     type="button"
                     onClick={dispatchReset}
-                    className="flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-secondary-foreground hover:bg-secondary/70"
+                    className="flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-semibold uppercase tracking-wide text-secondary-foreground hover:bg-secondary/70"
                     aria-label="Reset"
                   >
                     <RotateCcw className="size-3" /> Reset

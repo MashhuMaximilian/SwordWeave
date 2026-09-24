@@ -78,7 +78,7 @@ export function SavesCard({ resolver, proficientAttribute, pb }: SavesCardProps)
 
   return (
     <div className="flex flex-col gap-1 border-l border-border pl-6">
-      <p className="hidden text-[10px] font-semibold uppercase tracking-wide text-muted-foreground md:block">
+      <p className="hidden text-xs font-semibold uppercase tracking-wide text-muted-foreground md:block">
         Saves
       </p>
 
@@ -89,10 +89,10 @@ export function SavesCard({ resolver, proficientAttribute, pb }: SavesCardProps)
         className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5 text-xs md:min-w-[170px]"
         title="Save DC — one global value, click for provenance"
       >
-        <span className="w-10 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <span className="w-10 shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           DC
         </span>
-        <span className="text-[10px] text-muted-foreground">SAVE</span>{" "}
+        <span className="text-xs text-muted-foreground">SAVE</span>{" "}
         <span className="font-mono font-semibold tabular-nums">{saveDc}</span>
         <span className="rounded-full bg-muted px-1 py-0.5 text-[8px] font-bold uppercase tracking-wide text-muted-foreground">
           {ATTR_SHORT[proficientAttr]}
@@ -114,7 +114,7 @@ export function SavesCard({ resolver, proficientAttribute, pb }: SavesCardProps)
                 : "border-border bg-background"
             }`}
           >
-            <span className="w-10 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <span className="w-10 shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {ATTR_SHORT[attr]}
             </span>
             <button
@@ -133,7 +133,7 @@ export function SavesCard({ resolver, proficientAttribute, pb }: SavesCardProps)
               className="shrink-0 rounded px-1 transition-colors hover:bg-muted/60"
               title={`${ATTR_LABEL[attr]} save value — click for provenance`}
             >
-              <span className="text-[10px] text-muted-foreground">SV</span>{" "}
+              <span className="text-xs text-muted-foreground">SV</span>{" "}
               <span className="font-mono font-semibold tabular-nums">
                 {fmt(saveValue)}
               </span>

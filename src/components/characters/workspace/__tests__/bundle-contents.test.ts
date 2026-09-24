@@ -13,5 +13,7 @@ describe("source expressions",()=>{
  expect(html.match(/Guard rule/g)).toHaveLength(2);
  expect(html).toContain("Shield description");expect(html).toContain("Brace description");
  expect(html.match(/v12-expression-direct/g)).toHaveLength(1);
+ expect(html).toContain('aria-label="Collapse Shield"');
+ expect(html).toContain('aria-expanded="true"');
  });
 });

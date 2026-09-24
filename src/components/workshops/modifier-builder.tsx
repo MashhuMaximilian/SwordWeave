@@ -275,7 +275,7 @@ export function ModifierBuilder({
         {(spec.widget === "checklist" ||
           spec.widget === "checklist-with-free-text") && (
           <div className="space-y-2 rounded-md border border-dashed border-border bg-background p-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {spec.label} — leave empty for "any"
             </p>
             <div className="grid grid-cols-2 gap-1.5 md:grid-cols-3">
@@ -434,7 +434,7 @@ export function ModifierBuilder({
               ))}
             </select>
           </label>
-          <div className="rounded-md border border-dashed border-border bg-background p-3 text-[10px] text-muted-foreground">
+          <div className="rounded-md border border-dashed border-border bg-background p-3 text-xs text-muted-foreground">
             <p className="font-semibold uppercase tracking-wide">
               How does this compose?
             </p>
@@ -493,7 +493,7 @@ function MirrorSwapCard({
     >
       <div className="flex flex-col gap-1.5">
         <ChiralityBadge op={op} mirrorable={mirrorable} />
-        <p className="text-[10px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {mirrorable && mirrorOp && mirrorLabel
             ? `Mirrorable — flips to ${mirrorLabel} when inverted (sign/reciprocal flipped per OP_SPECS).`
             : "Not mirrorable (permission-locked). Set To has no meaningful inverse."}
@@ -525,7 +525,7 @@ function ChiralityBadge({
   if (isSetTo) {
     return (
       <span
-        className="inline-flex items-center gap-1 rounded-sm border border-slate-500/30 bg-slate-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300"
+        className="inline-flex items-center gap-1 rounded-sm border border-slate-500/30 bg-slate-500/10 px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300"
         title="Set To is permission-locked; cannot be inverted."
       >
         🏛 Permission
@@ -535,7 +535,7 @@ function ChiralityBadge({
   if (mirrorable) {
     return (
       <span
-        className="inline-flex items-center gap-1 rounded-sm border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300"
+        className="inline-flex items-center gap-1 rounded-sm border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300"
         title="Variable Vector — mirrorable per OP_SPECS."
       >
         📊 Variable
@@ -544,7 +544,7 @@ function ChiralityBadge({
   }
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-sm border border-slate-500/30 bg-slate-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300"
+      className="inline-flex items-center gap-1 rounded-sm border border-slate-500/30 bg-slate-500/10 px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300"
     >
       🏛 Permission
     </span>

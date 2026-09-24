@@ -146,7 +146,10 @@ export async function GET(
     primitive: {
       id: number;
       name: string;
+      category: string;
       buCost: number | null;
+      mechanicalOutputText: string;
+      narrativeRule: string;
       isMirrorable: boolean;
       mirrorBuCredit: number;
       targetScope: string | null;
@@ -161,7 +164,10 @@ export async function GET(
         primitiveId: effectPrimitives.primitiveId,
         quantity: effectPrimitives.quantity,
         name: primitives.name,
+        category: primitives.category,
         buCost: primitives.buCost,
+        mechanicalOutputText: primitives.mechanicalOutputText,
+        narrativeRule: primitives.narrativeRule,
         isMirrorable: primitives.isMirrorable,
         mirrorBuCredit: primitives.mirrorBuCredit,
         targetScope: primitives.targetScope,
@@ -179,7 +185,10 @@ export async function GET(
         primitive: {
           id: r.primitiveId,
           name: r.name,
+          category: r.category,
           buCost: r.buCost,
+          mechanicalOutputText: r.mechanicalOutputText,
+          narrativeRule: r.narrativeRule,
           isMirrorable: r.isMirrorable,
           mirrorBuCredit: r.mirrorBuCredit,
           targetScope: r.targetScope,

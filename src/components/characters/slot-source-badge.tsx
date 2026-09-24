@@ -168,7 +168,7 @@ export function SlotSourceBadge({
   if (compact) {
     return (
       <span
-        className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${c.bg} ${c.text} ring-1 ring-inset ${c.ring}`}
+        className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide ${c.bg} ${c.text} ring-1 ring-inset ${c.ring}`}
         title={
           versionId
             ? `v:${versionId} (${c.label})`
@@ -203,7 +203,7 @@ export function SlotSourceBadge({
         <span className="size-1.5 rounded-full bg-current" aria-hidden />
         {c.label}
         {(versionId || latestVersionId || virtualVersionId) && (
-          <span className="ml-1 font-mono text-[10px] opacity-75">
+          <span className="ml-1 font-mono text-xs opacity-75">
             v:{versionId ? shortId(versionId) : latestVersionId ? shortId(latestVersionId) : virtualVersionId ? shortId(virtualVersionId) : "1"}
           </span>
         )}
@@ -223,7 +223,7 @@ export function SlotSourceBadge({
           >
             <span className="size-1.5 rounded-full bg-current" aria-hidden />
             update available
-            <span className="ml-1 font-mono text-[10px] opacity-75">
+            <span className="ml-1 font-mono text-xs opacity-75">
               → v:{shortId(latestVersionId!)}
             </span>
           </button>
@@ -234,7 +234,7 @@ export function SlotSourceBadge({
           >
             <span className="size-1.5 rounded-full bg-current" aria-hidden />
             update available
-            <span className="ml-1 font-mono text-[10px] opacity-75">
+            <span className="ml-1 font-mono text-xs opacity-75">
               → v:{shortId(latestVersionId!)}
             </span>
           </span>

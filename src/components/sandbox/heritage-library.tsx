@@ -1271,6 +1271,7 @@ function BlueprintPreviewBody({
           onFork,
         }}
         actionBar={actionBar}
+        actionPlacement="top"
       />
     </div>
   );

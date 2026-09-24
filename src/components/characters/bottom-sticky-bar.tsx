@@ -40,13 +40,14 @@ import { grantedKeyword } from "@/lib/engine/practice-grants";
  *   - Combined mod + save provenance in a single modal.
  */
 
-import { Fragment, type ReactNode, useCallback, useEffect, useState } from "react";
+import { Fragment, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { humanReadableCondition, humanReadableToken } from "@/lib/engine/condition-dictionary";
 import { cn } from "@/lib/utils";
 import { formatEquationValue } from "@/lib/engine/equation-formatter";
 import { ChevronDown, ChevronUp, Heart } from "lucide-react";
 import { VitalityTracker } from "@/components/characters/vitality-tracker";
+import { reconcileVitality } from "@/components/characters/optimistic-vitality";
 import {
   FormulaModal,
   SummaryLine,
@@ -54,9 +55,9 @@ import {
   type FormulaStep,
 } from "@/components/characters/formula-modal";
 import {
-  OP_LABEL,
-  OP_COLOR,
-  formatOperandValue,
+  humanizeMechanicalTarget,
+  operationValue,
+  operationVerb,
 } from "@/components/characters/operator-symbol";
 import type { ResolvedModifiers } from "@/lib/engine/resolve-modifiers";
 console.log("PHASE8_L20_BUILD_MARKER:", "-5090448014643774033");
@@ -282,7 +283,7 @@ function renderConditionChips(condition: unknown): ReactNode {
         return (
           <span
             key={i}
-            className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] italic text-amber-700 dark:text-amber-300"
+            className="rounded bg-amber-500/10 px-1.5 py-0.5 text-xs italic text-amber-700 dark:text-amber-300"
           >
             {humanReadableToken(tok)}
           </span>
@@ -445,6 +446,12 @@ export interface BottomStickyBarProps {
       readonly delta: number;
     }>;
   }>;
+  readonly accessRules?: ReadonlyArray<{
+    readonly primitiveId: number;
+    readonly name: string;
+    readonly kind: "domain" | "verb" | "range" | "die" | "structure" | "behavior";
+    readonly detail: string;
+  }>;
 }
 
 type ComboKind =
@@ -457,6 +464,7 @@ type ComboKind =
   | "pb"
   | "encumbrance"
   | "speed"
+  | "scaling"
   | "behavior"
   | "damage"
   | "damage-type"
@@ -488,7 +496,16 @@ export function BottomStickyBar({
   carryCapacity,
   damageModifiers,
   behaviorVariables,
+  accessRules = [],
 }: BottomStickyBarProps) {
+  const ruleKindLabel: Record<NonNullable<BottomStickyBarProps["accessRules"]>[number]["kind"], string> = {
+    domain: "Domain",
+    verb: "Verb",
+    range: "Range",
+    die: "Die",
+    structure: "Structure",
+    behavior: "Behavior",
+  };
   const [hydrated, setHydrated] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [combo, setCombo] = useState<ComboKind>(null);
@@ -500,6 +517,19 @@ export function BottomStickyBar({
     total: number;
   } | null>(null);
   const [comboDamageType, setComboDamageType] = useState<string | null>(null);
+  const canonicalCurrent = Math.max(0, Math.min(maxVitality, currentVitality ?? maxVitality));
+  const [visibleCurrent, setVisibleCurrent] = useState(canonicalCurrent);
+  // While a vitality mutation is being persisted, route refreshes can briefly
+  // deliver the previous canonical value. Keep the optimistic value visible
+  // until the server catches up to it. This avoids the visible
+  // heal -> old value -> heal sequence on rests.
+  const optimisticVitalityRef = useRef<number | null>(null);
+  const setOptimisticVitality = useCallback((next: number) => {
+    const clamped = Math.max(0, Math.min(maxVitality, next));
+    optimisticVitalityRef.current =
+      clamped === canonicalCurrent ? null : clamped;
+    setVisibleCurrent(clamped);
+  }, [canonicalCurrent, maxVitality]);
   const openDamageTypeModal = useCallback((type: string) => {
     setComboDamageType(type);
     setCombo("damage-type");
@@ -510,6 +540,14 @@ export function BottomStickyBar({
   useEffect(() => {
     setHydrated(true);
   }, []);
+  useEffect(() => {
+    const next = reconcileVitality(
+      canonicalCurrent,
+      optimisticVitalityRef.current,
+    );
+    optimisticVitalityRef.current = next.optimistic;
+    setVisibleCurrent(next.visible);
+  }, [canonicalCurrent]);
 
   const physMod = attributeModifiers?.physical ?? physical;
   const mentMod = attributeModifiers?.mental ?? mental;
@@ -622,7 +660,7 @@ export function BottomStickyBar({
     MAGICAL: "Magic",
   };
 
-  const effectiveCurrent = currentVitality ?? maxVitality;
+  const effectiveCurrent = visibleCurrent;
   const vitalityPercent =
     maxVitality > 0
       ? Math.max(0, Math.min(100, Math.round((effectiveCurrent / maxVitality) * 100)))
@@ -655,6 +693,7 @@ export function BottomStickyBar({
   );
   const openEncumbranceModal = useCallback(() => setCombo("encumbrance"), []);
   const openSpeedModal = useCallback(() => setCombo("speed"), []);
+  const openScalingModal = useCallback(() => setCombo("scaling"), []);
   const openBehaviorModal = useCallback((key: string) => {
     setComboBehaviorKey(key);
     setCombo("behavior");
@@ -689,6 +728,18 @@ export function BottomStickyBar({
   const resolver_ = resolver as ResolvedModifiers | undefined;
   const totals = resolver_?.totals ?? {};
   const byTarget = resolver_?.byTarget ?? {};
+  const scalingRules = accessRules.filter((rule) =>
+    rule.kind === "range" || rule.kind === "die" || rule.kind === "structure",
+  );
+  const grantedAccessRules = accessRules.filter((rule) =>
+    rule.kind === "domain" || rule.kind === "verb" || rule.kind === "behavior",
+  );
+  const behaviorVariableNames = new Set(
+    behaviorVariables.map((variable) => variable.key.replaceAll("_", "").toLowerCase()),
+  );
+  const visibleAccessRules = grantedAccessRules.filter((rule) =>
+    rule.kind !== "behavior" || !behaviorVariableNames.has(rule.name.replace(/[^a-z0-9]/gi, "").toLowerCase()),
+  );
   const attrTarget = `attribute.${comboAttr}`;
   // Phase 8.L round 102 (Mashu): saveTarget must be the
   // PHYSICAL_SAVING_THROW target, not save_dc.<attr>!
@@ -844,6 +895,7 @@ export function BottomStickyBar({
                 characterId={characterId}
                 max={maxVitality}
                 current={effectiveCurrent}
+                onCurrentChange={setOptimisticVitality}
                 compact
               />
             </div>
@@ -1008,7 +1060,7 @@ export function BottomStickyBar({
               Practices
             </p>
             {practices.length === 0 ? (
-              <p className="text-[10px] text-muted-foreground italic">
+              <p className="text-xs text-muted-foreground italic">
                 No practices slotted.
               </p>
             ) : (
@@ -1052,7 +1104,7 @@ export function BottomStickyBar({
                         {PRACTICE_ATTR_LABEL[attr]}
                       </p>
                       {rows.length === 0 ? (
-                        <p className="text-[10px] text-muted-foreground italic">
+                        <p className="text-xs text-muted-foreground italic">
                           —
                         </p>
                       ) : (
@@ -1175,8 +1227,22 @@ export function BottomStickyBar({
           {/* Phase 8.I i2 finish (Mashu 2026-08-06): speed +
               carry capacity cards from primitive walks. */}
           {/* Speed card only — carry/load handled by LoadCell above. */}
-          <div className="v12-drawer-speed mt-2 rounded-md border border-border bg-card overflow-hidden">
-            <SpeedCard speedByType={speedByType} onClick={openSpeedModal} />
+          <div className="v12-drawer-action-profile mt-2">
+            <div className="v12-drawer-speed rounded-md border border-border bg-card overflow-hidden">
+              <SpeedCard speedByType={speedByType} onClick={openSpeedModal} />
+            </div>
+            <button type="button" className="v12-scaling-console" onClick={openScalingModal}>
+              <span className="v12-scaling-console-kicker">At the table</span>
+              <strong>Action scale &amp; upkeep</strong>
+              <p>Read scope, force, timing, and what must be sustained.</p>
+              <span className="v12-scaling-console-rules">
+                {scalingRules.length > 0 ? scalingRules.map((rule) => (
+                  <span key={`${rule.kind}-${rule.primitiveId}`}>
+                    <b>{rule.kind}</b>{rule.name}
+                  </span>
+                )) : <em>No action-scale primitives attached</em>}
+              </span>
+            </button>
           </div>
 
           {/* Phase 8.I i2 finish: damage modifier cards
@@ -1185,7 +1251,7 @@ export function BottomStickyBar({
             damageModifiers.vulnerability.length > 0 ||
             damageModifiers.immunity.length > 0) && (
             <div className="v12-drawer-damage mt-2 rounded-md border border-border bg-card px-2 py-1.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Damage Modifiers
               </p>
               <div className="mt-1 space-y-1">
@@ -1217,21 +1283,31 @@ export function BottomStickyBar({
             </div>
           )}
 
-          {/* Phase 8.I Wave 6 (Mashu 2026-08-06): custom behavior
-              variables (legendary_resistance, action_points, etc.).
-              Each variable shows its current value + the
-              contributing primitives. */}
-          {behaviorVariables.length > 0 && (
-            <div className="v12-drawer-behavior mt-2 rounded-md border border-border bg-card px-2 py-1.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Behavior Variables
-              </p>
-              <div className="mt-1 space-y-1">
-                {behaviorVariables.map((bv) => (
-                  <BehaviorVariableRow key={bv.key} bv={bv} onClick={() => openBehaviorModal(bv.key)} />
+          {(visibleAccessRules.length > 0 || behaviorVariables.length > 0) && (
+            <section className="v12-drawer-access mt-2" aria-label="Access and rules granted by primitives">
+              <header>
+                <span>Granted access &amp; behaviors</span>
+                <b>{visibleAccessRules.length + behaviorVariables.length}</b>
+              </header>
+              <div>
+                {visibleAccessRules.map((rule) => (
+                  <article key={`${rule.kind}-${rule.primitiveId}`} data-rule-kind={rule.kind}>
+                    <span>{ruleKindLabel[rule.kind]}</span>
+                    <strong>{rule.name}</strong>
+                    <p>{rule.detail}</p>
+                  </article>
                 ))}
+                {behaviorVariables.map((variable) => {
+                  const label = variable.key.split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+                  return (
+                    <button key={variable.key} type="button" className="v12-access-counter" onClick={() => openBehaviorModal(variable.key)}>
+                      <span>Counter</span><strong>{label}</strong><b>{variable.value}</b>
+                      <p>{variable.contributions.length} contributing primitive{variable.contributions.length === 1 ? "" : "s"}. Open the card for its source ledger.</p>
+                    </button>
+                  );
+                })}
               </div>
-            </div>
+            </section>
           )}
         </div>
       )}
@@ -1268,7 +1344,7 @@ export function BottomStickyBar({
           <FormulaModal
             title="Max Vitality"
             total={maxVitality}
-            formula="Max Vitality = (10 + PB) × level + vitality primitive contributions"
+            formula="Start with 10 plus proficiency bonus for every character level, then apply Vitality primitives."
             breakdown={contributionsToSteps(vitalityTarget, resolver_)}
             onClose={() => setCombo(null)}
 
@@ -1306,7 +1382,7 @@ export function BottomStickyBar({
             title={`DC (${dcAttrLabel})`}
             subtitle="from the chosen attribute"
             total={dcTotal}
-            formula={`DC = ${dcTotal} (= 8 + PB + ${dcAttrLabel} attribute + save_dc.${dcAttr} primitives)`}
+            formula={`Start at 8, add proficiency bonus and the ${dcAttrLabel.toLowerCase()} attribute, then apply DC primitives.`}
             breakdown={[
               { label: "Base", value: 8 },
               { label: "PB", value: pb },
@@ -1360,7 +1436,7 @@ export function BottomStickyBar({
               (comboAttr === "physical" ? physMod : comboAttr === "mental" ? mentMod : magiMod) +
               (proficientAttribute?.toLowerCase() === comboAttr ? pb : 0)
             }
-            formula={`Practice = ${comboAttr.toUpperCase()} attribute (mod) + PB (if proficient) + practice primitive contributions`}
+            formula={`Combine the ${comboAttr.toLowerCase()} attribute, proficiency when trained, and practice-specific effects.`}
             breakdown={[
               {
                 label: `${comboAttr.toUpperCase()} attribute (mod)`,
@@ -1406,7 +1482,7 @@ export function BottomStickyBar({
           <FormulaModal
             title="Proficiency Bonus"
             total={pb}
-            formula={`PB = 2 + floor(level / 4) — starts at +2, +1 every 4 levels`}
+            formula="Proficiency starts at +2 and increases by +1 after every four completed levels."
             breakdown={[
               { label: "Base PB", value: 2 },
               { label: `Level bonus (floor(${computeLevelFromPb(pb)} / 4))`, value: pb - 2 },
@@ -1446,7 +1522,7 @@ export function BottomStickyBar({
             title="Attack Bonus"
             subtitle={`${atkAttrLabel} — to-hit roll`}
             total={atkTotal}
-            formula={`Attack Bonus = ${atkTotal} (= PB + ${atkAttrLabel} modifier + attack_bonus.${atkAttr} primitives)`}
+            formula={`Combine proficiency bonus, the ${atkAttrLabel.toLowerCase()} attribute, and attack-specific primitives.`}
             breakdown={[
               // Phase 8.L round 83: the breakdown shows PB and the
               // chosen-attribute modifier as separate steps, then
@@ -1515,17 +1591,23 @@ export function BottomStickyBar({
             characterId={characterId}          />
             );
           })()
+        ) : combo === "scaling" ? (
+          <ScalingFieldGuide
+            rules={scalingRules}
+            ruleKindLabel={ruleKindLabel}
+            onClose={() => setCombo(null)}
+          />
         ) : combo === "speed" ? (
           <FormulaModal
             title="Walking Speed"
             subtitle={`base speed (${SIZE_BASE_SPEED[characterSize]} ft for ${characterSize}) + primitive contributions`}
             total={speedByType["WALKING_SPEED"] ?? 0}
-            formula={`Speed = Size base (${SIZE_BASE_SPEED[characterSize]} ft for ${characterSize}) + primitive contributions (speed.walking)`}
+            formula={`Start from the ${characterSize.toLowerCase()} size baseline of ${SIZE_BASE_SPEED[characterSize]} feet, then apply movement primitives.`}
             info={{
               title: "Speed by size",
               body: (
                 <div>
-                  <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Speed by size</p>
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Speed by size</p>
                   <table className="mt-1 w-full text-xs">
                     <thead>
                       <tr className="border-b border-border text-muted-foreground">
@@ -1585,7 +1667,7 @@ export function BottomStickyBar({
                 title="Behavior Variable"
                 subtitle={`primitive contributions to ${bv?.key ?? comboBehaviorKey}`}
                 total={bv?.value ?? 0}
-                formula="Behavior value = primitive `set` ops targeting behavior"
+                formula="This counter is the combined value granted by its contributing behavior primitives."
                 breakdown={bv?.contributions.flatMap((c) => {
                   const full = provByName.get(c.primitiveName);
                   if (!full) return [];
@@ -1604,7 +1686,8 @@ export function BottomStickyBar({
             title="Damage Modifiers"
             subtitle="resistance, vulnerability, immunity multipliers"
             total={damageModifiers.resistance.length + damageModifiers.vulnerability.length + damageModifiers.immunity.length}
-            formula="Resistance = ×0.5 | Vulnerability = ×2 | Immunity = ×0"
+            formula="Resistance halves matching damage. Vulnerability doubles it. Immunity reduces it to zero."
+            resultLabel={`${damageModifiers.resistance.length + damageModifiers.vulnerability.length + damageModifiers.immunity.length} active`}
             breakdown={resolver_
               ? Object.entries(resolver_.totals)
                   .filter(([k]) => k.startsWith("damage_modifier."))
@@ -1632,6 +1715,7 @@ export function BottomStickyBar({
                 subtitle={`multiplier: ×${mult}`}
                 total={dmTotal}
                 formula={`Damage × ${mult} — ${isResist ? "halved" : isVuln ? "doubled" : isImmune ? "ignored" : "normal"} damage from this type`}
+                resultLabel={`×${mult}`}
                 breakdown={contributionsToSteps(dmTarget, resolver_)}
                 onClose={() => setCombo(null)}
 
@@ -1689,7 +1773,7 @@ function EquipSlotsPanel({
       aria-label="Show equip slots formula"
     >
       <div className="pointer-events-none">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Equip
       </p>
       <p className="mt-1 font-mono text-2xl font-bold tabular-nums">
@@ -1707,7 +1791,7 @@ function EquipSlotsPanel({
           />
         ))}
       </div>
-      <p className="mt-1 text-[10px] text-muted-foreground">
+      <p className="mt-1 text-xs text-muted-foreground">
         2H items use 2 slots
       </p>
       </div>
@@ -1716,6 +1800,115 @@ function EquipSlotsPanel({
 }
 
 // =============================================================================
+type ScalingRule = NonNullable<BottomStickyBarProps["accessRules"]>[number];
+
+function ScalingFieldGuide({
+  rules,
+  ruleKindLabel,
+  onClose,
+}: {
+  readonly rules: ReadonlyArray<ScalingRule>;
+  readonly ruleKindLabel: Record<ScalingRule["kind"], string>;
+  readonly onClose: () => void;
+}) {
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const closeOnEscape = (event: KeyboardEvent) => event.key === "Escape" && onClose();
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previous;
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [onClose]);
+
+  return createPortal(
+    <div className="v12-formula-backdrop fixed inset-0 z-[120] flex items-center justify-center overflow-hidden p-3 sm:p-5" onClick={onClose} role="dialog" aria-modal="true" aria-label="Action scale and upkeep">
+      <div className="v12-field-guide v12-instrument-dialog" onClick={(event) => event.stopPropagation()}>
+        <header className="v12-field-guide-head">
+          <div>
+            <span className="v12-modal-kicker">Table instrument · field guide</span>
+            <h2>Action scale &amp; upkeep</h2>
+            <p>Read the declared intent, place it in the combat rhythm, then state its price before the roll.</p>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close">✕</button>
+        </header>
+        <div className="v12-field-guide-body">
+          <section className="v12-field-guide-built">
+            <header><h3>Built into this character</h3><b>{rules.length} attached</b></header>
+            {rules.length ? (
+              <div>
+                {rules.map((rule) => (
+                  <article key={`${rule.kind}-${rule.primitiveId}`} data-rule-kind={rule.kind}>
+                    <span>{ruleKindLabel[rule.kind]}</span>
+                    <strong>{rule.name}</strong>
+                    <p>{rule.detail}</p>
+                  </article>
+                ))}
+              </div>
+            ) : <p className="v12-field-guide-empty">No Range, output die, or Structure primitive is currently attached.</p>}
+            <aside>Range and output dice are purchased primitives. Structure records how the capability is delivered. The scales below describe the declared use at the table; they are guidance, not extra owned primitives.</aside>
+          </section>
+
+          <section className="v12-field-guide-declarations">
+            <header><div><b>Declare the action</b><small>These are table-facing descriptors. They do not add purchases by themselves.</small></div></header>
+            <div>
+              <article><b>Targets</b><p>Single · Multiple · Area</p></article>
+              <article><b>Shape</b><p>Direct · Cone · Line · Sphere · Zone · Beam</p></article>
+              <article><b>Size</b><p>One target · 5 ft · 10 ft · 20 ft · Custom</p></article>
+              <article><b>Placement</b><p>Self · Target · Point · Directional</p></article>
+              <article><b>Effect duration</b><p>Instant · Short · Medium · Long · Scene · Persistent · Permanent</p></article>
+              <article><b>Casting time</b><p>Action · Instant · Short · Medium · Long · Scene</p></article>
+              <article><b>Range <span className="v12-needs-primitive">Needs primitive</span></b><p>Touch · Close · Near · Far · Very Far · Extreme</p></article>
+              <article><b>Output die <span className="v12-needs-primitive">Needs primitive</span></b><p>None · d4 · d6 · d8 · d10 · d12 · d20</p></article>
+            </div>
+          </section>
+
+          <section className="v12-field-guide-intent">
+            <header><span>1</span><div><b>Read the intent</b><small>Three questions set the pressure.</small></div></header>
+            <div className="v12-field-guide-dials">
+              <article><b>Scale</b><p>Self or touch → single target → area → scene-wide</p></article>
+              <article><b>Impact</b><p>Minor → combat → fight swing → encounter break → reality pressure</p></article>
+              <article><b>Complexity</b><p>Simple → standard → advanced → exotic → reality-tier</p></article>
+            </div>
+          </section>
+
+          <section className="v12-field-guide-rhythm">
+            <header><span>2</span><div><b>Track</b><small>Track determines when the capability resolves in Combat Rhythm.</small></div></header>
+            <div>
+              <article><strong>Fast</strong><b>0–1</b><p>Immediate, direct, or simple.</p></article>
+              <article><strong>Measured</strong><b>2–3</b><p>Standard capability or multi-step action.</p></article>
+              <article><strong>Heavy</strong><b>4+</b><p>Scene-altering or extended; resolves last if still possible.</p></article>
+            </div>
+          </section>
+
+          <section className="v12-field-guide-duration">
+            <header><span>3</span><div><b>Duration</b><small>Duration determines how long the result exists after it resolves.</small></div></header>
+            <ol>
+              <li><b>Instant</b><span>Resolves and ends immediately.</span></li>
+              <li><b>Defined</b><span>Persists for a stated round, scene, or other time window without active maintenance.</span></li>
+              <li><b>Permanent</b><span>Remains until its fiction or rules end it; permanence does not automatically mean upkeep.</span></li>
+            </ol>
+          </section>
+
+          <section className="v12-field-guide-upkeep">
+            <header><span>4</span><div><b>Contextual upkeep</b><small>Active maintenance is separate from Track and Duration.</small></div></header>
+            <p>Upkeep is paid at the start of each turn while the user actively maintains the effect. The capability establishes that upkeep exists; the DM sets the amount at the table from the current pressure, scrutiny, interference, and circumstances.</p>
+            <p>Remaining invisible among commoners may cost little. Sustaining the same invisibility in a king’s court or among trained mages may cost more. The amount is contextual, not a fixed universal price printed permanently on the capability.</p>
+            <aside><b>Cost tradeoff.</b> Pay more upfront for an effect that sustains itself for its defined Duration, or pay less initially and accept smaller ongoing payments while maintaining it. If upkeep cannot be paid, the maintained effect ends.</aside>
+          </section>
+
+          <section className="v12-field-guide-cost">
+            <header><span>5</span><div><b>State the cost</b><small>The player hears the stakes before committing.</small></div></header>
+            <p>Greater scale, impact, complexity, or time compression raises Strain. Cost can be Vitality, a resource, an environmental hazard, a narrative twist, lost access, or a negotiated condition. The player may accept it, reduce the intent, propose a different cost, or abort before rolling.</p>
+          </section>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 // Phase 8.I i2 finish (Mashu 2026-08-06) — SpeedCard, DamageModifierRow,
 // DamageModifierRow. Small cards showing the i2.7 + i2 finish
 // primitives contributions to the character sheet.
@@ -1741,7 +1934,7 @@ function SpeedCard({
       className="v12-load-deck block w-full bg-card p-3 text-left transition-colors hover:bg-secondary/30"
       title="Show walking speed formula"
     >
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Speed
       </p>
       <p className="mt-1 font-mono text-2xl font-bold tabular-nums">
@@ -1781,7 +1974,7 @@ function DamageModifierRow({
 }) {
   return (
     <div className="flex items-center gap-1.5">
-      <span className={`text-[10px] font-semibold uppercase ${colorClass}`}>
+      <span className={`text-xs font-semibold uppercase ${colorClass}`}>
         {label}
       </span>
       <div className="flex flex-wrap gap-1">
@@ -1790,7 +1983,7 @@ function DamageModifierRow({
             key={t}
             type="button"
             onClick={onClick ? (e: React.MouseEvent<HTMLButtonElement>) => { e.preventDefault(); e.stopPropagation(); onClick(t); } : undefined}
-            className={`cursor-pointer rounded-full border border-current/30 bg-current/10 px-1.5 py-0.5 text-[10px] font-medium ${colorClass} hover:bg-current/20`}
+            className={`cursor-pointer rounded-full border border-current/30 bg-current/10 px-1.5 py-0.5 text-xs font-medium ${colorClass} hover:bg-current/20`}
             title={`Click to see ${t} damage modifier provenance`}
           >
             {t}
@@ -1801,64 +1994,6 @@ function DamageModifierRow({
   );
 }
 
-function BehaviorVariableRow({
-  bv,
-  onClick,
-}: {
-  readonly bv: {
-    readonly key: string;
-    readonly value: number;
-    readonly contributions: ReadonlyArray<{
-      readonly primitiveId: number;
-      readonly primitiveName: string;
-      readonly delta: number;
-    }>;
-  };
-  onClick: () => void;
-}) {
-  // Format the key for display: snake_case -> Title Case
-  const displayKey = bv.key
-    .split("_")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
-  const valueColor =
-    bv.value === 0
-      ? "text-muted-foreground"
-      : bv.value > 0
-        ? "text-teal-700 dark:text-teal-300"
-        : "text-destructive";
-  // Phase 8.J D-2: order adv/disadv first then *
-  // For behavior variables, the value IS the stack count.
-  // Show ⇈(N) for advantage, ⇊(N) for disadvantage, both regardless of count.
-  const isAdv = bv.key === "advantage";
-  const isDisadv = bv.key === "disadvantage";
-  const advIcon = isAdv ? `⇈(${bv.value})` : null;
-  const disadvIcon = isDisadv ? `⇊(${bv.value})` : null;
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full items-baseline justify-between gap-2 text-left transition-colors hover:bg-secondary/30"
-      title={`Show ${displayKey} provenance`}
-    >
-      <span className="text-[11px] font-medium text-foreground">
-        {displayKey}
-      </span>
-      <span
-        className={`font-mono text-xs font-semibold tabular-nums ${valueColor}`}
-        title={bv.contributions
-          .map((c) => `${c.primitiveName} ${c.delta >= 0 ? "+" : ""}${c.delta}`)
-          .join("\n")}
-      >
-        {advIcon ? (
-          <span className="text-emerald-600 dark:text-emerald-400">{advIcon}</span>
-        ) : disadvIcon ? (
-          <span className="text-red-600 dark:text-red-400">{disadvIcon}</span>
-        ) : bv.value > 0 ? `+${bv.value}` : bv.value}
-      </span>
-    </button>
-  );
-}
 
 function LoadCell({
   encumbrance,
@@ -1880,7 +2015,7 @@ function LoadCell({
       title="Show encumbrance formula"
       aria-label="Show encumbrance formula"
     >
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Load
       </p>
       <p className="mt-1 font-mono text-2xl font-bold tabular-nums">
@@ -2013,16 +2148,16 @@ function ModSaveProvenanceModal({
   const saveDelta = resolver.totals[saveTarget] ?? (pb + attrDelta);
   const saveTotal = saveDelta;
 
-  return (
+  return createPortal(
     <div
-      className="v12-formula-backdrop fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 pt-16 pb-24 backdrop-blur-sm overflow-y-auto"
+      className="v12-formula-backdrop fixed inset-0 z-[120] flex items-center justify-center overflow-hidden bg-black/50 p-3 backdrop-blur-sm sm:p-5"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label={`Formula for ${attr.toUpperCase()} mod + save`}
     >
       <div
-        className="v12-formula-modal flex max-h-[75vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+        className="v12-formula-modal v12-calculation-instrument v12-mod-save-modal v12-instrument-dialog flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[1180px] flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl sm:max-h-[calc(100dvh-2.5rem)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="v12-formula-head flex items-center justify-between border-b border-border px-4 py-3">
@@ -2045,7 +2180,7 @@ function ModSaveProvenanceModal({
           </button>
         </div>
 
-        <div className="v12-formula-body flex-1 overflow-y-auto px-4 py-3 space-y-4">
+        <div className="v12-formula-body v12-calculation-body v12-mod-save-body min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3">
           <FormulaModalSection
             target={attrTarget}
             resolver={resolver}
@@ -2085,7 +2220,8 @@ function ModSaveProvenanceModal({
           />
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -2123,9 +2259,10 @@ function FormulaModalSection({
           {target && <AxisMarkers byTarget={resolver.byTarget} target={target} />}
         </span>
       </div>
-      <p className="mb-2 rounded-md border border-border bg-background p-2 font-mono text-xs leading-relaxed text-foreground">
-        {formula}
-      </p>
+      <div className="v12-calculation-intro" title={formula}>
+        <span>Calculation</span>
+        <p>{title} combines the active entries below in order. Limits apply to the result after additions and subtractions.</p>
+      </div>
       {breakdown.length === 0 ? (
         <p className="text-sm text-muted-foreground">{fallbackMessage}</p>
       ) : (
@@ -2135,26 +2272,45 @@ function FormulaModalSection({
         // body still scrolls for cases where >8 items need to
         // be visible at once.
         <ul className="max-h-[40dvh] space-y-2 overflow-y-auto pr-1">
-          {breakdown.map((step, i) => (
-            <li
-              key={`${step.label}-${i}`}
-              className="rounded-md border border-border bg-background p-2.5"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{step.label}</p>
-                  {step.via && (
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">
-                      via {step.via}
-                    </p>
-                  )}
+          {breakdown.map((step, i) => {
+            const contribution = step.contribution;
+            if (contribution) {
+              const conditionText = contribution.condition
+                ? humanReadableCondition(contribution.condition as Parameters<typeof humanReadableCondition>[0]).trim()
+                : "";
+              return (
+                <li key={`${step.label}-${i}`} className={cn("v12-contribution-row", contribution.inhibited && "is-inactive")}>
+                  <div className="v12-contribution-main">
+                    <div className="v12-contribution-copy">
+                      <p className="v12-contribution-name" title={step.label}>{step.label}</p>
+                      {step.via ? <p className="v12-contribution-via" title={step.via}><span>via</span> {step.via}</p> : null}
+                    </div>
+                    <div className={cn("v12-contribution-statement", `is-${contribution.op}`)}>
+                      <span>{operationVerb(contribution.op)}</span>
+                      <strong>{operationValue(contribution.op, contribution.value, grantedKeyword(contribution.rawValue))}</strong>
+                      <small>{contribution.op === "grant" || contribution.op === "revoke" ? "for" : "to"} {humanizeMechanicalTarget(contribution.target)}</small>
+                      {conditionText ? <em>when {conditionText}</em> : null}
+                    </div>
+                  </div>
+                  <div className="v12-contribution-flags">
+                    {contribution.preMirrorValue !== null ? <span className="v12-contribution-flag is-mirrored">mirrored {fmt(contribution.preMirrorValue)} → {fmt(contribution.value)}</span> : null}
+                    {contribution.inhibited || contribution.conditionActive === false ? <span className="v12-contribution-flag is-inhibited">inhibited</span> : contribution.hasCondition ? <span className="v12-contribution-flag is-engaged">condition engaged</span> : null}
+                  </div>
+                </li>
+              );
+            }
+            return (
+              <li key={`${step.label}-${i}`} className="v12-formula-ledger-row">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{step.label}</p>
+                    {step.via ? <p className="mt-0.5 text-[11px] text-muted-foreground">via {step.via}</p> : null}
+                  </div>
+                  <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">{fmt(step.value)}</span>
                 </div>
-                <span className="shrink-0 font-mono font-semibold tabular-nums">
-                  {fmt(step.value)}
-                </span>
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
       {/* Phase 8.L round 114 (Mashu 2026-08-26): show equation-style
@@ -2181,36 +2337,40 @@ function formatViaForSteps(c: import("@/lib/engine/resolve-modifiers").ModifierC
   return parts.join(" → ");
 }
 
+function contributionKey(
+  c: import("@/lib/engine/resolve-modifiers").ModifierContribution,
+): string {
+  return [
+    c.primitiveId,
+    c.target,
+    c.op,
+    c.value,
+    c.originCapabilityId ?? "",
+    c.provenance.effectName ?? "",
+    c.provenance.accordion ?? "",
+    c.provenance.heritageName ?? "",
+  ].join("|");
+}
+
+function uniqueContributions(
+  contributions: readonly import("@/lib/engine/resolve-modifiers").ModifierContribution[],
+) {
+  const seen = new Set<string>();
+  return contributions.filter((contribution) => {
+    const key = contributionKey(contribution);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function ContribListItem({ c, setRawTokensOpen, isOff, offReason }: {
   c: import("@/lib/engine/resolve-modifiers").ModifierContribution;
   setRawTokensOpen: (cond: unknown) => void;
   isOff: boolean;
-  /**
-   * Phase 8.L round 26 (Mashu): WHY isOff is true. Drives the
-   * label so we don't say "(capability OFF)" when the actual
-   * reason is "condition not met" (which affects DIRECT
-   * primitives too, not just capability-owned ones).
-   */
   offReason?: "capability" | "condition" | null;
 }) {
-  const OP_LABEL: Record<string, string> = {
-    add: "+",
-    subtract: "−",
-    set: "=",
-    min: "↑",
-    max: "↓",
-    multiply: "×",
-    divide: "÷",
-    grant: "grant",
-    revoke: "revoke",
-  };
   const fmt = (n: number | null | undefined) => (n === null || n === undefined ? "" : n >= 0 ? `+${n}` : `${n}`);
-  // Phase 8.J M1+M7: min/max rows omit prefix and OP_LABEL
-  const isLimit = c.op === "min" || c.op === "max";
-  // Phase 8.J M3 + Phase 8.L round 13: provenance breadcrumb
-  // (full chain incl. accordion as OUTERMOST element).
-  // Per Mashu: "accordeon name if not direct primitive > heritage
-  // name if nested in heritage > Capability > Effect"
   const prov = c.provenance;
   const breadcrumb = [
     prov.accordion ?? null,
@@ -2218,97 +2378,36 @@ function ContribListItem({ c, setRawTokensOpen, isOff, offReason }: {
     prov.capabilityName,
     prov.effectName,
   ].filter(Boolean).join(" › ") || "Direct";
-
-  // Phase 8.J D-5: human-readable condition text
   const condText = c.condition
     ? humanReadableCondition(c.condition as Parameters<typeof humanReadableCondition>[0])
     : null;
+  const keyword = c.op === "grant" ? grantedKeyword(c.rawValue) : null;
+  const value = operationValue(c.op, c.value, keyword);
+  const target = humanizeMechanicalTarget(c.target);
   return (
-    <li className="rounded-md border border-border bg-background p-1.5">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <p
-            className={cn(
-              "truncate text-xs font-medium",
-              isExpertiseName(c.primitiveName) && "font-bold text-teal-700 dark:text-teal-300",
-              isProficiencyName(c.primitiveName) && "text-teal-700 dark:text-teal-300",
-              isOff && "text-muted-foreground line-through"
-            )}
-            title={c.primitiveName}
-          >
+    <li className={cn("v12-contribution-row", isOff && "is-inactive")}>
+      <div className="v12-contribution-main">
+        <div className="v12-contribution-copy">
+          <p className={cn("v12-contribution-name", isOff && "text-muted-foreground line-through")} title={c.primitiveName}>
             {c.primitiveName}
-            {isOff && offReason === "capability" ? (
-              <span className="ml-2 text-[9px] uppercase tracking-wide">(capability OFF)</span>
-            ) : null}
-            {isOff && offReason === "condition" ? (
-              <span className="ml-2 text-[9px] uppercase tracking-wide">(condition not met)</span>
-            ) : null}
+            {isOff ? <span className="v12-contribution-status">{offReason === "condition" ? "condition not met" : "capability inactive"}</span> : null}
           </p>
-          <p className="mt-0.5 truncate text-[10px] text-muted-foreground/70" title={breadcrumb}>
-            via {breadcrumb}
-          </p>
+          <p className="v12-contribution-via" title={breadcrumb}><span>From</span> {breadcrumb}</p>
+        </div>
+        <div className={cn("v12-contribution-statement", `is-${c.op}`)}>
+          <span>{operationVerb(c.op)}</span>
+          <strong>{value}</strong>
+          <small>{c.op === "grant" || c.op === "revoke" ? "for" : "to"} {target}</small>
           {condText ? (
-            <button
-              type="button"
-              onClick={() => setRawTokensOpen(c.condition)}
-              className="mt-0.5 cursor-pointer text-[10px] italic text-amber-700 dark:text-amber-400 underline-offset-2 hover:underline"
-            >
+            <button type="button" onClick={() => setRawTokensOpen(c.condition)} className="v12-contribution-condition">
               when {condText}
             </button>
           ) : null}
         </div>
-        <div className="flex shrink-0 items-center gap-1 text-xs">
-          {!isLimit ? (
-            // Phase 8.L round 125 (Mashu 2026-08-26): operator
-            // rendered LARGE color-coded (matches the rest of
-            // the modals); value rendered SMALLER + gray.
-            // Previously the operator was small/gray and the
-            // value was bold — inverted from the desired
-            // treatment.
-            <span className={cn(
-              "font-mono text-base font-bold leading-none",
-              OP_COLOR[c.op] ?? "text-foreground",
-            )}>
-              {OP_LABEL[c.op] ?? c.op}
-            </span>
-          ) : (
-            // Phase 8.L: Floor/Ceiling as orange ↥/↧ per the
-            // color rules — limits are informational indicators,
-            // not modifiers.
-            <span className={cn(
-              "font-mono text-base font-bold leading-none",
-              OP_COLOR[c.op] ?? "text-foreground",
-            )}>
-              {OP_LABEL[c.op] ?? c.op}
-            </span>
-          )}
-          <span className={cn(
-            "font-mono text-[11px] tabular-nums text-muted-foreground",
-            isExpertiseName(c.primitiveName) && "font-bold text-teal-700 dark:text-teal-300",
-            isProficiencyName(c.primitiveName) && "text-teal-700 dark:text-teal-300",
-            isLimit && "text-orange-700 dark:text-orange-400",
-            isOff && "text-muted-foreground line-through"
-          )}>
-            {c.op === "grant" && c.rawValue && typeof c.rawValue === "object" && (c.rawValue as { kind?: string }).kind === "keyword" ? (
-              // Phase 8.L: keyword grants (advantage/disadvantage/etc.)
-              // show the keyword as a colored chip, not the literal
-              // `grant 0` text.
-              (() => {
-                const kw = grantedKeyword(c.rawValue) ?? "Unknown grant";
-                const isAdv = kw === "advantage";
-                const isDisadv = kw === "disadvantage";
-                const cls = isAdv
-                  ? "rounded bg-emerald-500/20 px-1.5 py-0.5 text-emerald-700 dark:text-emerald-300"
-                  : isDisadv
-                    ? "rounded bg-red-500/20 px-1.5 py-0.5 text-red-700 dark:text-red-300"
-                    : "rounded bg-purple-500/20 px-1.5 py-0.5 text-purple-700 dark:text-purple-300";
-                return <span className={cls}>{kw}</span>;
-              })()
-            ) : (
-              formatOperandValue(c.value)
-            )}
-          </span>
-        </div>
+      </div>
+      <div className="v12-contribution-flags">
+        {c.preMirrorValue !== null ? <span className="v12-contribution-flag is-mirrored">Mirrored {fmt(c.preMirrorValue)} → {fmt(c.value)}</span> : null}
+        {isOff ? <span className="v12-contribution-flag is-inhibited">Inactive</span> : c.hasCondition ? <span className="v12-contribution-flag is-engaged">Condition active</span> : null}
       </div>
     </li>
   );
@@ -2390,13 +2489,14 @@ function PracticeDetailModal({
   // same as the attribute's primitive contributions —
   // practices inherit the attribute's resolver total.
   const attrTarget = `attribute.${practice.attribute}`;
-  const contributions = byTarget[attrTarget] ?? [];
+  const contributions = uniqueContributions(byTarget[attrTarget] ?? []);
   const attrDelta = attrMod - attrBase;
   // Practice-specific primitive contributions (e.g. Proficient Fieldcraft,
   // Iron Will) target `skill_practice_check.<practice>`. These are
   // SEPARATE from the attribute primitives — both feed into the
   // practice total.
   const practiceTarget = `skill_practice_check.${practice.name.toLowerCase()}`;
+  const practiceContributions = uniqueContributions(byTarget[practiceTarget] ?? []);
   const practicePrimitiveTotal = byTarget[practiceTarget]
     ?.reduce((sum, c) => {
       // Phase 8.L: floor/ceiling (op=min/max) are informational,
@@ -2422,7 +2522,7 @@ function PracticeDetailModal({
       if (c.inhibited) return max;
       return c.op === "max" && c.value < max ? c.value : max;
     }, Infinity);
-  const practiceMaxDisplay = practiceMax === Infinity ? null : practiceMax;
+  const practiceMaxDisplay = practiceMax == null || practiceMax === Infinity ? null : practiceMax;
   // Mirror-style trace: show the formula
   //   total = attrBase + (PB if prof) + attrDelta
   // It's the same as the Save DC formula except the
@@ -2431,15 +2531,16 @@ function PracticeDetailModal({
 
   return (
     <Fragment>
+    {createPortal(
     <div
-      className="v12-formula-backdrop fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 pt-16 pb-24 backdrop-blur-sm overflow-y-auto"
+      className="v12-formula-backdrop fixed inset-0 z-[120] flex items-center justify-center overflow-hidden bg-black/50 p-3 backdrop-blur-sm sm:p-5"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label={`Formula for ${practice.name}`}
     >
       <div
-        className="v12-formula-modal flex max-h-[75vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+        className="v12-formula-modal v12-calculation-instrument v12-instrument-dialog v12-practice-modal flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[1180px] flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl sm:max-h-[calc(100dvh-2.5rem)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="v12-formula-head flex items-center justify-between gap-2 border-b border-border bg-card px-4 py-3 shrink-0">
@@ -2460,15 +2561,15 @@ function PracticeDetailModal({
           </button>
         </div>
 
-        <div className="v12-formula-body flex-1 overflow-y-auto px-4 py-3 space-y-4">
+        <div className="v12-formula-body v12-calculation-body min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 space-y-4">
           {/* Phase 8.L round 16: practice description lives
               INSIDE the scroll area (was in the sticky header
               and forced the modal to overflow on mobile).
               Per Mashu: "the header is not part of scroll...
               Only the name has to be sticky not the
               description or the accordions." */}
-          <section>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+          <section className="v12-practice-about">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
               About this practice
             </p>
             {(() => {
@@ -2483,7 +2584,7 @@ function PracticeDetailModal({
                   </p>
                   {desc.mayInclude && desc.mayInclude.length > 0 ? (
                     <details className="rounded border border-border bg-background/40 px-1.5 py-1">
-                      <summary className="cursor-pointer list-none font-semibold uppercase tracking-wide text-[10px] text-muted-foreground">
+                      <summary className="cursor-pointer list-none font-semibold uppercase tracking-wide text-xs text-muted-foreground">
                         May include ({desc.mayInclude.length})
                       </summary>
                       <ul className="mt-0.5 list-disc pl-4 text-[11px] text-muted-foreground/85">
@@ -2495,7 +2596,7 @@ function PracticeDetailModal({
                   ) : null}
                   {desc.examples && desc.examples.length > 0 ? (
                     <details className="rounded border border-border bg-background/40 px-1.5 py-1">
-                      <summary className="cursor-pointer list-none font-semibold uppercase tracking-wide text-[10px] text-muted-foreground">
+                      <summary className="cursor-pointer list-none font-semibold uppercase tracking-wide text-xs text-muted-foreground">
                         Examples ({desc.examples.length})
                       </summary>
                       <ul className="mt-0.5 list-disc pl-4 text-[11px] italic text-muted-foreground/85">
@@ -2506,10 +2607,10 @@ function PracticeDetailModal({
                     </details>
                   ) : null}
                   {desc.versus ? (
-                    <p className="rounded border border-amber-500/30 bg-amber-500/5 px-1.5 py-1 text-[11px] italic text-amber-700 dark:text-amber-300">
-                      <span className="not-italic font-semibold">Boundary:</span>{" "}
-                      {desc.versus}
-                    </p>
+                    <details className="v12-practice-boundary">
+                      <summary>Practice boundary</summary>
+                      <p>{desc.versus}</p>
+                    </details>
                   ) : null}
                 </div>
               );
@@ -2522,49 +2623,28 @@ function PracticeDetailModal({
               </span>
               <span className="font-mono text-xl font-bold tabular-nums">
                 {fmt(practice.total)}
-                <AxisMarkers byTarget={byTarget} target={practiceTarget} />
               </span>
             </div>
-            <p className="mb-2 rounded-md border border-border bg-background p-2 font-mono text-xs leading-relaxed text-foreground">
-              Practice = {practice.attribute.toUpperCase()} attribute (mod) +
-              practice primitive contributions + PB (if proficient)
-            </p>
-            <p className="rounded-md border border-dashed border-border bg-background/50 p-2 font-mono text-[11px]">
-              {/* Phase 8.L round 122 (Mashu 2026-08-26): the
-                  practice trace now uses the same color-coded
-                  operator + small-value format as the other
-                  modals. Previously it was a single line of
-                  +6 +6 +8 = +20 with no color, hard to scan. */}
-              <span className="text-muted-foreground">{formatOperandValue(attrMod)}</span>{" "}
-              <span className="text-muted-foreground/70">(attr mod)</span>{" "}
-              {isProf && (
-                <>
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400">+</span>
-                  <span className="text-muted-foreground">{formatOperandValue(pb)}</span>{" "}
-                  <span className="text-muted-foreground/70">(PB)</span>{" "}
-                </>
-              )}
-              {practicePrimitiveTotal !== 0 && (
-                <>
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400">+</span>
-                  <span className="text-muted-foreground">{formatOperandValue(practicePrimitiveTotal)}</span>{" "}
-                  <span className="text-muted-foreground/70">(practice primitives)</span>{" "}
-                </>
-              )}
-              <span className="font-semibold text-foreground">= {fmt(practice.total)}</span>
-              <AxisMarkers byTarget={byTarget} target={practiceTarget} />
-            </p>
+            <div className="v12-equation-board" aria-label="Practice total calculation">
+              <div><span>Attribute modifier</span><strong>{fmt(attrMod)}</strong></div>
+              <i>+</i>
+              <div><span>Proficiency</span><strong>{isProf ? fmt(pb) : "—"}</strong></div>
+              <i>+</i>
+              <div><span>Practice effects</span><strong>{fmt(practicePrimitiveTotal)}</strong></div>
+              <i>=</i>
+              <div className="is-result"><span>Practice total</span><strong>{fmt(practice.total)}</strong></div>
+            </div>
             {(practiceMin > 0 || practiceMaxDisplay !== null) ? (
-              <p className="mt-1 font-mono text-[10px] text-orange-700 dark:text-orange-400">
-                Floor / Ceiling (informational, not summed):
-                {practiceMin > 0 ? <span className="ml-1">↥<strong className="ml-0.5">{practiceMin}</strong></span> : null}
-                {practiceMaxDisplay !== null ? <span className="ml-2">↧<strong className="ml-0.5">{practiceMaxDisplay}</strong></span> : null}
-              </p>
+              <div className="v12-roll-limits">
+                <span>Roll limits</span>
+                {practiceMin > 0 ? <strong>Results cannot fall below {practiceMin}</strong> : null}
+                {practiceMaxDisplay !== null ? <strong>Results cannot exceed {practiceMaxDisplay}</strong> : null}
+              </div>
             ) : null}
           </section>
 
           <section>
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Consequences
             </p>
             {(() => {
@@ -2576,41 +2656,34 @@ function PracticeDetailModal({
                 return <p className="text-xs text-muted-foreground">No active consequences.</p>;
               return (
                 <ul className="space-y-1">
-                  {allContribs.map((c, i) => (
-                    <li key={`cond-${i}`} className="flex flex-col gap-1 rounded-md border border-amber-500/30 bg-amber-500/5 px-2 py-1 text-xs">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="flex flex-wrap items-center gap-1">
+                  {allContribs.map((c, i) => {
+                    const conditionText = c.condition
+                      ? humanReadableCondition(c.condition as Parameters<typeof humanReadableCondition>[0]).trim()
+                      : "";
+                    return <li key={`cond-${i}`} className="flex flex-col gap-1 rounded-md border border-amber-500/30 bg-amber-500/5 px-2 py-1 text-xs">
+                      <div className="v12-condition-contribution">
+                        <span className="v12-condition-contribution-name">
                           <strong>{c.primitiveName}</strong>
-                          {/* Phase 8.L round 122: operator is
-                              color-coded + large, value is small
-                              + gray — same as the breakdown rows. */}
-                          <span className={cn(
-                            "font-mono text-base font-bold leading-none",
-                            OP_COLOR[c.op] ?? "text-foreground",
-                          )}>
-                            {OP_LABEL[c.op] ?? c.op}
-                          </span>
-                          <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
-                            {formatOperandValue(c.value)}
-                          </span>
                         </span>
-                        <span className={cn("font-mono text-[10px]", c.conditionActive === false ? "text-red-500" : "text-teal-600 dark:text-teal-400")}>
+                        <span className={cn("v12-contribution-statement", `is-${c.op}`)}>
+                          <span>{operationVerb(c.op)}</span>
+                          <strong>{operationValue(c.op, c.value, grantedKeyword(c.rawValue))}</strong>
+                          <small>{c.op === "grant" || c.op === "revoke" ? "for" : "to"} {humanizeMechanicalTarget(c.target)}</small>
+                          {conditionText ? <em>when {conditionText}</em> : null}
+                        </span>
+                        <span className={cn("font-mono text-xs", c.conditionActive === false ? "text-red-500" : "text-teal-600 dark:text-teal-400")}>
                           {c.conditionActive === false ? "⛔ Inhibited" : c.conditionActive === true ? "✓ Engaged" : "— inactive"}
                         </span>
                       </div>
-                      <span className="flex flex-wrap items-center gap-1 text-[11px] italic text-muted-foreground">
-                        <span className="font-semibold">when</span>
-                        {c.condition ? renderConditionChips(c.condition) : "no condition"}
-                      </span>
-                    </li>
-                  ))}
+                    </li>;
+                  })}
                 </ul>
               );
             })()}
           </section>
 
           <section>
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Attribute primitives (affect practice base)
             </p>
             {contributions.length === 0 ? (
@@ -2639,17 +2712,16 @@ function PracticeDetailModal({
           </section>
 
           <section>
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Practice primitives
             </p>
-            {byTarget[practiceTarget]?.length === 0 ||
-            !byTarget[practiceTarget] ? (
+            {practiceContributions.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No practice-specific primitive contributes here.
               </p>
             ) : (
               <ul className="space-y-2">
-                {byTarget[practiceTarget]!.map((c, i) => (
+                {practiceContributions.map((c, i) => (
                   <ContribListItem
                       key={`prac-${c.primitiveId}-${i}`}
                       c={c}
@@ -2670,6 +2742,8 @@ function PracticeDetailModal({
         </div>
       </div>
     </div>,
+      document.body,
+    )}
       {rawTokensOpen !== null
         ? createPortal(
             <div
@@ -2782,16 +2856,16 @@ function EncumbranceFormulaModal({
 
   const fmt = (n: number | null | undefined) => (n === null || n === undefined ? "" : n >= 0 ? `+${n}` : `${n}`);
 
-  return (
+  return createPortal(
     <div
-      className="v12-formula-backdrop fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 pt-16 pb-24 backdrop-blur-sm overflow-y-auto"
+      className="v12-formula-backdrop fixed inset-0 z-[120] flex items-center justify-center overflow-hidden bg-black/50 p-3 backdrop-blur-sm sm:p-5"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label={`Formula for Encumbrance`}
     >
       <div
-        className="v12-formula-modal flex max-h-[75vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+        className="v12-formula-modal v12-calculation-instrument v12-instrument-dialog flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[1180px] flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl sm:max-h-[calc(100dvh-2.5rem)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="v12-formula-head flex items-center justify-between border-b border-border px-4 py-3">
@@ -2812,19 +2886,17 @@ function EncumbranceFormulaModal({
           </button>
         </div>
 
-        <div className="v12-formula-body flex-1 overflow-y-auto px-4 py-3 space-y-4">
+        <div className="v12-formula-body v12-calculation-body v12-encumbrance-body min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 space-y-4">
           {/* Static formula */}
-          <section>
-            <p className="v12-formula-section-label">Rule</p>
-            <p className="rounded-md border border-border bg-background p-2.5 font-mono text-sm leading-relaxed">
-              Capacity = Size base + (Physical Mod × 5) + item bonuses
-              <br />
-              Load = Σ (item.size load value × quantity)
-            </p>
+          <section className="v12-formula-rule-panel">
+            <div className="v12-rule-overview">
+              <div><span>Carrying status</span><strong>{encumbrance.encumbered ? "Encumbered" : `${capacity - load} free`}</strong></div>
+              <p>Capacity starts with the character’s size allowance, adds five times their Physical modifier, then applies carrying primitives. Load is the combined size load of every carried item, including equipped items.</p>
+            </div>
           </section>
 
           {/* Capacity breakdown */}
-          <section>
+          <section className="v12-encumbrance-capacity">
             <div className="mb-2 flex items-baseline justify-between gap-2">
               <span className="text-xs font-semibold uppercase text-muted-foreground">
                 Capacity
@@ -2833,52 +2905,31 @@ function EncumbranceFormulaModal({
                 {fmt(capacity)}
               </span>
             </div>
-            <p className="rounded-md border border-dashed border-border bg-background/50 p-2 font-mono text-[11px]">
-              {/* Phase 8.L round 122 (Mashu 2026-08-26): color-coded
-                  operator + small-value format. × is shown in
-                  violet (multiply color), + is emerald. */}
-              <span className="text-muted-foreground">{formatOperandValue(sizeCap)}</span>{" "}
-              <span className="text-muted-foreground/70">(size: {characterSize})</span>{" "}
-              <span className="font-bold text-emerald-600 dark:text-emerald-400">+</span>
-              <span className="text-muted-foreground">{formatOperandValue(physBonus)}</span>{" "}
-              <span className="text-muted-foreground/70">(Physical value × 5)</span>
-              {primitiveBonus !== 0 && (
-                <>
-                  {" "}
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400">+</span>
-                  <span className="text-muted-foreground">{formatOperandValue(primitiveBonus)}</span>{" "}
-                  <span className="text-muted-foreground/70">(primitives)</span>
-                </>
-              )}{" "}
-              <span className="font-semibold text-foreground">= {fmt(capacity)}</span>
-            </p>
+            <div className="v12-equation-board" aria-label="Capacity calculation">
+              <div><span>{characterSize.toLowerCase()} size</span><strong>{sizeCap}</strong></div><i>+</i>
+              <div><span>Physical × 5</span><strong>{fmt(physBonus)}</strong></div><i>+</i>
+              <div><span>Carrying effects</span><strong>{fmt(primitiveBonus)}</strong></div><i>=</i>
+              <div className="is-result"><span>Capacity</span><strong>{capacity}</strong></div>
+            </div>
             {primitiveContributions && primitiveContributions.length > 0 ? (
               <ul className="mt-2 space-y-1">
                 {primitiveContributions.map((p) => (
-                  <li key={`${p.id}-${p.target}`} className="rounded-md border border-border bg-background px-2 py-1.5">
-                    <div className="flex items-center justify-between gap-1.5">
-                      <span className="truncate font-medium">{p.name}</span>
-                      <div className="flex shrink-0 items-center gap-1">
-                        <span className={cn(
-                          "font-mono text-base font-bold leading-none",
-                          OP_COLOR[p.op] ?? "text-foreground",
-                        )}>
-                          {OP_LABEL[p.op] ?? p.op}
-                        </span>
-                        <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                          {formatOperandValue(p.value)}
-                        </span>
-                      </div>
+                  <li key={`${p.id}-${p.target}`} className="v12-contribution-row">
+                    <div className="v12-contribution-main">
+                      <span className="v12-contribution-name">{p.name}</span>
+                      <span className={cn("v12-contribution-statement", `is-${p.op}`)}>
+                        <span>{operationVerb(p.op)}</span><strong>{operationValue(p.op, p.value)}</strong><small>to carrying capacity</small>
+                      </span>
                     </div>
                     {(p.provenance.heritageName || p.provenance.capabilityName || p.provenance.effectName) ? (
-                      <span className="pl-1 text-[10px] italic text-muted-foreground">
+                      <span className="pl-1 text-xs italic text-muted-foreground">
                         via{" "}
                         {[p.provenance.accordion ?? null, p.provenance.heritageName, p.provenance.capabilityName, p.provenance.effectName]
                           .filter(Boolean)
                           .join(" › ")}
                       </span>
                     ) : (
-                      <span className="pl-1 text-[10px] italic text-muted-foreground">via Direct</span>
+                      <span className="pl-1 text-xs italic text-muted-foreground">via Direct</span>
                     )}
                   </li>
                 ))}
@@ -2912,27 +2963,27 @@ function EncumbranceFormulaModal({
               per Mashu L10: equip-slot primitives render their own section. */}
           {equipSlotContributions && equipSlotContributions.length > 0 ? (
             <section>
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Equip-slot primitives
               </p>
               <ul className="space-y-1">
                 {equipSlotContributions.map((p) => (
-                  <li key={`${p.id}-${p.target}`} className="rounded-md border border-border bg-background px-2 py-1.5">
-                    <div className="flex items-center justify-between gap-1.5">
-                      <span className="truncate font-medium">{p.name}</span>
-                      <span className="shrink-0 font-mono text-teal-700 dark:text-teal-300">
-                        {p.value >= 0 ? `+${p.value}` : p.value}
+                  <li key={`${p.id}-${p.target}`} className="v12-contribution-row">
+                    <div className="v12-contribution-main">
+                      <span className="v12-contribution-name">{p.name}</span>
+                      <span className={cn("v12-contribution-statement", `is-${p.op}`)}>
+                        <span>{operationVerb(p.op)}</span><strong>{operationValue(p.op, p.value)}</strong><small>to equip slots</small>
                       </span>
                     </div>
                     {(p.provenance.heritageName || p.provenance.capabilityName || p.provenance.effectName) ? (
-                      <span className="pl-1 text-[10px] italic text-muted-foreground">
+                      <span className="pl-1 text-xs italic text-muted-foreground">
                         via{" "}
                         {[p.provenance.accordion ?? null, p.provenance.heritageName, p.provenance.capabilityName, p.provenance.effectName]
                           .filter(Boolean)
                           .join(" › ")}
                       </span>
                     ) : (
-                      <span className="pl-1 text-[10px] italic text-muted-foreground">via Direct</span>
+                      <span className="pl-1 text-xs italic text-muted-foreground">via Direct</span>
                     )}
                   </li>
                 ))}
@@ -2942,55 +2993,31 @@ function EncumbranceFormulaModal({
 
           {/* Reference — Equip slots summary */}
           <section>
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Reference — Equip slots
             </p>
-            <div className="rounded-md border border-border bg-background p-2.5 text-sm">
-              <p className="font-mono text-xs">
-                {encumbrance.equipSlotsAvailable} universal equip slots available
-                ({encumbrance.equipSlotsUsed} used)
-                {encumbrance.equipSlotsAvailable - encumbrance.equipSlotsUsed >
-                encumbrance.equipSlotsUsed + 0 ? "" : ""}.
-              </p>
-              <p className="mt-0.5 font-mono text-[10px] text-muted-foreground/80">
-                6 base + {encumbrance.equipSlotsAvailable - 6} from primitives
-              </p>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                2H items use at least 2 slots depending on bulk.
-                Equipped items also contribute to Load.
-              </p>
+            <div className="v12-equip-reference">
+              <div><span>Available</span><strong>{encumbrance.equipSlotsAvailable}</strong></div>
+              <div><span>Used</span><strong>{encumbrance.equipSlotsUsed}</strong></div>
+              <div><span>From primitives</span><strong>{fmt(encumbrance.equipSlotsAvailable - 6)}</strong></div>
+              <p>Two-handed items use at least two slots depending on bulk. Equipped items also contribute to Load.</p>
             </div>
           </section>
 
           {/* Size table + pouch rule */}
           <section>
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Reference — Size table
             </p>
-            <div className="rounded-md border border-border bg-background p-2.5 text-sm">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-border text-muted-foreground">
-                    <th className="py-1 text-left font-semibold uppercase">Size</th>
-                    <th className="py-1 text-right font-semibold uppercase">Capacity</th>
-                    <th className="py-1 text-right font-semibold uppercase">Load / item</th>
-                  </tr>
-                </thead>
-                <tbody className="font-mono">
-                  {(["TINY", "SMALL", "MEDIUM", "LARGE", "HUGE", "GARGANTUAN"] as const).map((sz) => (
-                    <tr key={sz} className={sz === characterSize ? "bg-teal-500/10" : ""}>
-                      <td className="py-0.5">{sz.toLowerCase()}</td>
-                      <td className="py-0.5 text-right tabular-nums">
-                        {SIZE_CAPACITY[sz]}
-                      </td>
-                      <td className="py-0.5 text-right tabular-nums">
-                        {sz === "TINY" ? "0*" : SIZE_LOAD[sz]}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <p className="mt-2 text-[11px] text-muted-foreground">
+            <div className="v12-size-reference">
+              {(["TINY", "SMALL", "MEDIUM", "LARGE", "HUGE", "GARGANTUAN"] as const).map((sz) => (
+                <article key={sz} className={sz === characterSize ? "is-current" : ""}>
+                  <strong>{sz.toLowerCase()}</strong>
+                  <span><small>Capacity</small>{SIZE_CAPACITY[sz]}</span>
+                  <span><small>Load / item</small>{sz === "TINY" ? "0*" : SIZE_LOAD[sz]}</span>
+                </article>
+              ))}
+              <p>
                 * Tiny items are tracked via pouches: 1 Pouch = up to 1000 Tiny Items
                 = 1 Load. Includes coins, gems, scrolls, nails, etc.
               </p>
@@ -2998,6 +3025,7 @@ function EncumbranceFormulaModal({
           </section>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

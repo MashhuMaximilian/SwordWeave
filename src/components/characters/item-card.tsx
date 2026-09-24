@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { useToasts } from "@/components/ui/toast";
 import { SlotSourceBadge } from "@/components/characters/slot-source-badge";
-import { makeKey as makeVersionKey, type VersionKey } from "@/lib/versions/version-key";
+import type { VersionKey } from "@/lib/versions/version-key";
 import {
   SIZE_LOAD,
   TINY_ITEMS_PER_POUCH,
@@ -38,6 +38,11 @@ import { ItemCapabilityToggle } from "@/components/characters/item-capability-to
 import { useEntityPreview } from "@/components/characters/preview-modal";
 import { cn } from "@/lib/utils";
 import { Markdown } from "@/components/ui/markdown";
+import {
+  CompactCompositeCard,
+  CompactHierarchyBranch,
+  CompactPrimitiveCard,
+} from "@/components/characters/compact-hierarchy";
 
 interface EquipResponse {
   character: { id: string; itemId: string };
@@ -126,6 +131,7 @@ export interface ItemCardProps {
 
 type ItemNestedPrimitive = {
   primitiveId: number;
+  quantity?: number | null;
   primitive: {
     id: number;
     name: string;
@@ -135,6 +141,17 @@ type ItemNestedPrimitive = {
     mechanicalOutputText?: string | null;
   };
 };
+
+function primitiveLinkBu(link: ItemNestedPrimitive): number {
+  return Math.abs((link.primitive.buCost ?? 0) * (link.quantity ?? 1));
+}
+
+function effectCompositionBu(effect: ItemNestedEffect["effect"]): number {
+  return (effect.primitiveLinks ?? []).reduce(
+    (total, primitiveLink) => total + primitiveLinkBu(primitiveLink),
+    0,
+  );
+}
 
 type ItemNestedEffect = {
   effectId: string;
@@ -149,52 +166,30 @@ type ItemNestedEffect = {
 
 function ItemPrimitiveCompositionRow({
   link,
-  latestVersions,
   onOpen,
 }: {
   link: ItemNestedPrimitive;
-  latestVersions?: Map<VersionKey, string> | undefined;
   onOpen: (primitiveId: number) => void;
 }) {
   const mechanicalRule = link.primitive.mechanicalOutputText;
   const narrativeRule = link.primitive.narrativeRule;
-  const versionId = latestVersions?.get(makeVersionKey("primitive", link.primitiveId)) ?? null;
   return (
-    <article className="v12-expression-rule" data-expression-kind="primitive">
-      <div className="v12-bundled-primitive-title">
-        <span className="v12-workspace-version">{versionId ? `v:${versionId.slice(0, 8)}` : "v:1"}</span>
-        <button type="button" onClick={() => onOpen(link.primitiveId)}>{link.primitive.name}</button>
-        <span className="v12-workspace-kind">Primitive</span>
-      </div>
-      <div className="v12-rule-provenance">
-        <span>{link.primitive.category ?? "primitive"} · {link.primitive.buCost ?? 0} BU</span>
-        <SlotSourceBadge
-          slotSource="PINNED"
-          versionId={versionId}
-          latestVersionId={null}
-          targetType="PRIMITIVE"
-          targetId={String(link.primitiveId)}
-        />
-      </div>
-      {mechanicalRule && <Markdown copyRole="mechanical" className="v12-rule-text v12-rule-output line-clamp-2">{mechanicalRule}</Markdown>}
-      {narrativeRule && narrativeRule !== mechanicalRule && <Markdown copyRole="narrative" className="v12-rule-text v12-rule-description line-clamp-2">{narrativeRule}</Markdown>}
-    </article>
+    <CompactPrimitiveCard
+      name={link.primitive.name}
+      mechanicalText={mechanicalRule}
+      narrativeText={narrativeRule}
+      onOpen={() => onOpen(link.primitiveId)}
+    />
   );
 }
 
 function ItemEffectComposition({
   link,
-  characterId,
-  itemId,
-  latestVersions,
   onOpenEffect,
   onOpenPrimitive,
   hydrate = false,
 }: {
   link: ItemNestedEffect;
-  characterId: string;
-  itemId: string;
-  latestVersions?: Map<VersionKey, string> | undefined;
   onOpenEffect: (effectId: string) => void;
   onOpenPrimitive: (primitiveId: number) => void;
   hydrate?: boolean;
@@ -220,33 +215,28 @@ function ItemEffectComposition({
   const effect = hydrated ?? link.effect;
   const description = effect.narrativeDescription ?? effect.description;
   const primitiveLinks = effect.primitiveLinks ?? [];
-  const versionId = latestVersions?.get(makeVersionKey("effect", link.effectId)) ?? null;
+  const effectBu = effectCompositionBu(effect);
   return (
-    <article className="v12-expression-piece" data-expression-kind="effect" data-character-id={characterId} data-item-id={itemId}>
-      <header className="v12-expression-entity-header v12-effect-title-row">
-        <div className="v12-expression-identity">
-          <span className="v12-workspace-version">{versionId ? `v:${versionId.slice(0, 8)}` : "v:1"}</span>
-          <button type="button" onClick={() => onOpenEffect(link.effectId)}>{effect.name}</button>
-        </div>
-        <div className="v12-expression-meta">
-          <span className="v12-workspace-kind">Effect</span>
-          <SlotSourceBadge slotSource="PINNED" versionId={versionId} latestVersionId={null} targetType="EFFECT" targetId={link.effectId} />
-        </div>
-      </header>
-      {description && <Markdown copyRole="narrative" className="v12-expression-description line-clamp-2">{description}</Markdown>}
+    <CompactCompositeCard
+      kind="effect"
+      name={effect.name}
+      cost={effectBu}
+      state="Active"
+      description={description}
+      onOpen={() => onOpenEffect(link.effectId)}
+    >
       {primitiveLinks.length > 0 && (
-        <div className="v12-bundle-contents">
-          {primitiveLinks.map((primitiveLink) => (
-            <ItemPrimitiveCompositionRow
-              key={primitiveLink.primitiveId}
-              link={primitiveLink}
-              latestVersions={latestVersions}
-              onOpen={onOpenPrimitive}
-            />
-          ))}
-        </div>
+        <CompactHierarchyBranch label="Primitives" count={primitiveLinks.length} tone="teal">
+            {primitiveLinks.map((primitiveLink) => (
+              <ItemPrimitiveCompositionRow
+                key={primitiveLink.primitiveId}
+                link={primitiveLink}
+                onOpen={onOpenPrimitive}
+              />
+            ))}
+        </CompactHierarchyBranch>
       )}
-    </article>
+    </CompactCompositeCard>
   );
 }
 
@@ -254,7 +244,6 @@ function ItemCapabilityComposition({
   link,
   characterId,
   itemId,
-  latestVersions,
   onOpenCapability,
   onOpenEffect,
   onOpenPrimitive,
@@ -262,7 +251,6 @@ function ItemCapabilityComposition({
   link: NonNullable<ItemCardProps["nested"]>["capabilityLinks"][number];
   characterId: string;
   itemId: string;
-  latestVersions?: Map<VersionKey, string> | undefined;
   onOpenCapability: (capabilityId: string) => void;
   onOpenEffect: (effectId: string) => void;
   onOpenPrimitive: (primitiveId: number) => void;
@@ -285,46 +273,51 @@ function ItemCapabilityComposition({
 
   const effects: ItemNestedEffect[] = composition?.effectLinks ?? link.capability.effectLinks;
   const directPrimitives = composition?.primitiveLinks ?? [];
-  const versionId = latestVersions?.get(makeVersionKey("capability", link.capability.id)) ?? null;
+  const capabilityBu = directPrimitives.reduce(
+    (total, primitiveLink) => total + primitiveLinkBu(primitiveLink),
+    effects.reduce((total, effectLink) => total + effectCompositionBu(effectLink.effect), 0),
+  );
   return (
-    <article className="v12-expression-piece" data-expression-kind="capability">
-      <header className="v12-expression-entity-header v12-capability-title-row">
-        <div className="v12-expression-identity">
-          <span className="v12-workspace-version">{versionId ? `v:${versionId.slice(0, 8)}` : "v:1"}</span>
-          <button type="button" onClick={() => onOpenCapability(link.capabilityId)}>{link.capability.name}</button>
-        </div>
-        <div className="v12-expression-meta">
-          <span className="v12-workspace-kind">Capability · {link.capability.type}</span>
-          <SlotSourceBadge slotSource="PINNED" versionId={versionId} latestVersionId={null} targetType="CAPABILITY" targetId={link.capability.id} />
-          <ItemCapabilityToggle itemId={itemId} characterId={characterId} capability={link.capability} />
-        </div>
-      </header>
-      {link.capability.verboseDescription && <Markdown copyRole="narrative" className="v12-expression-description line-clamp-2">{link.capability.verboseDescription}</Markdown>}
+    <CompactCompositeCard
+      kind="capability"
+      name={link.capability.name}
+      cost={capabilityBu}
+      state={link.capability.type}
+      description={link.capability.verboseDescription}
+      onOpen={() => onOpenCapability(link.capabilityId)}
+      collapsible
+      defaultExpanded
+      actions={<ItemCapabilityToggle itemId={itemId} characterId={characterId} capability={link.capability} />}
+    >
       {(effects.length > 0 || directPrimitives.length > 0) && (
-        <div className="v12-bundle-contents v12-item-capability-composition">
-          {effects.map((effectLink) => (
-            <ItemEffectComposition
-              key={effectLink.effectId}
-              link={effectLink}
-              characterId={characterId}
-              itemId={itemId}
-              latestVersions={latestVersions}
-              onOpenEffect={onOpenEffect}
-              onOpenPrimitive={onOpenPrimitive}
-              hydrate
-            />
-          ))}
-          {directPrimitives.map((primitiveLink) => (
-            <ItemPrimitiveCompositionRow
-              key={primitiveLink.primitiveId}
-              link={primitiveLink}
-              latestVersions={latestVersions}
-              onOpen={onOpenPrimitive}
-            />
-          ))}
+        <div className="v12-canonical-composition">
+          {directPrimitives.length > 0 && (
+            <CompactHierarchyBranch className="v12-expression-direct" label="Direct primitives" count={directPrimitives.length} tone="teal">
+              {directPrimitives.map((primitiveLink) => (
+                <ItemPrimitiveCompositionRow
+                  key={primitiveLink.primitiveId}
+                  link={primitiveLink}
+                  onOpen={onOpenPrimitive}
+                />
+              ))}
+            </CompactHierarchyBranch>
+          )}
+          {effects.length > 0 && (
+            <CompactHierarchyBranch label="Effects" count={effects.length} tone="copper">
+                {effects.map((effectLink) => (
+                  <ItemEffectComposition
+                    key={effectLink.effectId}
+                    link={effectLink}
+                    onOpenEffect={onOpenEffect}
+                    onOpenPrimitive={onOpenPrimitive}
+                    hydrate
+                  />
+                ))}
+            </CompactHierarchyBranch>
+          )}
         </div>
       )}
-    </article>
+    </CompactCompositeCard>
   );
 }
 
@@ -334,7 +327,6 @@ export function ItemCard({
   item,
   atCapacity = false,
   nested,
-  latestVersions,
 }: ItemCardProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -799,7 +791,6 @@ export function ItemCard({
                         link={cl}
                         characterId={characterId}
                         itemId={item.id}
-                        latestVersions={latestVersions}
                         onOpenCapability={openCapabilityPreview}
                         onOpenEffect={openEffectPreview}
                         onOpenPrimitive={openPrimitivePreview}
@@ -816,9 +807,6 @@ export function ItemCard({
                       <ItemEffectComposition
                         key={el.effectId}
                         link={el}
-                        characterId={characterId}
-                        itemId={item.id}
-                        latestVersions={latestVersions}
                         onOpenEffect={openEffectPreview}
                         onOpenPrimitive={openPrimitivePreview}
                         hydrate
@@ -830,12 +818,11 @@ export function ItemCard({
               {nested.primitiveLinks.length > 0 && (
                 <section className="v12-item-composition-group">
                   <h5>Primitives <span>{nested.primitiveLinks.length}</span></h5>
-                  <div className="v12-item-composition-stack is-rules">
+                  <div className="v12-item-composition-stack is-rules v12-canonical-primitive-list">
                     {nested.primitiveLinks.map((pl) => (
                       <ItemPrimitiveCompositionRow
                         key={pl.primitiveId}
                         link={pl}
-                        latestVersions={latestVersions}
                         onOpen={openPrimitivePreview}
                       />
                     ))}

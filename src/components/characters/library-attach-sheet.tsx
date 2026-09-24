@@ -194,7 +194,7 @@ export function LibraryAttachSheet({
       <div className="relative flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-2xl border border-border bg-card shadow-2xl sm:max-w-2xl sm:rounded-2xl">
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-5 py-4">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               Library · {accordion}
             </p>
             <h2 className="mt-1 text-lg font-semibold">

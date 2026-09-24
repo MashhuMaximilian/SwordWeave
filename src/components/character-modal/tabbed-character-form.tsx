@@ -44,6 +44,7 @@ import {
   type PendingSlotsByTab,
   summarizeSlotBu,
 } from "./character-modal-store";
+import { pendingSlotsDiffer } from "./draft-comparison";
 import {
   buildCharacterSeeds,
   type AttributesDraftSeed,
@@ -254,6 +255,7 @@ export function TabbedCharacterForm() {
     activeStep,
     setActiveStep,
     pendingSlots,
+    isDirty,
     resetDraft,
     editCharacterId,
     seededCharacter,
@@ -277,11 +279,6 @@ export function TabbedCharacterForm() {
   const [attributes, setAttributes] = useState<AttributesState>(ATTRIBUTES_EMPTY);
   const [hydrated, setHydrated] = useState(false);
   const [seededOnce, setSeededOnce] = useState(false);
-
-  // Mark dirty on mount; keep dot on until resetDraft clears it.
-  useEffect(() => {
-    setDirty(true);
-  }, [setDirty]);
 
   /**
    * Phase 8.2 batch 7: apply the fetched character to local form
@@ -312,6 +309,16 @@ export function TabbedCharacterForm() {
     // This lets hasEdits compare the user's current (draft-merged) state
     // against the original DB baseline — so removals/additions show as edits.
     dbSeedSlotsRef.current = structuredClone(dbSeeds.pendingSlots);
+    // Establish the immutable DB baseline before applySeed schedules its state
+    // update. If the first user slot is queued in the same render window, a
+    // lazy snapshot would otherwise capture that addition as part of the
+    // baseline and the footer would incorrectly say "No changes".
+    seededSnapshotRef.current = {
+      pendingSlots: structuredClone(dbSeeds.pendingSlots),
+      identity: { ...(dbSeeds.identity as IdentityState) },
+      backstory: { ...(dbSeeds.backstory as BackstoryState) },
+      attributes: { ...(dbSeeds.attributes as AttributesState) },
+    };
     applySeed(mergedSlots);
     setSeededOnce(true);
     setHydrated(true);
@@ -669,23 +676,17 @@ export function TabbedCharacterForm() {
   }
 
   const hasEdits = useMemo(() => {
+    // Slot mutations can happen while this form is unmounted (the user closes
+    // the modal to browse the Atelier, then adds an entry). The store's dirty
+    // flag is therefore the authoritative signal for user actions across
+    // modal open/close cycles. The structural comparison remains as a safety
+    // net for restored drafts and older call sites.
+    if (isDirty) return true;
     const snap = seededSnapshotRef.current;
     // In create mode, there is no snapshot — everything the user
     // enters is a change. Enable the button whenever the form is valid.
     if (!snap) return !editCharacterId; // true in create mode, false in edit before seed
-    for (const tab of CHARACTER_TABS) {
-      const cur = pendingSlots[tab] ?? [];
-      const ref = snap.pendingSlots[tab] ?? [];
-      if (cur.length !== ref.length) return true;
-      // Compare items ignoring transient slotIds that might differ
-      for (let i = 0; i < cur.length; i++) {
-        const cCopy = { ...(cur[i] as any) };
-        const rCopy = { ...(ref[i] as any) };
-        delete cCopy.slotId;
-        delete rCopy.slotId;
-        if (JSON.stringify(cCopy) !== JSON.stringify(rCopy)) return true;
-      }
-    }
+    if (pendingSlotsDiffer(pendingSlots, snap.pendingSlots)) return true;
     return (
       identity.name.trim() !== snap.identity.name.trim() ||
       identity.size !== snap.identity.size ||
@@ -702,7 +703,15 @@ export function TabbedCharacterForm() {
       attributes.level !== snap.attributes.level ||
       attributes.buBudget !== snap.attributes.buBudget
     );
-  }, [pendingSlots, identity, backstory, attributes, seededOnce]);
+  }, [
+    isDirty,
+    pendingSlots,
+    identity,
+    backstory,
+    attributes,
+    seededOnce,
+    editCharacterId,
+  ]);
 
   /**
    * Phase 8.2 batch 7: unified submit (was handleCreate).
@@ -1313,7 +1322,7 @@ export function TabbedCharacterForm() {
               {count > 0 ? (
                 <span
                   className={cn(
-                    "rounded-full px-1.5 text-[10px] font-bold",
+                    "rounded-full px-1.5 text-xs font-bold",
                     isActive
                       ? "bg-primary-foreground/20 text-primary-foreground"
                       : "bg-primary/10 text-primary",
@@ -1486,12 +1495,12 @@ function FooterStat({
         tone === "default" && "bg-secondary text-secondary-foreground",
       )}
     >
-      <span className="font-sans text-[10px] font-semibold uppercase text-muted-foreground">
+      <span className="font-sans text-xs font-semibold uppercase text-muted-foreground">
         {label}
       </span>
       {value}
       {sublabel && (
-        <span className="font-sans text-[10px] font-normal normal-case text-muted-foreground">
+        <span className="font-sans text-xs font-normal normal-case text-muted-foreground">
           {sublabel}
         </span>
       )}

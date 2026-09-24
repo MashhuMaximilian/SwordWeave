@@ -88,7 +88,7 @@ async function handlePOST(
     // prev value as max so damage works. The UI shows the same
     // number (effectiveCurrent = null ?? max), so the player's
     // mental model is consistent.
-    const prev = current.currentVitality ?? max;
+    const prev = clampVitality(current.currentVitality ?? max, max);
     const candidate = prev + delta;
     const next = clampVitality(candidate, max);
 

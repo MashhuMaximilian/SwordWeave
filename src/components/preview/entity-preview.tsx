@@ -52,6 +52,7 @@ import {
   type SandboxItemRow,
   libraryCompositeId,
 } from "@/components/library/library-item-preview";
+import { humanizeMechanicalTarget } from "@/components/characters/operator-symbol";
 
 // Prettify a stored modifier value. The primitive form persists values in a
 // compact syntax like `behavior:/240/[ft]` (target : value : unit). Render it
@@ -69,6 +70,58 @@ function prettifyModifierValue(raw: string): string {
     return unit ? `${value} ${unit}` : value;
   }
   return trimmed;
+}
+
+/** Translate persisted rule tokens into the language used by the sheet. */
+function humanizeRuleToken(raw: string): string {
+  const normalized = raw.trim().replace(/^\/+|\/+$/g, "");
+  const known: Record<string, string> = {
+    pb: "Proficiency bonus",
+    action_roll: "Action roll",
+    attack_roll: "Attack roll",
+    damage_roll: "Damage roll",
+    save_dc: "Save DC",
+    practice_proficiency: "Practice proficiency",
+    unique_by_primitive: "Unique per primitive",
+    highest_only: "Highest value only",
+    lowest_only: "Lowest value only",
+    no_stack: "Does not stack",
+    stack: "Stacks",
+  };
+  const key = normalized.toLowerCase().replace(/[\s-]+/g, "_");
+  if (known[key]) return known[key];
+  return normalized
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_.-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^./, (letter) => letter.toUpperCase());
+}
+
+function ModifierRuleSentence({ op, value, target }: { op: string; value: string; target: string }) {
+  const operation = opLabel(op as ModifierOperation);
+  const valueLabel = humanizeRuleToken(value);
+  const targetLabel = humanizeMechanicalTarget(target || "value");
+  const parts = (() => {
+    switch (op) {
+      case "set": return [operation, targetLabel, "to", valueLabel];
+      case "min": return ["Set minimum", targetLabel, "to", valueLabel];
+      case "max": return ["Set maximum", targetLabel, "to", valueLabel];
+      case "multiply": return [operation, targetLabel, "by", valueLabel];
+      case "divide": return [operation, targetLabel, "by", valueLabel];
+      case "subtract": return [operation, valueLabel, "from", targetLabel];
+      case "revoke": return [operation, valueLabel, "from", targetLabel];
+      default: return [operation, valueLabel, "to", targetLabel];
+    }
+  })();
+  return (
+    <div className="v12-behavior-rule" aria-label={parts.join(" ")}>
+      <span>{parts[0]}</span>
+      <strong>{parts[1]}</strong>
+      <span>{parts[2]}</span>
+      <strong>{parts[3]}</strong>
+    </div>
+  );
 }
 
 export type EntityPreviewVariant = "read" | "build";
@@ -124,6 +177,8 @@ export interface EntityPreviewProps {
    * object) over the deprecated individual fields below.
    */
   actionBar?: PreviewActionProps | undefined;
+  /** Place insertion controls before long preview content in constrained tools. */
+  actionPlacement?: "top" | "bottom" | undefined;
   /** build variant only: Save / Reset handlers + labels. */
   onSave?: () => void;
   onReset?: () => void;
@@ -282,6 +337,20 @@ type CompositionNode = {
   children?: CompositionNode[] | undefined;
 };
 
+/** Nested primitive cards are reading surfaces, not database inspectors.
+ * API relations generally return the complete primitive row, while the
+ * public preview types intentionally describe only their required fields.
+ * Read the optional prose defensively so older compact payloads still work. */
+function primitiveCardCopy(primitive: { category: string }): string | null {
+  const record = primitive as typeof primitive & {
+    mechanicalOutputText?: string | null;
+    narrativeRule?: string | null;
+  };
+  return record.mechanicalOutputText?.trim()
+    || record.narrativeRule?.trim()
+    || null;
+}
+
 function CompositionTree({
   title,
   nodes,
@@ -391,10 +460,11 @@ function ModifierCards({
   type Card = {
     op: string;
     target: string;
-    valueLine: React.ReactNode;
+    valueText: string;
     stacking: string;
     condition?: unknown;
-    scope?: React.ReactNode;
+    scopeValues: string[];
+    narrowScope: string;
   };
 
   const cards: Card[] = (buildModifiers ?? (row.hardModifiers as Array<Record<string, unknown>> | undefined) ?? []).map((m, i): Card => {
@@ -406,7 +476,7 @@ function ModifierCards({
 
     // Rich draft value rendering (equation / text / number) — mirrors the
     // build-modal's modifierBlock.
-    let valueLine: React.ReactNode;
+    let valueText: string;
     // Phase 8.I i2.5h-fix (Mashu 2026-08-06): valueKind is stored
     // in metadata.valueKind (not at the modifier's top level) for
     // modifiers saved through the new form. For legacy v1 rows
@@ -450,17 +520,9 @@ function ModifierCards({
         })
         .join(" ")
         .replace(/^\+\s*/, "");  // strip leading +
-      valueLine = (
-        <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs break-all">
-          {eqText || "(empty)"}
-        </code>
-      );
+      valueText = eqText || "Empty equation";
     } else if (valueKind === "text") {
-      valueLine = (
-        <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs break-all">
-          {`"${String(m["value"] ?? "")}"`}
-        </code>
-      );
+      valueText = String(m["value"] ?? "");
     } else {
       const raw =
         m["value"] === undefined || m["value"] === null
@@ -515,9 +577,7 @@ function ModifierCards({
       } else {
         v = prettifyModifierValue(String(raw));
       }
-      valueLine = (
-        <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs break-all">{v}</code>
-      );
+      valueText = v;
     }
 
     // Phase 8.I i2.5e (Mashu 2026-08-05): scope (sub-target) is read
@@ -558,51 +618,30 @@ function ModifierCards({
     // Draft values take precedence; fall back to stored.
     const tv = draftTv.length > 0 ? draftTv : storedTv;
     const narrow = draftNarrow.length > 0 ? draftNarrow : storedNarrow;
-    let scope: React.ReactNode = null;
-    if (tv.length > 0 || narrow.length > 0) {
-      scope = (
-        <div className="flex flex-wrap items-center gap-1.5 text-xs">
-          <span className="font-semibold uppercase tracking-wide text-muted-foreground">Scope:</span>
-          {tv.length > 0
-            ? tv.map((v) => (
-                <span key={v} className="rounded bg-muted px-1.5 py-0.5 font-mono">
-                  {v}
-                </span>
-              ))
-            : (
-              <span className="rounded bg-amber-500/10 px-1.5 py-0.5 font-mono text-amber-700 dark:text-amber-400">any</span>
-            )}
-          {narrow ? (
-            <span className="rounded bg-muted px-1.5 py-0.5 font-mono italic">{narrow}</span>
-          ) : null}
-        </div>
-      );
-    }
-
     // The condition prop is passed as-is; the shared parseCondition
     // (inside ConditionLine) understands every stored shape: legacy
     // {key,operator,value}, v1 {kind:"preset"|"tags"|"compound"|
     // "narrative"}, and the build-form {pills,operators,narrative}.
     const condition = m["condition"];
 
-    return { op, target, valueLine, stacking, scope, condition };
+    return { op, target, valueText, stacking, scopeValues: tv, narrowScope: narrow, condition };
   });
 
   if (cards.length === 0) {
     const vectorLabel = row.mirrorVector.replaceAll("_", " ").toLowerCase();
     return (
-      <Section heading="Mirroring">
-        <p className="text-sm text-muted-foreground">
+      <Section heading="Behavior">
+        <div className="v12-behavior-empty">
           {row.isMirrorable
             ? `Mirrorable through the ${vectorLabel} rule${row.mirrorEligibilityNotes ? `: ${row.mirrorEligibilityNotes}` : "."}`
             : "This primitive is not mirrorable."}
-        </p>
+        </div>
       </Section>
     );
   }
   return (
-    <Section heading="Mirroring">
-      <ul className="grid min-w-0 gap-2">
+    <Section heading="Behavior">
+      <ul className="v12-behavior-ledger">
         {cards.map((c, i) => {
           const op = c.op as ModifierOperation;
           // Phase 8.I i2.5h-fix2: derive mirrorability + the
@@ -613,21 +652,25 @@ function ModifierCards({
           const mirrorable = Boolean(spec?.mirrorable) && Boolean(spec?.mirrorOp);
           const mirrorOp = spec?.mirrorOp as ModifierOperation | undefined;
           return (
-            <li key={i} className="min-w-0 overflow-hidden rounded-md border border-border p-2 text-sm">
-              {/* Phase 8.I i2.5i-fix (Mashu 2026-08-06): strip the
-                  secondary-background pill — just inline text
-                  + OperationBadge. The mirrored op's color comes
-                  from the badge, so no background chip needed. */}
-              <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground">
-                <span className="min-w-0 break-words [overflow-wrap:anywhere]">{c.target} mirrors to</span>
-                {mirrorable && mirrorOp ? (
-                  <span className="inline-flex min-w-0 flex-wrap items-center gap-1 text-xs font-medium normal-case tracking-normal text-foreground">
-                    <OperationBadge op={mirrorOp} />
-                    <span className="font-semibold">{opLabel(mirrorOp)}</span>
-                  </span>
-                ) : (
-                  <span className="text-xs font-medium normal-case tracking-normal text-muted-foreground">🔒 locked</span>
-                )}
+            <li key={i} className="v12-behavior-card">
+              <div className="v12-behavior-card-head">
+                <span className="v12-behavior-operation"><OperationBadge op={op} /> {opLabel(op)}</span>
+                <span className={mirrorable ? "v12-behavior-mirror is-mirrorable" : "v12-behavior-mirror"}>
+                  {mirrorable && mirrorOp ? <>Mirrors as {opLabel(mirrorOp)}</> : "Mirror locked"}
+                </span>
+              </div>
+              <ModifierRuleSentence op={c.op} value={c.valueText} target={c.target} />
+              {c.scopeValues.length > 0 || c.narrowScope ? (
+                <div className="v12-behavior-scope">
+                  <span>Applies to</span>
+                  {c.scopeValues.map((value) => <b key={value}>{humanizeRuleToken(value)}</b>)}
+                  {c.narrowScope ? <em>{humanizeRuleToken(c.narrowScope)}</em> : null}
+                </div>
+              ) : null}
+              {c.condition ? <div className="v12-behavior-condition"><ConditionLine condition={c.condition} /></div> : null}
+              <div className="v12-behavior-meta">
+                <span><small>Stacking</small><b>{humanizeRuleToken(c.stacking)}</b></span>
+                <span><small>Mirror rule</small>{mirrorable && mirrorOp ? <><OperationBadge op={mirrorOp} /><b>{opLabel(mirrorOp)}</b></> : <b>Locked</b>}</span>
               </div>
             </li>
           );
@@ -654,20 +697,85 @@ export function EntityPreview({
   showIdentity = true,
   actions,
   actionBar,
+  actionPlacement = "bottom",
 }: EntityPreviewProps) {
   const stack = useModalStack();
+  const compositeId = libraryCompositeId(item);
+  const [previewTargetType, previewTargetId] = compositeId.split(":", 2) as [ForkTargetType, string];
+  const [autoEngagement, setAutoEngagement] = useState<NonNullable<PreviewCallbacks["engagement"]>>({
+    likes: 0,
+    dislikes: 0,
+    forks: 0,
+    userReaction: null,
+    authorId: owner?.authorId ?? null,
+    authorUsername: owner?.authorUsername ?? null,
+    authorIsAdmin: null,
+    currentUserInternalId: null,
+  });
+  useEffect(() => {
+    if (variant !== "read" || callbacks?.engagement) return;
+    const controller = new AbortController();
+    void fetch(
+      `/api/engagement/lookup?targetType=${encodeURIComponent(previewTargetType)}&targetId=${encodeURIComponent(previewTargetId)}`,
+      { signal: controller.signal },
+    )
+      .then(async (response) => response.ok ? response.json() : null)
+      .then((data) => {
+        if (!data) return;
+        setAutoEngagement({
+          likes: Number(data.likes ?? 0),
+          dislikes: Number(data.dislikes ?? 0),
+          forks: Number(data.forks ?? 0),
+          userReaction: data.userReaction ?? null,
+          authorId: owner?.authorId ?? null,
+          authorUsername: owner?.authorUsername ?? null,
+          authorIsAdmin: null,
+          currentUserInternalId: data.currentUserInternalId ?? null,
+        });
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [callbacks?.engagement, owner?.authorId, owner?.authorUsername, previewTargetId, previewTargetType, variant]);
+  const resolvedCallbacks: PreviewCallbacks = {
+    ...callbacks,
+    engagement: callbacks?.engagement ?? autoEngagement,
+    openSourceHref: callbacks?.openSourceHref ?? `/library/item/${compositeId}`,
+    versionHistoryHref: callbacks?.versionHistoryHref ?? `/library/item/${compositeId}/versions`,
+  };
+  const resolvedActionBar: PreviewActionProps | undefined = variant === "read"
+    ? {
+      ...actionBar,
+        ...((actionBar?.onEdit ?? actions?.onEdit)
+          ? { onEdit: (actionBar?.onEdit ?? actions?.onEdit)! }
+          : {}),
+        openSourceHref: actionBar?.openSourceHref ?? actions?.openSourceHref ?? `/library/item/${compositeId}`,
+        versionHistoryHref: actionBar?.versionHistoryHref ?? actions?.versionHistoryHref ?? `/library/item/${compositeId}/versions`,
+        forkMap: (
+          actionBar?.forkMap ?? <ForkMapButton
+              targetType={previewTargetType}
+              targetId={previewTargetId}
+              targetName={item.row.name}
+              className="min-w-0 flex-1 justify-center px-1.5 py-2 text-xs"
+            />
+        ),
+      }
+    : actionBar;
   const onSubLink = (link: PreviewSubLink) => {
-    if (callbacks?.onSubLinkClick) {
-      callbacks.onSubLinkClick(link);
+    // A nested record is a new layer of context. Prefer the shared stack even
+    // when a legacy caller supplied an in-place selection callback; that keeps
+    // the current preview mounted beneath the child in Character, Library and
+    // the scoped Atelier panel. The callback remains the fallback for surfaces
+    // rendered outside ModalStackHost.
+    if (stack.canPush) {
+      stack.push({
+        key: `sublink:${link.targetType}:${link.targetId}`,
+        label: link.label,
+        category: link.targetType,
+        content: <FetchedEntityPreview targetType={link.targetType} targetId={String(link.targetId)} />,
+      });
       return;
     }
-    if (!stack.canPush) return;
-    stack.push({
-      key: `sublink:${link.targetType}:${link.targetId}`,
-      label: link.label,
-      category: link.targetType,
-      content: <FetchedEntityPreview targetType={link.targetType} targetId={String(link.targetId)} />,
-    });
+    resolvedCallbacks.onSubLinkClick?.(link);
   };
 
   const body = (() => {
@@ -704,7 +812,7 @@ export function EntityPreview({
   // for those rows. The sourceOrigin column is the only honest
   // signal that the row belongs to the corpus. Audit trail
   // (authorId) is still set so internal tooling can trace edits.
-  const eng = callbacks?.engagement;
+  const eng = resolvedCallbacks.engagement;
   const isAdminAuthor = eng?.authorIsAdmin === true;
   const isLegacySystemRow = rowSourceOrigin === "system";
   const maskAuthor =
@@ -780,14 +888,15 @@ export function EntityPreview({
       : (
         <>
 
-          {callbacks?.engagement ? <PreviewFooter callbacks={callbacks} item={item} /> : null}
-          {actionBar ? <PreviewActions {...actionBar} /> : null}
+          <PreviewFooter callbacks={resolvedCallbacks} item={item} />
+          {resolvedActionBar ? <PreviewActions {...resolvedActionBar} /> : null}
         </>
       );
 
   return (
-    <div className="v12-entity-preview flex h-full min-h-0 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+    <div className="v12-entity-preview flex min-h-0 flex-col">
+      {actionPlacement === "top" && resolvedActionBar ? <PreviewActions {...resolvedActionBar} /> : null}
+      <div className="v12-entity-preview-content min-h-0 pr-1">
         {body}
         {/* OwnerBar MOVED OUT of the body area — it now lives between the
             scrollable content and the footer (just above the like bar)
@@ -797,7 +906,11 @@ export function EntityPreview({
             above the like for bar'. */}
       </div>
       {showOwner && resolvedOwner ? <OwnerBar owner={resolvedOwner} /> : null}
-      {footer}
+      {actionPlacement === "top"
+        ? variant === "build"
+          ? footer
+          : <PreviewFooter callbacks={resolvedCallbacks} item={item} />
+        : footer}
     </div>
   );
 }
@@ -1045,7 +1158,7 @@ function EffectBody({
           bu: Math.abs(l.primitive.buCost * l.quantity),
           versionNumber: l.versionNumber,
           entityKind: "primitive" as const,
-          subText: <span>{l.primitive.category}{l.quantity > 1 ? ` ×${l.quantity}` : ""}</span>,
+          note: primitiveCardCopy(l.primitive),
         }))}
       /></div>
     </div>
@@ -1098,7 +1211,7 @@ function CapabilityBody({
       kind: "primitive",
       targetType: "PRIMITIVE",
       bu: Math.abs(primitiveLink.primitive.buCost * primitiveLink.quantity),
-      meta: <>{primitiveLink.primitive.category}{primitiveLink.quantity > 1 ? ` · ×${primitiveLink.quantity}` : ""}</>,
+      note: primitiveCardCopy(primitiveLink.primitive),
     })),
   }));
   return (
@@ -1138,21 +1251,13 @@ function CapabilityBody({
         <ComposedList
         title={`Composed primitives (${row.primitiveLinks.length})`}
         onSubLink={onSubLink}
-        items={row.primitiveLinks.map((l, i) => ({
+        items={row.primitiveLinks.map((l) => ({
           id: String(l.primitive.id),
           name: l.primitive.name,
           bu: Math.abs(l.primitive.buCost * l.quantity),
           versionNumber: l.versionNumber,
           entityKind: "primitive" as const,
-          subText: (
-            <>
-              <span>{l.primitive.category}</span>
-              <span className="rounded bg-secondary px-1.5 py-0.5 font-medium">{l.role.replace(/_/g, " ")}</span>
-              {l.quantity > 1 ? <span>× {l.quantity}</span> : null}
-              {l.slotLabel ? <span className="italic">&ldquo;{l.slotLabel}&rdquo;</span> : null}
-              <span className="rounded bg-primary/15 px-1.5 py-0.5 font-medium text-primary">direct</span>
-            </>
-          ),
+          note: primitiveCardCopy(l.primitive),
         }))}
         />
         <CompositionTree title="Composed effects" nodes={effectNodes} onSubLink={onSubLink} />
@@ -1214,24 +1319,34 @@ function TemplateBody({
           kind: "primitive",
           targetType: "PRIMITIVE",
           bu: Math.abs(primitiveLink.primitive.buCost),
-          meta: <>{primitiveLink.primitive.category} · direct</>,
+          note: primitiveCardCopy(primitiveLink.primitive),
         })),
-        ...capabilityEffects.map((effectLink): CompositionNode => ({
+        ...capabilityEffects.map((effectLink): CompositionNode => {
+          // Heritage endpoints carry these primitives on the capability→effect
+          // link. Capability endpoints carry them inside `effect`. Accept both
+          // shapes so an effect never appears as a non-expandable empty row.
+          const nestedEffect = effectLink.effect as typeof effectLink.effect & {
+            primitiveLinks?: typeof effectLink.primitiveLinks;
+          };
+          const effectPrimitives = effectLink.primitiveLinks?.length
+            ? effectLink.primitiveLinks
+            : nestedEffect.primitiveLinks ?? [];
+          return ({
           id: effectLink.effectId,
           name: effectLink.effect.name,
           kind: "effect",
           targetType: "EFFECT",
-          bu: Math.abs((effectLink.primitiveLinks ?? []).reduce((sum, primitiveLink) => sum + primitiveLink.primitive.buCost, 0)),
-          meta: <>{(effectLink.primitiveLinks ?? []).length} primitives</>,
-          children: (effectLink.primitiveLinks ?? []).map((primitiveLink): CompositionNode => ({
+          bu: Math.abs(effectPrimitives.reduce((sum, primitiveLink) => sum + primitiveLink.primitive.buCost, 0)),
+          meta: <>{effectPrimitives.length} primitives</>,
+          children: effectPrimitives.map((primitiveLink): CompositionNode => ({
             id: String(primitiveLink.primitive.id),
             name: primitiveLink.primitive.name,
             kind: "primitive",
             targetType: "PRIMITIVE",
             bu: Math.abs(primitiveLink.primitive.buCost),
-            meta: primitiveLink.primitive.category,
+            note: primitiveCardCopy(primitiveLink.primitive),
           })),
-        })),
+        });}),
       ],
     };
   });
@@ -1275,11 +1390,7 @@ function TemplateBody({
           bu: l.primitive.buCost,
           versionNumber: l.versionNumber,
           entityKind: "primitive" as const,
-          subText: (
-            <span className="rounded bg-primary/15 px-1.5 py-0.5 font-medium text-primary">
-              direct
-            </span>
-          ),
+          note: primitiveCardCopy(l.primitive),
         }))}
       />
       </div>
@@ -1333,7 +1444,7 @@ function ItemBody({
           kind: "primitive",
           targetType: "PRIMITIVE",
           bu: Math.abs(primitiveLink.primitive.buCost),
-          meta: <>{primitiveLink.primitive.category} · direct</>,
+          note: primitiveCardCopy(primitiveLink.primitive),
         })),
         ...effects.map((effectLink): CompositionNode => ({
           id: effectLink.effectId,
@@ -1348,7 +1459,7 @@ function ItemBody({
             kind: "primitive",
             targetType: "PRIMITIVE",
             bu: Math.abs(primitiveLink.primitive.buCost),
-            meta: primitiveLink.primitive.category,
+            note: primitiveCardCopy(primitiveLink.primitive),
           })),
         })),
       ],
@@ -1369,7 +1480,7 @@ function ItemBody({
       kind: "primitive",
       targetType: "PRIMITIVE",
       bu: Math.abs(primitiveLink.primitive.buCost * primitiveLink.quantity),
-      meta: <>{primitiveLink.primitive.category}{primitiveLink.quantity > 1 ? ` · ×${primitiveLink.quantity}` : ""}</>,
+      note: primitiveCardCopy(primitiveLink.primitive),
     })),
   }));
   return (
@@ -1439,6 +1550,7 @@ function ItemBody({
           bu: l.primitive.buCost,
           versionNumber: l.versionNumber,
           entityKind: "primitive" as const,
+          note: primitiveCardCopy(l.primitive),
         }))}
       />
       </div>
@@ -1470,11 +1582,11 @@ function Header({
       <div className="v12-preview-medallion"><IconTile
         row={{ iconSource, iconKey, iconUrl, iconColor, fallback }}
       /></div>
-      <div className="flex flex-1 flex-wrap items-center gap-2 text-xs">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 text-xs">
         <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
           {label}
         </span>
-        <span className="flex flex-wrap items-center gap-2">{chips}</span>
+        <span className="flex min-w-0 max-w-full flex-wrap items-center gap-2 [&>*]:max-w-full [&>*]:truncate">{chips}</span>
       </div>
     </div>
   );
@@ -1500,7 +1612,16 @@ function rarityClass(rarity: string): string {
 /** Loads the same complete record used by the author and source page. */
 export function FetchedEntityPreview({ targetType, targetId, owner }: { targetType: string; targetId: string; owner?: EntityPreviewOwner }) {
   const [result, setResult] = useState<{ key: string; item?: SandboxPreviewItem; error?: string } | null>(null);
-  const [engagement, setEngagement] = useState<PreviewCallbacks["engagement"] | null>(null);
+  const [engagement, setEngagement] = useState<NonNullable<PreviewCallbacks["engagement"]>>({
+    likes: 0,
+    dislikes: 0,
+    forks: 0,
+    userReaction: null,
+    authorId: owner?.authorId ?? null,
+    authorUsername: owner?.authorUsername ?? null,
+    authorIsAdmin: null,
+    currentUserInternalId: null,
+  });
   const key = `${targetType}:${targetId}`;
   useEffect(() => {
     const controller = new AbortController();
@@ -1536,8 +1657,9 @@ export function FetchedEntityPreview({ targetType, targetId, owner }: { targetTy
         item={result.item}
         {...(owner ? { owner } : {})}
         callbacks={{
-          ...(engagement ? { engagement } : {}),
+          engagement,
           openSourceHref: `/library/item/${key}`,
+          versionHistoryHref: `/library/item/${key}/versions`,
         }}
         actionBar={{
           openSourceHref: `/library/item/${key}`,

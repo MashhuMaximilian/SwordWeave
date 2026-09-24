@@ -229,7 +229,7 @@ export function EquationPicker({
             {resolution.warnings.map((w, i) => (
               <p
                 key={i}
-                className="rounded-sm border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-700 dark:text-amber-300"
+                className="rounded-sm border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-300"
               >
                 ⚠ {w}
               </p>
@@ -262,7 +262,7 @@ export function EquationPicker({
 
       {/* Operator toggle — what op the next-added chip will use */}
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-[10px] font-semibold uppercase text-muted-foreground">
+        <span className="text-xs font-semibold uppercase text-muted-foreground">
           Next chip's op:
         </span>
         {ALL_OPERATORS.map((op) => (
@@ -302,7 +302,7 @@ export function EquationPicker({
           )
         </button>
         {parenStack > 0 ? (
-          <span className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-cyan-700 dark:text-cyan-300">
+          <span className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-cyan-700 dark:text-cyan-300">
             Inside paren ×{parenStack}
           </span>
         ) : null}
@@ -634,7 +634,7 @@ function OperandChip({
         onClick={cycleOp}
         disabled={isFirst}
         title={`Operator: ${op} (click to cycle)`}
-        className={`inline-flex h-5 items-center rounded-l-full border px-1.5 font-mono text-[10px] font-bold ${
+        className={`inline-flex h-5 items-center rounded-l-full border px-1.5 font-mono text-xs font-bold ${
           isFirst
             ? "cursor-default border-slate-300 bg-slate-100 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
             : "border-primary bg-primary/20 text-primary hover:bg-primary/30"
@@ -722,7 +722,7 @@ function ParenChipContents({
         type="button"
         onClick={onOpChange}
         title={`Paren operator: ${op} (click to cycle)`}
-        className="inline-flex h-5 items-center rounded border border-primary bg-primary/20 px-1.5 font-mono text-[10px] font-bold text-primary hover:bg-primary/30"
+        className="inline-flex h-5 items-center rounded border border-primary bg-primary/20 px-1.5 font-mono text-xs font-bold text-primary hover:bg-primary/30"
       >
         {operatorLabel(op)}
       </button>
@@ -730,7 +730,7 @@ function ParenChipContents({
         (
       </span>
       {operands.length === 0 ? (
-        <span className="text-[10px] italic text-muted-foreground">
+        <span className="text-xs italic text-muted-foreground">
           empty paren
         </span>
       ) : (
@@ -868,7 +868,7 @@ function EquationCustomInput({
   // bracket/delim convention so the user doesn't have to
   // guess what `#2d6#` vs `[fire]` vs `/physical/` means.
   const syntaxBlock = (
-    <div className="mt-1 rounded border border-border/60 bg-muted/30 px-2 py-1.5 text-[10px] leading-relaxed text-muted-foreground">
+    <div className="mt-1 rounded border border-border/60 bg-muted/30 px-2 py-1.5 text-xs leading-relaxed text-muted-foreground">
       <p className="font-semibold uppercase tracking-wide text-foreground/70">
         Custom input syntax
       </p>
@@ -909,7 +909,7 @@ function EquationCustomInput({
 
   return (
     <div className="space-y-1">
-      <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <p className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Custom
       </p>
       <div className="flex items-center gap-1.5">

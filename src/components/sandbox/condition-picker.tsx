@@ -183,7 +183,7 @@ export function ConditionPicker({
 
       {/* ── Section 1: category multi-select ── */}
       <div className="mt-2">
-        <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Categories
         </div>
         <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -211,7 +211,7 @@ export function ConditionPicker({
       {/* ── Section 2: current expression summary + edit button ── */}
       <div className="mt-3 border-t border-border pt-3">
         <div className="flex items-center justify-between">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Current expression
           </div>
           {value.pills.length > 0 ? (
@@ -257,7 +257,7 @@ export function ConditionPicker({
             );
             return (
               <div key={cat}>
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {CATEGORY_LABELS[cat]} pills ({pillsInCat.length})
                 </div>
                 {pillsInCat.length > 0 ? (
@@ -298,8 +298,8 @@ export function ConditionPicker({
                           title={s.hint ?? s.label}
                           className={
                             alreadyAdded
-                              ? "rounded-full border border-border bg-muted/30 px-2 py-0.5 text-[10px] text-muted-foreground line-through"
-                              : "rounded-full border border-dashed border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-accent"
+                              ? "rounded-full border border-border bg-muted/30 px-2 py-0.5 text-xs text-muted-foreground line-through"
+                              : "rounded-full border border-dashed border-border bg-background px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent"
                           }
                         >
                           + {s.label}
@@ -414,8 +414,8 @@ function ExpressionSummaryLine({
           key={`op${i}`}
           className={
             op === "AND"
-              ? "mx-1 text-[10px] font-bold uppercase text-amber-600"
-              : "mx-1 text-[10px] font-bold uppercase text-blue-600"
+              ? "mx-1 text-xs font-bold uppercase text-amber-600"
+              : "mx-1 text-xs font-bold uppercase text-blue-600"
           }
         >
           {op}

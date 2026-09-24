@@ -5,7 +5,11 @@ import { CapabilityCard } from "../capability-card";
 import { mechanicalDescriptionFromModifiers } from "@/lib/primitives/mechanical-rule";
 import { flipOperation } from "@/lib/engine/mirror";
 import type { HardModifier } from "@/types/swordweave";
-import { Markdown } from "@/components/ui/markdown";
+import {
+  CompactCompositeCard,
+  CompactHierarchyBranch,
+  CompactPrimitiveCard,
+} from "../compact-hierarchy";
 
 function ruleText(node: WorkspaceNode, mirrored: boolean): string {
   const stored = typeof node.data["mechanicalOutputText"] === "string" ? node.data["mechanicalOutputText"] : "";
@@ -47,11 +51,7 @@ export function BundleContents({
   const renderEntry = (edge: WorkspaceEdge) => {
         const child = graph.nodes.find((n) => n.key === edge.child);
         if (!child) return null;
-        const versionLabel = child.data["workspaceVersionNumber"]
-          ? `v${child.data["workspaceVersionNumber"]}`
-          : child.versionId
-            ? `v:${child.versionId.slice(0, 8)}`
-            : "v:1";
+        const version = Number(child.data["workspaceVersionNumber"] ?? 1);
         const mirrored = edge.isMirrored;
         const childHasContents = graph.edges.some((candidate) => candidate.parent === child.key);
         const effects = child.kind === "capability" ? graph.edges
@@ -61,89 +61,60 @@ export function BundleContents({
             const effect = graph.nodes.find((node) => node.key === candidate.child);
             return effect ? [{ effectId: effect.id, effect: { id: effect.id, name: effect.name, description: effect.description } }] : [];
           }) : [];
+        if (child.kind === "primitive") {
+          return (
+            <CompactPrimitiveCard
+              key={edge.id}
+              name={child.name}
+              version={Number.isFinite(version) ? version : 1}
+              mechanicalText={ruleText(child, mirrored)}
+              narrativeText={child.description !== "null" ? child.description : null}
+              mirrored={mirrored}
+              onOpen={() => onOpen(edge, ancestors)}
+            />
+          );
+        }
+
+        const nested = childHasContents ? (
+          <BundleContents
+            node={child}
+            graph={graph}
+            onOpen={onOpen}
+            characterId={characterId}
+            mode={mode}
+            effectIsOff={effectIsOff}
+            onToggleEffect={onToggleEffect}
+            ancestors={[...ancestors, edge.id]}
+            seen={[...seen, node.key]}
+          />
+        ) : null;
+        const actions = child.kind === "capability" && characterId && mode === "PLAY" ? (
+          <CapabilityCard characterId={characterId} actionsOnly showPrimitives={false} showPreviewButton={false} capability={{ id: child.id, name: child.name, type: String(child.data["type"] ?? "Capability"), sourceType: String(child.data["sourceType"] ?? "Character"), acquiredAtLevel: Number(edge.data?.["acquiredAtLevel"] ?? 1), versionId: child.versionId, latestVersionId: child.latestVersionId, slotSource: null, verboseDescription: child.description, effectLinks: effects }} />
+        ) : null;
         return (
-          <div
+          <CompactCompositeCard
             key={edge.id}
-            data-expression-kind={child.kind}
-            className={
-              child.kind !== "primitive"
-                ? `v12-expression-piece${mirrored ? " is-mirrored" : ""}`
-                : `v12-expression-rule${mirrored ? " is-mirrored" : ""}`
-            }
-          >
-            {child.kind === "primitive" ? <div className="v12-bundled-primitive-title">
-              <span className="v12-workspace-version">{versionLabel}</span>
+            kind={child.kind === "effect" ? "effect" : "capability"}
+            name={child.name}
+            version={Number.isFinite(version) ? version : 1}
+            cost={bundleBu(graph, child.key)}
+            state={child.kind === "effect" ? null : String(child.data["type"] ?? "")}
+            description={child.description !== "null" ? child.description : null}
+            onOpen={() => onOpen(edge, ancestors)}
+            collapsible={child.kind === "capability"}
+            defaultExpanded
+            actions={child.kind === "effect" && characterId && mode === "PLAY" ? (
               <button
-                className="min-w-0 text-left text-primary hover:underline"
-                onClick={() => onOpen(edge, ancestors)}
+                className="v12-effect-toggle"
+                aria-pressed={!effectIsOff?.(child.id)}
+                onClick={() => onToggleEffect?.(child.id)}
               >
-                {child.name}
+                {effectIsOff?.(child.id) ? "Inactive" : "Active"}
               </button>
-              <span className="v12-workspace-kind">Primitive</span>
-            </div> : child.kind === "effect" ? <header className="v12-expression-entity-header v12-effect-title-row">
-              <div className="v12-expression-identity">
-                <span className="v12-workspace-version">{versionLabel}</span>
-                <button
-                  className="min-w-0 text-left text-primary hover:underline"
-                  onClick={() => onOpen(edge, ancestors)}
-                >
-                  {child.name}
-                </button>
-              </div>
-              <div className="v12-expression-meta">
-                <span className="v12-workspace-kind">Effect</span>
-                <span className="v12-tag">{bundleBu(graph, child.key)} BU</span>
-                {characterId && mode === "PLAY" && <button
-                  className="v12-effect-toggle"
-                  aria-pressed={!effectIsOff?.(child.id)}
-                  onClick={() => onToggleEffect?.(child.id)}
-                >
-                  {effectIsOff?.(child.id) ? "Inactive" : "Active"}
-                </button>}
-              </div>
-            </header> : <header className="v12-expression-entity-header v12-capability-title-row">
-              <div className="v12-expression-identity">
-                <span className="v12-workspace-version">{versionLabel}</span>
-                <button
-                  className="min-w-0 text-left text-primary hover:underline"
-                  onClick={() => onOpen(edge, ancestors)}
-                >
-                  {child.name}
-                </button>
-              </div>
-              <div className="v12-expression-meta">
-                <span className="v12-workspace-kind">
-                  {child.kind}{typeof child.data["type"] === "string" ? ` · ${child.data["type"]}` : ""}
-                </span>
-                <span className="v12-tag">{bundleBu(graph, child.key)} BU</span>
-                {characterId && mode === "PLAY" && <CapabilityCard characterId={characterId} actionsOnly showPrimitives={false} showPreviewButton={false} capability={{ id: child.id, name: child.name, type: String(child.data["type"] ?? "Capability"), sourceType: String(child.data["sourceType"] ?? "Character"), acquiredAtLevel: Number(edge.data?.["acquiredAtLevel"] ?? 1), versionId: child.versionId, latestVersionId: child.latestVersionId, slotSource: null, verboseDescription: child.description, effectLinks: effects }} />}
-              </div>
-            </header>}
-            {child.kind === "primitive" && edge.isMirrored && <div className="v12-rule-provenance" aria-label={`${child.name} supply state`}>
-              {edge.isMirrored && <span className="is-mirrored v12-mirrored-label">Mirrored</span>}
-            </div>}
-            {child.kind === "primitive" && ruleText(child, mirrored) && ruleText(child, mirrored) !== child.description && <p className="v12-rule-text v12-rule-output">{ruleText(child, mirrored)}</p>}
-            {child.description && child.description !== "null" && <Markdown copyRole="narrative" className={child.kind === "primitive" ? "v12-rule-text v12-rule-description" : "v12-expression-description"}>{child.description}</Markdown>}
-            {child.kind === "capability" && <div className="v12-expression-recipe" aria-label={`${child.name} recipe`}>
-              {graph.edges.filter(piece => piece.parent === child.key).sort((a,b)=>a.order-b.order).map(piece => {
-                const ingredient=graph.nodes.find(candidate=>candidate.key===piece.child);
-                return ingredient ? <button key={piece.id} onClick={()=>onOpen(piece,[...ancestors,edge.id])}>{ingredient.name}{ingredient.kind === "effect" ? " · effect" : ""}</button> : null;
-              })}
-            </div>}
-            {child.kind !== "primitive" && childHasContents && (
-              <BundleContents
-                node={child}
-                graph={graph}
-                onOpen={onOpen}
-                characterId={characterId}
-                mode={mode}
-                effectIsOff={effectIsOff}
-                onToggleEffect={onToggleEffect}
-                ancestors={[...ancestors, edge.id]}
-                seen={[...seen, node.key]}
-              />
-            )}
-          </div>
+            ) : actions}
+          >
+            {nested}
+          </CompactCompositeCard>
         );
   };
   const directRules = contents.filter(edge => graph.nodes.find(child => child.key === edge.child)?.kind === "primitive");
@@ -155,15 +126,14 @@ export function BundleContents({
       data-depth={ancestors.length}
       data-parent-kind={node.kind}
     >
-      {!ancestors.length && node.kind !== "heritage" && <p className="v12-kicker">Composition</p>}
       {!contents.length && <p className="text-muted-foreground">Nothing added yet.</p>}
       {node.kind === "heritage" ? <>
-        {grantedEntries.length > 0 && <div className="v12-expression-grants">{grantedEntries.map(renderEntry)}</div>}
-        {directRules.length > 0 && <section className="v12-expression-direct">
-          <header><p className="v12-kicker">Direct {sourceLabel} primitives</p><span className="v12-tag">{directRules.length} {directRules.length === 1 ? "rule" : "rules"}</span></header>
-          <div>{directRules.map(renderEntry)}</div>
-        </section>}
-      </> : contents.map(renderEntry)}
+        {grantedEntries.length > 0 && <CompactHierarchyBranch label="Capabilities" count={grantedEntries.length} tone="gold">{grantedEntries.map(renderEntry)}</CompactHierarchyBranch>}
+        {directRules.length > 0 && <CompactHierarchyBranch className="v12-expression-direct" label={`Direct ${sourceLabel} primitives`} count={directRules.length} tone="teal">{directRules.map(renderEntry)}</CompactHierarchyBranch>}
+      </> : node.kind === "capability" ? <>
+        {directRules.length > 0 && <CompactHierarchyBranch className="v12-expression-direct" label="Direct primitives" count={directRules.length} tone="teal">{directRules.map(renderEntry)}</CompactHierarchyBranch>}
+        {grantedEntries.length > 0 && <CompactHierarchyBranch label="Effects" count={grantedEntries.length} tone="copper">{grantedEntries.map(renderEntry)}</CompactHierarchyBranch>}
+      </> : node.kind === "effect" ? <div className="v12-canonical-effect-primitives">{directRules.map(renderEntry)}</div> : contents.map(renderEntry)}
     </div>
   );
 }

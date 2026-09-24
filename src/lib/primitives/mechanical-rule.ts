@@ -18,6 +18,8 @@ export type MechanicalRuleFamily =
   | "ATTRIBUTE_INCREMENT"
   | "DEFENSIVE_SAVE"
   | "PRACTICE_PROFICIENCY"
+  | "BEHAVIOR_ACCESS"
+  | "BEHAVIOR_COUNTER"
   | "UNIVERSAL_MODIFIER"
   | "DESCRIPTIVE"
   | "DOCUMENTED"
@@ -203,6 +205,22 @@ export function renderMechanicalRule(rule: CanonicalMechanicalRule): string {
       `Grant proficiency in ${practice}`,
       rule.conditionText,
     );
+  }
+  if (rule.family === "BEHAVIOR_ACCESS") {
+    const behavior = display(bindings["behavior"] || rule.target || "behavior");
+    const verb = rule.operation === "revoke" ? "Revoke" : "Grant";
+    return withCondition(`${verb} the ${behavior} behavior`, rule.conditionText);
+  }
+  if (rule.family === "BEHAVIOR_COUNTER") {
+    const behavior = display(bindings["behavior"] || rule.target || "behavior");
+    const value = display(rule.value ?? bindings["value"] ?? 1);
+    const operation = rule.operation ?? "add";
+    const body = operation === "set"
+      ? `Set ${behavior} uses to ${value}`
+      : operation === "subtract"
+        ? `Remove ${value} ${behavior} use${value === "1" ? "" : "s"}`
+        : `Add ${value} ${behavior} use${value === "1" ? "" : "s"}`;
+    return withCondition(body, rule.conditionText);
   }
 
   const target = display(rule.target || bindings["target"] || "[target]");

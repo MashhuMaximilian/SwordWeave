@@ -240,18 +240,18 @@ export function PrimitivePreviewCard({
             {p.name}
           </button>
           {primitiveLink.isMirrored && (
-            <span className="inline-flex items-center gap-0.5 rounded border border-yellow-500/50 bg-yellow-500/10 px-1.5 py-0.5 text-[10px] font-medium text-yellow-700 dark:text-yellow-300">
+            <span className="inline-flex items-center gap-0.5 rounded border border-yellow-500/50 bg-yellow-500/10 px-1.5 py-0.5 text-xs font-medium text-yellow-700 dark:text-yellow-300">
               <RotateCcw className="size-2.5" />
               Mirrored
             </span>
           )}
           {isInherited && !primitiveLink.isMirrored && (
-            <span className="inline-flex items-center gap-0.5 rounded border border-emerald-500/50 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300">
+            <span className="inline-flex items-center gap-0.5 rounded border border-emerald-500/50 bg-emerald-500/10 px-1.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
               Inherited
             </span>
           )}
           {!isInherited && (
-            <span className="inline-flex items-center gap-0.5 rounded border border-border bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            <span className="inline-flex items-center gap-0.5 rounded border border-border bg-secondary px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
               Direct
             </span>
           )}
@@ -259,7 +259,7 @@ export function PrimitivePreviewCard({
         <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
           {primitiveLink.versionId ? (
             <span
-              className="rounded bg-cyan-500/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-cyan-700 dark:text-cyan-300"
+              className="rounded bg-cyan-500/15 px-1.5 py-0.5 font-mono text-xs font-semibold uppercase tracking-wide text-cyan-700 dark:text-cyan-300"
               title={`Pinned version: ${primitiveLink.versionId}`}
             >
               v:{primitiveLink.versionId.slice(0, 8)}
@@ -273,7 +273,7 @@ export function PrimitivePreviewCard({
           character-creation modal's "8 BU · via X > Y > Z"
           breadcrumb. */}
       <p
-        className="text-[10px] text-muted-foreground"
+        className="text-xs text-muted-foreground"
         data-testid="primitive-subtitle"
       >
         {isMirrored ? (
@@ -307,7 +307,7 @@ export function PrimitivePreviewCard({
         )}
       </p>
       {fetching ? (
-        <span className="text-[10px] text-muted-foreground">
+        <span className="text-xs text-muted-foreground">
           Loading preview…
         </span>
       ) : null}
@@ -439,7 +439,7 @@ function PrimitiveDetailToggle({
       data-testid="primitive-detail-toggle"
       onClick={(e) => e.stopPropagation()}
     >
-      <summary className="cursor-pointer list-none text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <summary className="cursor-pointer list-none text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Details
       </summary>
       {/* Phase 8.5 / Session H6 (Mashu 2026-08-03):
@@ -463,7 +463,7 @@ function PrimitiveDetailToggle({
           />
         </div>
       )}
-      <div className="mt-1 space-y-1.5 text-[10px]">
+      <div className="mt-1 space-y-1.5 text-xs">
         {/* Mashu 2026-07-28 (round 6): modifier UI
             matches the character-creation modal.
 
@@ -580,7 +580,7 @@ function PrimitiveDetailToggle({
                         {m.target ?? "?"}
                       </span>
                       {scopeValues.length > 0 ? (
-                        <span className="rounded border border-border bg-muted/30 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                        <span className="rounded border border-border bg-muted/30 px-1.5 py-0.5 text-xs text-muted-foreground">
                           {scopeValues.join(", ")}
                         </span>
                       ) : null}
@@ -594,7 +594,7 @@ function PrimitiveDetailToggle({
                           the slot is mirrorable but not
                           currently mirrored. */}
                       {!isMirrored && isMirrorable && mirrorable ? (
-                        <span className="rounded border border-yellow-500/50 bg-yellow-500/10 px-1.5 py-0.5 text-[10px] font-medium text-yellow-700 dark:text-yellow-300">
+                        <span className="rounded border border-yellow-500/50 bg-yellow-500/10 px-1.5 py-0.5 text-xs font-medium text-yellow-700 dark:text-yellow-300">
                           Mirrorable
                         </span>
                       ) : null}
@@ -610,7 +610,7 @@ function PrimitiveDetailToggle({
                             {m.target ?? "?"}
                           </span>
                           {scopeValues.length > 0 ? (
-                            <span className="rounded border border-border bg-muted/30 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                            <span className="rounded border border-border bg-muted/30 px-1.5 py-0.5 text-xs text-muted-foreground">
                               {scopeValues.join(", ")}
                             </span>
                           ) : null}
@@ -635,14 +635,14 @@ function PrimitiveDetailToggle({
                       // No actual mirror — just a preview
                       // of what the mirror would look like.
                       <div className="flex flex-wrap items-center gap-1.5 font-mono">
-                        <span className="rounded border border-yellow-500/50 bg-yellow-500/10 px-1.5 py-0.5 text-[10px] font-medium text-yellow-700 dark:text-yellow-300">
+                        <span className="rounded border border-yellow-500/50 bg-yellow-500/10 px-1.5 py-0.5 text-xs font-medium text-yellow-700 dark:text-yellow-300">
                           Mirror preview
                         </span>
                         <span className="rounded border border-border bg-background px-1.5 py-0.5 text-foreground">
                           {m.target ?? "?"}
                         </span>
                         {scopeValues.length > 0 ? (
-                          <span className="rounded border border-border bg-muted/30 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                          <span className="rounded border border-border bg-muted/30 px-1.5 py-0.5 text-xs text-muted-foreground">
                             {scopeValues.join(", ")}
                           </span>
                         ) : null}

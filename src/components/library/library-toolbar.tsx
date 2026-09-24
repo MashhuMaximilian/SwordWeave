@@ -176,12 +176,12 @@ function FilterField({
         className,
       )}
     >
-      <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </span>
       {children}
       {hint ? (
-        <span className="text-[10px] leading-tight text-muted-foreground/70">{hint}</span>
+        <span className="text-xs leading-tight text-muted-foreground/70">{hint}</span>
       ) : null}
     </label>
   );
@@ -318,7 +318,7 @@ export function LibraryToolbar({
             <SlidersHorizontal className="size-3.5" />
             Filters
             {hasActiveFilters && !mobileFiltersOpen ? (
-              <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-foreground px-1 text-[10px] font-bold text-primary">
+              <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-foreground px-1 text-xs font-bold text-primary">
                 •
               </span>
             ) : null}
@@ -416,7 +416,7 @@ export function LibraryToolbar({
             server-side (every listed tag must be present on the item). */}
         {itemTags.length > 0 && state.typeFilter === "ITEM" ? (
           <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-dashed border-border bg-muted/30 px-3 py-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Tags
             </span>
             {itemTags.map((chip) => {
@@ -450,7 +450,7 @@ export function LibraryToolbar({
                   setTagState([]);
                   update("tags", "");
                 }}
-                className="ml-auto rounded-md border border-border bg-card px-2 py-0.5 text-[10px] font-medium hover:border-primary"
+                className="ml-auto rounded-md border border-border bg-card px-2 py-0.5 text-xs font-medium hover:border-primary"
               >
                 Clear
               </button>
@@ -483,7 +483,7 @@ export function LibraryToolbar({
         {/* Sub-kind chips (visible only when active type matches the parent) */}
         {showSubKinds ? (
           <div className="flex flex-wrap gap-1.5 rounded-md border border-dashed border-border bg-muted/30 px-3 py-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Sub-kind
             </span>
             {subKinds!.map((chip) => {

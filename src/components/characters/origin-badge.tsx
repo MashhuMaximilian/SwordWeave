@@ -34,7 +34,7 @@ export function OriginBadge({ chain, source }: OriginBadgeProps) {
   const tooltip = chain.map((c) => `${c.kind}: ${c.name}`).join("\n");
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full bg-secondary/60 px-2 py-0.5 text-[10px] font-medium text-secondary-foreground"
+      className="inline-flex items-center gap-1 rounded-full bg-secondary/60 px-2 py-0.5 text-xs font-medium text-secondary-foreground"
       title={tooltip + (source ? `\nsource: ${source}` : "")}
       aria-label={`Origin: ${tail}`}
     >

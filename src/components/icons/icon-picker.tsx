@@ -624,7 +624,7 @@ function FiltersTrigger({
         <Filter className="size-3.5" />
         Filters
         {buckets.size > 0 ? (
-          <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+          <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-xs font-semibold text-primary-foreground">
             {buckets.size}
           </span>
         ) : null}

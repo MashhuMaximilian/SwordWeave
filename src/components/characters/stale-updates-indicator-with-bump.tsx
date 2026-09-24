@@ -61,7 +61,7 @@ export function StaleUpdatesIndicatorWithBump({
         pending={pending}
       />
       {error && (
-        <span className="text-[10px] text-destructive" role="alert">
+        <span className="text-xs text-destructive" role="alert">
           {error}
         </span>
       )}

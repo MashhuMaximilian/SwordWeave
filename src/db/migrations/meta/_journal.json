@@ -414,6 +414,34 @@
       "when": 1789365600000,
       "tag": "0062_v12_library_grammar",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1789912800000,
+      "tag": "0063_behavior_semantics",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1789916400000,
+      "tag": "0064_behavior_binding_cleanup",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1789920000000,
+      "tag": "0065_behavior_output_copy",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1789987956964,
+      "tag": "0066_character_portrait_frame",
+      "breakpoints": true
     }
   ]
 }

@@ -290,7 +290,7 @@ return (
 
         {/* ── Add to end: per-category chips + custom pill input ── */}
         <div className="mt-4 space-y-2 border-t border-border pt-3">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Add to end
           </div>
           {(["self", "target", "scene"] as const).map((cat) => {
@@ -302,7 +302,7 @@ return (
               <details key={cat} className="rounded-md border border-border">
                 <summary className="flex cursor-pointer items-center justify-between px-3 py-2 text-xs font-medium hover:bg-accent">
                   <span>{CATEGORY_LABELS[cat]} pills</span>
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     {pillsInCat.length} in chain
                   </span>
                 </summary>
@@ -344,8 +344,8 @@ return (
                             title={s.hint ?? s.label}
                             className={
                               alreadyAdded
-                                ? "rounded-full border border-border bg-muted/30 px-2 py-0.5 text-[10px] text-muted-foreground line-through"
-                                : "rounded-full border border-dashed border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-accent"
+                                ? "rounded-full border border-border bg-muted/30 px-2 py-0.5 text-xs text-muted-foreground line-through"
+                                : "rounded-full border border-dashed border-border bg-background px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent"
                             }
                           >
                             + {s.label}
@@ -406,8 +406,8 @@ function PillRowWithOperator({
           onClick={onToggleOperator}
           className={
             operator === "AND"
-              ? "mx-auto my-0.5 flex h-7 w-12 items-center justify-center rounded-md border border-amber-500/30 bg-amber-500/10 text-[10px] font-bold uppercase tracking-wider text-amber-700 hover:bg-amber-500/20 dark:text-amber-300"
-              : "mx-auto my-0.5 flex h-7 w-12 items-center justify-center rounded-md border border-blue-500/30 bg-blue-500/10 text-[10px] font-bold uppercase tracking-wider text-blue-700 hover:bg-blue-500/20 dark:text-blue-300"
+              ? "mx-auto my-0.5 flex h-7 w-12 items-center justify-center rounded-md border border-amber-500/30 bg-amber-500/10 text-xs font-bold uppercase tracking-wider text-amber-700 hover:bg-amber-500/20 dark:text-amber-300"
+              : "mx-auto my-0.5 flex h-7 w-12 items-center justify-center rounded-md border border-blue-500/30 bg-blue-500/10 text-xs font-bold uppercase tracking-wider text-blue-700 hover:bg-blue-500/20 dark:text-blue-300"
           }
           title={`Click to toggle ${operator === "AND" ? "OR" : "AND"}`}
         >
@@ -432,10 +432,10 @@ function PillRowWithOperator({
         <span
           className={
             pill.category === "target"
-              ? "shrink-0 rounded-sm bg-blue-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 dark:text-blue-300"
+              ? "shrink-0 rounded-sm bg-blue-500/15 px-1.5 py-0.5 text-xs font-semibold text-blue-700 dark:text-blue-300"
               : pill.category === "actor"
-                ? "shrink-0 rounded-sm bg-violet-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700 dark:text-violet-300"
-                : "shrink-0 rounded-sm bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300"
+                ? "shrink-0 rounded-sm bg-violet-500/15 px-1.5 py-0.5 text-xs font-semibold text-violet-700 dark:text-violet-300"
+                : "shrink-0 rounded-sm bg-emerald-500/15 px-1.5 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300"
           }
         >
           {CATEGORY_LABELS[pill.category]}

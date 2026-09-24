@@ -290,6 +290,10 @@ export async function POST(request: Request) {
     const notes = String(values["notes"] ?? "").trim() || null;
     const dmNotes = String(values["dmNotes"] ?? "").trim() || null;
     const portraitUrl = String(values["portraitUrl"] ?? "").trim() || null;
+    const portraitFrameValue = values["portraitFrame"];
+    const portraitFrame = portraitFrameValue && typeof portraitFrameValue === "object" && !Array.isArray(portraitFrameValue)
+      ? portraitFrameValue as Record<string, unknown>
+      : { x: 50, y: 50, zoom: 1 };
 
     // Phase 8.3b: read primitiveInstances instead of primitiveIds. Each
     // entry is a separate row (multiple direct-paid copies of the same
@@ -733,6 +737,7 @@ export async function POST(request: Request) {
           notes,
           dmNotes,
           portraitUrl,
+          portraitFrame,
           currentVitality,
           backstory,
         })

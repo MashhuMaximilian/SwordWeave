@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useCharacterModal } from "../character-modal-store";
 import { SIZE_CAPACITY, SIZE_BASE_SPEED } from "@/lib/engine/encumbrance";
+import { PortraitInput } from "@/components/characters/portrait-input";
 
 const STORAGE_KEY = "swordweave:character-modal:draft:identity";
 const SIZES = ["TINY", "SMALL", "MEDIUM", "LARGE", "HUGE", "GARGANTUAN"] as const;
@@ -133,7 +134,7 @@ export function IdentityTab({ state: controlled, onChange }: IdentityTabProps = 
         />
       </label>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <label className="block space-y-1">
           <span className="text-xs font-medium text-muted-foreground">Size</span>
           <select
@@ -151,29 +152,13 @@ export function IdentityTab({ state: controlled, onChange }: IdentityTabProps = 
           </select>
         </label>
 
-        <label className="block space-y-1">
-          <span className="text-xs font-medium text-muted-foreground">
-            Portrait URL
-          </span>
-          <input
-            type="url"
-            value={state.portraitUrl}
-            onChange={(e) => setField("portraitUrl", e.target.value)}
-            placeholder="https://…"
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
-          />
-        </label>
       </div>
 
-      {state.portraitUrl ? (
-        <div className="overflow-hidden rounded-md border border-border">
-          <img
-            src={state.portraitUrl}
-            alt={state.name ? `${state.name} portrait` : "Character portrait"}
-            className="max-h-40 w-full object-cover"
-          />
-        </div>
-      ) : null}
+      <PortraitInput
+        value={state.portraitUrl}
+        onChange={(value) => setField("portraitUrl", value)}
+        characterName={state.name}
+      />
 
       <label className="block space-y-1">
         <span className="text-xs font-medium text-muted-foreground">Notes</span>

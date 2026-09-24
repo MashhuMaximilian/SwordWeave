@@ -24,7 +24,7 @@
  * keep the UI snappy.
  */
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Heart, Minus, Plus, BedDouble, Coffee } from "lucide-react";
 import { useToasts } from "@/components/ui/toast";
@@ -34,6 +34,8 @@ export interface VitalityTrackerProps {
   characterId: string;
   max: number;
   current: number;
+  /** Mirrors optimistic changes into the parent vitality readout immediately. */
+  onCurrentChange?: (next: number) => void;
   /**
    * Phase 8.4 (Mashu 2026-07-28): compact mode shrinks the four
    * action buttons (damage / heal / short rest / long rest) so
@@ -78,6 +80,7 @@ export function VitalityTracker({
   characterId,
   max,
   current,
+  onCurrentChange,
   compact = false,
   attrBestTotals,
 }: VitalityTrackerProps) {
@@ -87,7 +90,8 @@ export function VitalityTracker({
 
   // Local optimistic state so the UI feels instant. The server is
   // the source of truth; we re-sync via the API response.
-  const [optimisticCurrent, setOptimisticCurrent] = useState(current);
+  const safeCurrent = Math.max(0, Math.min(max, current));
+  const [optimisticCurrent, setOptimisticCurrent] = useState(safeCurrent);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"damage" | "heal">("damage");
   const [amount, setAmount] = useState("");
@@ -98,9 +102,9 @@ export function VitalityTracker({
 
   // Keep optimistic state in sync if the server pushes a new value
   // (e.g. after a refresh triggered by an external action).
-  if (optimisticCurrent !== current && !pending && !restPending) {
-    setOptimisticCurrent(current);
-  }
+  useEffect(() => {
+    setOptimisticCurrent(safeCurrent);
+  }, [safeCurrent]);
 
   const percent =
     max > 0
@@ -128,6 +132,8 @@ export function VitalityTracker({
     setPending(true);
     const clamped = Math.max(0, Math.min(max, (optimisticCurrent ?? 0) + delta));
     setOptimisticCurrent(clamped);
+    onCurrentChange?.(clamped);
+    setDialogOpen(false);
 
     try {
       const res = await fetch(`/api/characters/${characterId}/vitality`, {
@@ -137,7 +143,8 @@ export function VitalityTracker({
       });
 
       if (!res.ok) {
-        setOptimisticCurrent(current);
+        setOptimisticCurrent(safeCurrent);
+        onCurrentChange?.(safeCurrent);
         const body = await res.json().catch(() => ({}));
         const msg =
           (body as { error?: string }).error ?? "Failed to update vitality.";
@@ -147,8 +154,7 @@ export function VitalityTracker({
 
       const data = (await res.json()) as ApplyResponse;
       setOptimisticCurrent(data.character.currentVitality);
-      setDialogOpen(false);
-
+      onCurrentChange?.(data.character.currentVitality);
       startTransition(() => router.refresh());
 
       const verb = dialogMode === "damage" ? "Damage" : "Heal";
@@ -159,7 +165,8 @@ export function VitalityTracker({
         : `${verb} ${Math.abs(actualDelta)} applied.`;
       showToast(note, "success");
     } catch (err) {
-      setOptimisticCurrent(current);
+      setOptimisticCurrent(safeCurrent);
+      onCurrentChange?.(safeCurrent);
       showToast(
         err instanceof Error ? err.message : "Network error.",
         "error",
@@ -170,7 +177,12 @@ export function VitalityTracker({
   }
 
   async function submitRest(restType: "long" | "short") {
+    const optimisticRest = restType === "long"
+      ? max
+      : Math.min(max, optimisticCurrent + Math.ceil(max / 2));
     setRestPending(restType);
+    setOptimisticCurrent(optimisticRest);
+    onCurrentChange?.(optimisticRest);
     try {
       const res = await fetch(`/api/characters/${characterId}/rest`, {
         method: "POST",
@@ -179,6 +191,8 @@ export function VitalityTracker({
       });
 
       if (!res.ok) {
+        setOptimisticCurrent(safeCurrent);
+        onCurrentChange?.(safeCurrent);
         const body = await res.json().catch(() => ({}));
         const msg =
           (body as { error?: string }).error ?? "Failed to rest.";
@@ -188,6 +202,7 @@ export function VitalityTracker({
 
       const data = (await res.json()) as RestResponse;
       setOptimisticCurrent(data.character.currentVitality);
+      onCurrentChange?.(data.character.currentVitality);
       startTransition(() => router.refresh());
 
       const restored = data.vitalityRestored;
@@ -225,6 +240,8 @@ export function VitalityTracker({
         // ignore localStorage errors
       }
     } catch (err) {
+      setOptimisticCurrent(safeCurrent);
+      onCurrentChange?.(safeCurrent);
       showToast(
         err instanceof Error ? err.message : "Network error.",
         "error",
@@ -303,8 +320,8 @@ export function VitalityTracker({
             pending || restPending !== null || optimisticCurrent === 0
           }
           className={cn(
-            "inline-flex flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-destructive/60 bg-destructive/25 font-medium text-destructive transition-colors hover:bg-destructive/35 disabled:cursor-not-allowed disabled:opacity-70",
-            compact ? "px-1 py-0.5 text-[10px] gap-0.5" : "px-2 py-1 text-xs",
+            "v12-vitality-command is-damage inline-flex flex-1 items-center justify-center gap-1 whitespace-nowrap font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70",
+            compact ? "px-1 py-0.5 text-xs gap-0.5" : "px-2 py-1 text-xs",
           )}
           aria-label="Apply damage"
         >
@@ -318,8 +335,8 @@ export function VitalityTracker({
             pending || restPending !== null || optimisticCurrent >= max
           }
           className={cn(
-            "inline-flex flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-green-600/60 bg-green-500/25 font-medium text-green-700 transition-colors hover:bg-green-500/35 disabled:cursor-not-allowed disabled:opacity-70 dark:text-green-400",
-            compact ? "px-1 py-0.5 text-[10px] gap-0.5" : "px-2 py-1 text-xs",
+            "v12-vitality-command is-heal inline-flex flex-1 items-center justify-center gap-1 whitespace-nowrap font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70",
+            compact ? "px-1 py-0.5 text-xs gap-0.5" : "px-2 py-1 text-xs",
           )}
           aria-label="Apply healing"
         >
@@ -333,8 +350,8 @@ export function VitalityTracker({
             pending || restPending !== null || optimisticCurrent === max
           }
           className={cn(
-            "inline-flex flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-border bg-secondary font-medium transition-colors hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-70",
-            compact ? "px-1 py-0.5 text-[10px] gap-0.5" : "px-2 py-1 text-xs",
+            "v12-vitality-command is-rest inline-flex flex-1 items-center justify-center gap-1 whitespace-nowrap font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70",
+            compact ? "px-1 py-0.5 text-xs gap-0.5" : "px-2 py-1 text-xs",
           )}
           aria-label="Long rest"
           title="Long rest: restore to full vitality"
@@ -349,8 +366,8 @@ export function VitalityTracker({
             pending || restPending !== null || optimisticCurrent === max
           }
           className={cn(
-            "inline-flex flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-border bg-secondary font-medium transition-colors hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-70",
-            compact ? "px-1 py-0.5 text-[10px] gap-0.5" : "px-2 py-1 text-xs",
+            "v12-vitality-command is-rest inline-flex flex-1 items-center justify-center gap-1 whitespace-nowrap font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70",
+            compact ? "px-1 py-0.5 text-xs gap-0.5" : "px-2 py-1 text-xs",
           )}
           aria-label="Short rest"
           title="Short rest: restore 50% of max vitality"
@@ -462,7 +479,7 @@ function AttrTotalCell({
           : "border-border bg-background",
       )}
     >
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </span>
       <span

@@ -314,7 +314,7 @@ export function UpdateAllModal({
                                   <h4 className="truncate text-sm font-semibold">
                                     {it.entityName}
                                   </h4>
-                                  <div className="flex shrink-0 items-center gap-2 text-[10px] text-muted-foreground">
+                                  <div className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
                                     <span className="font-mono">
                                       v{it.current.versionNumber}
                                     </span>
@@ -371,7 +371,7 @@ export function UpdateAllModal({
                                     </tbody>
                                   </table>
                                 )}
-                                <p className="mt-1 text-[10px] text-muted-foreground">
+                                <p className="mt-1 text-xs text-muted-foreground">
                                   Slot {(it.slotInstanceId ?? "").slice(0, 24)}
                                   {it.slotInstanceId &&
                                   it.slotInstanceId.length > 24

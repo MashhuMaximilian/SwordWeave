@@ -185,7 +185,7 @@ export function DataQualityPanel() {
         </button>
         <button type="button" aria-label="Dismiss modifier audit" onClick={() => setDismissed(true)} className="shrink-0 px-2 py-1 text-amber-200/80 hover:text-amber-100">×</button>
       </div>
-      <p className="text-[10px] text-amber-200/70">
+      <p className="text-xs text-amber-200/70">
         The engine silently drops these from sheet calculations. Open the
         primitive, pick at least one sub-target, and re-save to fix.
       </p>
@@ -198,7 +198,7 @@ export function DataQualityPanel() {
             >
               <p className="font-medium">
                 {entry.name}{" "}
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   ({entry.category})
                 </span>
               </p>

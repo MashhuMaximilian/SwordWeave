@@ -328,7 +328,7 @@ export default function CharacterPage() {
     <div className="sw-home relative mx-auto w-full max-w-[1400px] px-4 pb-24 pt-16 sm:px-6 sm:pt-16 lg:px-10 lg:pt-16">
       <PublicNav />
 
-      <div className="sw-marginalia sw-marginalia--top mb-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-border pb-3 text-[10px] uppercase tracking-[0.22em] text-muted-foreground sm:text-xs">
+      <div className="sw-marginalia sw-marginalia--top mb-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-border pb-3 text-xs uppercase tracking-[0.22em] text-muted-foreground sm:text-xs">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
           <Link href="/" className="font-display text-foreground hover:text-primary">
             Sword<span className="text-primary">·</span>Weave
@@ -355,7 +355,7 @@ export default function CharacterPage() {
         </div>
 
         <div className="min-w-0">
-          <div className="mb-3 inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] text-primary lg:hidden">
+          <div className="mb-3 inline-flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-primary lg:hidden">
             <span className="size-1.5 rounded-full bg-primary" />
             Character creation
           </div>
@@ -405,7 +405,7 @@ export default function CharacterPage() {
 
         <div className="mt-10 grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-3">
           <div className="flex flex-col gap-2 bg-card p-5 sm:p-6">
-            <span className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            <span className="font-display text-xs uppercase tracking-[0.22em] text-muted-foreground">
               What it costs
             </span>
             <p className="font-display text-2xl font-bold uppercase leading-none">
@@ -416,7 +416,7 @@ export default function CharacterPage() {
             </p>
           </div>
           <div className="flex flex-col gap-2 bg-card p-5 sm:p-6">
-            <span className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            <span className="font-display text-xs uppercase tracking-[0.22em] text-muted-foreground">
               What you get back
             </span>
             <p className="font-display text-2xl font-bold uppercase leading-none">
@@ -427,7 +427,7 @@ export default function CharacterPage() {
             </p>
           </div>
           <div className="flex flex-col gap-2 bg-card p-5 sm:p-6">
-            <span className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            <span className="font-display text-xs uppercase tracking-[0.22em] text-muted-foreground">
               When it flips
             </span>
             <p className="font-display text-2xl font-bold uppercase leading-none">
@@ -460,7 +460,7 @@ export default function CharacterPage() {
                 <span className="font-display text-4xl font-bold leading-none text-primary sm:text-5xl">
                   {section.n}
                 </span>
-                <span className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                <span className="font-display text-xs uppercase tracking-[0.22em] text-muted-foreground">
                   §{i}0
                 </span>
               </header>
@@ -517,7 +517,7 @@ export default function CharacterPage() {
                 {/* Example card (section 2) */}
                 {"example" in section && section.example && (
                   <figure className="sw-recipe mt-6 border border-border bg-card p-5 sm:p-6">
-                    <figcaption className="font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+                    <figcaption className="font-display text-xs uppercase tracking-[0.22em] text-primary">
                       {section.example.label}
                     </figcaption>
                     <pre className="mt-3 whitespace-pre-wrap font-display text-xs leading-[1.7] text-foreground sm:text-sm">
@@ -551,7 +551,7 @@ export default function CharacterPage() {
                     )}
                     {"formula" in section && section.formula && (
                       <figure className="sw-recipe mt-6 border border-border bg-card p-5 sm:p-6">
-                        <figcaption className="font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+                        <figcaption className="font-display text-xs uppercase tracking-[0.22em] text-primary">
                           {section.formula.label}
                         </figcaption>
                         <pre className="mt-3 whitespace-pre-wrap font-display text-xs leading-[1.7] text-foreground sm:text-sm">
@@ -572,13 +572,13 @@ export default function CharacterPage() {
                       <table className="w-full min-w-[560px] border-collapse text-left">
                         <thead>
                           <tr className="border-b border-border bg-card/60">
-                            <th className="px-4 py-3 font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+                            <th className="px-4 py-3 font-display text-xs uppercase tracking-[0.22em] text-primary">
                               Tier label
                             </th>
-                            <th className="px-4 py-3 font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+                            <th className="px-4 py-3 font-display text-xs uppercase tracking-[0.22em] text-primary">
                               BU anchor
                             </th>
-                            <th className="hidden px-4 py-3 font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground sm:table-cell">
+                            <th className="hidden px-4 py-3 font-display text-xs uppercase tracking-[0.22em] text-muted-foreground sm:table-cell">
                               Rough scale
                             </th>
                           </tr>
@@ -616,7 +616,7 @@ export default function CharacterPage() {
                   <div className="mt-7 grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2">
                     {section.mirror_vs.map((col) => (
                       <div key={col.kind} className="bg-card p-5 sm:p-6">
-                        <p className="font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+                        <p className="font-display text-xs uppercase tracking-[0.22em] text-primary">
                           {col.kind}
                         </p>
                         <ul className="mt-3 space-y-2">
@@ -640,7 +640,7 @@ export default function CharacterPage() {
                     <div className="mt-7 grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2">
                       {section.vectors.map((v) => (
                         <div key={v.code} className="bg-card p-5 sm:p-6">
-                          <p className="font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+                          <p className="font-display text-xs uppercase tracking-[0.22em] text-primary">
                             {v.code}
                           </p>
                           <p className="mt-1 font-display text-lg font-bold uppercase tracking-tight sm:text-xl">
@@ -671,7 +671,7 @@ export default function CharacterPage() {
                         key={block.label}
                         className="sw-recipe border border-border bg-card p-5 sm:p-6"
                       >
-                        <figcaption className="font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+                        <figcaption className="font-display text-xs uppercase tracking-[0.22em] text-primary">
                           {block.label}
                         </figcaption>
                         <pre className="mt-3 whitespace-pre-wrap font-display text-xs leading-[1.7] text-foreground sm:text-sm">
@@ -707,16 +707,16 @@ export default function CharacterPage() {
           <table className="w-full min-w-[640px] border-collapse text-left">
             <thead>
               <tr className="border-b border-border bg-card/60">
-                <th className="px-4 py-3 font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+                <th className="px-4 py-3 font-display text-xs uppercase tracking-[0.22em] text-primary">
                   Level
                 </th>
-                <th className="px-4 py-3 font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+                <th className="px-4 py-3 font-display text-xs uppercase tracking-[0.22em] text-primary">
                   Cumulative BU
                 </th>
-                <th className="px-4 py-3 font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+                <th className="px-4 py-3 font-display text-xs uppercase tracking-[0.22em] text-primary">
                   PB
                 </th>
-                <th className="hidden px-4 py-3 font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground sm:table-cell">
+                <th className="hidden px-4 py-3 font-display text-xs uppercase tracking-[0.22em] text-muted-foreground sm:table-cell">
                   Note
                 </th>
               </tr>
@@ -760,7 +760,7 @@ export default function CharacterPage() {
             className="sw-codex-card group flex items-baseline justify-between gap-4 border border-border bg-card p-5 transition-colors hover:border-primary/60 sm:p-6"
           >
             <div className="min-w-0">
-              <p className="font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+              <p className="font-display text-xs uppercase tracking-[0.22em] text-primary">
                 Need the basics first?
               </p>
               <p className="mt-1 font-display text-2xl font-bold uppercase leading-none sm:text-3xl">
@@ -779,7 +779,7 @@ export default function CharacterPage() {
             className="sw-codex-card group flex items-baseline justify-between gap-4 border border-border bg-card p-5 transition-colors hover:border-primary/60 sm:p-6"
           >
             <div className="min-w-0">
-              <p className="font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+              <p className="font-display text-xs uppercase tracking-[0.22em] text-primary">
                 Built the character. now what?
               </p>
               <p className="mt-1 font-display text-2xl font-bold uppercase leading-none sm:text-3xl">
@@ -818,7 +818,7 @@ function SectionHeading({
         <span className="mb-2 hidden text-xs uppercase tracking-[0.22em] text-muted-foreground lg:inline">
           {eyebrow}
         </span>
-        <span className="font-display text-[10px] uppercase tracking-[0.28em] text-primary lg:hidden">
+        <span className="font-display text-xs uppercase tracking-[0.28em] text-primary lg:hidden">
           {index} · {eyebrow}
         </span>
         <h2 className="font-display text-3xl font-bold uppercase leading-[0.95] tracking-tight sm:text-5xl lg:text-6xl">

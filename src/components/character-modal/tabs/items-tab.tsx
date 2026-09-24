@@ -375,7 +375,7 @@ function ItemContainerCard({
                 but never equipped" flag here so the user
                 sees why the Equip button is missing. */}
             {isNotEquippable && (
-              <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase text-amber-700 dark:text-amber-300">
+              <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-xs font-bold uppercase text-amber-700 dark:text-amber-300">
                 Not equippable
               </span>
             )}
@@ -391,7 +391,7 @@ function ItemContainerCard({
               sums over quantity on the read side; the modal
               save path was hardcoding 1 here). No upper cap
               to match the item template's policy. */}
-          <label className="flex items-center gap-1 text-[10px] font-semibold uppercase text-muted-foreground">
+          <label className="flex items-center gap-1 text-xs font-semibold uppercase text-muted-foreground">
             Qty
             <input
               type="number"
@@ -520,7 +520,7 @@ function ItemNestedBundle({
       {/* Capabilities — read-only (sheet has the active/trigger) */}
       {item.capabilityLinks.length > 0 && (
         <details className="rounded-md border border-border/60 bg-background/40 px-3 py-2 text-xs">
-          <summary className="cursor-pointer select-none text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <summary className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Capabilities ({item.capabilityLinks.length})
           </summary>
           <ul className="mt-2 space-y-2">
@@ -531,7 +531,7 @@ function ItemNestedBundle({
               >
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{cl.capability.name}</span>
-                  <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                  <span className="rounded-full bg-secondary px-1.5 py-0.5 text-xs uppercase tracking-wide text-muted-foreground">
                     {cl.capability.type}
                   </span>
                 </div>
@@ -566,7 +566,7 @@ function ItemNestedBundle({
       {/* Effects directly on the item (not via caps) */}
       {item.effectLinks.length > 0 && (
         <details className="rounded-md border border-border/60 bg-background/40 px-3 py-2 text-xs">
-          <summary className="cursor-pointer select-none text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <summary className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Effects ({item.effectLinks.length})
           </summary>
           <ul className="mt-2 space-y-1.5">
@@ -590,7 +590,7 @@ function ItemNestedBundle({
       {/* Primitives — read-only */}
       {item.primitiveLinks.length > 0 && (
         <details className="rounded-md border border-border/60 bg-background/40 px-3 py-2 text-xs">
-          <summary className="cursor-pointer select-none text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <summary className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Primitives ({item.primitiveLinks.length})
           </summary>
           <ul className="mt-2 space-y-1.5">
@@ -605,7 +605,7 @@ function ItemNestedBundle({
                     {pl.primitive.buCost} BU
                   </span>
                 </div>
-                <div className="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                <div className="mt-0.5 text-xs uppercase tracking-wide text-muted-foreground">
                   {pl.primitive.category}
                 </div>
                 {pl.primitive.narrativeRule && (

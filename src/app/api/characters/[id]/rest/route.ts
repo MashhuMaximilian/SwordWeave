@@ -66,7 +66,7 @@ async function handlePOST(
 
     const { max } = await loadCharacterMaxVitality(id);
     // Phase 8.I i2.7f: null currentVitality = at full HP.
-    const prev = current.currentVitality ?? max;
+    const prev = clampVitality(current.currentVitality ?? max, max);
     let next: number;
     let delta: number;
 

@@ -113,6 +113,7 @@ export const characters = pgTable(
     notes: text("notes"),
     dmNotes: text("dm_notes"),
     portraitUrl: text("portrait_url"),
+    portraitFrame: jsonb("portrait_frame").notNull().default(sql`'{"x":50,"y":50,"zoom":1}'::jsonb`),
     isPublic: boolean("is_public").notNull().default(false),
     sourceOrigin: text("source_origin"), // "build:<id>" | "manual" | etc.
     // Phase 8.1 batch 5 (rework): freeform backstory fields held by

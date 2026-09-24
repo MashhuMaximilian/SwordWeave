@@ -205,6 +205,13 @@ describe("aggregateCharacterSheet", () => {
     expect(sheet.vitality.percent).toBeNull();
   });
 
+  it("clamps stored current vitality when derived max falls below it", () => {
+    const sheet = aggregateCharacterSheet(baseInput({ currentVitality: 99 }));
+    expect(sheet.vitality.max).toBe(12);
+    expect(sheet.vitality.current).toBe(12);
+    expect(sheet.vitality.percent).toBe(100);
+  });
+
   it("computes PB contribution only on proficient practices", () => {
     const sheet = aggregateCharacterSheet(
       baseInput({ level: 4, attrProficient: "MENTAL" }),

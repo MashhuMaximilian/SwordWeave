@@ -171,6 +171,8 @@ type SheetPrimitiveLink = {
     // unknown[] because we parse the condition shape at render
     // time (legacy vs v1 differ).
     hardModifiers: readonly unknown[];
+    mechanicalRule?: Record<string, unknown> | null;
+    mechanicalOutputText?: string | null;
   };
 };
 
@@ -297,6 +299,7 @@ export type CharacterSheetProps = {
   level: number;
   size: string;
   portraitUrl: string | null;
+  portraitFrame: unknown;
   notes: string | null;
   dmNotes: string | null;
   lineageName: string | null;
@@ -685,6 +688,75 @@ function buildClientBehaviorVariables(
   }
   out.sort((a, b) => a.key.localeCompare(b.key));
   return out;
+}
+
+/** Rules such as domain and verb access are intentionally nonnumeric, so the
+ * modifier resolver cannot place them in a total. Keep them visible in the
+ * play drawer by deriving a small, deduplicated rule ledger from the same
+ * expanded primitive graph that drives the rest of the sheet. */
+function buildAccessRules(links: ReadonlyArray<SheetPrimitiveLink>): ReadonlyArray<{
+  readonly primitiveId: number;
+  readonly name: string;
+  readonly kind: "domain" | "verb" | "range" | "die" | "structure" | "behavior";
+  readonly detail: string;
+}> {
+  const seen = new Set<string>();
+  const rules: Array<{
+    primitiveId: number;
+    name: string;
+    kind: "domain" | "verb" | "range" | "die" | "structure" | "behavior";
+    detail: string;
+  }> = [];
+  for (const link of links) {
+    if (link.isToggledOff) continue;
+    const rule = link.primitive.mechanicalRule ?? {};
+    const family = String(rule["family"] ?? "").toUpperCase();
+    const category = link.primitive.category.toUpperCase();
+    const target = String(rule["target"] ?? "").trim();
+    const storedBehavior = String((rule["bindings"] as Record<string, unknown> | undefined)?.["behavior"] ?? "").trim();
+    const normalizedTarget = storedBehavior || target.replace(/^behavior[.:]\s*/i, "").trim();
+    const isBehavior = family === "BEHAVIOR_ACCESS" || family === "BEHAVIOR_COUNTER" ||
+      (family === "GENERIC" && /^behavior(?:[.:]|$)/i.test(target));
+    const kind = family === "DOMAIN_ACCESS"
+      ? "domain"
+      : family === "VERB_ACCESS"
+        ? "verb"
+        : family === "RANGE" || category === "RANGE"
+          ? "range"
+          : family === "DICE" || category === "INTENSITY_DICE" || category === "OUTPUT"
+            ? "die"
+            : family === "STRUCTURE" || category === "STRUCTURAL"
+              ? "structure"
+              : isBehavior
+                ? "behavior"
+        : null;
+    if (!kind) continue;
+    const key = `${kind}:${link.primitiveId}:${link.isMirrored ? "mirror" : "standard"}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const rawValue = rule["value"];
+    const numericValue = typeof rawValue === "number" ? rawValue : null;
+    const behaviorDetail = kind === "behavior"
+      ? /legendary resistance/i.test(normalizedTarget)
+        ? `${normalizedTarget}: ${numericValue ?? 1} use${numericValue === 1 ? "" : "s"}.`
+        : numericValue !== null && numericValue > 1
+          ? `Grants ${numericValue} ranks of ${normalizedTarget}.`
+          : `Grants the ${normalizedTarget} behavior.`
+      : null;
+    const structureDetail = kind === "structure" && /\[structure\]/i.test(link.primitive.mechanicalOutputText ?? "")
+      ? "Establishes the capability's delivery structure; the concrete target shape is selected in its composition."
+      : null;
+    rules.push({
+      primitiveId: link.primitiveId,
+      name: link.primitive.name,
+      kind,
+      detail: behaviorDetail
+        ?? structureDetail
+        ?? link.primitive.mechanicalOutputText?.trim()
+        ?? link.primitive.narrativeRule,
+    });
+  }
+  return rules;
 }
 
 export function CharacterSheetView(props: CharacterSheetProps) {
@@ -1278,7 +1350,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
                 key={t.id}
                 type="button"
                 onClick={() => setTab(t.id)}
-                className={`flex flex-1 flex-col items-center gap-0.5 px-2 py-1.5 text-[10px] font-medium transition-colors md:flex-none md:px-3 md:py-1.5 ${
+                className={`flex flex-1 flex-col items-center gap-0.5 px-2 py-1.5 text-xs font-medium transition-colors md:flex-none md:px-3 md:py-1.5 ${
                   tab === t.id
                     ? "text-primary"
                     : "text-muted-foreground hover:text-foreground"
@@ -1371,6 +1443,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         mode={props.mode}
         attrSum={attrSum}
         portraitUrl={props.portraitUrl ?? null}
+        portraitFrame={props.portraitFrame}
         canLevelUp={props.level < 20}
         onLevelUp={() => setLevelUpConfirm(true)}
         buBalance={{
@@ -1529,6 +1602,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         carryCapacity={props.carryCapacity}
         damageModifiers={props.damageModifiers}
         behaviorVariables={buildClientBehaviorVariables(props.behaviorVariables, resolver)}
+        accessRules={buildAccessRules(props.primitiveLinks)}
         // Phase 8.4 v25: character size for the encumbrance
         // formula popup. Cast from the loose `string` type on
         // CharacterSheetProps to the literal union the bar
@@ -1835,7 +1909,7 @@ function BuBudgetFooter({
                 <span className="font-medium">{p.name}</span>
                 <span className="flex items-center gap-2 font-mono text-muted-foreground">
                   <span>-{p.mirrorBuCredit} BU</span>
-                  <span className="text-[10px]">@L{p.acquiredAtLevel}</span>
+                  <span className="text-xs">@L{p.acquiredAtLevel}</span>
                 </span>
               </li>
             ))}
@@ -1896,7 +1970,7 @@ function IdentityCell({
 }) {
   return (
     <div className="bg-card p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
       <p
@@ -1934,7 +2008,7 @@ function StatCell({
 }) {
   return (
     <div className="bg-card p-4">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
       <p className="mt-1 font-mono text-2xl font-bold tabular-nums">
@@ -2143,7 +2217,7 @@ function PracticeModal({
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Practice breakdown
             </p>
             <p className="mt-0.5 text-base font-semibold capitalize">
@@ -2317,7 +2391,7 @@ function BreakdownView({ practice }: { practice: PracticeRow }) {
       />
       {practice.primitiveContributions.length > 0 && (
         <div className="mt-1 space-y-0.5 border-t border-border/50 pt-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Primitive contributions
           </p>
           {practice.primitiveContributions.map((p) => (
@@ -2331,7 +2405,7 @@ function BreakdownView({ practice }: { practice: PracticeRow }) {
       )}
       {practice.primitiveContributions.length === 0 &&
         practice.pbContribution === 0 && (
-          <p className="text-[10px] italic text-muted-foreground">
+          <p className="text-xs italic text-muted-foreground">
             No proficiency, no primitive bonuses. The total is just your
             share of the attribute.
           </p>
@@ -2361,7 +2435,7 @@ function BreakdownRow({
         </span>
       </div>
       {subtitle && (
-        <p className="mt-0.5 text-[10px] italic text-muted-foreground">
+        <p className="mt-0.5 text-xs italic text-muted-foreground">
           {subtitle}
         </p>
       )}
@@ -3015,7 +3089,7 @@ function CapabilitiesTab({
           directly using a lightweight CapabilityCard. */}
       {heritageLinks.length === 0 && capabilities.length > 0 && (
         <div className="space-y-2">
-          <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Capabilities (direct, no heritage)
           </p>
           {(["LINEAGE", "UPBRINGING", "MANIFEST"] as const).map((tab) => {
@@ -3501,7 +3575,7 @@ function DirectCapabilitiesCard({
   if (capabilities.length === 0) return null;
   return (
     <div className="rounded-md border border-dashed border-border/60 bg-background/40 px-3 py-2">
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Direct capabilities ({capabilities.length})
       </div>
       <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
@@ -3573,7 +3647,7 @@ function DirectPrimitivesCard({
 }) {
   return (
     <div className="space-y-2 rounded-md border border-dashed border-border/60 bg-card/40 p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Direct primitives ({primitiveLinks.length})
       </p>
       <ul className="flex flex-wrap gap-2">
@@ -3894,7 +3968,7 @@ function NotesTab({
         <div className="v12-notes-console-head">
           <div className="flex items-baseline justify-between">
             <h3 className="text-sm font-semibold">Notes</h3>
-            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
               Public · everyone can read
             </span>
           </div>
@@ -3911,7 +3985,7 @@ function NotesTab({
               <Markdown>{notes}</Markdown>
             </div>
           ) : null}
-          <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+          <div className="mt-1 flex justify-between text-xs text-muted-foreground">
             <span>{notes.length} chars</span>
             {notesDirty && (
               <span className="font-semibold text-amber-600">Unsaved</span>
@@ -4195,7 +4269,7 @@ function BackstoryEditModal({
             <label key={f.key} className="block">
               <div className="flex items-baseline justify-between">
                 <span className="text-sm font-semibold">{f.label}</span>
-                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                <span className="text-xs uppercase tracking-wide text-muted-foreground">
                   {draft[f.key].length} / 4000
                 </span>
               </div>
@@ -4347,7 +4421,7 @@ function HistoryTab({
     return (
       <div className="space-y-2">
         {loading ? (
-          <p className="text-[10px] text-muted-foreground">Loading history…</p>
+          <p className="text-xs text-muted-foreground">Loading history…</p>
         ) : null}
         <div className="rounded-md border border-dashed border-border bg-card p-8 text-center">
           <History className="mx-auto size-8 text-muted-foreground" />
@@ -4440,7 +4514,7 @@ function FilterChip({
     >
       {label}
       <span
-        className={`rounded-full px-1 text-[10px] ${
+        className={`rounded-full px-1 text-xs ${
           active
             ? "bg-primary-foreground/20"
             : "bg-secondary text-muted-foreground"
@@ -4472,7 +4546,7 @@ function HistoryEntry({
         </div>
         <time
           dateTime={createdAt}
-          className="text-[10px] uppercase tracking-wide text-muted-foreground"
+          className="text-xs uppercase tracking-wide text-muted-foreground"
           title={date.toLocaleString()}
         >
           {formatRelative(date)} · {date.toLocaleDateString()}

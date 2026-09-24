@@ -68,7 +68,7 @@ export default function AboutPage() {
     <div className="sw-home relative mx-auto w-full max-w-[1100px] px-4 pb-24 pt-16 sm:px-6 sm:pt-16 lg:px-10 lg:pt-16">
       <PublicNav />
       {/* Top marginalia bar — same as homepage + /start */}
-      <div className="sw-marginalia sw-marginalia--top mb-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-border pb-3 text-[10px] uppercase tracking-[0.22em] text-muted-foreground sm:text-xs">
+      <div className="sw-marginalia sw-marginalia--top mb-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-border pb-3 text-xs uppercase tracking-[0.22em] text-muted-foreground sm:text-xs">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
           <Link href="/" className="font-display text-foreground hover:text-primary">
             Sword<span className="text-primary">·</span>Weave
@@ -92,7 +92,7 @@ export default function AboutPage() {
         </div>
 
         <div className="min-w-0">
-          <div className="mb-3 inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] text-primary lg:hidden">
+          <div className="mb-3 inline-flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-primary lg:hidden">
             <span className="size-1.5 rounded-full bg-primary" />
             About
           </div>
@@ -107,7 +107,7 @@ export default function AboutPage() {
 
           {/* Bio — your words */}
           <div className="mt-8 max-w-2xl border-l-2 border-primary pl-5">
-            <p className="font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+            <p className="font-display text-xs uppercase tracking-[0.22em] text-primary">
               Why I built this
             </p>
             <p className="mt-3 text-lg leading-8 text-foreground sm:text-xl sm:leading-9">
@@ -128,7 +128,7 @@ export default function AboutPage() {
 
       {/* Project facts — citation block */}
       <section className="sw-section border-t border-border pt-10 sm:pt-14">
-        <h2 className="font-display text-[10px] uppercase tracking-[0.28em] text-primary sm:text-xs">
+        <h2 className="font-display text-xs uppercase tracking-[0.28em] text-primary sm:text-xs">
           Project facts
         </h2>
 
@@ -138,7 +138,7 @@ export default function AboutPage() {
               key={fact.label}
               className="flex flex-col gap-1 bg-card p-5 sm:p-6"
             >
-              <dt className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              <dt className="font-display text-xs uppercase tracking-[0.22em] text-muted-foreground">
                 {fact.label}
               </dt>
               <dd className="mt-1 font-display text-xl font-bold uppercase leading-none sm:text-2xl">
@@ -167,7 +167,7 @@ export default function AboutPage() {
       {/* Attributions — citation block */}
       <section className="sw-section border-t border-border pt-10 sm:pt-14">
         <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-          <h2 className="font-display text-[10px] uppercase tracking-[0.28em] text-primary sm:text-xs">
+          <h2 className="font-display text-xs uppercase tracking-[0.28em] text-primary sm:text-xs">
             Attributions
           </h2>
           <Link
@@ -185,7 +185,7 @@ export default function AboutPage() {
               key={att.label}
               className="flex flex-col gap-1 bg-card p-5 sm:p-6"
             >
-              <dt className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              <dt className="font-display text-xs uppercase tracking-[0.22em] text-muted-foreground">
                 {att.label}
               </dt>
               <dd className="mt-1 font-display text-xl font-bold uppercase leading-none sm:text-2xl">

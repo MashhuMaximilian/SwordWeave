@@ -701,6 +701,10 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
    * that don't need the navigation step.
    */
   const openForEditFromStore = useCallback(async (characterId: string) => {
+    // A fetched character establishes a fresh edit baseline. From this point
+    // on, only user actions should mark the draft dirty; reopening the modal
+    // while browsing the Atelier must preserve that signal.
+    setDirtyOverride(false);
     setIsSeedingEdit(true);
     setEditSeedError(null);
     setEditCharacterId(characterId);
@@ -790,27 +794,27 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      let didAdd = false;
-      let addedTab: CharacterTabId = "manifest";
-      setPendingSlots((current) => {
-        // Determine which tab the slot belongs to.
-        let tab: CharacterTabId;
-        if (slot.kind === "heritage") {
-          if (slot.heritageKind === "LINEAGE") tab = "lineage";
-          else if (slot.heritageKind === "UPBRINGING") tab = "upbringing";
-          else tab = "manifest";
-        } else if (slot.kind === "item") {
-          tab = "items";
-        } else {
-          tab = slot.tab;
-        }
-        addedTab = tab;
-        // Assign a stable slotId if the caller didn't supply one (it
-        // shouldn't, but we guard so old call sites don't break).
-        const stamped: PendingSlot = { ...slot, slotId: makeSlotId() };
-        didAdd = true;
-        return { ...current, [tab]: [...current[tab], stamped] };
-      });
+      let addedTab: CharacterTabId;
+      if (slot.kind === "heritage") {
+        if (slot.heritageKind === "LINEAGE") addedTab = "lineage";
+        else if (slot.heritageKind === "UPBRINGING") addedTab = "upbringing";
+        else addedTab = "manifest";
+      } else if (slot.kind === "item") {
+        addedTab = "items";
+      } else {
+        addedTab = slot.tab;
+      }
+      // Assign a stable slotId if the caller didn't supply one (it
+      // shouldn't, but we guard so old call sites don't break).
+      const stamped: PendingSlot = { ...slot, slotId: makeSlotId() };
+      setPendingSlots((current) => ({
+        ...current,
+        [addedTab]: [...current[addedTab], stamped],
+      }));
+      // Reaching this point means the action passed the seeding and duplicate
+      // guards. Mark it synchronously so a modal opened immediately afterward
+      // cannot absorb the addition into a newly-mounted form baseline.
+      setDirtyOverride(true);
       console.log(
         `[character-modal] queueSlot added ${slot.kind} to tab="${addedTab}" pendingSlots now: ${
           JSON.stringify(
@@ -823,7 +827,7 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
           )
         }`,
       );
-      return { ok: didAdd };
+      return { ok: true };
     },
     [],
   );
@@ -833,6 +837,12 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
   // mirrorable; calling this on other kinds is a no-op.
   const setSlotMirror = useCallback(
     (slotId: string, mirror: boolean) => {
+      const target = CHARACTER_TABS.flatMap(
+        (tab) => pendingSlotsRef.current[tab],
+      ).find((slot) => slot.slotId === slotId);
+      if (!target || target.kind !== "primitive" || target.mirror === mirror) {
+        return;
+      }
       setPendingSlots((current) => {
         const next: PendingSlotsByTab = { ...current };
         for (const tab of CHARACTER_TABS) {
@@ -856,15 +866,21 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
         }
         return current;
       });
+      setDirtyOverride(true);
     },
     [],
   );
 
   const removeSlot = useCallback((tab: CharacterTabId, index: number) => {
-    setPendingSlots((current) => ({
-      ...current,
-      [tab]: current[tab].filter((_, i) => i !== index),
-    }));
+    if (!pendingSlotsRef.current[tab][index]) return;
+    setPendingSlots((current) => {
+      if (!current[tab][index]) return current;
+      return {
+        ...current,
+        [tab]: current[tab].filter((_, i) => i !== index),
+      };
+    });
+    setDirtyOverride(true);
   }, []);
 
   const clearSlots = useCallback(() => setPendingSlots(EMPTY_PENDING), []);
@@ -978,7 +994,6 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
             }
           }
         }
-        setDirtyOverride(false);
         return merged;
       }
       // No existing pending slots — fresh open, replace with DB seed.
@@ -988,7 +1003,6 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
           s.slotId ? s : { ...s, slotId: makeSlotId() },
         );
       }
-      setDirtyOverride(false);
       return stamped;
     });
   }, []);

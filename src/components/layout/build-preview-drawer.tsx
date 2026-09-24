@@ -274,7 +274,7 @@ export function BuildPreviewDrawer() {
               <RotateCcw className="size-3.5" />
               Reset
             </button>
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {drawerTab === "build" ? "Editing draft" : "Live preview"}
             </span>
             <button

@@ -242,7 +242,7 @@ export default function CombatPage() {
     <div className="sw-home relative mx-auto w-full max-w-[1400px] px-4 pb-24 pt-16 sm:px-6 sm:pt-16 lg:px-10 lg:pt-16">
       <PublicNav />
 
-      <div className="sw-marginalia sw-marginalia--top mb-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-border pb-3 text-[10px] uppercase tracking-[0.22em] text-muted-foreground sm:text-xs">
+      <div className="sw-marginalia sw-marginalia--top mb-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-border pb-3 text-xs uppercase tracking-[0.22em] text-muted-foreground sm:text-xs">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
           <Link href="/" className="font-display text-foreground hover:text-primary">
             Sword<span className="text-primary">·</span>Weave
@@ -269,7 +269,7 @@ export default function CombatPage() {
         </div>
 
         <div className="min-w-0">
-          <div className="mb-3 inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] text-primary lg:hidden">
+          <div className="mb-3 inline-flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-primary lg:hidden">
             <span className="size-1.5 rounded-full bg-primary" />
             Combat
           </div>
@@ -319,7 +319,7 @@ export default function CombatPage() {
 
         <div className="mt-10 grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
           <div className="flex flex-col gap-2 bg-card p-5 sm:p-6">
-            <span className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            <span className="font-display text-xs uppercase tracking-[0.22em] text-muted-foreground">
               01
             </span>
             <p className="font-display text-xl font-bold uppercase leading-none sm:text-2xl">
@@ -330,7 +330,7 @@ export default function CombatPage() {
             </p>
           </div>
           <div className="flex flex-col gap-2 bg-card p-5 sm:p-6">
-            <span className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            <span className="font-display text-xs uppercase tracking-[0.22em] text-muted-foreground">
               02
             </span>
             <p className="font-display text-xl font-bold uppercase leading-none sm:text-2xl">
@@ -341,7 +341,7 @@ export default function CombatPage() {
             </p>
           </div>
           <div className="flex flex-col gap-2 bg-card p-5 sm:p-6">
-            <span className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            <span className="font-display text-xs uppercase tracking-[0.22em] text-muted-foreground">
               03
             </span>
             <p className="font-display text-xl font-bold uppercase leading-none sm:text-2xl">
@@ -352,7 +352,7 @@ export default function CombatPage() {
             </p>
           </div>
           <div className="flex flex-col gap-2 bg-card p-5 sm:p-6">
-            <span className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            <span className="font-display text-xs uppercase tracking-[0.22em] text-muted-foreground">
               04
             </span>
             <p className="font-display text-xl font-bold uppercase leading-none sm:text-2xl">
@@ -381,7 +381,7 @@ export default function CombatPage() {
                 <p className="font-display text-2xl font-bold uppercase tracking-tight sm:text-3xl">
                   {track.code}
                 </p>
-                <p className="font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+                <p className="font-display text-xs uppercase tracking-[0.22em] text-primary">
                   {track.complexity}
                 </p>
               </div>
@@ -419,7 +419,7 @@ export default function CombatPage() {
                 <span className="font-display text-4xl font-bold leading-none text-primary sm:text-5xl">
                   {section.n}
                 </span>
-                <span className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                <span className="font-display text-xs uppercase tracking-[0.22em] text-muted-foreground">
                   §{i}0
                 </span>
               </header>
@@ -449,7 +449,7 @@ export default function CombatPage() {
                         key={j}
                         className="font-display text-sm leading-7 text-foreground sm:text-base sm:leading-8"
                       >
-                        <span className="text-[10px] uppercase tracking-[0.22em] text-primary">
+                        <span className="text-xs uppercase tracking-[0.22em] text-primary">
                           {line.who}
                         </span>
                         <span className="ml-3 italic">"{line.text}"</span>
@@ -492,7 +492,7 @@ export default function CombatPage() {
 
                 {"example" in section && section.example && (
                   <figure className="sw-recipe mt-6 border border-border bg-card p-5 sm:p-6">
-                    <figcaption className="font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+                    <figcaption className="font-display text-xs uppercase tracking-[0.22em] text-primary">
                       {section.example.label}
                     </figcaption>
                     <pre className="mt-3 whitespace-pre-wrap font-display text-xs leading-[1.7] text-foreground sm:text-sm">
@@ -503,7 +503,7 @@ export default function CombatPage() {
 
                 {"example2" in section && section.example2 && (
                   <figure className="sw-recipe mt-3 border border-primary/40 bg-primary/5 p-5 sm:p-6">
-                    <figcaption className="font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+                    <figcaption className="font-display text-xs uppercase tracking-[0.22em] text-primary">
                       {section.example2.label}
                     </figcaption>
                     <pre className="mt-3 whitespace-pre-wrap font-display text-xs leading-[1.7] text-foreground sm:text-sm">
@@ -554,7 +554,7 @@ export default function CombatPage() {
             className="sw-codex-card group flex items-baseline justify-between gap-4 border border-border bg-card p-5 transition-colors hover:border-primary/60 sm:p-6"
           >
             <div className="min-w-0">
-              <p className="font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+              <p className="font-display text-xs uppercase tracking-[0.22em] text-primary">
                 Before you fight
               </p>
               <p className="mt-1 font-display text-2xl font-bold uppercase leading-none sm:text-3xl">
@@ -573,7 +573,7 @@ export default function CombatPage() {
             className="sw-codex-card group flex items-baseline justify-between gap-4 border border-border bg-card p-5 transition-colors hover:border-primary/60 sm:p-6"
           >
             <div className="min-w-0">
-              <p className="font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+              <p className="font-display text-xs uppercase tracking-[0.22em] text-primary">
                 What you can do with a turn
               </p>
               <p className="mt-1 font-display text-2xl font-bold uppercase leading-none sm:text-3xl">
@@ -612,7 +612,7 @@ function SectionHeading({
         <span className="mb-2 hidden text-xs uppercase tracking-[0.22em] text-muted-foreground lg:inline">
           {eyebrow}
         </span>
-        <span className="font-display text-[10px] uppercase tracking-[0.28em] text-primary lg:hidden">
+        <span className="font-display text-xs uppercase tracking-[0.28em] text-primary lg:hidden">
           {index} · {eyebrow}
         </span>
         <h2 className="font-display text-3xl font-bold uppercase leading-[0.95] tracking-tight sm:text-5xl lg:text-6xl">

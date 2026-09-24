@@ -175,7 +175,7 @@ export function PickerStatSection({
     >
       {chosenStat ? (
         <div className="mb-2 rounded-md border-2 border-primary/40 bg-primary/5 p-2">
-          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-primary">
+          <div className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-primary">
             <span>Building:</span>
             <code className="font-mono text-foreground">
               actor:{chosenStat} {chosenOp} {val}
@@ -184,7 +184,7 @@ export function PickerStatSection({
             <button
               type="button"
               onClick={() => setChosenStat(null)}
-              className="ml-auto rounded p-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+              className="ml-auto rounded p-0.5 text-xs text-muted-foreground hover:text-foreground"
               title="Clear selection"
             >
               ×
@@ -288,7 +288,7 @@ export function PickerProficiencySection({
       count={ALL_PRACTICES.length + ALL_ATTRIBUTES.length + 2}
     >
       <div className="mt-1 space-y-1.5">
-        <div className="text-[10px] text-muted-foreground italic">
+        <div className="text-xs text-muted-foreground italic">
           Click <span className="font-bold text-emerald-600">+</span> to add
           proficient, <span className="font-bold text-orange-600">−</span> to add
           not_proficient. The single-axis chips
@@ -297,7 +297,7 @@ export function PickerProficiencySection({
           member to match.
         </div>
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Dynamic (uses currentPractice at evaluate time)
           </div>
           {/* Dynamic (any axis) — single click per axis, engine resolves
@@ -375,7 +375,7 @@ export function PickerProficiencySection({
           </div>
         </div>
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Static — per practice
           </div>
           <div className="mt-1 flex flex-wrap gap-1">
@@ -414,7 +414,7 @@ export function PickerProficiencySection({
           </div>
         </div>
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Static — per attribute (proficient_in_attribute)
           </div>
           <div className="mt-1 flex flex-wrap gap-1">
@@ -455,7 +455,7 @@ export function PickerProficiencySection({
 
         {/* Custom proficiency input — e.g. 'painting', 'thieves_tools' */}
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Custom (anything not in the canonical list)
           </div>
           <CustomProficiencyInput
@@ -563,7 +563,7 @@ export function PickerDamageModifierSection({
       count={DAMAGE_MODIFIER_KINDS.length}
     >
       <div className="mt-1 space-y-1.5">
-        <div className="text-[10px] text-muted-foreground italic">
+        <div className="text-xs text-muted-foreground italic">
           Type a damage type (e.g. <span className="font-mono">fire</span>)
           and click a button to add the corresponding flag pill.
         </div>

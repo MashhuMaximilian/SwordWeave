@@ -51,3 +51,57 @@ export function fmt(n: number | null | undefined): string {
   if (n === null || n === undefined) return "";
   return n >= 0 ? `+${n}` : `${n}`;
 }
+
+/** Convert resolver/storage identifiers into the language used on the sheet. */
+export function humanizeMechanicalTarget(target: string): string {
+  const normalized = target.trim().toLowerCase();
+  const practice = normalized.match(/^skill_practice_check[.:]([a-z_]+)$/);
+  if (practice) return `${toWords(practice[1] ?? "")} practice`;
+  const attribute = normalized.match(/^attribute[.:]([a-z_]+)$/);
+  if (attribute) return `${toWords(attribute[1] ?? "")} attribute`;
+  const behavior = normalized.match(/^behavior[.:]([a-z_ ]+)$/);
+  if (behavior) return `${toWords(behavior[1] ?? "")} behavior`;
+  const labels: Record<string, string> = {
+    skill_practice_check: "practice checks",
+    action_roll: "action rolls",
+    attack_roll: "attack rolls",
+    attack_bonus: "attack bonus",
+    save_dc: "save DC",
+    proficiency_bonus: "proficiency bonus",
+    max_vitality: "maximum Vitality",
+  };
+  return labels[normalized] ?? toWords(normalized);
+}
+
+function toWords(value: string): string {
+  return value
+    .replace(/[._]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^./, (letter) => letter.toUpperCase());
+}
+
+export function operationVerb(operation: string): string {
+  return ({
+    add: "Adds",
+    subtract: "Subtracts",
+    set: "Sets",
+    min: "Minimum",
+    max: "Maximum",
+    multiply: "Multiplies",
+    divide: "Divides",
+    grant: "Grants",
+    revoke: "Revokes",
+  } as Record<string, string>)[operation] ?? toWords(operation);
+}
+
+export function operationValue(
+  operation: string,
+  numericValue: number,
+  keyword?: string | null,
+): string {
+  if (keyword) return toWords(keyword);
+  if (operation === "add") return numericValue >= 0 ? `+${numericValue}` : String(numericValue);
+  if (operation === "subtract") return String(Math.abs(numericValue));
+  return String(numericValue);
+}

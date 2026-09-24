@@ -265,6 +265,22 @@ describe("resolveModifiers", () => {
     expect(r.byTarget["character.attribute.physical"]?.[0]?.conditionActive).toBe(true);
   });
 
+  it("does not expose an empty compound condition as a trigger", () => {
+    const input: ResolvedCharacterInput = {
+      ...BASE_INPUT,
+      slots: [makeSlot({
+        primitiveId: 1,
+        hardModifiers: [{
+          ...ADD_TO_PHYS,
+          condition: { kind: "compound", tokens: [] },
+        }],
+      })],
+    };
+    const contribution = resolveModifiers(input).byTarget["character.attribute.physical"]?.[0];
+    expect(contribution?.hasCondition).toBe(false);
+    expect(contribution?.condition).toBeNull();
+  });
+
   it("reports provenance.kind correctly", () => {
     const input: ResolvedCharacterInput = {
       ...BASE_INPUT,

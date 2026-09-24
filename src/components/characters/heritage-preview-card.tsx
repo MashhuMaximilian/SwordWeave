@@ -137,12 +137,12 @@ export function HeritagePreviewCard({
         // here we just surface the depth so the user knows
         // the heritage was brought in via a chain rather
         // than slotted directly.
-        <span className="text-[10px] text-muted-foreground">
+        <span className="text-xs text-muted-foreground">
           via {heritageLink.originChain.length}-step chain
         </span>
       ) : null}
       {previewLoading ? (
-        <span className="text-[10px] text-muted-foreground">
+        <span className="text-xs text-muted-foreground">
           Loading preview…
         </span>
       ) : null}

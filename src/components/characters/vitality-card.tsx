@@ -107,7 +107,7 @@ export function VitalityCard({
             / {max}
           </span>
           {hasMirrored && (
-            <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+            <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
               Mirrored
             </span>
           )}
@@ -149,7 +149,7 @@ export function VitalityCard({
               }`}
             >
               <div className="flex items-center gap-2">
-                <span className="w-7 font-mono text-[10px] font-semibold uppercase text-muted-foreground">
+                <span className="w-7 font-mono text-xs font-semibold uppercase text-muted-foreground">
                   {ATTR_SHORT[attr]}
                 </span>
                 <button
@@ -248,7 +248,7 @@ function SaveDcCard({
       className="flex w-full items-center justify-between rounded-md border border-border bg-card px-2 py-1.5 text-sm transition-colors hover:bg-muted/40"
       title="Save DC — one global value, click for provenance"
     >
-      <span className="font-mono text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <span className="font-mono text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Save DC
       </span>
       <span className="font-mono font-bold tabular-nums">{saveDc}</span>

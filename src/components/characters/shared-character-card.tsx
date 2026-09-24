@@ -73,7 +73,7 @@ export function SharedCharacterCard({ row }: SharedCharacterCardProps) {
       {/* Permissions badge + actions */}
       <div className="mt-5 flex items-center justify-between gap-2">
         <span
-          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
             row.canEdit
               ? "bg-emerald-500/15 text-emerald-700 ring-1 ring-inset ring-emerald-500/30 dark:text-emerald-300"
               : "bg-secondary text-secondary-foreground"
@@ -105,7 +105,7 @@ export function SharedCharacterCard({ row }: SharedCharacterCardProps) {
 function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-md border border-border bg-background px-2 py-1.5">
-      <div className="text-[10px] font-semibold uppercase text-muted-foreground">
+      <div className="text-xs font-semibold uppercase text-muted-foreground">
         {label}
       </div>
       <div className="mt-0.5 font-mono text-sm font-bold">

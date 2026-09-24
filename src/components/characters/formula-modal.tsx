@@ -46,7 +46,11 @@
  */
 
 import { Fragment, type ReactNode, useEffect, useState } from "react";
-import { OP_LABEL, OP_COLOR, formatOperandValue } from "./operator-symbol";
+import {
+  humanizeMechanicalTarget,
+  operationValue,
+  operationVerb,
+} from "./operator-symbol";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -102,6 +106,8 @@ export interface FormulaModalProps {
   readonly title: string;
   /** The final value shown on the chip. */
   readonly total: number;
+  /** Optional semantic result for rules that are not additive totals. */
+  readonly resultLabel?: string;
   /** Optional sub-label under the title (e.g. "from PHYSICAL (proficient)"). */
   readonly subtitle?: string;
   /** Static formula text — always shown, never changes per character. */
@@ -226,7 +232,7 @@ function renderConditionChips(condition: unknown): ReactNode {
         return (
           <span
             key={i}
-            className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] italic text-amber-700 dark:text-amber-300"
+            className="rounded bg-amber-500/10 px-1.5 py-0.5 text-xs italic text-amber-700 dark:text-amber-300"
           >
             {humanReadableToken(tok)}
           </span>
@@ -240,8 +246,8 @@ function renderConditionsSection(breakdown: ReadonlyArray<FormulaStep>, onShowRa
   if (gated.length === 0) return null;
 
   return (
-    <section>
-      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+    <section className="v12-formula-consequences-panel">
+      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Consequences
       </p>
       <ul className="space-y-1">
@@ -268,7 +274,7 @@ function renderConditionsSection(breakdown: ReadonlyArray<FormulaStep>, onShowRa
                     ({c.op === "add" ? "add" : c.op === "subtract" ? "subtract" : c.op})
                   </span>
                 </span>
-                <span className={`font-mono text-[10px] ${
+                <span className={`font-mono text-xs ${
                   isActive === false ? "text-red-500" : isActive === true ? "text-teal-600 dark:text-teal-400" : "text-muted-foreground"
                 }`}>
                   {isActive === false ? "⛔ Inhibited" : isActive === true ? "✓ Engaged" : "— inactive"}
@@ -341,6 +347,7 @@ function fmt(n: number | null | undefined): string {
 export function FormulaModal({
   title,
   total,
+  resultLabel,
   subtitle,
   formula,
   breakdown,
@@ -398,14 +405,14 @@ export function FormulaModal({
       {createPortal(
 
       <div
-        className="v12-formula-backdrop fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+        className="v12-formula-backdrop fixed inset-0 z-[120] flex items-center justify-center overflow-hidden bg-black/60 p-3 backdrop-blur-sm sm:p-5"
         onClick={onClose}
         role="dialog"
         aria-modal="true"
         aria-label={`Formula for ${title}`}
       >
         <div
-          className="v12-formula-modal flex max-h-[75vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+          className="v12-formula-modal v12-calculation-instrument v12-instrument-dialog flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[1180px] flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl sm:max-h-[calc(100dvh-2.5rem)]"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -428,13 +435,12 @@ export function FormulaModal({
           </div>
 
           {/* Body */}
-          <div className="v12-formula-body flex-1 overflow-y-auto px-4 py-3 space-y-4">
+          <div className="v12-formula-body v12-calculation-body min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 space-y-4">
             {/* Section 1 — Static formula */}
             <section className="v12-formula-rule-panel">
-              <p className="v12-formula-section-label">Rule</p>
-              <div className="v12-formula-rule-plate">
+              <div className="v12-rule-overview">
+                <div><span>Rule</span><strong>{resultLabel ?? fmt(total)}</strong></div>
                 <p>{formula}</p>
-                <strong>{fmt(total)}</strong>
               </div>
             </section>
 
@@ -444,7 +450,7 @@ export function FormulaModal({
                 so the user picks the attribute first. */}
             {selector && (
               <section className="v12-formula-selector-panel">
-                <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {selector.label}
                 </label>
                 <select
@@ -466,7 +472,7 @@ export function FormulaModal({
               <div className="mb-2 flex items-baseline justify-between gap-2">
                 <p className="v12-formula-section-label">Live calculation</p>
                 <span className="font-mono text-xl font-bold tabular-nums">
-                  {fmt(total)}
+                  {resultLabel ?? fmt(total)}
                 </span>
               </div>
               {breakdown.length === 0 ? (
@@ -480,7 +486,7 @@ export function FormulaModal({
                       <StepRow key={`${step.label}-${i}`} step={step} offCapabilityIds={offCapabilityIds} />
                     ))}
                   </ul>
-                  <SummaryLine steps={breakdown} total={total} />
+                  <SummaryLine steps={breakdown} total={total} resultLabel={resultLabel} />
                 </>
               )}
             </section>
@@ -492,7 +498,7 @@ export function FormulaModal({
             {/* Section 3 — Optional info panel */}
             {info && (
               <section className="v12-formula-reference-panel">
-                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {info.title}
                 </p>
                 <div className="rounded-md border border-border bg-background p-2.5 text-sm text-foreground">
@@ -551,89 +557,45 @@ function StepRow({ step, offCapabilityIds }: { step: FormulaStep; offCapabilityI
   // fancy breadcrumb + mirror pill UI from provenance-modal.
   if (step.contribution) {
     const c = step.contribution;
+    const isInactive = c.inhibited || c.conditionActive === false || offCapabilityIds.has(c.originCapabilityId ?? "");
+    const conditionText = c.condition
+      ? humanReadableCondition(c.condition as Parameters<typeof humanReadableCondition>[0]).trim()
+      : "";
     return (
-      <li className="v12-formula-ledger-row">
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0 flex-1">
+      <li className={cn("v12-formula-ledger-row v12-contribution-row", isInactive && "is-inactive")}>
+        <div className="v12-contribution-main">
+          <div className="v12-contribution-copy">
             <p className={cn(
-              "truncate text-sm font-medium",
+              "v12-contribution-name",
               isExpertiseName(c.primitiveName) && "font-bold text-teal-700 dark:text-teal-300",
               isProficiencyName(c.primitiveName) && "text-teal-700 dark:text-teal-300",
-              c.inhibited && "text-muted-foreground line-through"
+              isInactive && "text-muted-foreground line-through"
             )} title={c.primitiveName}>
               {step.label}
-              {c.inhibited ? (
-                <span className="ml-2 text-[10px] uppercase tracking-wide text-red-600 dark:text-red-400">⛔ inhibited</span>
-              ) : null}
             </p>
             {step.via && (
-              <p className="mt-0.5 text-[11px] text-muted-foreground">
-                via {step.via}
+              <p className="v12-contribution-via" title={step.via}>
+                <span>via</span> {step.via}
               </p>
             )}
           </div>
-          <div className="flex shrink-0 items-center gap-2 text-sm">
-            {c.op !== "min" && c.op !== "max" ? (
-              <span className={cn(
-                "font-mono text-lg font-bold leading-none",
-                OP_COLOR[c.op] ?? "text-foreground",
-              )}>
-                {OP_LABEL[c.op] ?? c.op}
-              </span>
-            ) : (
-              <span className={cn(
-                "font-mono text-lg font-bold leading-none",
-                OP_COLOR[c.op] ?? "text-foreground",
-              )}>
-                {OP_LABEL[c.op] ?? c.op}
-              </span>
-            )}
-            <span className={cn(
-              "font-mono text-xs tabular-nums text-muted-foreground",
-              isPbHalfValue(c.value) && "text-teal-600 dark:text-teal-400",
-              isExpertiseName(c.primitiveName) && "font-bold text-teal-700 dark:text-teal-300",
-              isProficiencyName(c.primitiveName) && "text-teal-700 dark:text-teal-300",
-              c.inhibited && "text-muted-foreground line-through"
-            )}>
-              {c.op === "min" || c.op === "max" ? c.value : formatOperandValue(c.value)}
-            </span>
-            {c.preMirrorValue !== null && (
-              <span
-                className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400"
-                title={`Standard (non-mirrored) value was ${fmt(c.preMirrorValue)} — mirror flipped it`}
-              >
-                Mirrored
-              </span>
-            )}
-            {c.inhibited ? (
-              <span
-                className="font-mono text-[10px] font-semibold text-red-500"
-                title="Capability or effect is OFF — primitive suppressed"
-              >
-                ⛔ Inhibited
-              </span>
-            ) : c.conditionActive === false ? (
-              <span
-                className="font-mono text-[10px] font-semibold text-red-500"
-                title="Condition not met — contribution suppressed"
-              >
-                ⛔ Inhibited
-              </span>
-            ) : c.conditionActive === true ? (
-              <span
-                className="font-mono text-[10px] font-semibold text-teal-600 dark:text-teal-400"
-                title="Condition met — contribution active"
-              >
-                ✓ Engaged
-              </span>
-            ) : null}
+          <div className={cn("v12-contribution-statement", `is-${c.op}`)}>
+            <span>{operationVerb(c.op)}</span>
+            <strong>{operationValue(c.op, c.value, c.op === "grant" && c.rawValue && typeof c.rawValue === "object" ? String((c.rawValue as { text?: unknown; keyword?: unknown; value?: unknown }).text ?? (c.rawValue as { keyword?: unknown; value?: unknown }).keyword ?? (c.rawValue as { value?: unknown }).value ?? "") : null)}</strong>
+            <small>{c.op === "grant" || c.op === "revoke" ? "for" : "to"} {humanizeMechanicalTarget(c.target)}</small>
+            {conditionText ? <em>when {conditionText}</em> : null}
           </div>
         </div>
+        <div className="v12-contribution-flags">
+          {c.preMirrorValue !== null && (
+            <span className="v12-contribution-flag is-mirrored" title={`Standard value ${fmt(c.preMirrorValue)}; mirrored value ${fmt(c.value)}`}>
+              mirrored {fmt(c.preMirrorValue)} → {fmt(c.value)}
+            </span>
+          )}
+          {isInactive ? <span className="v12-contribution-flag is-inhibited">inhibited</span> : c.hasCondition ? <span className="v12-contribution-flag is-engaged">condition engaged</span> : null}
+        </div>
         {c.preMirrorValue !== null && (
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            Standard: <span className="line-through">{fmt(c.preMirrorValue)}</span>{" "}
-            → Mirrored: <span className="font-semibold">{fmt(c.value)}</span>
-          </p>
+          <span className="sr-only">Standard {fmt(c.preMirrorValue)}; mirrored {fmt(c.value)}</span>
         )}
       </li>
     );
@@ -668,9 +630,11 @@ function StepRow({ step, offCapabilityIds }: { step: FormulaStep; offCapabilityI
 export function SummaryLine({
   steps,
   total,
+  resultLabel,
 }: {
   steps: ReadonlyArray<FormulaStep>;
   total: number;
+  resultLabel?: string | undefined;
 }) {
   // Phase 8.L round 42 (Mashu 2026-08-13): exclude inhibited
   // contributions from the formula trace. They render with a
@@ -679,47 +643,15 @@ export function SummaryLine({
   const activeSteps = steps.filter(
     (s) => !(s.contribution && s.contribution.inhibited),
   );
-  // Build a single-line formula trace. Each step's value is
-  // rendered with its sign. Base steps (the first one with
-  // label containing "Base" or value matching the chip's
-  // raw starting value) are NOT prefixed with +/− because
-  // they're the starting number, not an addition.
-  //
-  // The rule we use: the FIRST step is the base (rendered as
-  // a bare number). All subsequent steps are prefixed with
-  // their sign.
   return (
-    <p className="v12-formula-ledger-total">
-      {activeSteps.map((step, i) => {
-        if (step.value === null || step.value === undefined) {
-          // Phase 8.L round 115 (Mashu): for multiply/divide
-          // ops, value is null and the label already encodes
-          // the operator (e.g. "× 2 (magi x2)").
-          // Render the label as-is so the trace shows it.
-          if (step.label && step.label.includes("×") || step.label?.includes("÷")) {
-            return (
-              <span key={`${step.label}-${i}`}>
-                {i > 0 && " "}
-                <span className="text-muted-foreground/70">({step.label})</span>
-              </span>
-            );
-          }
-          return null;
-        }
-        const sign = step.value >= 0 ? "+" : "−";
-        const abs = Math.abs(step.value);
-        const display = i === 0 ? `${step.value}` : `${sign}${abs}`;
-        return (
-          <span key={`${step.label}-${i}`}>
-            {i > 0 && " "}
-            {display}
-            {" "}
-            <span className="text-muted-foreground/70">({step.label})</span>
-          </span>
-        );
-      })}
-      {" "}
-      <span className="font-semibold text-foreground">= {fmt(total)}</span>
-    </p>
+    <div className="v12-summary-rail" aria-label={`Calculated result ${resultLabel ?? fmt(total)}`}>
+      {activeSteps.map((step, i) => (
+        <span key={`${step.label}-${i}`}>
+          <small>{step.label}</small>
+          <b>{step.value == null ? "applied" : fmt(step.value)}</b>
+        </span>
+      ))}
+      <i>=</i><strong>{resultLabel ?? fmt(total)}</strong>
+    </div>
   );
 }

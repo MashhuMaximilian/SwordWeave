@@ -404,7 +404,7 @@ export function HeritageBundleView({
         >
           {heritageName}
         </button>
-        <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase text-secondary-foreground">
+        <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-semibold uppercase text-secondary-foreground">
           {heritageKindLabel}
         </span>
         {/* Phase 8.5 / Session H6 round 7 (Mashu
@@ -424,11 +424,11 @@ export function HeritageBundleView({
           targetId={heritageId}
         />
         {isMirrored && (
-          <span className="inline-flex items-center gap-1 rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive">
+          <span className="inline-flex items-center gap-1 rounded bg-destructive/10 px-1.5 py-0.5 text-xs font-medium text-destructive">
             Mirrored
           </span>
         )}
-        <span className="ml-auto rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium">
+        <span className="ml-auto rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">
           {total} bundled
         </span>
         {loading && (
@@ -444,7 +444,7 @@ export function HeritageBundleView({
         {/* BUNDLED CAPABILITIES — full nested rendering */}
         {fullCaps.length > 0 && (
           <div>
-            <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Capabilities ({fullCaps.length})
             </div>
             <ul className="grid grid-cols-1 gap-2">
@@ -547,11 +547,11 @@ export function HeritageBundleView({
                       <span className="min-w-0 truncate font-medium">{cap.name}</span>
                       <span className="flex items-center gap-1.5 shrink-0">
                         {slotted ? (
-                          <span className="inline-flex items-center gap-1 rounded bg-green-500/10 px-1.5 py-0.5 text-[10px] font-medium text-green-700 dark:text-green-400">
+                          <span className="inline-flex items-center gap-1 rounded bg-green-500/10 px-1.5 py-0.5 text-xs font-medium text-green-700 dark:text-green-400">
                             ✓ slotted
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                          <span className="inline-flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
                             template
                           </span>
                         )}
@@ -610,7 +610,7 @@ export function HeritageBundleView({
                                             ? `${pl.quantity}× ${pl.primitive.name}`
                                             : pl.primitive.name}
                                         </span>
-                                        <span className="font-mono text-[10px] text-muted-foreground">
+                                        <span className="font-mono text-xs text-muted-foreground">
                                           {pl.primitive.buCost ?? "?"} BU
                                         </span>
                                       </li>
@@ -651,7 +651,7 @@ export function HeritageBundleView({
                                   ? `${pl.quantity}× ${pl.primitive.name}`
                                   : pl.primitive.name}
                               </span>
-                              <span className="font-mono text-[10px] text-muted-foreground">
+                              <span className="font-mono text-xs text-muted-foreground">
                                 {pl.primitive.buCost ?? "?"} BU
                               </span>
                             </li>
@@ -678,7 +678,7 @@ export function HeritageBundleView({
             modal has no separate Primitives section. */}
         {showPrimitives && canonPrims.length > 0 && (
           <div>
-            <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Primitives ({canonPrims.length})
             </div>
             <ul className="space-y-1.5">
@@ -695,11 +695,11 @@ export function HeritageBundleView({
                         <div className="flex items-center gap-2 min-w-0 flex-1">
                           <span className="font-medium">{pl.primitive.name}</span>
                           {slotted ? (
-                            <span className="inline-flex shrink-0 items-center gap-1 rounded bg-green-500/10 px-1.5 py-0.5 text-[10px] font-medium text-green-700 dark:text-green-400">
+                            <span className="inline-flex shrink-0 items-center gap-1 rounded bg-green-500/10 px-1.5 py-0.5 text-xs font-medium text-green-700 dark:text-green-400">
                               ✓ slotted
                             </span>
                           ) : (
-                            <span className="inline-flex shrink-0 items-center gap-1 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                            <span className="inline-flex shrink-0 items-center gap-1 rounded bg-secondary px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
                               template
                             </span>
                           )}

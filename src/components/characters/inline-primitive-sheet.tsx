@@ -482,7 +482,7 @@ export function InlinePrimitiveSheet({
       >
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-5 py-4">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               Add primitive
             </p>
             <h2 className="mt-1 text-lg font-semibold text-foreground">
@@ -668,7 +668,7 @@ export function InlinePrimitiveSheet({
                           <Markdown className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{c.description}</Markdown>
                         )}
                       </div>
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-primary">
                         <Wand2 className="size-3" />
                         Promote
                       </span>
@@ -767,7 +767,7 @@ function Bucket({
   return (
     <section>
       <h3
-        className={`mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] ${accent}`}
+        className={`mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] ${accent}`}
       >
         {icon}
         {label} ({rows.length})
@@ -787,7 +787,7 @@ function Bucket({
                   </p>
                   <Markdown className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{r.description ?? r.category}</Markdown>
                 </div>
-                <div className="flex shrink-0 items-center gap-2 text-[10px] text-muted-foreground">
+                <div className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
                   <span className="rounded-full border border-border bg-card px-2 py-0.5 font-semibold uppercase tracking-wider">
                     {r.category}
                   </span>
@@ -800,7 +800,7 @@ function Bucket({
                   without opening the preview modal. Truncated to
                   2 lines so the row stays compact. */}
               {r.hardModifiers.length > 0 && (
-                <ul className="flex flex-wrap gap-1 text-[10px]">
+                <ul className="flex flex-wrap gap-1 text-xs">
                   {r.hardModifiers.slice(0, 3).map((mod, mi) => {
                     const m = mod as {
                       target?: string;
@@ -823,14 +823,14 @@ function Bucket({
                     return (
                       <li
                         key={mi}
-                        className="rounded-full border border-border bg-card px-2 py-0.5 font-mono text-[10px] text-muted-foreground"
+                        className="rounded-full border border-border bg-card px-2 py-0.5 font-mono text-xs text-muted-foreground"
                       >
                         {op} {target} {v}
                       </li>
                     );
                   })}
                   {r.hardModifiers.length > 3 && (
-                    <li className="rounded-full border border-border bg-card px-2 py-0.5 text-[10px] text-muted-foreground">
+                    <li className="rounded-full border border-border bg-card px-2 py-0.5 text-xs text-muted-foreground">
                       +{r.hardModifiers.length - 3} more
                     </li>
                   )}
@@ -864,7 +864,7 @@ function ModifierExtras({ mod }: { mod: { [key: string]: unknown } }) {
     .filter((x): x is readonly [string, string] => x !== null);
   if (extras.length === 0) return null;
   return (
-    <div className="mt-1 flex flex-wrap gap-1.5 text-[10px]">
+    <div className="mt-1 flex flex-wrap gap-1.5 text-xs">
       {extras.map(([k, v]) => (
         <span
           key={k}
@@ -913,7 +913,7 @@ function PrimitivePreviewModal({
       <div className="flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-5 py-4">
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               Preview
             </p>
             <h3 className="mt-1 truncate text-lg font-semibold text-foreground">
@@ -931,10 +931,10 @@ function PrimitivePreviewModal({
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           <div className="mb-3 flex items-center gap-2">
-            <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-foreground">
+            <span className="rounded-full border border-border bg-card px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-foreground">
               {row.category}
             </span>
-            <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[10px] font-mono font-semibold text-foreground">
+            <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-xs font-mono font-semibold text-foreground">
               <Zap className="size-3" />
               {row.buCost} BU
             </span>
@@ -948,7 +948,7 @@ function PrimitivePreviewModal({
           )}
           {row.hardModifiers.length > 0 && (
             <div className="mb-3">
-              <h4 className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              <h4 className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 Hard modifiers ({row.hardModifiers.length})
               </h4>
               <ul className="space-y-1.5">
@@ -1000,7 +1000,7 @@ function PrimitivePreviewModal({
                       className="rounded-md border border-border bg-background px-2.5 py-1.5 text-xs"
                     >
                       <div className="flex flex-wrap items-center gap-1.5 font-mono">
-                        <span className="rounded border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+                        <span className="rounded border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider text-primary">
                           {op}
                         </span>
                         <span className="font-semibold text-foreground">
@@ -1026,7 +1026,7 @@ function PrimitivePreviewModal({
               accordion to slot this primitive into right from the
               preview modal — saves a round-trip to the panel. */}
           <div className="mt-2 border-t border-border pt-3">
-            <h4 className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Slot into
             </h4>
             <div

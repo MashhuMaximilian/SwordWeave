@@ -147,6 +147,50 @@ export interface CapabilityCardProps {
   latestVersions?: Map<VersionKey, string> | undefined;
 }
 
+export function CapabilityActionButtons({
+  active,
+  togglePending = false,
+  triggerPending = false,
+  triggered = false,
+  triggerDisabled = false,
+  onToggle,
+  onTrigger,
+}: {
+  active: boolean;
+  togglePending?: boolean;
+  triggerPending?: boolean;
+  triggered?: boolean;
+  triggerDisabled?: boolean;
+  onToggle: () => void;
+  onTrigger: () => void;
+}) {
+  return (
+    <div className="v12-capability-actions-only" onClick={(event) => event.stopPropagation()}>
+      <button
+        type="button"
+        onClick={onToggle}
+        disabled={togglePending || triggerPending}
+        aria-pressed={active}
+        data-testid="capability-toggle"
+        title={active ? "Active — click to deactivate" : "Inactive — click to activate"}
+      >
+        <Power className="size-3" />
+        {active ? "Active" : "Inactive"}
+      </button>
+      <button
+        type="button"
+        onClick={onTrigger}
+        disabled={triggerPending || togglePending || triggerDisabled}
+        data-testid="capability-trigger"
+        title="Fire this capability once and log it"
+      >
+        {triggered ? <CheckCircle2 className="size-3" /> : triggerPending ? <Loader2 className="size-3 animate-spin" /> : <Zap className="size-3" />}
+        {triggered ? "Triggered" : triggerPending ? "…" : "Trigger"}
+      </button>
+    </div>
+  );
+}
+
 function storageKey(characterId: string, capabilityId: string) {
   return `sw:cap:${characterId}:${capabilityId}`;
 }
@@ -267,7 +311,7 @@ function EffectToggleRow({
           aria-label={active ? "Deactivate effect" : "Activate effect"}
           title={active ? "Effect is ON — click to deactivate" : "Effect is OFF — click to activate"}
           className={cn(
-            "ml-auto inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors",
+            "ml-auto inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium transition-colors",
             active
               ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25"
               : "bg-muted text-muted-foreground hover:bg-muted/70",
@@ -697,30 +741,18 @@ export function CapabilityCard({
 
   if (actionsOnly) {
     return (
-      <div className="v12-capability-actions-only" onClick={(event) => event.stopPropagation()}>
+      <>
         {consequencePreview ? <ConsequencePackageAction characterId={characterId} entityKey={`capability:${capability.id}`} initialPreview={consequencePreview} onClose={() => setConsequencePreview(null)} /> : null}
-        <button
-          type="button"
-          onClick={() => void handleToggle()}
-          disabled={toggling || triggerPending}
-          aria-pressed={showActive}
-          data-testid="capability-toggle"
-          title={showActive ? "Active — click to deactivate" : "Inactive — click to activate"}
-        >
-          <Power className="size-3" />
-          {showActive ? "Active" : "Inactive"}
-        </button>
-        <button
-          type="button"
-          onClick={() => void handleTrigger()}
-          disabled={triggerPending || toggling || !!blockedReason}
-          data-testid="capability-trigger"
-          title="Fire this capability once and log it"
-        >
-          {triggerFlash ? <CheckCircle2 className="size-3" /> : <Zap className="size-3" />}
-          {triggerFlash ? "Triggered" : triggerPending ? "…" : "Trigger"}
-        </button>
-      </div>
+        <CapabilityActionButtons
+          active={showActive}
+          togglePending={toggling}
+          triggerPending={triggerPending}
+          triggered={triggerFlash}
+          triggerDisabled={!!blockedReason}
+          onToggle={() => void handleToggle()}
+          onTrigger={() => void handleTrigger()}
+        />
+      </>
     );
   }
 
@@ -848,7 +880,7 @@ export function CapabilityCard({
                       latestVersionId={null}
                     />
                   </div>
-                  <span className="font-mono text-[10px] text-muted-foreground">
+                  <span className="font-mono text-xs text-muted-foreground">
                     {pl.buCost} BU
                   </span>
                 </li>

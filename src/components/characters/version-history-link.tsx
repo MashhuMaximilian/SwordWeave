@@ -33,7 +33,7 @@ export function VersionHistoryLink({
       <History className="size-3.5" />
       Versions
       {count !== undefined && count > 0 && (
-        <span className="ml-1 rounded-full bg-secondary px-1.5 text-[10px] font-mono">
+        <span className="ml-1 rounded-full bg-secondary px-1.5 text-xs font-mono">
           {count}
         </span>
       )}

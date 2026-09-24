@@ -136,7 +136,7 @@ export default async function HomePage() {
       {/* ────────────────────────────────────────────────────────────────
           00. Top marginalia bar — running header, edition stamp, codex link
           ──────────────────────────────────────────────────────────────── */}
-      <div className="sw-marginalia sw-marginalia--top mb-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-border pb-3 text-[10px] uppercase tracking-[0.22em] text-muted-foreground sm:text-xs">
+      <div className="sw-marginalia sw-marginalia--top mb-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-border pb-3 text-xs uppercase tracking-[0.22em] text-muted-foreground sm:text-xs">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
           <span className="font-display text-foreground">
             Sword<span className="text-primary">·</span>Weave
@@ -180,7 +180,7 @@ export default async function HomePage() {
 
         <div className="min-w-0">
           {/* Mobile horizontal eyebrow */}
-          <div className="mb-3 inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] text-primary lg:hidden">
+          <div className="mb-3 inline-flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-primary lg:hidden">
             <span className="size-1.5 rounded-full bg-primary" />
             The Translation Engine
           </div>
@@ -203,7 +203,7 @@ export default async function HomePage() {
               className="hidden h-auto w-12 dark:block"
               priority
             />
-            <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-muted-foreground sm:text-xs">
+            <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.22em] text-muted-foreground sm:text-xs">
               <span className="rounded-sm border border-primary/40 bg-primary/10 px-2 py-1 font-bold text-primary">
                 Engine · live
               </span>
@@ -297,7 +297,7 @@ export default async function HomePage() {
         {/* Worked example callout */}
         <div className="sw-recipe mt-10 flex flex-col gap-4 border-t border-border pt-6 sm:mt-14 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-[0.22em] text-primary">
+            <p className="text-xs uppercase tracking-[0.22em] text-primary">
               Worked example · Burning Strike
             </p>
             <p className="mt-1 font-display text-lg uppercase leading-tight sm:text-xl">
@@ -338,10 +338,10 @@ export default async function HomePage() {
               className="sw-specimen group relative flex flex-col gap-3 bg-card p-5 transition-colors hover:bg-background sm:p-6"
             >
               <div className="flex items-baseline justify-between gap-3">
-                <span className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                <span className="font-display text-xs uppercase tracking-[0.22em] text-muted-foreground">
                   Layer {layer.n}
                 </span>
-                <span className="font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+                <span className="font-display text-xs uppercase tracking-[0.22em] text-primary">
                   {layer.bu}
                 </span>
               </div>
@@ -352,7 +352,7 @@ export default async function HomePage() {
                 {layer.body}
               </p>
               <div className="mt-auto border-t border-border pt-3">
-                <code className="block font-display text-[10px] uppercase tracking-[0.16em] text-foreground/80 sm:text-[11px]">
+                <code className="block font-display text-xs uppercase tracking-[0.16em] text-foreground/80 sm:text-[11px]">
                   ↳ {layer.example}
                 </code>
               </div>
@@ -363,7 +363,7 @@ export default async function HomePage() {
         {/* Build budget callout */}
         <div className="mt-8 grid gap-4 border border-border bg-card p-5 sm:mt-10 sm:grid-cols-[1fr_auto] sm:items-center sm:p-6">
           <div className="min-w-0">
-            <p className="font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+            <p className="font-display text-xs uppercase tracking-[0.22em] text-primary">
               The BU economy
             </p>
             <p className="mt-1 text-sm leading-6 text-foreground sm:text-base">
@@ -413,7 +413,7 @@ export default async function HomePage() {
               >
                 <span
                   className={
-                    "sw-timeline__node inline-flex flex-col gap-1 border px-3 py-2 font-display text-[10px] uppercase tracking-[0.18em] sm:text-[11px] " +
+                    "sw-timeline__node inline-flex flex-col gap-1 border px-3 py-2 font-display text-xs uppercase tracking-[0.18em] sm:text-[11px] " +
                     (step.tone === "primary"
                       ? "border-primary bg-primary/10 text-primary"
                       : step.tone === "accent"
@@ -422,7 +422,7 @@ export default async function HomePage() {
                   }
                 >
                   <span className="font-bold">{step.tag}</span>
-                  <span className="text-[9px] tracking-[0.16em] text-muted-foreground sm:text-[10px]">
+                  <span className="text-[9px] tracking-[0.16em] text-muted-foreground sm:text-xs">
                     {step.note}
                   </span>
                 </span>
@@ -462,7 +462,7 @@ export default async function HomePage() {
               key={action.n}
               className="flex flex-col gap-3 bg-card p-5 sm:p-6"
             >
-              <span className="font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+              <span className="font-display text-xs uppercase tracking-[0.22em] text-primary">
                 {action.n}
               </span>
               <h4 className="font-display text-xl font-bold uppercase leading-none sm:text-2xl">
@@ -666,7 +666,7 @@ function SectionHeading({
         {index}
       </span>
       <div className="min-w-0">
-        <span className="font-display text-[10px] uppercase tracking-[0.28em] text-primary lg:hidden">
+        <span className="font-display text-xs uppercase tracking-[0.28em] text-primary lg:hidden">
           {index} · {eyebrow}
         </span>
         <span className="mb-2 hidden text-xs uppercase tracking-[0.22em] text-muted-foreground lg:inline">

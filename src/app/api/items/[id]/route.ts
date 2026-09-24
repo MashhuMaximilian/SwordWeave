@@ -155,7 +155,7 @@ export async function GET(
   let capPrimMap = new Map<string, Array<{
     primitiveId: number;
     quantity: number;
-    primitive: { id: number; name: string; buCost: number | null };
+    primitive: { id: number; name: string; category: string; buCost: number | null; mechanicalOutputText: string; narrativeRule: string };
   }>>();
   let capEffPrimMap = new Map<string, Array<{
     effectId: string;
@@ -163,13 +163,13 @@ export async function GET(
     primitiveLinks: Array<{
       primitiveId: number;
       quantity: number;
-      primitive: { id: number; name: string; buCost: number | null };
+      primitive: { id: number; name: string; category: string; buCost: number | null; mechanicalOutputText: string; narrativeRule: string };
     }>;
   }>>();
   let directEffPrimMap = new Map<string, Array<{
     primitiveId: number;
     quantity: number;
-    primitive: { id: number; name: string; buCost: number | null };
+    primitive: { id: number; name: string; category: string; buCost: number | null; mechanicalOutputText: string; narrativeRule: string };
   }>>();
 
   if (capabilityIds.length > 0) {
@@ -180,7 +180,10 @@ export async function GET(
         primitiveId: capabilityPrimitives.primitiveId,
         quantity: capabilityPrimitives.quantity,
         name: primitives.name,
+        category: primitives.category,
         buCost: primitives.buCost,
+        mechanicalOutputText: primitives.mechanicalOutputText,
+        narrativeRule: primitives.narrativeRule,
       })
       .from(capabilityPrimitives)
       .innerJoin(primitives, eq(primitives.id, capabilityPrimitives.primitiveId))
@@ -190,7 +193,7 @@ export async function GET(
       arr.push({
         primitiveId: r.primitiveId,
         quantity: r.quantity,
-        primitive: { id: r.primitiveId, name: r.name, buCost: r.buCost },
+        primitive: { id: r.primitiveId, name: r.name, category: r.category, buCost: r.buCost, mechanicalOutputText: r.mechanicalOutputText, narrativeRule: r.narrativeRule },
       });
       capPrimMap.set(r.capabilityId, arr);
     }
@@ -202,7 +205,10 @@ export async function GET(
         primitiveId: effectPrimitives.primitiveId,
         quantity: effectPrimitives.quantity,
         name: primitives.name,
+        category: primitives.category,
         buCost: primitives.buCost,
+        mechanicalOutputText: primitives.mechanicalOutputText,
+        narrativeRule: primitives.narrativeRule,
         effectName: effects.name,
         effectDescription: effects.narrativeDescription,
       })
@@ -226,7 +232,7 @@ export async function GET(
       effEntry.primitiveLinks.push({
         primitiveId: r.primitiveId,
         quantity: r.quantity,
-        primitive: { id: r.primitiveId, name: r.name, buCost: r.buCost },
+        primitive: { id: r.primitiveId, name: r.name, category: r.category, buCost: r.buCost, mechanicalOutputText: r.mechanicalOutputText, narrativeRule: r.narrativeRule },
       });
     }
   }
@@ -239,7 +245,10 @@ export async function GET(
         primitiveId: effectPrimitives.primitiveId,
         quantity: effectPrimitives.quantity,
         name: primitives.name,
+        category: primitives.category,
         buCost: primitives.buCost,
+        mechanicalOutputText: primitives.mechanicalOutputText,
+        narrativeRule: primitives.narrativeRule,
       })
       .from(effectPrimitives)
       .innerJoin(primitives, eq(primitives.id, effectPrimitives.primitiveId))
@@ -249,7 +258,7 @@ export async function GET(
       arr.push({
         primitiveId: r.primitiveId,
         quantity: r.quantity,
-        primitive: { id: r.primitiveId, name: r.name, buCost: r.buCost },
+        primitive: { id: r.primitiveId, name: r.name, category: r.category, buCost: r.buCost, mechanicalOutputText: r.mechanicalOutputText, narrativeRule: r.narrativeRule },
       });
       directEffPrimMap.set(r.effectId, arr);
     }

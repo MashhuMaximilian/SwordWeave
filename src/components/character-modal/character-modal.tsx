@@ -250,14 +250,14 @@ export function CharacterModal({ children }: CharacterModalProps) {
             </span>
             {isDirty ? (
               <span
-                className="shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400"
+                className="shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400"
                 title="Unsaved changes"
               >
                 Unsaved
               </span>
             ) : null}
             {editCharacterId && pendingEditId ? (
-              <span className="hidden shrink-0 text-[10px] text-muted-foreground sm:inline">
+              <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">
                 loading…
               </span>
             ) : null}
@@ -289,7 +289,7 @@ export function CharacterModal({ children }: CharacterModalProps) {
                   // Re-open in fresh CREATE mode after the close.
                   window.setTimeout(() => open(), 0);
                 }}
-                className="shrink-0 rounded-md border border-border bg-background px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground hover:border-primary hover:text-foreground"
+                className="shrink-0 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground hover:border-primary hover:text-foreground"
                 title="Discard changes to this character and start a new one from scratch"
               >
                 Start fresh

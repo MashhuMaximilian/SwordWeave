@@ -133,7 +133,7 @@ export function TokenChipStack({
       {warning ? (
         <p
           data-testid="chip-stack-warning"
-          className="rounded-sm border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-700 dark:text-amber-300"
+          className="rounded-sm border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs text-amber-700 dark:text-amber-300"
         >
           ⚠ {warning}
         </p>
@@ -376,7 +376,7 @@ function TokenPicker({
   // stacking." Both: the placeholder shows the syntax; the
   // block explains the rules.
   const syntaxBlock = (
-    <div className="mt-1 rounded border border-border/60 bg-muted/30 px-2 py-1.5 text-[10px] leading-relaxed text-muted-foreground">
+    <div className="mt-1 rounded border border-border/60 bg-muted/30 px-2 py-1.5 text-xs leading-relaxed text-muted-foreground">
       <p className="font-semibold uppercase tracking-wide text-foreground/70">
         Custom input syntax
       </p>
@@ -452,7 +452,7 @@ function TokenPicker({
       {runtimeSection}
 
       <div>
-        <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Custom
         </p>
         <div className="mt-1 flex items-center gap-1.5">

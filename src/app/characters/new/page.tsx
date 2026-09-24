@@ -42,37 +42,18 @@ export default async function NewCharacterPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-5 py-10 sm:py-14">
-      <Link
-        href="/characters"
-        className="inline-flex items-center gap-2 text-sm text-muted-foreground transition hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to roster
-      </Link>
-      <header className="mt-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-          Phase 9.1 — Inline builder
-        </p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
-          Forge a new character
-        </h1>
-        <p className="mt-4 text-base leading-7 text-muted-foreground">
-          Set the foundation (name, attributes, identity, optional
-          backstory). Once you save, you will land in BUILD mode where
-          you can slot primitives onto the Lineage, Upbringing, Manifest,
-          and Items accordions inline. You can also keep using the{" "}
-          <Link
-            href="/atelier"
-            className="font-semibold text-primary underline-offset-4 hover:underline"
-          >
-            atelier modal
-          </Link>{" "}
-          for the classic 7-tab flow.
-        </p>
+    <main className="sw-forge-page">
+      <header className="sw-forge-page__masthead">
+        <Link href="/characters" className="sw-forge-page__back">
+          <ArrowLeft aria-hidden /> Back to characters
+        </Link>
+        <div>
+          <span>Character creation</span>
+          <h1>Forge a new character</h1>
+          <p>Establish identity, attributes, story, and starting mechanical access before entering the character sheet.</p>
+        </div>
       </header>
-
       <NewCharacterForm />
-    </div>
+    </main>
   );
 }

@@ -74,7 +74,7 @@ export class TabErrorBoundary extends Component<Props, State> {
                 is still usable. Reload the page to try again, or report the
                 issue with the message below.
               </p>
-              <pre className="mt-2 max-h-32 overflow-auto rounded bg-background/50 p-2 text-[10px] text-muted-foreground">
+              <pre className="mt-2 max-h-32 overflow-auto rounded bg-background/50 p-2 text-xs text-muted-foreground">
                 {this.state.error.message}
               </pre>
               <button
