@@ -210,16 +210,16 @@ export async function POST(request: Request) {
       typeof rawBuBudget === "number" &&
       Number.isFinite(rawBuBudget) &&
       rawBuBudget >= 0 &&
-      rawBuBudget <= 100000;
+      Number.isSafeInteger(rawBuBudget);
     // Phase 8.1 batch 10g: in "By BU" mode the client sends both
     // level (implied) and buBudget (typed). buBudget becomes the
     // startingBu override. In "By Level" mode buBudget is null and
     // startingBu defaults to 25.
     const startingBu = buBudgetProvided
       ? Math.floor(rawBuBudget as number)
-      : parseIntInRange(values["startingBu"], 0, 100000, startingBuDefault);
-    const buSpent = parseIntInRange(values["buSpent"], 0, 100000, 0);
-    const dmBonusBu = parseIntInRange(values["dmBonusBu"], 0, 100000, 0);
+      : parseIntInRange(values["startingBu"], 0, Number.MAX_SAFE_INTEGER, startingBuDefault);
+    const buSpent = parseIntInRange(values["buSpent"], 0, Number.MAX_SAFE_INTEGER, 0);
+    const dmBonusBu = parseIntInRange(values["dmBonusBu"], 0, Number.MAX_SAFE_INTEGER, 0);
 
     // Phase 8.1 batch 10g: progressionPool uses the canon cumulative
     // formula. Previously this was startingBu + (level-1)*5 + dmBonusBu
@@ -261,7 +261,7 @@ export async function POST(request: Request) {
     const currentVitality =
       currentVitalityRaw === null || currentVitalityRaw === undefined
         ? null
-        : (parseIntInRange(currentVitalityRaw, 0, 99999, 0) as number | null);
+        : (parseIntInRange(currentVitalityRaw, 0, Number.MAX_SAFE_INTEGER, 0) as number | null);
 
     // Phase 8.2 batch 3: backstory freeform fields
     const rawBackstory = values["backstory"];

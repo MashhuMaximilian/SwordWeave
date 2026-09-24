@@ -1606,6 +1606,11 @@ const eq = resolveEquation(operandsRaw as never, ctx);
         if (!contribs || contribs.length === 0) continue;
         const firstContrib = contribs[0];
         if (!firstContrib) continue;
+        // A literal numeric modifier can coincidentally equal base PB.
+        // It must stay fixed when another primitive changes PB.
+        if (typeof firstContrib.rawValue === "number" ||
+            (typeof firstContrib.rawValue === "string" &&
+              Number.isFinite(Number(firstContrib.rawValue)))) continue;
         const baseValue = firstContrib.value;
         const expectedRatios = [0.25, 0.5, 1, 2, 4] as const;
         for (const r of expectedRatios) {

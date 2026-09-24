@@ -1,7 +1,8 @@
 /**
  * Vitality engine — Phase 4.
  *
- * Per Notion: Vitality = (10 + PB) × Level + BU modifiers + cap modifiers.
+ * Base Max Vitality is (10 + Proficiency Bonus) × Level.
+ * Proficiency Bonus can itself be changed by primitives.
  */
 
 import { proficiencyBonus } from "./practices";
@@ -14,14 +15,16 @@ export interface VitalityModifier {
 /**
  * Compute max vitality for a character.
  *
- * @param level Character level (1-20)
+ * @param level Character level (at least 1, with no upper limit)
  * @param modifiers Extra modifiers from primitives/items/etc
+ * @param pb Effective PB, including PB-changing primitives when available
  */
 export function computeMaxVitality(
   level: number,
   modifiers: ReadonlyArray<VitalityModifier> = [],
+  pb = proficiencyBonus(level),
 ): number {
-  const base = (10 + proficiencyBonus(level)) * level;
+  const base = (10 + pb) * level;
   const modTotal = modifiers.reduce((t, m) => t + m.amount, 0);
   return base + modTotal;
 }

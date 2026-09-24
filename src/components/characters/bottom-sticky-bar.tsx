@@ -350,16 +350,6 @@ function AxisMarkers({
   );
 }
 
-/**
- * Reverse PB → level. PB starts at 2 and adds 1 every 4 levels.
- * Returns the lowest level consistent with this PB. Used for
- * displaying "Level bonus (floor(L / 4))" in the PB popup.
- */
-function computeLevelFromPb(pb: number): number {
-  if (pb <= 2) return 1;
-  return (pb - 2) * 4 + 1;
-}
-
 export interface PracticeRowForSticky {
   readonly id?: number;
   readonly name: string;
@@ -395,6 +385,7 @@ export interface EncumbranceForSticky {
 
 export interface BottomStickyBarProps {
   readonly characterId: string;
+  readonly level: number;
   readonly currentVitality: number | null;
   readonly maxVitality: number;
   readonly physical: number;
@@ -472,6 +463,7 @@ type ComboKind =
 
 export function BottomStickyBar({
   characterId,
+  level,
   currentVitality,
   maxVitality,
   physical,
@@ -1344,7 +1336,7 @@ export function BottomStickyBar({
           <FormulaModal
             title="Max Vitality"
             total={maxVitality}
-            formula="Start with 10 plus proficiency bonus for every character level, then apply Vitality primitives."
+            formula="Max Vitality = (10 + Proficiency Bonus) × level, then apply Vitality primitives. PB and Vitality primitives may raise or lower the result."
             breakdown={contributionsToSteps(vitalityTarget, resolver_)}
             onClose={() => setCombo(null)}
 
@@ -1475,17 +1467,16 @@ export function BottomStickyBar({
             }}
           />
         ) : combo === "pb" ? (
-          // Proficiency Bonus popup. PB is purely a function of
-          // level (starts at +2, +1 every 4 levels). There are no
-          // primitive contributions in the current system — the
-          // formula is fully static.
+          // PB starts at +2, advances every four levels, and can
+          // change through primitives.
           <FormulaModal
             title="Proficiency Bonus"
             total={pb}
-            formula="Proficiency starts at +2 and increases by +1 after every four completed levels."
+            formula="PB = 2 + floor((level − 1) / 4), then apply PB primitives. The progression has no level cap."
             breakdown={[
               { label: "Base PB", value: 2 },
-              { label: `Level bonus (floor(${computeLevelFromPb(pb)} / 4))`, value: pb - 2 },
+              { label: `Level bonus (L${level})`, value: Math.floor((level - 1) / 4) },
+              { label: "PB primitive changes", value: pb - 2 - Math.floor((level - 1) / 4) },
             ]}
             onClose={() => setCombo(null)}
 

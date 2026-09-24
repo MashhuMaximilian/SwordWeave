@@ -3,19 +3,25 @@ import {
   computeMaxVitality,
   computeVitalityModifiersFromPrimitives,
 } from "../vitality";
-import { proficiencyBonus } from "../practices";
 
 describe("computeMaxVitality", () => {
-  it("L1 base = (10 + PB) * 1 = (10 + 2) * 1 = 12", () => {
-    expect(computeMaxVitality(1)).toBe((10 + proficiencyBonus(1)) * 1);
+  it("L1 base = (10 + 2) * 1 = 12", () => {
+    expect(computeMaxVitality(1)).toBe(12);
   });
 
-  it("L5 base = (10 + PB) * 5", () => {
-    expect(computeMaxVitality(5)).toBe((10 + proficiencyBonus(5)) * 5);
+  it("uses (10 + PB) × level through L21 and beyond", () => {
+    const expected = [
+      12, 24, 36, 48, 65, 78, 91, 104, 126, 140, 154,
+      168, 195, 210, 225, 240, 272, 288, 304, 320, 357,
+    ];
+    for (const [index, total] of expected.entries()) {
+      expect(computeMaxVitality(index + 1)).toBe(total);
+    }
   });
 
-  it("L20 base = (10 + PB) * 20", () => {
-    expect(computeMaxVitality(20)).toBe((10 + proficiencyBonus(20)) * 20);
+  it("uses effective PB and continues past level 21", () => {
+    expect(computeMaxVitality(21, [], 8)).toBe(378);
+    expect(computeMaxVitality(100)).toBe(3600);
   });
 
   it("applies modifiers additively", () => {

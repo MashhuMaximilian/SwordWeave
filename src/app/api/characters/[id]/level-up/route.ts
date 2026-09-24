@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { characters } from "@/db/schema";
-import { getVolatilityCeiling } from "@/lib/engine/bu";
+import { cumulativeBuForLevel, getVolatilityCeiling } from "@/lib/engine/bu";
 import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
 import { withCharacterSnapshot } from "@/lib/character/with-character-snapshot";
 
@@ -26,9 +26,7 @@ import { withCharacterSnapshot } from "@/lib/character/with-character-snapshot";
  * Note: BU spent does NOT reset. DM bonus grants that haven't been
  * spent carry forward into the new level's progression pool, so we
  * zero it out so it's not double-counted. The DB-level
- * bu_progression_check uses the cumulative formula
- * (25 + 10*(L-1) + 4*k*(k+1)/2 where k = floor(L/4)), so the pool
- * grows correctly at every spike level.
+ * Cumulative BU follows the open-ended level progression.
  */
 export async function POST(
   request: Request,
@@ -89,7 +87,9 @@ export async function POST(
     return NextResponse.json({
       character: updated,
       message: `Leveled up to ${updated?.level}. DM bonus BU consumed into progression pool.`,
-      progressionGained: 5,
+      progressionGained:
+        cumulativeBuForLevel(updated?.level ?? current.level + 1) -
+        cumulativeBuForLevel(current.level),
       volatilityCeiling: newCeiling.maxNegativeBu,
       volatilityBracket: newCeiling.levelBracket,
     });

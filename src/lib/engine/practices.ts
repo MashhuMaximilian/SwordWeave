@@ -436,19 +436,15 @@ export function computeAllPracticeModifiers(
 
 export const STARTING_PB = 2;
 export const PB_PER_LEVEL_INTERVAL = 4;
-export const MAX_PB = 10;
 
 /**
  * Compute PB for a given level.
- * L1-3: +2, L5-7: +3, L9-11: +4, L13-15: +5, L17-19: +6, L20: +6
- * Wait — canonical D&D-style is +2, +3, +4, +5, +6 at L1, L5, L9, L13, L17.
- * Per Notion, "PB = +2 at L1, +1 every 4 levels" so L1=2, L5=3, L9=4, L13=5, L17=6.
- * Capped at MAX_PB.
+ * PB starts at +2 for L1-4 and increases by +1 at L5, L9, L13,
+ * and every fourth level thereafter, without an upper cap.
  */
 export function proficiencyBonus(level: number): number {
   if (level < 1) return 0;
-  const pb = STARTING_PB + Math.floor((level - 1) / PB_PER_LEVEL_INTERVAL);
-  return Math.min(pb, MAX_PB);
+  return STARTING_PB + Math.floor((level - 1) / PB_PER_LEVEL_INTERVAL);
 }
 
 // =============================================================================

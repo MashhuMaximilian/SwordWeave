@@ -1,24 +1,15 @@
 /**
  * bu-debt.ts — Phase 7 Mirror debt model (character creation / template).
  *
- * The canonical debt rule, locked from the BU Market page §'Mirror-Vector
- * Architecture' + the user's debt-model clarification:
- *
- *   "When slotted in capability and effects it's same cost whether
- *    mirrored or not. In heritage and character creation, a mirrored
- *    primitive adds to debt. I have starting budget 25 BU at lvl 1.
- *    I take a mirrored primitive that costs 4BU. I get the effects
- *    of that, and I now have 29 total BU to spend (25+4). But based
- *    on level we have those thresholds. Not cumulative. Like lvl 2-4
- *    have -8 but max debt. Lvl 2 or lvl 4 is still max -8 not -8 per
- *    level."
+ * A mirrored character-level primitive adds its credit to available
+ * BU while increasing debt used. The debt ceiling follows the user's
+ * 2026-09-24 progression table: 4 BU per four-level bracket.
  *
  * Translation into engine rules:
  *
  *   1. baseBudget(level) — the canonical bracket budget. Defaults to
- *      the Phase-4 progression pool (25 + (level-1)*5) but the *mirror
- *      debt* ceiling is a separate bracket-aware threshold that grows
- *      by level bracket, not per level. See MAX_MIRROR_DEBT_BY_LEVEL.
+ *      the level progression pool. The mirror debt ceiling follows
+ *      four-level brackets; see maxBuDebtForLevel.
  *
  *   2. Mirror debt expansion — a mirrored slot at character-creation
  *      or template level adds its buCost to the player's available
@@ -26,8 +17,8 @@
  *      something — they can't bank it. The mechanic is "I'll take
  *      this drawback to afford more elsewhere."
  *
- *   3. Volatility ceiling — bracket-based, NOT cumulative. Lvl 2-4
- *      share the same -8 BU debt ceiling. Lvl 5-8 share -16. Etc.
+ *   3. Volatility ceiling — bracket-based, NOT cumulative. L1-4
+ *      share the same -4 BU debt ceiling. L5-8 share -8. Etc.
  *
  *   4. Constraint: totalSpent <= totalAvailable. The character must
  *      not exceed the debt-adjusted budget. Standard slots and
@@ -40,42 +31,32 @@
  */
 
 import { computeProgressionPool, BU_PER_LEVEL } from "./bu-balance";
+import { maxBuDebtForLevel } from "./bu";
 
 /**
  * Mirror debt ceilings, bracket-based (NOT cumulative per level).
  *
- * Lvl 1: 0 (no debt allowed at character creation).
- * Lvl 2-4: -8 BU debt.
- * Lvl 5-8: -16 BU debt.
- * Lvl 9-12: -24 BU debt.
- * Lvl 13-16: -32 BU debt.
- * Lvl 17-20: -40 BU debt.
+ * User-provided progression table (2026-09-24): L1-4 -4,
+ * L5-8 -8, L9-12 -12, L13-16 -16, L17-20 -20, L21-24 -24.
  */
 export const MAX_MIRROR_DEBT_BY_LEVEL: ReadonlyArray<{
   readonly minLevel: number;
   readonly maxLevel: number;
   readonly maxMirrorDebtBu: number;
 }> = [
-  { minLevel: 1, maxLevel: 1, maxMirrorDebtBu: 0 },
-  { minLevel: 2, maxLevel: 4, maxMirrorDebtBu: 8 },
-  { minLevel: 5, maxLevel: 8, maxMirrorDebtBu: 16 },
-  { minLevel: 9, maxLevel: 12, maxMirrorDebtBu: 24 },
-  { minLevel: 13, maxLevel: 16, maxMirrorDebtBu: 32 },
-  { minLevel: 17, maxLevel: 20, maxMirrorDebtBu: 40 },
+  { minLevel: 1, maxLevel: 4, maxMirrorDebtBu: 4 },
+  { minLevel: 5, maxLevel: 8, maxMirrorDebtBu: 8 },
+  { minLevel: 9, maxLevel: 12, maxMirrorDebtBu: 12 },
+  { minLevel: 13, maxLevel: 16, maxMirrorDebtBu: 16 },
+  { minLevel: 17, maxLevel: 20, maxMirrorDebtBu: 20 },
+  { minLevel: 21, maxLevel: 24, maxMirrorDebtBu: 24 },
 ];
 
 /**
  * Look up the bracket ceiling for a given level.
  */
 export function getMirrorDebtCeiling(level: number): number {
-  for (const bracket of MAX_MIRROR_DEBT_BY_LEVEL) {
-    if (level >= bracket.minLevel && level <= bracket.maxLevel) {
-      return bracket.maxMirrorDebtBu;
-    }
-  }
-  // Out-of-range level: clamp to highest bracket.
-  return MAX_MIRROR_DEBT_BY_LEVEL[MAX_MIRROR_DEBT_BY_LEVEL.length - 1]!
-    .maxMirrorDebtBu;
+  return maxBuDebtForLevel(level);
 }
 
 export interface SlotInput {
@@ -116,7 +97,7 @@ export function computeMirrorDebtExpansion(
 }
 
 export interface MirrorDebtAccount {
-  /** Level of the character (1-20). */
+  /** Level of the character (1+; supplied progression table covers 1-21). */
   readonly level: number;
   /** Starting BU at character creation (canonical default 25 at L1). */
   readonly startingBu: number;
@@ -212,9 +193,10 @@ export function describeMirrorDebtBracket(
   const bracket = MAX_MIRROR_DEBT_BY_LEVEL.find(
     (b) => level >= b.minLevel && level <= b.maxLevel,
   );
+  const bracketStart = Math.floor((Math.max(1, level) - 1) / 4) * 4 + 1;
   const bracketLabel = bracket
-    ? `L${bracket.minLevel}${bracket.minLevel === bracket.maxLevel ? "" : `-${bracket.maxLevel}`}`
-    : `L${level}+`;
+    ? `L${bracket.minLevel}-${bracket.maxLevel}`
+    : `L${bracketStart}-${bracketStart + 3}`;
   return {
     level,
     ceiling,

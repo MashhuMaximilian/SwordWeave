@@ -10,6 +10,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { FullscreenInit } from "@/components/layout/fullscreen-init";
 import "./globals.css";
 import "./v12.css";
+import "./character-forge.css";
 
 // Retain the previous typefaces behind the data-ui switch so setting
 // NEXT_PUBLIC_SW_UI_VERSION=legacy is a complete visual rollback.

@@ -65,8 +65,8 @@ describe("canonical debt scenarios — user-supplied examples", () => {
     expect(breakdown.overBudget).toBe(true);
   });
 
-  it("L3 (bracket 2-4, ceiling 8) with mirror beyond ceiling", () => {
-    // 6 + 6 mirrored = 12 debt used, ceiling is 8 at L3.
+  it("L3 (bracket 1-4, ceiling 4) with mirror beyond ceiling", () => {
+    // 6 + 6 mirrored = 12 debt used, ceiling is 4 at L3.
     const slots: SlotInput[] = [
       { is_mirrored: true, buCost: 6, mirrorBuCredit: 6 },
       { is_mirrored: true, buCost: 6, mirrorBuCredit: 6 },
@@ -76,25 +76,25 @@ describe("canonical debt scenarios — user-supplied examples", () => {
       startingBu: 25,
       slots,
     });
-    expect(breakdown.mirrorDebtCeiling).toBe(8);
+    expect(breakdown.mirrorDebtCeiling).toBe(4);
     expect(breakdown.mirrorDebtUsed).toBe(12);
     expect(breakdown.mirrorDebtExceeded).toBe(true);
     expect(breakdown.warning).toMatch(/exceeds level-3 bracket ceiling/);
   });
 
-  it("L4 still shares 2-4 bracket ceiling (NOT cumulative per level)", () => {
-    // L2-4 share the same -8 ceiling. L4 with 8 BU mirror debt is
+  it("L4 still shares 1-4 bracket ceiling (NOT cumulative per level)", () => {
+    // L1-4 share the same -4 ceiling. L4 with 4 BU mirror debt is
     // at the limit, not exceeded.
     const slots: SlotInput[] = [
-      { is_mirrored: true, buCost: 8, mirrorBuCredit: 8 },
+      { is_mirrored: true, buCost: 4, mirrorBuCredit: 4 },
     ];
     const breakdown = computeMirrorDebt({
       level: 4,
       startingBu: 25,
       slots,
     });
-    expect(breakdown.mirrorDebtCeiling).toBe(8);
-    expect(breakdown.mirrorDebtUsed).toBe(8);
+    expect(breakdown.mirrorDebtCeiling).toBe(4);
+    expect(breakdown.mirrorDebtUsed).toBe(4);
     expect(breakdown.mirrorDebtExceeded).toBe(false);
   });
 });

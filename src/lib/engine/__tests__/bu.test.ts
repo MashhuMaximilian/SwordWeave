@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateBuBudget,
+  buProgressionMilestones,
+  buDebtBracketsForLevel,
   calculatePrimitiveBu,
   canAcceptMirror,
   evaluateBuLedger,
   getVolatilityCeiling,
   impliedLevelForBudget,
+  levelForBuBudget,
   maxBuDebtForLevel,
   sumPrimitiveBu,
   validateBuValue,
@@ -114,34 +117,31 @@ describe("calculateBuBudget", () => {
     expect(calculateBuBudget(1)).toBe(25);
   });
 
-  it("follows the +10 per level + every-4-level spike formula", () => {
-    // Phase 8.1 batch 11: cumulative(L) = 25 + 10*(L-1) + spike(L)
-    // where spike(L) = sum of (4, 8, 12, ..., 4*floor(L/4)).
-    // Examples:
-    //   L2 = 35 (25 + 10, no spike)
-    //   L4 = 59 (25 + 30 + 4 spike)
-    //   L8 = 107 (25 + 70 + 4 + 8 spikes)
-    //   L12 = 159 (25 + 110 + 4 + 8 + 12 spikes)
-    //   L20 = 275 (25 + 190 + 4 + 8 + 12 + 16 + 20 spikes)
+  it("matches every supplied cumulative BU threshold through level 21", () => {
+    const thresholds = [
+      25, 35, 45, 55, 69, 79, 89, 99, 117, 127, 137, 147,
+      169, 179, 189, 199, 225, 235, 245, 255, 286,
+    ];
+    for (const [index, expected] of thresholds.entries()) {
+      expect(calculateBuBudget(index + 1)).toBe(expected);
+    }
     expect(calculateBuBudget(2)).toBe(35);
     expect(calculateBuBudget(3)).toBe(45);
-    expect(calculateBuBudget(4)).toBe(59);
+    expect(calculateBuBudget(4)).toBe(55);
     expect(calculateBuBudget(5)).toBe(69);
-    expect(calculateBuBudget(8)).toBe(107);
+    expect(calculateBuBudget(8)).toBe(99);
     expect(calculateBuBudget(9)).toBe(117);
-    expect(calculateBuBudget(12)).toBe(159);
+    expect(calculateBuBudget(12)).toBe(147);
     expect(calculateBuBudget(13)).toBe(169);
     expect(calculateBuBudget(17)).toBe(225);
-    expect(calculateBuBudget(20)).toBe(275);
+    expect(calculateBuBudget(20)).toBe(255);
   });
 
-  it("continues past level 20 with no upper cap", () => {
-    // Phase 8.1 batch 11: no MAX_CHARACTER_LEVEL. Spikes continue
-    // every 4 levels indefinitely.
-    expect(calculateBuBudget(21)).toBe(285);
-    expect(calculateBuBudget(24)).toBe(339);
-    expect(calculateBuBudget(40)).toBe(635);
-    expect(calculateBuBudget(100)).toBe(2315);
+  it("continues increasing beyond the supplied level-21 row", () => {
+    expect(calculateBuBudget(21)).toBe(286);
+    expect(calculateBuBudget(24)).toBe(316);
+    expect(calculateBuBudget(25)).toBe(350);
+    expect(calculateBuBudget(100)).toBeGreaterThan(calculateBuBudget(40));
   });
 
   it("returns 25 for invalid levels (clamped to floor)", () => {
@@ -203,28 +203,45 @@ describe("impliedLevelForBudget", () => {
   // doesn't exactly match a canon threshold, return the highest L
   // whose cumulative budget is <= the typed budget.
   //   25   → L1  (exact match)
-  //   100  → L8  (since cumulative(8) = 107, cumulative(7) = 89)
+  //   100  → L8  (since cumulative(8) = 99, cumulative(9) = 117)
   //   127  → L10 (exact match)
   //   133  → L10 (between L10's 127 and L11's 137)
-  //   200  → L15 (between L15's 189 and L16's 209)
+  //   200  → L16 (between L16's 199 and L17's 225)
   it("returns exact-match level when budget matches a canon threshold", () => {
     expect(impliedLevelForBudget(25)).toBe(1);
     expect(impliedLevelForBudget(127)).toBe(10);
-    expect(impliedLevelForBudget(275)).toBe(20);
+    expect(impliedLevelForBudget(255)).toBe(20);
   });
 
   it("returns lower bracket level when budget is between thresholds", () => {
     // 133 BU: cumulative(10) = 127, cumulative(11) = 137. Implied = 10.
     expect(impliedLevelForBudget(133)).toBe(10);
-    // 100 BU: cumulative(7) = 89, cumulative(8) = 107. Implied = 7.
-    expect(impliedLevelForBudget(100)).toBe(7);
-    // 200 BU: cumulative(15) = 189, cumulative(16) = 209. Implied = 15.
-    expect(impliedLevelForBudget(200)).toBe(15);
+    // 100 BU: cumulative(8) = 99, cumulative(9) = 117. Implied = 8.
+    expect(impliedLevelForBudget(100)).toBe(8);
+    // 200 BU: cumulative(16) = 199, cumulative(17) = 225. Implied = 16.
+    expect(impliedLevelForBudget(200)).toBe(16);
   });
 
   it("returns 1 for budgets below the L1 minimum", () => {
     expect(impliedLevelForBudget(24)).toBe(1);
     expect(impliedLevelForBudget(0)).toBe(1);
+  });
+
+  it("maps budgets to levels above 200 without a search ceiling", () => {
+    const budget = calculateBuBudget(250);
+    expect(impliedLevelForBudget(budget)).toBe(250);
+    expect(impliedLevelForBudget(budget + 1)).toBe(250);
+    expect(levelForBuBudget(budget)).toBe(250);
+  });
+
+  it("formula modal examples include L21 and the current high-level bracket", () => {
+    expect(buProgressionMilestones(21).find((row) => row.level === 21)).toEqual({
+      level: 21, spike: 21, cumulative: 61,
+    });
+    expect(buProgressionMilestones(100).some((row) => row.level === 101)).toBe(true);
+    expect(buDebtBracketsForLevel(100).some((row) =>
+      row.minLevel === 97 && row.ceiling === 100
+    )).toBe(true);
   });
 });
 

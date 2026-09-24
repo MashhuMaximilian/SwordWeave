@@ -408,7 +408,6 @@ export function VitalityTracker({
                 <input
                   type="number"
                   min={1}
-                  max={999}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   autoFocus

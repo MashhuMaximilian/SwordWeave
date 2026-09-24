@@ -11,7 +11,7 @@ const COMMANDS:Command[]=[
   {label:"Quote",before:"> ",placeholder:"quoted text"},{label:"Table",before:"| Heading | Heading |\n| --- | --- |\n| Cell | Cell |",placeholder:""},
 ];
 
-export function MarkdownEditor({value,onChange,placeholder,rows=4,className=""}:{value:string;onChange:(value:string)=>void;placeholder?:string;rows?:number;className?:string}) {
+export function MarkdownEditor({value,onChange,placeholder,rows=4,className="",ariaLabel}:{value:string;onChange:(value:string)=>void;placeholder?:string;rows?:number;className?:string;ariaLabel?:string}) {
   const ref=useRef<HTMLTextAreaElement>(null);const [open,setOpen]=useState(false);
   const apply=(command:Command)=>{
     const element=ref.current;if(!element)return;const start=element.selectionStart,end=element.selectionEnd;
@@ -25,6 +25,6 @@ export function MarkdownEditor({value,onChange,placeholder,rows=4,className=""}:
       <button type="button" onClick={()=>setOpen(value=>!value)} aria-expanded={open}>/</button>
     </div>
     {open?<div className="v12-markdown-command-menu">{COMMANDS.map(command=><button type="button" key={command.label} onClick={()=>apply(command)}>{command.label}</button>)}</div>:null}
-    <textarea ref={ref} rows={rows} value={value} placeholder={placeholder} onChange={event=>{const next=event.target.value;onChange(next);setOpen(next.endsWith("/"));}} />
+    <textarea ref={ref} rows={rows} value={value} aria-label={ariaLabel} placeholder={placeholder} onChange={event=>{const next=event.target.value;onChange(next);setOpen(next.endsWith("/"));}} />
   </div>;
 }

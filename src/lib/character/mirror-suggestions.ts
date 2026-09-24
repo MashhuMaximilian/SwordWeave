@@ -84,8 +84,9 @@ function hash(value: string): number {
 
 /**
  * Draw from every eligible primitive, regardless of origin or duplicate name.
- * Kept choices never return to the suggestion row. Previous suggestions return
- * only when there are not enough unseen choices to fill the row.
+ * Kept choices never return to the suggestion row. A shuffle walks the entire
+ * available catalog before recycling choices, and avoids the immediately
+ * previous row even when a small catalog has to repeat.
  */
 export function chooseMirrorSuggestions<T extends MirrorCandidate>(
   options: readonly T[],
@@ -94,12 +95,19 @@ export function chooseMirrorSuggestions<T extends MirrorCandidate>(
   keptIds: readonly number[] = [],
   previousIds: readonly number[] = [],
   count = 3,
+  seenIds: readonly number[] = [],
 ): T[] {
   const kept = new Set(keptIds);
   const previous = new Set(previousIds);
+  const seen = new Set(seenIds);
   const available = [...new Map(options.filter((item) => !kept.has(item.id)).map((item) => [item.id, item])).values()];
   const ranked = available.sort((a, b) =>
     hash(`${characterName}:${seed}:${a.id}`) - hash(`${characterName}:${seed}:${b.id}`) || a.id - b.id);
-  return [...ranked.filter((item) => !previous.has(item.id)), ...ranked.filter((item) => previous.has(item.id))]
+  return [
+    ...ranked.filter((item) => !seen.has(item.id) && !previous.has(item.id)),
+    ...ranked.filter((item) => !seen.has(item.id) && previous.has(item.id)),
+    ...ranked.filter((item) => seen.has(item.id) && !previous.has(item.id)),
+    ...ranked.filter((item) => seen.has(item.id) && previous.has(item.id)),
+  ]
     .slice(0, Math.max(0, count));
 }

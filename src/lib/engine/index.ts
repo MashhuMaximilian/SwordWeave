@@ -30,7 +30,6 @@ import {
   MAX_ATTRIBUTE as MAX_ATTRIBUTE_PRACTICE,
   MIN_ATTRIBUTE as MIN_ATTRIBUTE_PRACTICE,
   ATTRIBUTE_SUM as ATTRIBUTE_SUM_PRACTICE,
-  MAX_PB as MAX_PB_PRACTICE,
   distributeAttributeSlices,
   validatePracticeSlicesForAttribute,
   computePracticeModifier,
@@ -61,7 +60,6 @@ export const proficiencyBonus = proficiencyBonusPractice;
 export const MAX_ATTRIBUTE = MAX_ATTRIBUTE_PRACTICE;
 export const MIN_ATTRIBUTE = MIN_ATTRIBUTE_PRACTICE;
 export const ATTRIBUTE_SUM = ATTRIBUTE_SUM_PRACTICE;
-export const MAX_PB = MAX_PB_PRACTICE;
 export {
   distributeAttributeSlices,
   validatePracticeSlicesForAttribute,

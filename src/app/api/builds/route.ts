@@ -70,7 +70,7 @@ export async function GET(request: Request) {
  * Body:
  *   - name (required)
  *   - description (optional)
- *   - level (1-20, default 1)
+ *   - level (at least 1, default 1; no game level cap)
  *   - startingBu (default 25)
  *   - isManifestTemplate (default false) — archetype builds are pre-built character heritage
  *   - lineageName, lineageDescription, upbringingName, upbringingDescription (snapshot fields)
@@ -97,8 +97,8 @@ export async function POST(request: Request) {
     }
 
     const description = String(values["description"] ?? "").trim() || null;
-    const level = parseIntInRange(values["level"], 1, 20, 1);
-    const startingBu = parseIntInRange(values["startingBu"], 0, 1000, 25);
+    const level = parseIntInRange(values["level"], 1, Number.MAX_SAFE_INTEGER, 1);
+    const startingBu = parseIntInRange(values["startingBu"], 0, Number.MAX_SAFE_INTEGER, 25);
     const isManifestTemplate = Boolean(values["isManifestTemplate"]);
     const isPublic = Boolean(values["isPublic"]);
 

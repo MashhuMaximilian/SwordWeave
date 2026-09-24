@@ -201,7 +201,7 @@ export function useCharacterResolver(
 
     const r = resolveModifiers(resolverInput, input.sourceNames);
     return {
-      maxVitality: Math.max(0, Math.ceil((10 + input.pb) * input.level + (r.totals["max_vitality"] ?? 0))),
+      maxVitality: Math.max(0, Math.ceil((10 + (r.totals["proficiency_bonus"] ?? input.pb)) * input.level + (r.totals["max_vitality"] ?? 0))),
       totals: r.totals,
       byTarget: r.byTarget,
       mirrorCosts: r.mirrorCosts,

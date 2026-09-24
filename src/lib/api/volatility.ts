@@ -1,13 +1,15 @@
 /**
  * Volatility validator for character primitive writes.
  *
- * Per the BU Market canon (Notion), a character's level bounds the total
- * negative BU they can take from mirrored primitives:
+ * Per the user-provided progression table (2026-09-24), a character's level
+ * bounds the total negative BU they can take from mirrored primitives:
  *
- *   Levels 1-4  → max -8 BU
- *   Levels 5-10 → max -12 BU
- *   Levels 11-15 → max -16 BU
- *   Levels 16+  → max -24 BU
+ *   Levels 1-4   → max -4 BU
+ *   Levels 5-8   → max -8 BU
+ *   Levels 9-12  → max -12 BU
+ *   Levels 13-16 → max -16 BU
+ *   Levels 17-20 → max -20 BU
+ *   Levels 21-24 → max -24 BU
  *
  * This module fetches the relevant primitive metadata from the DB and runs
  * the engine's `canAcceptMirror` per proposed mirror, accumulating the rating

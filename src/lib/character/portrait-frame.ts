@@ -15,11 +15,15 @@ export function normalizePortraitFrame(value: unknown): PortraitFrame {
   return {
     x: Math.max(0, Math.min(100, number("x", 50))),
     y: Math.max(0, Math.min(100, number("y", 50))),
-    zoom: Math.max(1, Math.min(3, number("zoom", 1))),
+    zoom: Math.max(0.5, Math.min(3, number("zoom", 1))),
   };
 }
 
 export function portraitFrameStyle(value: unknown): CSSProperties {
   const frame = normalizePortraitFrame(value);
-  return { objectPosition: `${frame.x}% ${frame.y}%`, transform: `scale(${frame.zoom})` };
+  return {
+    objectPosition: `${frame.x}% ${frame.y}%`,
+    transformOrigin: `${frame.x}% ${frame.y}%`,
+    transform: `scale(${frame.zoom})`,
+  };
 }

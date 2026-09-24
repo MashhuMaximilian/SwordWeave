@@ -2,7 +2,7 @@
 // GET /api/icons/blob/[...path]
 //
 // Clerk-authenticated proxy for user-uploaded icon files stored in
-// private Vercel Blob. The blob store is configured as PRIVATE so its
+// private Vercel Blob (or local disk during development). Blob is PRIVATE so its
 // URLs are not directly fetchable — every request must come through
 // this proxy which authenticates the viewer first.
 //
@@ -32,6 +32,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { get } from "@vercel/blob";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 
 // Only paths under this prefix are served. Anything else returns 404.
 // The upload route enforces this same prefix on write so we never end
@@ -61,6 +63,26 @@ export async function GET(
   const pathname = (path ?? []).join("/");
   if (!isAllowedPath(pathname)) {
     return new NextResponse("Not found", { status: 404 });
+  }
+
+  if (process.env.NODE_ENV === "development" && !process.env["BLOB_READ_WRITE_TOKEN"]) {
+    try {
+      const bytes = await readFile(join(process.cwd(), ".local-uploads", pathname));
+      const extension = pathname.split(".").pop()?.toLowerCase();
+      const contentType = extension === "jpg" || extension === "jpeg" ? "image/jpeg"
+        : extension === "png" ? "image/png"
+        : extension === "webp" ? "image/webp"
+        : extension === "gif" ? "image/gif"
+        : extension === "svg" ? "image/svg+xml" : "application/octet-stream";
+      return new NextResponse(bytes, { headers: {
+        "Content-Type": contentType,
+        "Cache-Control": "private, no-store",
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
+      } });
+    } catch {
+      return new NextResponse("Not found", { status: 404 });
+    }
   }
 
   let blob;

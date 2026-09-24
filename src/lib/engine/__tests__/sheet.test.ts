@@ -48,6 +48,22 @@ describe("aggregateCharacterSheet", () => {
     expect(sheet.vitality.percent).toBe(100);
   });
 
+  it("uses modified PB and Vitality contributions on the sheet", () => {
+    const sheet = aggregateCharacterSheet(baseInput({
+      level: 5,
+      currentVitality: null,
+      runtimeConditions: [{
+        title: "Blessed resilience",
+        active: true,
+        modifiers: [
+          { kind: "modify", target: "proficiency_bonus", operation: "add", value: 2 },
+          { kind: "modify", target: "max_vitality", operation: "subtract", value: 3 },
+        ],
+      }],
+    }));
+    expect(sheet.vitality.max).toBe((10 + 5) * 5 - 3);
+  });
+
   it("computes defensive DCs (5 + attr + PB if proficient)", () => {
     const sheet = aggregateCharacterSheet(baseInput());
     const physical = sheet.defensiveDCs.find((d) => d.attribute === "PHYSICAL");

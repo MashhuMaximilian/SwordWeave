@@ -60,3 +60,4 @@ t4.tsx
 # Local scratch notes (not for Vercel)
 .hermes-*.md
 .env.vercel
+.local-uploads/

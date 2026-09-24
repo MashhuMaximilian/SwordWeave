@@ -67,13 +67,13 @@ export async function PATCH(
     if ("name" in values) updatePayload["name"] = String(values["name"]).trim();
     if ("description" in values) updatePayload["description"] = emptyToNull(values["description"]);
     if ("level" in values) {
-      const lv = parseIntInRange(values["level"], 1, 20);
-      if (lv === null) return NextResponse.json({ error: "level must be 1-20." }, { status: 400 });
+      const lv = parseIntInRange(values["level"], 1, Number.MAX_SAFE_INTEGER);
+      if (lv === null) return NextResponse.json({ error: "level must be a positive integer." }, { status: 400 });
       updatePayload["level"] = lv;
     }
     if ("startingBu" in values) {
-      const v = parseIntInRange(values["startingBu"], 0, 1000);
-      if (v === null) return NextResponse.json({ error: "startingBu must be 0-1000." }, { status: 400 });
+      const v = parseIntInRange(values["startingBu"], 0, Number.MAX_SAFE_INTEGER);
+      if (v === null) return NextResponse.json({ error: "startingBu must be a non-negative integer." }, { status: 400 });
       updatePayload["startingBu"] = v;
     }
     if ("isManifestTemplate" in values) updatePayload["isManifestTemplate"] = Boolean(values["isManifestTemplate"]);

@@ -467,12 +467,11 @@ export function BuildComposer({
                   <input
                     type="number"
                     min={1}
-                    max={20}
                     value={form.level}
                     onChange={(e) =>
                       setForm((f) => ({
                         ...f,
-                        level: Math.max(1, Math.min(20, Number(e.target.value) || 1)),
+                        level: Math.max(1, Math.floor(Number(e.target.value) || 1)),
                       }))
                     }
                     className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"

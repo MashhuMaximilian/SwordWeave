@@ -70,16 +70,6 @@ const SAVE_TARGET: Record<Attribute, string> = {
 
 const MAX_VITALITY_TARGET = "max_vitality";
 
-/**
- * Reverse PB → level. PB starts at 2 and adds 1 every 4 levels.
- * Returns the lowest level consistent with this PB. Used for
- * the PB popup's breakdown label.
- */
-function computeLevelFromPb(pb: number): number {
-  if (pb <= 2) return 1;
-  return (pb - 2) * 4 + 1;
-}
-
 export interface VitalityDisplayCardProps {
   current: number;
   max: number;
@@ -291,7 +281,7 @@ export function VitalityDisplayCard({
           <FormulaModal
             title="Max Vitality"
             total={max}
-            formula="Max Vitality = (10 + PB) × level + vitality primitive contributions"
+            formula="Max Vitality = (10 + Proficiency Bonus) × level, then apply Vitality primitive contributions. PB may also change through primitives."
             breakdown={contributionsToSteps(MAX_VITALITY_TARGET, resolver)}
             onClose={closeProvenance}
           />
@@ -299,13 +289,14 @@ export function VitalityDisplayCard({
           <FormulaModal
             title="Proficiency Bonus"
             total={pb}
-            formula={`PB = 2 + floor(level / 4) — starts at +2, +1 every 4 levels`}
+            formula="PB = 2 + floor((level − 1) / 4), then apply PB primitives. There is no level cap."
             breakdown={[
               { label: "Base PB", value: 2 },
               {
-                label: `Level bonus (floor(${computeLevelFromPb(pb)} / 4))`,
-                value: pb - 2,
+                label: `Level bonus (L${resolverInput.level})`,
+                value: Math.floor((resolverInput.level - 1) / 4),
               },
+              { label: "PB primitive changes", value: pb - 2 - Math.floor((resolverInput.level - 1) / 4) },
             ]}
             onClose={closeProvenance}
           />

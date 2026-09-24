@@ -208,9 +208,9 @@ async function handlePATCH(
       updatePayload["size"] = s;
     }
     if ("level" in values) {
-      const lv = parseIntInRange(values["level"], 1, 20);
+      const lv = parseIntInRange(values["level"], 1, Number.MAX_SAFE_INTEGER);
       if (lv === null) {
-        return NextResponse.json({ error: "Level must be an integer 1-20." }, { status: 400 });
+        return NextResponse.json({ error: "Level must be a positive integer." }, { status: 400 });
       }
       updatePayload["level"] = lv;
     }
@@ -264,18 +264,18 @@ async function handlePATCH(
     }
 
     if ("startingBu" in values) {
-      const v = parseIntInRange(values["startingBu"], 0, 1000);
-      if (v === null) return NextResponse.json({ error: "startingBu must be 0-1000." }, { status: 400 });
+      const v = parseIntInRange(values["startingBu"], 0, Number.MAX_SAFE_INTEGER);
+      if (v === null) return NextResponse.json({ error: "startingBu must be a non-negative integer." }, { status: 400 });
       updatePayload["startingBu"] = v;
     }
     if ("buSpent" in values) {
-      const v = parseIntInRange(values["buSpent"], 0, 10000);
-      if (v === null) return NextResponse.json({ error: "buSpent must be 0-10000." }, { status: 400 });
+      const v = parseIntInRange(values["buSpent"], 0, Number.MAX_SAFE_INTEGER);
+      if (v === null) return NextResponse.json({ error: "buSpent must be a non-negative integer." }, { status: 400 });
       updatePayload["buSpent"] = v;
     }
     if ("dmBonusBu" in values) {
-      const v = parseIntInRange(values["dmBonusBu"], 0, 1000);
-      if (v === null) return NextResponse.json({ error: "dmBonusBu must be 0-1000." }, { status: 400 });
+      const v = parseIntInRange(values["dmBonusBu"], 0, Number.MAX_SAFE_INTEGER);
+      if (v === null) return NextResponse.json({ error: "dmBonusBu must be a non-negative integer." }, { status: 400 });
       updatePayload["dmBonusBu"] = v;
     }
 
@@ -316,7 +316,7 @@ async function handlePATCH(
     if ("portraitUrl" in values) updatePayload["portraitUrl"] = emptyToNull(values["portraitUrl"]);
     if ("portraitFrame" in values && values["portraitFrame"] && typeof values["portraitFrame"] === "object" && !Array.isArray(values["portraitFrame"])) updatePayload["portraitFrame"] = values["portraitFrame"];
     if ("currentVitality" in values) {
-      const v = parseIntInRange(values["currentVitality"], 0, 9999);
+      const v = parseIntInRange(values["currentVitality"], 0, Number.MAX_SAFE_INTEGER);
       if (v === null) return NextResponse.json({ error: "currentVitality must be a non-negative integer." }, { status: 400 });
       updatePayload["currentVitality"] = v;
     }

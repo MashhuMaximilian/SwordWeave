@@ -8,7 +8,7 @@
  * at the bottom, derived from the proficient attribute.
  *
  * Reads values from the canonical resolver so the "Max Vitality"
- * line is `(10 + PB) × level + primitive augments`.
+ * line uses the character's effective Proficiency Bonus.
  */
 
 import { useState } from "react";
@@ -56,7 +56,7 @@ const SAVE_DC_TARGET = "character.defense.saveDc";
 
 export interface VitalityCardProps {
   current: number | null;
-  /** Resolver's max vitality total = (10 + PB) × level + primitive augments. */
+  /** Resolver's max vitality total = (10 + effective PB) × level + primitive augments. */
   max: number;
   /** Resolver output. */
   resolver: ResolvedModifiers;

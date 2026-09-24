@@ -8,13 +8,13 @@ import {
   BASELINE_DEFENSE,
   BASELINE_LAND_SPEED,
   MAX_ATTRIBUTE,
-  MAX_PB,
   MIN_ATTRIBUTE,
   proficiencyBonus,
   calculateAttributeScore,
   validateAttributes,
   compileAttributes,
   calculateMaxVitality,
+  calculateModifiedProficiencyBonus,
   calculateDefenseDc,
   compileDefenses,
   compileMovement,
@@ -58,13 +58,31 @@ describe("proficiencyBonus", () => {
     expect(proficiencyBonus(20)).toBe(6);
   });
 
-  it("caps at MAX_PB", () => {
-    expect(proficiencyBonus(50)).toBeLessThanOrEqual(MAX_PB);
+  it("returns +7 at level 21", () => {
+    expect(proficiencyBonus(21)).toBe(7);
+  });
+
+  it("continues beyond level 21 without a PB cap", () => {
+    expect(proficiencyBonus(50)).toBe(14);
+    expect(proficiencyBonus(100)).toBe(26);
   });
 
   it("throws for invalid levels", () => {
     expect(() => proficiencyBonus(0)).toThrow();
     expect(() => proficiencyBonus(-1)).toThrow();
+  });
+
+  it("applies PB primitives before PB-based vitality", () => {
+    const modifiers: HardModifier[] = [{
+      kind: "modify",
+      target: "proficiency_bonus",
+      operation: "add",
+      value: 2,
+    }];
+    const pb = calculateModifiedProficiencyBonus(5, modifiers);
+    expect(pb).toBe(5);
+    expect(calculateMaxVitality(5, modifiers)).toBe(75);
+    expect(calculateMaxVitality(5, modifiers, pb)).toBe(75);
   });
 });
 
@@ -267,15 +285,15 @@ describe("calculateMaxVitality", () => {
     expect(calculateMaxVitality(1)).toBe(12);
   });
 
-  it("L5 with PB=3: (10 + 3) * 5 = 65", () => {
+  it("L5 with PB +3: (10 + 3) × 5 = 65", () => {
     expect(calculateMaxVitality(5)).toBe(65);
   });
 
-  it("L10 with PB=4: (10 + 4) * 10 = 140", () => {
+  it("L10 with PB +4: (10 + 4) × 10 = 140", () => {
     expect(calculateMaxVitality(10)).toBe(140);
   });
 
-  it("L20 with PB=6: (10 + 6) * 20 = 320", () => {
+  it("L20 with PB +6: (10 + 6) × 20 = 320", () => {
     expect(calculateMaxVitality(20)).toBe(320);
   });
 

@@ -18,6 +18,7 @@ describe("mirror suggestions", () => {
       candidate(7, { hardModifiers: [{ kind: "modify", target: "behavior", operation: "set", value: "stable" }] }),
       candidate(8, { hardModifiers: [] }),
       candidate(9, { hardModifiers: [{ kind: "modify", target: "load", operation: "subtract", value: 2, metadata: { mirror: { optedOut: true } } }] }),
+      candidate(10, { mirrorVector: "STANDARD_ONLY" }),
     ];
     expect(eligibleMirrorCandidates(rows, 4).map((item) => item.id)).toEqual([1, 2, 3]);
   });
@@ -60,6 +61,22 @@ describe("mirror suggestions", () => {
     for (let seed = 0; seed < 100; seed++) {
       previous = chooseMirrorSuggestions(rows, "Aster", seed, [], previous).map((item) => item.id);
       previous.forEach((id) => seen.add(id));
+    }
+    expect(seen.size).toBe(rows.length);
+  });
+
+  it("shows each eligible catalog entry before recycling suggestions", () => {
+    const rows = Array.from({ length: 12 }, (_, index) => candidate(index + 1, {
+      sourceOrigin: index % 2 ? "system" : "user:community",
+    }));
+    const seen = new Set<number>();
+    let previous: number[] = [];
+    for (let shuffle = 0; shuffle < 4; shuffle++) {
+      const next = chooseMirrorSuggestions(rows, "Aster", shuffle, [], previous, 3, [...seen]).map((item) => item.id);
+      expect(next).toHaveLength(3);
+      expect(next.every((id) => !seen.has(id))).toBe(true);
+      next.forEach((id) => seen.add(id));
+      previous = next;
     }
     expect(seen.size).toBe(rows.length);
   });

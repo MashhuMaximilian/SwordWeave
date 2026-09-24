@@ -163,9 +163,9 @@ export const characters = pgTable(
     //     value. If below, the canon still wins. Either way the
     //     user can't over-spend their declared pool.
     //
-    // cumulative(L) = 25 + 10*(L-1) + 4*k*(k+1)/2 where k = floor(L/4).
-    // Old formula was startingBu + (L-1)*5 which was wrong at every
-    // 4th level (L4 = 40, canon = 59).
+    // Cumulative BU follows the supplied level table through L21 and
+    // continues without a level cap using the later four-level spikes.
+    // Keep the calculation in lib/engine/bu.ts as the source of truth.
     //
     // Phase 8.2 batch 12: the characters_bu_progression_check DB
     // constraint was removed (migration 0047) per Mashu's "soft
@@ -174,7 +174,7 @@ export const characters = pgTable(
     // Mirror debt still hard-fails server-side (see maxBuDebtForLevel).
     check(
       "characters_starting_bu_check",
-      sql`${table.startingBu} >= 0 AND ${table.startingBu} <= 100000`,
+      sql`${table.startingBu} >= 0`,
     ),
   ],
 );
@@ -754,8 +754,8 @@ export const builds = pgTable(
     index("builds_is_public_idx").on(table.isPublic),
     index("builds_is_manifest_idx").on(table.isManifestTemplate),
     check(
-      "builds_level_range_check",
-      sql`${table.level} BETWEEN 1 AND 20`,
+      "builds_level_min_check",
+      sql`${table.level} >= 1`,
     ),
   ],
 );

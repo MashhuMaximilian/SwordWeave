@@ -24,7 +24,6 @@ import {
   PRACTICE_ATTRIBUTE_MAP,
 } from "./practices";
 import {
-  computeMaxVitality,
   computeVitalityModifiersFromPrimitives,
   type VitalityModifier,
 } from "./vitality";
@@ -838,7 +837,12 @@ export function aggregateCharacterSheet(
       hardModifiers: l.primitive.hardModifiers ?? [],
     })),
   );
-  const maxVitality = computeMaxVitality(input.level, vitalityModifiers);
+  // Use the resolver's final PB and Vitality delta so PB and Vitality
+  // primitives, mirrors, and active conditions all affect the same base.
+  const maxVitality = Math.max(0, roundUp(
+    (10 + (pbOverride ?? proficiencyBonus(input.level))) * input.level +
+      (sheetResolver.totals["max_vitality"] ?? 0),
+  ));
   // Current vitality is persistent damage state, while max vitality is derived
   // from the live primitive graph. A max reduction must never leave the sheet
   // showing an impossible current value above that derived maximum.

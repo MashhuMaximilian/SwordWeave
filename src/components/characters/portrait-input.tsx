@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { ImagePlus, Link2, Loader2, Minus, Move, Plus, RotateCcw, Upload, X } from "lucide-react";
-import { type PortraitFrame } from "@/lib/character/portrait-frame";
+import { portraitFrameStyle, type PortraitFrame } from "@/lib/character/portrait-frame";
 export type { PortraitFrame } from "@/lib/character/portrait-frame";
 
 interface PortraitInputProps {
@@ -24,6 +24,7 @@ export function PortraitInput({
 }: PortraitInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
   const panRef = useRef<{ pointerId: number; clientX: number; clientY: number; frame: PortraitFrame } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [fileDragging, setFileDragging] = useState(false);
@@ -77,18 +78,32 @@ export function PortraitInput({
           const pan = panRef.current;
           const rect = previewRef.current?.getBoundingClientRect();
           if (!pan || !rect || pan.pointerId !== event.pointerId || !onFrameChange) return;
-          const x = Math.max(0, Math.min(100, pan.frame.x - ((event.clientX - pan.clientX) / rect.width) * 100 / frame.zoom));
-          const y = Math.max(0, Math.min(100, pan.frame.y - ((event.clientY - pan.clientY) / rect.height) * 100 / frame.zoom));
-          onFrameChange({ ...frame, x, y });
+          const image = imageRef.current;
+          const aspect = image?.naturalWidth && image.naturalHeight ? image.naturalWidth / image.naturalHeight : 1;
+          const frameAspect = rect.width / rect.height;
+          const fittedWidth = aspect > frameAspect ? rect.height * aspect : rect.width;
+          const fittedHeight = aspect > frameAspect ? rect.height : rect.width / aspect;
+          // object-position moves the fitted image; transform-origin moves the
+          // zoomed image. Together they make the full cropped area draggable.
+          const horizontalTravel = fittedWidth - rect.width + (pan.frame.zoom - 1) * rect.width;
+          const verticalTravel = fittedHeight - rect.height + (pan.frame.zoom - 1) * rect.height;
+          const move = (start: number, delta: number, travel: number) =>
+            Math.abs(travel) < 1 ? start : Math.max(0, Math.min(100, start - delta * 100 / travel));
+          onFrameChange({
+            ...pan.frame,
+            x: move(pan.frame.x, event.clientX - pan.clientX, horizontalTravel),
+            y: move(pan.frame.y, event.clientY - pan.clientY, verticalTravel),
+          });
         }}
         onPointerUp={() => { panRef.current = null; setPanning(false); }}
         onPointerCancel={() => { panRef.current = null; setPanning(false); }}
+        onLostPointerCapture={() => { panRef.current = null; setPanning(false); }}
       >
         {value ? (
           // Portraits may be authenticated local blob-proxy URLs or arbitrary
           // user links, so Next Image cannot safely predeclare their host.
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={value} alt={characterName ? `${characterName} portrait` : "Character portrait"} draggable={false} style={{ objectPosition: `${frame.x}% ${frame.y}%`, transform: `scale(${frame.zoom})` }} />
+          <img ref={imageRef} src={value} alt={characterName ? `${characterName} portrait` : "Character portrait"} draggable={false} style={portraitFrameStyle(frame)} />
         ) : (
           <div className="sw-portrait-input__empty">
             <ImagePlus aria-hidden />
@@ -104,7 +119,7 @@ export function PortraitInput({
         {value && onFrameChange ? <span className="sw-portrait-input__move"><Move aria-hidden /> Drag to position</span> : null}
       </div>
 
-      {value && onFrameChange ? <div className="sw-portrait-input__framing"><span>Frame portrait</span><button type="button" onClick={() => onFrameChange({ ...frame, zoom: Math.max(1, Math.round((frame.zoom - 0.1) * 10) / 10) })} aria-label="Zoom out"><Minus aria-hidden /></button><input type="range" min="1" max="3" step="0.05" value={frame.zoom} onChange={(event) => onFrameChange({ ...frame, zoom: Number(event.target.value) })} aria-label="Portrait zoom" /><button type="button" onClick={() => onFrameChange({ ...frame, zoom: Math.min(3, Math.round((frame.zoom + 0.1) * 10) / 10) })} aria-label="Zoom in"><Plus aria-hidden /></button><output>{Math.round(frame.zoom * 100)}%</output><button type="button" onClick={() => onFrameChange({ x: 50, y: 50, zoom: 1 })} aria-label="Reset portrait framing"><RotateCcw aria-hidden /></button></div> : null}
+      {value && onFrameChange ? <div className="sw-portrait-input__framing"><span>Frame portrait</span><button type="button" onClick={() => onFrameChange({ ...frame, zoom: Math.max(0.5, Math.round((frame.zoom - 0.1) * 10) / 10) })} aria-label="Zoom out"><Minus aria-hidden /></button><input type="range" min="0.5" max="3" step="0.05" value={frame.zoom} style={{ "--portrait-progress": `${((frame.zoom - 0.5) / 2.5) * 100}%` } as React.CSSProperties} onChange={(event) => onFrameChange({ ...frame, zoom: Number(event.target.value) })} aria-label="Portrait zoom" /><button type="button" onClick={() => onFrameChange({ ...frame, zoom: Math.min(3, Math.round((frame.zoom + 0.1) * 10) / 10) })} aria-label="Zoom in"><Plus aria-hidden /></button><output>{Math.round(frame.zoom * 100)}%</output><button type="button" onClick={() => onFrameChange({ x: 50, y: 50, zoom: 1 })} aria-label="Reset portrait framing"><RotateCcw aria-hidden /></button></div> : null}
 
       <div className="sw-portrait-input__controls">
         <button type="button" className="sw-metal-button sw-metal-button--secondary" onClick={() => inputRef.current?.click()} disabled={uploading}>

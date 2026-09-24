@@ -228,19 +228,19 @@ export function resolveAllSaves(
 /**
  * Resolve the **maximum vitality** (the upper bound on the vitality track).
  *
- *   max = (10 + PB) × level + primitive contributions
+ *   max = (10 + effective PB) × level + primitive contributions
  *
  * Primitive contributions target `VITALITY_TARGETS.max`. Per the math
- * doc (`System Mathematics & Global Formulas`): the baseline is
- * `(10 + PB) × level`. Augments (e.g. "Vitality Core Augment") are
+ * PB follows the level progression and can change through primitives.
+ * Augments (e.g. "Vitality Core Augment") are
  * injected as flat additives via `hard_modifiers[].target =
  * "character.maxVitality"`.
  */
 export function resolveMaxVitality(
   input: ResolvedCharacterInput,
 ): { total: number; contributions: readonly ModifierContribution[] } {
-  const baseline = (10 + input.pb) * input.level;
   const r = resolveModifiers(input);
+  const baseline = (10 + (r.totals["proficiency_bonus"] ?? input.pb)) * input.level;
   const primitiveDelta = r.totals[VITALITY_TARGETS.max] ?? 0;
   const contributions = r.byTarget[VITALITY_TARGETS.max] ?? [];
   return { total: baseline + primitiveDelta, contributions };

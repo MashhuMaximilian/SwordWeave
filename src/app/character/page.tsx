@@ -41,8 +41,8 @@ const LEVEL_TABLE = [
   { level: 6, cumulative: 79, pb: 3, label: "veteran." },
   { level: 7, cumulative: 89, pb: 3, label: "table-defining." },
   { level: 8, cumulative: 99, pb: 3, label: "near-mythic." },
-  { level: 9, cumulative: 109, pb: 4, label: "PB bumps up again." },
-  { level: 10, cumulative: 119, pb: 4, label: "regional threat." },
+  { level: 9, cumulative: 117, pb: 4, label: "PB bumps up again." },
+  { level: 10, cumulative: 127, pb: 4, label: "regional threat." },
 ] as const;
 
 // =============================================================================
@@ -701,7 +701,7 @@ export default function CharacterPage() {
           index="§10"
           eyebrow="What level actually unlocks"
           title="The level table"
-          deck="Level is shorthand for cumulative BU earned. Nothing else gates on level. Tier is a label on each primitive, not a level requirement."
+          deck="These rows are examples. BU, PB, and debt keep growing with no maximum level. Base Max Vitality = (10 + PB) × Level, before primitive changes."
         />
         <div className="mt-6 overflow-x-auto border border-border bg-card">
           <table className="w-full min-w-[640px] border-collapse text-left">
@@ -745,7 +745,8 @@ export default function CharacterPage() {
           </table>
         </div>
         <p className="mt-4 max-w-2xl border-l-2 border-primary/40 pl-3 text-xs italic leading-6 text-muted-foreground sm:text-sm sm:leading-7">
-          PB bumps at Level 5 and Level 9. Cumulative BU is the threshold
+          PB first bumps at Level 5 and Level 9, then every four levels.
+          Cumulative BU is the threshold
           that triggers the level-up. Everything else (attribute, proficient
           attribute, primitives, mirror) is yours to decide on regardless of
           level.

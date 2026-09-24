@@ -61,6 +61,7 @@ import { BuildModeBanner } from "@/components/characters/build-mode-banner";
 import { ConditionsDrawer } from "@/components/characters/conditions-drawer";
 import { AccordionFooterActions } from "@/components/characters/accordion-footer-actions";
 import { FormulaModal, type FormulaStep } from "@/components/characters/formula-modal";
+import { cumulativeBuForLevel, buProgressionMilestones, buDebtBracketsForLevel } from "@/lib/engine/bu";
 import { useDeepPrimitiveClosure } from "@/components/characters/use-deep-primitive-closure";
 import {
   DraggablePrimitiveChip,
@@ -1135,7 +1136,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
             className="flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-card"
             title="Open in the atelier for editing"
           />
-          {props.level < 20 && (
+          {(
             <button
               type="button"
               onClick={() => setLevelUpConfirm(true)}
@@ -1444,7 +1445,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         attrSum={attrSum}
         portraitUrl={props.portraitUrl ?? null}
         portraitFrame={props.portraitFrame}
-        canLevelUp={props.level < 20}
+        canLevelUp
         onLevelUp={() => setLevelUpConfirm(true)}
         buBalance={{
           progressionSpent: props.buBalance.progressionSpent,
@@ -1490,6 +1491,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
 
       <BottomStickyBar
         characterId={props.id}
+        level={props.level}
         currentVitality={props.currentVitality}
         maxVitality={resolver.maxVitality ?? props.vitality.max}
         physical={props.attrPhysical}
@@ -4753,29 +4755,6 @@ function renderHistorySummary(
 // the system.
 // =============================================================================
 
-const PROGRESSION_SPIKES = [
-  { level: 4, spike: 4 },
-  { level: 8, spike: 8 },
-  { level: 12, spike: 12 },
-  { level: 16, spike: 16 },
-  { level: 20, spike: 20 },
-] as const;
-
-const VOLATILITY_BRACKETS = [
-  { label: "L1", minLevel: 1, maxLevel: 1, ceiling: 0 },
-  { label: "L2-L4", minLevel: 2, maxLevel: 4, ceiling: 8 },
-  { label: "L5-L8", minLevel: 5, maxLevel: 8, ceiling: 16 },
-  { label: "L9-L12", minLevel: 9, maxLevel: 12, ceiling: 24 },
-  { label: "L13-L16", minLevel: 13, maxLevel: 16, ceiling: 32 },
-  { label: "L17-L20", minLevel: 17, maxLevel: 20, ceiling: 40 },
-] as const;
-
-function spikesUpToLevel(level: number): number {
-  if (level < 4) return 0;
-  const k = Math.floor(level / 4);
-  return 4 * (k * (k + 1)) / 2;
-}
-
 function BuFormulaModal({
   mode,
   level,
@@ -4812,9 +4791,9 @@ function BuFormulaModal({
   }>;
   readonly onClose: () => void;
 }) {
-  const spikesTotal = spikesUpToLevel(level);
   const baseBu = 25 + 10 * (level - 1);
-  const lifetimeBu = baseBu + spikesTotal;
+  const lifetimeBu = cumulativeBuForLevel(level);
+  const spikesTotal = lifetimeBu - baseBu;
 
   if (mode === "budget") {
     // Build the provenance chain for the budget popup.
@@ -4845,11 +4824,7 @@ function BuFormulaModal({
                   </tr>
                 </thead>
                 <tbody className="font-mono">
-                  {PROGRESSION_SPIKES.map((s) => {
-                    const cum =
-                      s.spike *
-                      ((s.spike / 4) * (s.spike / 4 + 1)) /
-                      2;
+                  {buProgressionMilestones(level).map((s) => {
                     const reached = level >= s.level;
                     return (
                       <tr
@@ -4861,7 +4836,7 @@ function BuFormulaModal({
                           +{s.spike} BU
                         </td>
                         <td className="py-0.5 text-right tabular-nums">
-                          {cum} BU
+                          {s.cumulative} BU
                         </td>
                       </tr>
                     );
@@ -4869,13 +4844,10 @@ function BuFormulaModal({
                 </tbody>
               </table>
               <p className="mt-3 text-[11px] text-muted-foreground">
-                A progression spike fires every 4 levels (L4, L8, L12, L16,
-                L20…). The spike value equals the level itself — L4 = +4 BU,
-                L8 = +8 BU, etc. Formula:{" "}
-                <span className="font-mono text-foreground">
-                  Σ(4k) for k = 1..⌊L/4⌋
-                </span>
-                .
+                The examples show +10 BU per level plus a spike at L5, L9,
+                L13, L17, L21 and every four levels thereafter. L21 has +21
+                spike BU, giving 286 cumulative BU. The progression continues
+                without a level cap.
               </p>
 
               <p className="mt-3 text-[11px] text-muted-foreground border-t border-border pt-3">
@@ -4972,7 +4944,7 @@ function BuFormulaModal({
                 </tr>
               </thead>
               <tbody className="font-mono">
-                {VOLATILITY_BRACKETS.map((b) => {
+                {buDebtBracketsForLevel(level).map((b) => {
                   const reached = level >= b.minLevel && level <= b.maxLevel;
                   return (
                     <tr
@@ -4989,11 +4961,9 @@ function BuFormulaModal({
               </tbody>
             </table>
             <p className="mt-2 text-[11px] text-muted-foreground">
-              L1 has zero debt capacity (no mirrors allowed at character
-              creation). Each subsequent 4-level bracket doubles the
-              allowance. Debt ceilings are <strong className="text-foreground">bracket-based</strong>,
-              not cumulative — exceeding your bracket means the DM must
-              remove mirrors or grant a respec.
+              Debt capacity is 4 BU at L1–L4 and increases by 4 BU every
+              four levels, without a level cap. Debt ceilings are{" "}
+              <strong className="text-foreground">bracket-based</strong>.
             </p>
             {mirroredPrimitives.length > 0 && (
               <>

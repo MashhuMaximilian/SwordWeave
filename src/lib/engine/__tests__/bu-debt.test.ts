@@ -9,36 +9,36 @@ import {
 } from "../bu-debt";
 
 describe("getMirrorDebtCeiling — bracket-based (not cumulative)", () => {
-  it("L1 has 0 debt ceiling (no debt at character creation)", () => {
-    expect(getMirrorDebtCeiling(1)).toBe(0);
+  it("L1 has a 4-BU debt ceiling", () => {
+    expect(getMirrorDebtCeiling(1)).toBe(4);
   });
 
-  it("L2-4 share the same -8 BU ceiling (bracket, not cumulative)", () => {
-    expect(getMirrorDebtCeiling(2)).toBe(8);
-    expect(getMirrorDebtCeiling(3)).toBe(8);
-    expect(getMirrorDebtCeiling(4)).toBe(8);
+  it("L2-4 share the same -4 BU ceiling (bracket, not cumulative)", () => {
+    expect(getMirrorDebtCeiling(2)).toBe(4);
+    expect(getMirrorDebtCeiling(3)).toBe(4);
+    expect(getMirrorDebtCeiling(4)).toBe(4);
   });
 
-  it("L5-8 share -16 BU ceiling", () => {
-    expect(getMirrorDebtCeiling(5)).toBe(16);
-    expect(getMirrorDebtCeiling(7)).toBe(16);
-    expect(getMirrorDebtCeiling(8)).toBe(16);
+  it("L5-8 share -8 BU ceiling", () => {
+    expect(getMirrorDebtCeiling(5)).toBe(8);
+    expect(getMirrorDebtCeiling(7)).toBe(8);
+    expect(getMirrorDebtCeiling(8)).toBe(8);
   });
 
-  it("L9-12 share -24 BU ceiling", () => {
-    expect(getMirrorDebtCeiling(9)).toBe(24);
-    expect(getMirrorDebtCeiling(11)).toBe(24);
-    expect(getMirrorDebtCeiling(12)).toBe(24);
+  it("L9-12 share -12 BU ceiling", () => {
+    expect(getMirrorDebtCeiling(9)).toBe(12);
+    expect(getMirrorDebtCeiling(11)).toBe(12);
+    expect(getMirrorDebtCeiling(12)).toBe(12);
   });
 
-  it("clamps above L20 to the highest bracket", () => {
-    expect(getMirrorDebtCeiling(21)).toBe(40);
-    expect(getMirrorDebtCeiling(50)).toBe(40);
+  it("continues bracket growth above L20", () => {
+    expect(getMirrorDebtCeiling(21)).toBe(24);
+    expect(getMirrorDebtCeiling(50)).toBe(52);
   });
 
-  it("L17-20 share -40 BU ceiling", () => {
-    expect(getMirrorDebtCeiling(17)).toBe(40);
-    expect(getMirrorDebtCeiling(20)).toBe(40);
+  it("L17-20 share -20 BU ceiling", () => {
+    expect(getMirrorDebtCeiling(17)).toBe(20);
+    expect(getMirrorDebtCeiling(20)).toBe(20);
   });
 });
 
@@ -120,7 +120,7 @@ describe("computeMirrorDebt — full breakdown", () => {
     expect(breakdown.overBudget).toBe(true);
   });
 
-  it("L3 bracket ceiling of 8 BU exceeded by mirrored slots", () => {
+  it("L3 bracket ceiling of 4 BU exceeded by mirrored slots", () => {
     const breakdown = computeMirrorDebt({
       level: 3,
       startingBu: 25,
@@ -129,7 +129,7 @@ describe("computeMirrorDebt — full breakdown", () => {
         { is_mirrored: true, buCost: 6, mirrorBuCredit: 6 },
       ],
     });
-    expect(breakdown.mirrorDebtCeiling).toBe(8);
+    expect(breakdown.mirrorDebtCeiling).toBe(4);
     expect(breakdown.mirrorDebtUsed).toBe(12);
     expect(breakdown.mirrorDebtExceeded).toBe(true);
     expect(breakdown.warning).toMatch(/exceeds level-3 bracket ceiling/);
@@ -143,7 +143,7 @@ describe("computeMirrorDebt — full breakdown", () => {
         { is_mirrored: true, buCost: 4, mirrorBuCredit: 4 },
       ],
     });
-    expect(breakdown.mirrorDebtCeiling).toBe(8);
+    expect(breakdown.mirrorDebtCeiling).toBe(4);
     expect(breakdown.mirrorDebtUsed).toBe(4);
     expect(breakdown.mirrorDebtExceeded).toBe(false);
     expect(breakdown.warning).toBeUndefined();
@@ -164,17 +164,17 @@ describe("computeMirrorDebt — full breakdown", () => {
 describe("describeMirrorDebtBracket", () => {
   it("formats a single-level bracket label", () => {
     const info = describeMirrorDebtBracket(1, 0);
-    expect(info.bracketLabel).toBe("L1");
-    expect(info.ceiling).toBe(0);
-    expect(info.remaining).toBe(0);
+    expect(info.bracketLabel).toBe("L1-4");
+    expect(info.ceiling).toBe(4);
+    expect(info.remaining).toBe(4);
   });
 
   it("formats a multi-level bracket label", () => {
     const info = describeMirrorDebtBracket(3, 4);
-    expect(info.bracketLabel).toBe("L2-4");
-    expect(info.ceiling).toBe(8);
+    expect(info.bracketLabel).toBe("L1-4");
+    expect(info.ceiling).toBe(4);
     expect(info.used).toBe(4);
-    expect(info.remaining).toBe(4);
+    expect(info.remaining).toBe(0);
   });
 
   it("clamps remaining to 0 when used exceeds ceiling", () => {

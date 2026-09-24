@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useTransition, type ComponentProps, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ComponentProps, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Check, ChevronDown, Loader2, Plus, Search, Shuffle, X } from "lucide-react";
 import { cumulativeBuForLevel, impliedLevelForBudget, maxBuDebtForLevel } from "@/lib/engine/bu";
@@ -19,12 +19,20 @@ import { chooseMirrorSuggestions, eligibleMirrorCandidates, mirrorConsequence } 
 const SIZES = ["TINY", "SMALL", "MEDIUM", "LARGE", "HUGE", "GARGANTUAN"] as const;
 const ATTRIBUTES = ["PHYSICAL", "MENTAL", "MAGICAL"] as const;
 const STEPS = [
-  { id: "identity", eyebrow: "01", label: "Identity", hint: "Who they are" },
-  { id: "backstory", eyebrow: "02", label: "Backstory", hint: "What drives them" },
-  { id: "attributes", eyebrow: "03", label: "Attributes", hint: "Their foundation" },
-  { id: "mirroring", eyebrow: "04", label: "Mirroring", hint: "An optional weakness" },
-  { id: "packages", eyebrow: "05", label: "Starting access", hint: "What they can do" },
+  { id: "identity", eyebrow: "01", label: "Your character", hint: "Concept and story" },
+  { id: "foundation", eyebrow: "02", label: "Foundation", hint: "Level, size, strengths" },
+  { id: "mirroring", eyebrow: "03", label: "Weakness", hint: "Optional drawbacks" },
+  { id: "packages", eyebrow: "04", label: "Starting access", hint: "First abilities" },
+  { id: "finishing", eyebrow: "05", label: "Ready to play", hint: "Review and continue" },
 ] as const;
+
+const STEP_GUIDANCE: Record<StepId, { title: string; description: string }> = {
+  identity: { title: "Imagine them before choosing rules", description: "Describe who they are, what they can do, and what shaped them. A few sentences are enough; you can return to any detail later." },
+  foundation: { title: "Give the idea a foundation", description: "Choose a starting level, physical size, and attribute strengths together. The defaults work for a first character; adjust them to fit your concept." },
+  mirroring: { title: "Does their story include a weakness?", description: "Choose any mechanical drawbacks that fit your level’s debt limit before you spend points. Each gives you more Build Units for the next step. Skipping this is fine." },
+  packages: { title: "Choose a starting foundation", description: "Pick a modest set of basic access rules. Save the rest of your points for the abilities, proficiencies, resistances, and other details you will build on the character sheet." },
+  finishing: { title: "Review your character", description: "Check the story and starting rules together. After creation, the character sheet is where your idea grows into heritages, capabilities, and items." },
+};
 
 type StepId = (typeof STEPS)[number]["id"];
 type Size = (typeof SIZES)[number];
@@ -41,6 +49,7 @@ const FAMILY_KEYS: Record<PackageSlot, string> = {
 };
 
 const ROMAN = ["", "I", "II", "III", "IV", "V"] as const;
+const DRAFT_KEY = "swordweave-character-creation-v3";
 
 interface PrimitiveOption {
   id: number;
@@ -65,6 +74,7 @@ interface PrimitiveOption {
 
 interface FormState {
   name: string;
+  concept: string;
   portraitUrl: string;
   portraitFrame: PortraitFrame;
   size: Size;
@@ -80,7 +90,7 @@ interface FormState {
 }
 
 const INITIAL_STATE: FormState = {
-  name: "", portraitUrl: "", portraitFrame: { x: 50, y: 50, zoom: 1 }, size: "MEDIUM", notes: "",
+  name: "", concept: "", portraitUrl: "", portraitFrame: { x: 50, y: 50, zoom: 1 }, size: "MEDIUM", notes: "",
   attrPhysical: 4, attrMental: 3, attrMagical: 3, attrProficient: "PHYSICAL",
   sizingMode: "level", level: 1, customBu: 25,
   backstory: { origin: "", motivation: "", ties: "", flaw: "" },
@@ -95,11 +105,11 @@ export function NewCharacterForm() {
   const [step, setStep] = useState<StepId>("identity");
   const [state, setState] = useState<FormState>(INITIAL_STATE);
   const [selectedPrimitiveIds, setSelectedPrimitiveIds] = useState<number[]>([]);
-  const [mirroredPrimitiveId, setMirroredPrimitiveId] = useState<number | null>(null);
-  const [mirrorReviewed, setMirrorReviewed] = useState(false);
+  const [mirroredPrimitiveIds, setMirroredPrimitiveIds] = useState<number[]>([]);
   const [savedMirrorIds, setSavedMirrorIds] = useState<number[]>([]);
   const [mirrorSuggestionIds, setMirrorSuggestionIds] = useState<number[] | null>(null);
   const [mirrorShuffleSeed, setMirrorShuffleSeed] = useState(0);
+  const [mirrorSeenIds, setMirrorSeenIds] = useState<number[]>([]);
   const [savedPackages, setSavedPackages] = useState<PackagePreset[]>([]);
   const [packageSuggestions, setPackageSuggestions] = useState<PackagePreset[] | null>(null);
   const [packageShuffleSeed, setPackageShuffleSeed] = useState(0);
@@ -108,6 +118,45 @@ export function NewCharacterForm() {
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const starterApplied = useRef(false);
+  const stepHeading = useRef<HTMLHeadingElement>(null);
+  const previousStep = useRef<StepId>("identity");
+  const [draftLoaded, setDraftLoaded] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        const saved = window.localStorage.getItem(DRAFT_KEY);
+        if (saved) {
+          const draft = JSON.parse(saved) as { state?: FormState; selectedPrimitiveIds?: number[]; mirroredPrimitiveIds?: number[]; mirroredPrimitiveId?: number | null; savedMirrorIds?: number[]; savedPackages?: PackagePreset[]; packageShuffleBudget?: number | null; step?: StepId };
+          if (draft.state && typeof draft.state.name === "string" && draft.state.backstory) setState({ ...INITIAL_STATE, ...draft.state, concept: draft.state.concept ?? "" });
+          if (Array.isArray(draft.selectedPrimitiveIds)) {
+            setSelectedPrimitiveIds(draft.selectedPrimitiveIds.filter(Number.isInteger));
+            if (draft.selectedPrimitiveIds.length) starterApplied.current = true;
+          }
+          if (Array.isArray(draft.mirroredPrimitiveIds)) setMirroredPrimitiveIds([...new Set(draft.mirroredPrimitiveIds.filter(Number.isInteger))]);
+          else if (typeof draft.mirroredPrimitiveId === "number") setMirroredPrimitiveIds([draft.mirroredPrimitiveId]);
+          if (Array.isArray(draft.savedMirrorIds)) setSavedMirrorIds(draft.savedMirrorIds.filter(Number.isInteger));
+          if (Array.isArray(draft.savedPackages)) setSavedPackages(draft.savedPackages.filter((item) => item && typeof item.key === "string" && Array.isArray(item.items)).slice(-4));
+          if (typeof draft.packageShuffleBudget === "number") setPackageShuffleBudget(draft.packageShuffleBudget);
+          if (STEPS.some((item) => item.id === draft.step)) setStep(draft.step!);
+        }
+      } catch { /* A damaged or unavailable local draft should never block creation. */ }
+      setDraftLoaded(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!draftLoaded) return;
+    try { window.localStorage.setItem(DRAFT_KEY, JSON.stringify({ state, selectedPrimitiveIds, mirroredPrimitiveIds, savedMirrorIds, savedPackages, packageShuffleBudget, step })); } catch { /* Browser storage may be unavailable. */ }
+  }, [draftLoaded, state, selectedPrimitiveIds, mirroredPrimitiveIds, savedMirrorIds, savedPackages, packageShuffleBudget, step]);
+
+  useEffect(() => {
+    if (previousStep.current === step) return;
+    previousStep.current = step;
+    stepHeading.current?.focus();
+  }, [step]);
 
   const loadPrimitives = useCallback(async () => {
     const response = await fetch("/api/primitives");
@@ -157,19 +206,33 @@ export function NewCharacterForm() {
   const effectiveLevel = state.sizingMode === "level" ? state.level : impliedLevelForBudget(state.customBu);
   const mirrorCeiling = maxBuDebtForLevel(effectiveLevel);
   const mirrorOptions = useMemo(() => eligibleMirrorCandidates(primitives, mirrorCeiling), [primitives, mirrorCeiling]);
-  const selectedMirror = mirrorOptions.find((primitive) => primitive.id === mirroredPrimitiveId);
-  const mirrorCredit = selectedMirror ? selectedMirror.mirrorBuCredit ?? selectedMirror.buCost : 0;
+  const selectedMirrors = mirrorOptions.filter((primitive) => mirroredPrimitiveIds.includes(primitive.id));
+  const mirrorCredit = selectedMirrors.reduce((sum, primitive) => sum + (primitive.mirrorBuCredit ?? primitive.buCost), 0);
   const attrSum = state.attrPhysical + state.attrMental + state.attrMagical;
   const packageComplete = (Object.keys(options) as PackageSlot[]).every((slot) => options[slot].some((item) => selectedPrimitiveIds.includes(item.id)));
-  const formValid = state.name.trim().length > 0 && attrSum === 10 && packageComplete && packageCost <= budget + mirrorCredit && !isPending;
+  const mirrorsValid = selectedMirrors.length === mirroredPrimitiveIds.length && mirrorCredit <= mirrorCeiling;
+  const formValid = state.name.trim().length > 0 && state.concept.trim().length > 0 && attrSum === 10 && mirrorsValid && packageComplete && packageCost <= budget + mirrorCredit && !isPending;
   const currentIndex = STEPS.findIndex((item) => item.id === step);
   const completedSteps: Record<StepId, boolean> = {
-    identity: Boolean(state.name.trim()),
-    attributes: attrSum === 10,
-    backstory: Object.values(state.backstory).some((value) => value.trim().length > 0),
-    packages: packageComplete && packageCost <= budget + mirrorCredit,
-    mirroring: mirrorReviewed,
+    identity: Boolean(state.name.trim() && state.concept.trim()),
+    foundation: currentIndex > 1 && attrSum === 10,
+    mirroring: currentIndex > 2 || selectedMirrors.length > 0,
+    packages: currentIndex > 3 && packageComplete && packageCost <= budget + mirrorCredit,
+    finishing: currentIndex === 4 && formValid,
   };
+
+  useEffect(() => {
+    if (starterApplied.current || !draftLoaded || catalogLoading || selectedPrimitiveIds.length) return;
+    const curated = beginnerStartingOptions(options);
+    const first = recommendedPackages(curated, effectiveLevel, Math.min(budget, 14 + (levelBracket(effectiveLevel).tier - 1) * 8), 0)[0];
+    if (!first) return;
+    const timer = window.setTimeout(() => {
+      if (starterApplied.current) return;
+      starterApplied.current = true;
+      setSelectedPrimitiveIds(first.items.map((item) => item.id));
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [draftLoaded, catalogLoading, selectedPrimitiveIds.length, options, effectiveLevel, budget]);
 
   const setField = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
     setState((current) => ({ ...current, [key]: value }));
@@ -190,28 +253,47 @@ export function NewCharacterForm() {
 
   function goNext() {
     if (step === "identity" && !state.name.trim()) { setError("Give the character a name before continuing."); return; }
-    if (step === "attributes" && attrSum !== 10) { setError(`Attributes must total 10. They currently total ${attrSum}.`); return; }
+    if (step === "identity" && !state.concept.trim()) { setError("Describe your character in a sentence before choosing rules."); return; }
+    if (step === "foundation" && attrSum !== 10) { setError("Your Physical, Mental, and Magical scores must add up to 10."); return; }
+    if (step === "mirroring" && !mirrorsValid) { setError(`Your chosen drawbacks exceed the ${mirrorCeiling} BU debt limit, or are no longer available at this level. Remove one before continuing.`); return; }
+    if (step === "packages" && !packageComplete) { setError("Choose one starting set, or choose a subject, action tier, range, and die in Make your own set."); return; }
+    if (step === "packages" && packageCost > budget + mirrorCredit) { setError("This selection costs more points than you have. Choose a smaller set or change your level."); return; }
     setError(null);
     setStep(STEPS[Math.min(currentIndex + 1, STEPS.length - 1)]!.id);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function keepMirror(id: number | null) {
-    setMirroredPrimitiveId(id);
-    setMirrorReviewed(true);
-    if (id !== null) setSavedMirrorIds((current) => current.includes(id) ? current : [...current, id].slice(-4));
+    if (id === null) { setMirroredPrimitiveIds([]); return; }
+    const candidate = mirrorOptions.find((item) => item.id === id);
+    if (!candidate) return;
+    setMirroredPrimitiveIds((current) => {
+      if (current.includes(id)) return current.filter((selected) => selected !== id);
+      const currentCredit = current.reduce((sum, selected) => {
+        const item = mirrorOptions.find((option) => option.id === selected);
+        return sum + (item ? item.mirrorBuCredit ?? item.buCost : 0);
+      }, 0);
+      if (currentCredit + (candidate.mirrorBuCredit ?? candidate.buCost) > mirrorCeiling) return current;
+      return [...current, id];
+    });
+    setSavedMirrorIds((current) => current.includes(id) ? current : [...current, id]);
   }
 
   function removeMirror(id: number) {
     setSavedMirrorIds((current) => current.filter((saved) => saved !== id));
-    if (mirroredPrimitiveId === id) setMirroredPrimitiveId(null);
+    setMirroredPrimitiveIds((current) => current.filter((selected) => selected !== id));
   }
 
   function shuffleMirrors() {
-    const nextSeed = mirrorShuffleSeed + 1;
+    const nextSeed = Math.floor(Math.random() * 0x1_0000_0000);
     setMirrorShuffleSeed(nextSeed);
-    const previous = mirrorSuggestionIds ?? chooseMirrorSuggestions(mirrorOptions, state.name, 0, savedMirrorIds).map((item) => item.id);
-    setMirrorSuggestionIds(chooseMirrorSuggestions(mirrorOptions, state.name, nextSeed, savedMirrorIds, previous).map((item) => item.id));
+    const excluded = [...new Set([...savedMirrorIds, ...mirroredPrimitiveIds])];
+    const affordable = mirrorOptions.filter((item) => (item.mirrorBuCredit ?? item.buCost) <= mirrorCeiling - mirrorCredit);
+    const previous = mirrorSuggestionIds ?? chooseMirrorSuggestions(affordable, state.name, 0, excluded).map((item) => item.id);
+    const seen = [...new Set([...mirrorSeenIds, ...previous])];
+    const next = chooseMirrorSuggestions(affordable, state.name, nextSeed, excluded, previous, 3, seen).map((item) => item.id);
+    setMirrorSuggestionIds(next);
+    setMirrorSeenIds([...new Set([...seen, ...next])]);
   }
 
   function keepPackage(preset: PackagePreset) {
@@ -235,9 +317,33 @@ export function NewCharacterForm() {
     setPackageSuggestions(fresh.length ? fresh : recommendedPackages(options, effectiveLevel, cap, nextSeed, excluded));
   }
 
+  function startOver() {
+    if (!window.confirm("Start a new character? This will clear the draft on this device.")) return;
+    try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* Storage may be unavailable. */ }
+    setState(INITIAL_STATE);
+    setSelectedPrimitiveIds([]);
+    setMirroredPrimitiveIds([]);
+    setSavedMirrorIds([]);
+    setMirrorSuggestionIds(null);
+    setMirrorSeenIds([]);
+    setSavedPackages([]);
+    setPackageSuggestions(null);
+    setPackageShuffleBudget(null);
+    setError(null);
+    setStep("identity");
+    starterApplied.current = false;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   function submit() {
     if (!formValid) {
-      setError(!packageComplete ? "Choose at least one Domain, Verb Tier, Range, and Output Die." : packageCost > budget + mirrorCredit ? "The selected access exceeds the available BU, including mirror credit." : "Complete the required character fields.");
+      if (!state.name.trim() || !state.concept.trim()) setStep("identity");
+      else if (attrSum !== 10) setStep("foundation");
+      else if (!mirrorsValid) setStep("mirroring");
+      else if (!packageComplete || packageCost > budget + mirrorCredit) setStep("packages");
+      else setStep("finishing");
+      setError(!state.name.trim() ? "Add a character name before creating." : !state.concept.trim() ? "Describe your character in a sentence before creating." : attrSum !== 10 ? "Your three attributes must add up to 10. Adjust them below." : !mirrorsValid ? "Your selected weaknesses no longer fit the debt limit for this level." : !packageComplete ? "Choose a starting set or make your own." : packageCost > budget + mirrorCredit ? "Your selected access costs more points than you have available." : "Complete the required character fields.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
     setError(null);
@@ -250,16 +356,17 @@ export function NewCharacterForm() {
             name: state.name.trim(), portraitUrl: state.portraitUrl.trim(), portraitFrame: state.portraitFrame, size: state.size, notes: state.notes.trim(),
             level: effectiveLevel, startingBu: 25, buBudget: state.sizingMode === "bu" ? state.customBu : null, buSpent: packageCost, dmBonusBu: 0,
             attrPhysical: state.attrPhysical, attrMental: state.attrMental, attrMagical: state.attrMagical, attrProficient: state.attrProficient,
-            backstory: Object.fromEntries(Object.entries(state.backstory).map(([key, value]) => [key, value.trim()])),
+            backstory: { ...Object.fromEntries(Object.entries(state.backstory).map(([key, value]) => [key, value.trim()])), origin: [`**Character concept:** ${state.concept.trim()}`, state.backstory.origin.trim()].filter(Boolean).join("\n\n") },
             sourceOrigin: "manual", primitiveInstances: [
               ...selectedPrimitiveIds.map((primitiveId) => ({ primitiveId, isMirrored: false })),
-              ...(selectedMirror ? [{ primitiveId: selectedMirror.id, isMirrored: true }] : []),
+              ...selectedMirrors.map((primitive) => ({ primitiveId: primitive.id, isMirrored: true })),
             ],
             capabilityIds: [], itemIds: [], practiceSlices: {},
           }),
         });
         const payload = (await response.json().catch(() => ({}))) as { character?: { id: string }; error?: string };
         if (!response.ok || !payload.character?.id) throw new Error(payload.error ?? "The character could not be created.");
+        try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* Storage may be unavailable. */ }
         await fetch(`/api/characters/${payload.character.id}/mode`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "BUILD" }) }).catch(() => undefined);
         router.push(`/characters/${payload.character.id}?mode=BUILD`);
       } catch (reason) {
@@ -271,38 +378,38 @@ export function NewCharacterForm() {
   return (
     <div className="sw-character-forge">
       <aside className="sw-character-forge__rail" aria-label="Character creation progress">
-        <div className="sw-character-forge__rail-title"><span>Character instrument</span><strong>Foundation</strong></div>
+        <div className="sw-character-forge__rail-title"><span>Character instrument</span><strong>First adventure</strong></div>
         <nav>
           {STEPS.map((item, index) => (
-            <button key={item.id} type="button" className={step === item.id ? "is-active" : completedSteps[item.id] ? "is-complete" : ""} onClick={() => { setError(null); setStep(item.id); }}>
+            <button key={item.id} type="button" aria-current={step === item.id ? "step" : undefined} className={step === item.id ? "is-active" : completedSteps[item.id] ? "is-complete" : ""} onClick={() => { if (index > 0 && (!state.name.trim() || !state.concept.trim())) { setStep("identity"); setError("Name and describe your character before choosing rules."); return; } if (index > 1 && attrSum !== 10) { setStep("foundation"); setError("Your three attributes must add up to 10 first."); return; } if (index > 2 && !mirrorsValid) { setStep("mirroring"); setError("Your selected weaknesses no longer fit this level’s debt limit."); return; } if (index > 3 && (!packageComplete || packageCost > budget + mirrorCredit)) { setStep("packages"); setError("Choose a complete starting set within your point budget first."); return; } setError(null); setStep(item.id); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
               <span className="sw-character-forge__step-number">{completedSteps[item.id] ? <Check aria-hidden /> : item.eyebrow}</span>
               <span><strong>{item.label}</strong><small>{item.hint}</small></span>
             </button>
           ))}
         </nav>
-        <div className="sw-character-forge__reading"><span>Available</span><strong>{budget + mirrorCredit - packageCost} BU</strong><small>{packageCost} spent · {mirrorCredit} mirror credit</small></div>
+        <div className="sw-character-forge__reading">{step === "foundation" || step === "mirroring" ? <><span>For starting choices</span><strong>{budget + mirrorCredit} BU</strong><small>{budget} base · {mirrorCredit} weakness credit</small></> : step !== "identity" ? <><span>Build points left</span><strong>{budget + mirrorCredit - packageCost} BU</strong><small>{packageCost} spent · {mirrorCredit} bonus</small></> : null}<small>Draft saves on this device</small><button type="button" className="sw-forge-reset" onClick={startOver}>Start over</button></div>
       </aside>
 
       <div className="sw-character-forge__workbench">
         <header className="sw-character-forge__header">
-          <div><span>Stage {String(currentIndex + 1).padStart(2, "0")} / {String(STEPS.length).padStart(2, "0")}</span><h2>{STEPS[currentIndex]!.label}</h2></div>
-          <p>{step === "identity" ? "Give the character a face and a place in the world." : step === "attributes" ? "Set the three foundations that every practice and save reads from." : step === "backstory" ? "Record the truths that make the character playable at the table." : step === "packages" ? "Choose their starting vocabulary directly from the Library." : "Take an optional weakness to expand the build."}</p>
+          <div><span>Step {currentIndex + 1} of {STEPS.length}</span><h2 ref={stepHeading} tabIndex={-1}>{STEPS[currentIndex]!.label}</h2></div>
         </header>
 
         <div className="sw-character-forge__content">
-          {step === "identity" ? <IdentityStep state={state} setField={setField} /> : null}
-          {step === "attributes" ? <AttributesStep state={state} setField={setField} attrSum={attrSum} budget={budget} effectiveLevel={effectiveLevel} /> : null}
-          {step === "backstory" ? <BackstoryStep state={state} setState={setState} /> : null}
-          {step === "mirroring" ? <MirroringStep options={mirrorOptions} selectedId={selectedMirror?.id ?? null} onSelect={keepMirror} onRemove={removeMirror} savedIds={savedMirrorIds} suggestionIds={mirrorSuggestionIds} shuffleSeed={mirrorShuffleSeed} onShuffle={shuffleMirrors} budget={budget} ceiling={mirrorCeiling} characterName={state.name} /> : null}
-          {step === "packages" ? <StartingAccessStep options={options} selectedIds={selectedPrimitiveIds} mirrorCredit={mirrorCredit} loading={catalogLoading} togglePrimitive={togglePrimitive} packageCost={packageCost} budget={budget} effectiveLevel={effectiveLevel} shuffleBudget={Math.min(packageShuffleBudget ?? budget + mirrorCredit, budget + mirrorCredit)} onShuffleBudgetChange={setPackageShuffleBudget} suggestions={packageSuggestions} savedPackages={savedPackages} onChoosePackage={keepPackage} onRemovePackage={removePackage} onShuffle={shufflePackages} /> : null}
+          <div className="sw-forge-guidance"><span aria-hidden>✦</span><div><strong>{STEP_GUIDANCE[step].title}</strong><p>{STEP_GUIDANCE[step].description}</p></div></div>
           {error ? <p className="sw-forge-error" role="alert">{error}</p> : null}
+          {step === "packages" ? <StartingAccessStep options={options} selectedIds={selectedPrimitiveIds} mirrorCredit={mirrorCredit} loading={catalogLoading} togglePrimitive={togglePrimitive} onClearSelection={() => setSelectedPrimitiveIds([])} packageCost={packageCost} budget={budget} effectiveLevel={effectiveLevel} shuffleBudget={Math.min(packageShuffleBudget ?? 25, budget + mirrorCredit)} onShuffleBudgetChange={setPackageShuffleBudget} suggestions={packageSuggestions} savedPackages={savedPackages} onChoosePackage={keepPackage} onRemovePackage={removePackage} onShuffle={shufflePackages} /> : null}
+          {step === "identity" ? <IdentityStep state={state} setField={setField} setState={setState} /> : null}
+          {step === "foundation" ? <FoundationStep state={state} setField={setField} setState={setState} attrSum={attrSum} budget={budget} effectiveLevel={effectiveLevel} /> : null}
+          {step === "mirroring" ? <MirroringStep options={mirrorOptions} selectedIds={mirroredPrimitiveIds} onSelect={keepMirror} onRemove={removeMirror} savedIds={savedMirrorIds} suggestionIds={mirrorSuggestionIds} shuffleSeed={mirrorShuffleSeed} onShuffle={shuffleMirrors} budget={budget} ceiling={mirrorCeiling} characterName={state.name} /> : null}
+          {step === "finishing" ? <FinishingStep state={state} setField={setField} budget={budget} effectiveLevel={effectiveLevel} selected={primitives.filter((item) => selectedPrimitiveIds.includes(item.id))} packageCost={packageCost} mirrorCredit={mirrorCredit} mirrorName={selectedMirrors.map((item) => item.name).join(", ") || null} onEditFoundation={() => { setStep("foundation"); window.scrollTo({ top: 0, behavior: "smooth" }); }} onEditAccess={() => { setStep("packages"); window.scrollTo({ top: 0, behavior: "smooth" }); }} /> : null}
         </div>
 
         <footer className="sw-character-forge__footer">
-          <div className="sw-character-forge__footer-reading"><span>{state.name.trim() || "Unnamed character"}</span><strong>{packageCost - mirrorCredit} / {budget} BU</strong><small>{packageCost} purchased · −{mirrorCredit} mirror · ceiling {mirrorCeiling}</small></div>
+          <div className="sw-character-forge__footer-reading"><span>{state.name.trim() || "Your character"}</span>{step === "identity" ? <><strong>Start with their story</strong><small>Rules come next</small></> : step === "foundation" || step === "mirroring" ? <><strong>{budget + mirrorCredit} BU for choices</strong><small>{mirrorCredit ? `${mirrorCredit} BU from weakness` : `${budget} BU at level ${effectiveLevel}`}</small></> : <><strong>{budget + mirrorCredit - packageCost} BU left</strong><small>{packageCost} used of {budget + mirrorCredit}</small></>}</div>
           <div className="sw-character-forge__footer-actions">
-            {currentIndex > 0 ? <button type="button" className="sw-metal-button sw-metal-button--secondary" onClick={() => setStep(STEPS[currentIndex - 1]!.id)}><ArrowLeft aria-hidden /> Previous</button> : null}
-            {currentIndex < STEPS.length - 1 ? <button type="button" className="sw-metal-button sw-metal-button--primary" onClick={goNext}>Continue <ArrowRight aria-hidden /></button> : <button type="button" className="sw-metal-button sw-metal-button--primary" onClick={submit} disabled={!formValid}>{isPending ? <Loader2 className="animate-spin" aria-hidden /> : <Check aria-hidden />}{isPending ? "Forging…" : "Forge character"}</button>}
+            {currentIndex > 0 ? <button type="button" className="sw-metal-button sw-metal-button--secondary" onClick={() => { setStep(STEPS[currentIndex - 1]!.id); window.scrollTo({ top: 0, behavior: "smooth" }); }}><ArrowLeft aria-hidden /> Previous</button> : null}
+            {currentIndex < STEPS.length - 1 ? <button type="button" className="sw-metal-button sw-metal-button--primary" onClick={goNext}>{step === "identity" ? "Set foundation" : step === "foundation" ? "Consider a weakness" : step === "mirroring" ? "Choose starting access" : "Review character"} <ArrowRight aria-hidden /></button> : <button type="button" className="sw-metal-button sw-metal-button--primary" onClick={submit} disabled={isPending}>{isPending ? <Loader2 className="animate-spin" aria-hidden /> : <Check aria-hidden />}{isPending ? "Creating…" : "Create character"}</button>}
           </div>
         </footer>
       </div>
@@ -311,19 +418,88 @@ export function NewCharacterForm() {
   );
 }
 
-function IdentityStep({ state, setField }: { state: FormState; setField: <K extends keyof FormState>(key: K, value: FormState[K]) => void }) {
+function IdentityStep({ state, setField, setState }: { state: FormState; setField: <K extends keyof FormState>(key: K, value: FormState[K]) => void; setState: React.Dispatch<React.SetStateAction<FormState>> }) {
+  return <div className="sw-forge-stack sw-forge-identity">
+    <section className="sw-forge-panel sw-forge-panel--brass sw-forge-identity__main">
+      <PanelTitle number="01" title="Bring your character to life" subtitle="Start with the idea, not the numbers. A sentence is enough to begin." />
+      <ForgeField label="Character name" required><input value={state.name} onChange={(event) => setField("name", event.target.value)} placeholder="e.g. Vex the Quick" autoFocus /></ForgeField>
+      <ForgeField label="Your character in one sentence" hint="What are they, and what is special about them? You can change this later." required><textarea rows={2} value={state.concept} onChange={(event) => setField("concept", event.target.value)} placeholder="A bear-like warrior bred for combat who learned to resist magic…" /></ForgeField>
+    </section>
+    <section className="sw-forge-story-section"><header><span>THE STORY SO FAR</span><h3>Give them a past and a purpose</h3><p>These prompts are optional, but answering one or two will help you choose rules that fit the character. A story flaw does not have to become a mechanical weakness later.</p></header><BackstoryStep state={state} setState={setState} /></section>
+    <details className="sw-forge-disclosure"><summary><span><b>Add a portrait</b><small>Optional · upload an image or use a link</small></span><ChevronDown aria-hidden /></summary><div className="sw-forge-disclosure__body"><PortraitInput value={state.portraitUrl} onChange={(value) => setField("portraitUrl", value)} frame={state.portraitFrame} onFrameChange={(value) => setField("portraitFrame", value)} characterName={state.name} /></div></details>
+    <section className="sw-forge-heritages" aria-labelledby="sw-forge-heritages-title">
+      <header><span>THE THREE ROOTS OF A CHARACTER</span><h3 id="sw-forge-heritages-title">Where do their abilities come from?</h3><p>Heritages explain the story behind your character’s abilities. Describe these ideas in ordinary words now. On the character sheet, you can turn them into Lineage, Upbringing, and Manifest bundles with actual rules.</p></header>
+      <div className="sw-forge-heritages__grid"><article><span>01 · WHAT THEY ARE</span><h4>Lineage</h4><p>Their inherited or created nature: body, ancestry, senses, and innate traits. A constructed or transformed person has a Lineage too.</p><small>Example: a bear-like being with powerful senses.</small></article><article><span>02 · WHAT SHAPED THEM</span><h4>Upbringing</h4><p>The people, place, work, and training that formed them before adventuring.</p><small>Example: raised and trained for combat.</small></article><article><span>03 · WHO THEY ARE BECOMING</span><h4>Manifest</h4><p>The role or discipline they pursue now. This is similar to a class, but it can grow and change with their story.</p><small>Example: an anti-magic hunter.</small></article></div>
+    </section>
+  </div>;
+}
+
+function FoundationStep({ state, setField, setState, attrSum, budget, effectiveLevel }: { state: FormState; setField: <K extends keyof FormState>(key: K, value: FormState[K]) => void; setState: React.Dispatch<React.SetStateAction<FormState>>; attrSum: number; budget: number; effectiveLevel: number }) {
   const speed = SIZE_BASE_SPEED[state.size];
-  return <div className="sw-forge-grid sw-forge-grid--identity"><section className="sw-forge-panel sw-forge-panel--brass"><PanelTitle number="A" title="Identity record" subtitle="Required character details" /><ForgeField label="Name" required><input value={state.name} onChange={(event) => setField("name", event.target.value)} placeholder="e.g. Vex the Quick" autoFocus /></ForgeField><ForgeField label="Size"><select value={state.size} onChange={(event) => setField("size", event.target.value as Size)}>{SIZES.map((size) => <option key={size} value={size}>{size} — {SIZE_CAPACITY[size]} load · {SIZE_BASE_SPEED[size]} ft walk · {Math.ceil(SIZE_BASE_SPEED[size] / 2)} ft swim/climb</option>)}</select><div className="sw-forge-size-reading"><span><small>Carry</small>{SIZE_CAPACITY[state.size]} load</span><span><small>Walk</small>{speed} ft</span><span><small>Swim</small>{Math.ceil(speed / 2)} ft</span><span><small>Climb</small>{Math.ceil(speed / 2)} ft</span></div></ForgeField><ForgeField label="Private notes" hint="A quick reminder; backstory comes next."><textarea rows={5} value={state.notes} onChange={(event) => setField("notes", event.target.value)} placeholder="Voice, mannerisms, table notes…" /></ForgeField></section><section className="sw-forge-panel sw-forge-panel--teal"><PanelTitle number="B" title="Portrait" subtitle="Upload, then drag and zoom to frame it" /><PortraitInput value={state.portraitUrl} onChange={(value) => setField("portraitUrl", value)} frame={state.portraitFrame} onFrameChange={(value) => setField("portraitFrame", value)} characterName={state.name} /></section></div>;
+  return <div className="sw-forge-stack sw-forge-foundation">
+    <section className="sw-forge-panel sw-forge-panel--brass sw-forge-identity__frame">
+      <PanelTitle number="01" title="Their physical frame" subtitle="Size, level, and Build Units belong together. The defaults fit a new level-1 character." />
+      <div className="sw-forge-identity__basics">
+        <ForgeField label="Size" hint="Choose what fits your concept."><select value={state.size} onChange={(event) => setField("size", event.target.value as Size)}>{SIZES.map((size) => <option key={size} value={size}>{size} — {SIZE_CAPACITY[size]} load · {SIZE_BASE_SPEED[size]} ft walk · {Math.ceil(SIZE_BASE_SPEED[size] / 2)} ft swim/climb</option>)}</select></ForgeField>
+        <div className="sw-forge-budget-control">
+          <div className="sw-forge-budget-control__heading"><label htmlFor="sw-forge-budget-value">{state.sizingMode === "level" ? "Starting level" : "Agreed Build Units"}</label><div className="sw-forge-mode" role="group" aria-label="Starting budget source"><button type="button" aria-pressed={state.sizingMode === "level"} className={state.sizingMode === "level" ? "is-active" : ""} onClick={() => setField("sizingMode", "level")}>By level</button><button type="button" aria-pressed={state.sizingMode === "bu"} className={state.sizingMode === "bu" ? "is-active" : ""} onClick={() => setField("sizingMode", "bu")}>Custom BU</button></div></div>
+          <small>{state.sizingMode === "level" ? "Leave this at 1 unless your group starts higher." : `Only if your group agreed on a budget. This implies level ${effectiveLevel} for eligible weaknesses.`}</small>
+          {state.sizingMode === "level" ? <input id="sw-forge-budget-value" type="number" min={1} value={state.level} onChange={(event) => setField("level", clamp(Number(event.target.value), 1, Number.MAX_SAFE_INTEGER))} /> : <input id="sw-forge-budget-value" type="number" min={25} value={state.customBu} onChange={(event) => setField("customBu", clamp(Number(event.target.value), 25, Number.MAX_SAFE_INTEGER))} />}
+        </div>
+      </div>
+      <div className="sw-forge-size-reading"><span><small>Carry</small>{SIZE_CAPACITY[state.size]} load</span><span><small>Walk</small>{speed} ft</span><span><small>Swim</small>{Math.ceil(speed / 2)} ft</span><span><small>Climb</small>{Math.ceil(speed / 2)} ft</span></div>
+      <p className="sw-forge-foundation__budget">Level {effectiveLevel} · {budget} BU before an optional weakness. You will choose what to spend in step 4.</p>
+    </section>
+    <AttributesStep state={state} setField={setField} setState={setState} attrSum={attrSum} />
+  </div>;
 }
 
-function AttributesStep({ state, setField, attrSum, budget, effectiveLevel }: { state: FormState; setField: <K extends keyof FormState>(key: K, value: FormState[K]) => void; attrSum: number; budget: number; effectiveLevel: number }) {
+function AttributesStep({ state, setField, setState, attrSum }: { state: FormState; setField: <K extends keyof FormState>(key: K, value: FormState[K]) => void; setState: React.Dispatch<React.SetStateAction<FormState>>; attrSum: number }) {
   const fields = [["PHYSICAL", "attrPhysical"], ["MENTAL", "attrMental"], ["MAGICAL", "attrMagical"]] as const;
-  return <div className="sw-forge-stack"><section className="sw-forge-panel sw-forge-panel--silver"><PanelTitle number="A" title="Core attributes" subtitle="Each score is −1 to +5; together they equal 10" /><div className={`sw-forge-sum${attrSum === 10 ? " is-valid" : ""}`}><span>Attribute balance</span><strong>{attrSum} / 10</strong><small>{attrSum === 10 ? "Ready" : `${10 - attrSum > 0 ? "+" : ""}${10 - attrSum} remaining`}</small></div><div className="sw-forge-attributes">{fields.map(([label, key]) => <div key={key} className={state.attrProficient === label ? "is-proficient" : ""}><button type="button" onClick={() => setField("attrProficient", label)} aria-pressed={state.attrProficient === label}>{state.attrProficient === label ? "Proficient" : "Set proficient"}</button><label><span>{label}</span><input type="number" min={-1} max={5} value={state[key]} onChange={(event) => setField(key, clamp(Number(event.target.value), -1, 5))} /></label></div>)}</div></section><section className="sw-forge-panel sw-forge-panel--brass"><PanelTitle number="B" title="Build allowance" subtitle="Use standard level progression or an agreed custom BU pool" /><div className="sw-forge-mode" role="tablist"><button type="button" className={state.sizingMode === "level" ? "is-active" : ""} onClick={() => setField("sizingMode", "level")}>By level</button><button type="button" className={state.sizingMode === "bu" ? "is-active" : ""} onClick={() => setField("sizingMode", "bu")}>Custom BU</button></div><div className="sw-forge-budget"><ForgeField label={state.sizingMode === "level" ? "Character level" : "Agreed BU pool"}><input type="number" min={state.sizingMode === "level" ? 1 : 25} value={state.sizingMode === "level" ? state.level : state.customBu} onChange={(event) => state.sizingMode === "level" ? setField("level", clamp(Number(event.target.value), 1, 9999)) : setField("customBu", clamp(Number(event.target.value), 25, 100000))} /></ForgeField><div className="sw-forge-budget__reading"><span>Starting allowance</span><strong>{budget} BU</strong><small>{state.sizingMode === "bu" ? `Approximately level ${effectiveLevel}` : `Debt ceiling ${maxBuDebtForLevel(effectiveLevel)} BU`}</small></div></div></section></div>;
+  const meanings: Record<Attribute, string> = { PHYSICAL: "Strength, movement, and endurance", MENTAL: "Awareness, reasoning, and resolve", MAGICAL: "Arcane control and expression" };
+  const presets: Array<{ name: string; hint: string; values: [number, number, number]; specialty: Attribute }> = [
+    { name: "Balanced", hint: "Good all around", values: [4, 3, 3], specialty: "PHYSICAL" },
+    { name: "Physical", hint: "Move and endure", values: [5, 3, 2], specialty: "PHYSICAL" },
+    { name: "Mental", hint: "Notice and reason", values: [3, 5, 2], specialty: "MENTAL" },
+    { name: "Magical", hint: "Shape the arcane", values: [3, 2, 5], specialty: "MAGICAL" },
+  ];
+  return <section className="sw-forge-panel sw-forge-panel--silver sw-forge-attribute-choice"><PanelTitle number="02" title="Choose your strengths" subtitle="Balanced is ready to use. Pick a focus only if you want one." />
+    <div className="sw-forge-attribute-presets" role="group" aria-label="Attribute starting arrangements">{presets.map((preset) => {
+      const active = state.attrPhysical === preset.values[0] && state.attrMental === preset.values[1] && state.attrMagical === preset.values[2] && state.attrProficient === preset.specialty;
+      return <button type="button" key={preset.name} className={active ? "is-active" : ""} aria-pressed={active} onClick={() => setState((current) => ({ ...current, attrPhysical: preset.values[0], attrMental: preset.values[1], attrMagical: preset.values[2], attrProficient: preset.specialty }))}><strong>{preset.name}</strong><small>{preset.hint}</small><span>{preset.values.join(" / ")}</span></button>;
+    })}</div>
+    <details className="sw-forge-attribute-choice__fine"><summary>Adjust individual scores and specialty <ChevronDown aria-hidden /></summary><p>Your three scores must total 10. Your specialty adds a proficiency bonus to its related practices and saves.</p><div className={`sw-forge-sum${attrSum === 10 ? " is-valid" : ""}`}><span>Points assigned</span><strong>{attrSum} / 10</strong><small>{attrSum === 10 ? "Ready" : `${10 - attrSum > 0 ? "+" : ""}${10 - attrSum} remaining`}</small></div><div className="sw-forge-attributes">{fields.map(([label, key]) => <div key={key} className={state.attrProficient === label ? "is-proficient" : ""}><button type="button" onClick={() => setField("attrProficient", label)} aria-pressed={state.attrProficient === label}>{state.attrProficient === label ? "Specialty chosen" : "Choose specialty"}</button><label><span>{label}</span><small>{meanings[label]}</small><input type="number" min={-1} max={5} value={state[key]} onChange={(event) => setField(key, clamp(Number(event.target.value), -1, 5))} /></label></div>)}</div></details>
+  </section>;
 }
 
-function BackstoryStep({ state, setState }: { state: FormState; setState: React.Dispatch<React.SetStateAction<FormState>> }) {
+function BackstoryStep({ state, setState, hideMotivation = false }: { state: FormState; setState: React.Dispatch<React.SetStateAction<FormState>>; hideMotivation?: boolean }) {
   const fields: Array<[keyof FormState["backstory"], string, string, string]> = [["origin", "Origin & history", "Where from, what happened", "Family, birthplace, culture, and defining events…"], ["motivation", "Motivation & goals", "What drives them now", "What do they want, and why can’t they let it go?"], ["ties", "Ties & allies", "Who matters", "Friends, rivals, family, patrons, promises…"], ["flaw", "Flaw & conflict", "What gets in their way", "A fear, contradiction, obligation, or recurring mistake…"]];
-  return <div className="sw-forge-story-grid">{fields.map(([key, label, hint, placeholder], index) => <section key={key} className={`sw-forge-panel ${index % 2 ? "sw-forge-panel--teal" : "sw-forge-panel--brass"}`}><PanelTitle number={String.fromCharCode(65 + index)} title={label} subtitle={hint} /><MarkdownEditor className="sw-forge-markdown" rows={7} value={state.backstory[key]} onChange={(value) => setState((current) => ({ ...current, backstory: { ...current.backstory, [key]: value } }))} placeholder={placeholder} /></section>)}</div>;
+  return <div className="sw-forge-story-grid">{fields.filter(([key]) => !hideMotivation || key !== "motivation").map(([key, label, hint, placeholder], index) => <section key={key} className={`sw-forge-panel ${index % 2 ? "sw-forge-panel--teal" : "sw-forge-panel--brass"}`}><PanelTitle number={String.fromCharCode(65 + index)} title={label} subtitle={hint} /><MarkdownEditor className="sw-forge-markdown" rows={3} ariaLabel={label} value={state.backstory[key]} onChange={(value) => setState((current) => ({ ...current, backstory: { ...current.backstory, [key]: value } }))} placeholder={placeholder} /></section>)}</div>;
+}
+
+interface FinishingProps {
+  state: FormState;
+  setField: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
+  budget: number;
+  effectiveLevel: number;
+  selected: PrimitiveOption[];
+  packageCost: number;
+  mirrorCredit: number;
+  mirrorName: string | null;
+  onEditFoundation: () => void;
+  onEditAccess: () => void;
+}
+
+function FinishingStep({ state, setField, budget, effectiveLevel, selected, packageCost, mirrorCredit, mirrorName, onEditFoundation, onEditAccess }: FinishingProps) {
+  const subject = selected.filter((item) => item.category === "DOMAIN").map((item) => item.name.replace(/^Domain of\s+/i, "")).join(", ");
+  const verb = selected.filter((item) => item.category === "VERB_TIER").map(displayActionTier).join(", ");
+  const range = selected.filter((item) => item.category === "RANGE").map((item) => item.name.replace(/\s+Range$/i, "")).join(", ");
+  const die = selected.filter((item) => item.category === "INTENSITY_DICE").map(displayDie).join(", ");
+  return <div className="sw-forge-stack sw-forge-finish">
+    <section className="sw-forge-review" aria-label="Character summary"><header><span>FOUNDATION READY</span><h3>{state.name.trim() || "Your character"}</h3><small>Level {effectiveLevel} · {state.size.toLowerCase()} · {state.attrProficient.toLowerCase()} specialty</small><p>{state.concept}</p><p>Physical {state.attrPhysical} · Mental {state.attrMental} · Magical {state.attrMagical} <button type="button" className="sw-forge-review__edit" onClick={onEditFoundation}>Edit foundation</button></p>{mirrorName ? <p className="sw-forge-review__weakness">Weakness: {mirrorName} · +{mirrorCredit} BU</p> : null}</header><div className="sw-forge-review__grid"><div><small>Subjects</small><strong>{subject || "Choose one"}</strong></div><div><small>Actions</small><strong>{verb || "Choose a tier"}</strong></div><div><small>Reach</small><strong>{range || "Choose a range"}</strong></div><div><small>Effect dice</small><strong>{die || "Choose a die"}</strong></div></div><footer><span><b>{packageCost} BU used</b> of {budget + mirrorCredit} · {budget + mirrorCredit - packageCost} left</span><button type="button" onClick={onEditAccess}>Change starting access <ArrowRight aria-hidden /></button></footer></section>
+    <div className="sw-forge-finish__optional"><span>THE NEXT CHAPTER</span><p>This is only the foundation. On the character sheet, you can turn your concept into Lineage, Upbringing, and Manifest heritages, make capabilities and items, and spend your remaining points on proficiencies, resistances, advantages, or other rules.</p></div>
+    <details className="sw-forge-disclosure"><summary><span><b>Private notes</b><small>Optional · voice, mannerisms, or table reminders</small></span><ChevronDown aria-hidden /></summary><div className="sw-forge-disclosure__body"><ForgeField label="Notes"><textarea rows={4} value={state.notes} onChange={(event) => setField("notes", event.target.value)} placeholder="Anything else you want to remember…" /></ForgeField></div></details>
+  </div>;
 }
 
 const ACCESS_FAMILIES: Array<[PackageSlot, string, string]> = [["verb", "Verb tiers", "How deeply they may act"], ["range", "Ranges", "How far their actions may reach"], ["die", "Output dice", "Damage and healing dice they may use"], ["domain", "Domains", "What parts of reality they may affect"]];
@@ -332,8 +508,20 @@ function tierOf(item: PrimitiveOption) {
   return startingPackageTier(item);
 }
 
+function displayActionTier(item: PrimitiveOption) {
+  const tier = tierOf(item);
+  return tier === 1 ? "Basic actions (Tier I)" : `Tier ${ROMAN[tier] || tier} actions`;
+}
+
 function originOf(item: PrimitiveOption): Exclude<OriginFilter, "all"> {
   return !item.sourceOrigin || item.sourceOrigin.toLowerCase().startsWith("system") ? "system" : "community";
+}
+
+function beginnerStartingOptions(options: Record<PackageSlot, PrimitiveOption[]>): Record<PackageSlot, PrimitiveOption[]> {
+  const familiarDomains = options.domain.filter((item) => originOf(item) === "system" && /^Domain of (Fire|Water|Air|Earth|Metal|Stone|Wood|Ice|Light|Lightning|Cold)$/i.test(item.name));
+  return familiarDomains.length >= 3
+    ? { verb: options.verb.filter((item) => originOf(item) === "system"), range: options.range.filter((item) => originOf(item) === "system"), die: options.die.filter((item) => originOf(item) === "system"), domain: familiarDomains }
+    : options;
 }
 
 function levelBracket(level: number) {
@@ -345,13 +533,18 @@ function levelBracket(level: number) {
 }
 
 function recommendedPackages(options: Record<PackageSlot, PrimitiveOption[]>, effectiveLevel: number, availableBu: number, seed: number, excludedKeys: string[] = []): PackagePreset[] {
-  const names = [
-    ["Vanguard", "Direct, forceful access for decisive action."],
-    ["Wayfinder", "Flexible reach and a broad practical vocabulary."],
-    ["Arcanist", "Focused expression with a different Domain foundation."],
-  ] as const;
   return suggestStartingPackages({ options, availableBu, seed: seed + levelBracket(effectiveLevel).tier * 1000, excludedKeys })
-    .map((suggestion, index) => ({ ...suggestion, name: names[index]?.[0] ?? "Foundation", description: names[index]?.[1] ?? "A different starting vocabulary." }));
+    .map((suggestion, index) => {
+      const domains = suggestion.items.filter((item) => item.category === "DOMAIN").map((item) => item.name.replace(/^Domain of\s+/i, ""));
+      const ranges = suggestion.items.filter((item) => item.category === "RANGE").map((item) => item.name.replace(/\s+Range$/i, ""));
+      const subjects = domains.length ? new Intl.ListFormat("en", { style: "short", type: "conjunction" }).format(domains.slice(0, 2)) : "a chosen subject";
+      const reach = ranges.length ? ranges[0]!.toLowerCase() : "touch";
+      return {
+        ...suggestion,
+        name: domains.length ? `${domains.slice(0, 2).join(" & ")}${domains.length > 2 ? " + more" : ""}` : `Starting set ${index + 1}`,
+        description: `Build actions about ${subjects} within ${reach} range.`,
+      };
+    });
 }
 
 function packageSummary(items: PrimitiveOption[]) {
@@ -363,7 +556,7 @@ function packageSummary(items: PrimitiveOption[]) {
     return tier.replace(/^Tier\s*/i, "");
   });
   const ranges = matching("RANGE").map((range) => (binding(range, "range") || range.name).replace(/\s*\([^)]*\)\s*$/, "").replace(/\s+Range$/i, ""));
-  const dice = matching("INTENSITY_DICE").map((die) => (binding(die, "dice") || die.name.match(/\d*d\d+/i)?.[0] || die.name).replace(/^1(?=d\d+$)/i, ""));
+  const dice = matching("INTENSITY_DICE").map(displayDie);
   const domains = matching("DOMAIN").map((domain) => domain.name.replace(/^Domain of\s+/i, ""));
   return [
     `Verb ${verbs.length === 1 ? "Tier" : "Tiers"} ${list(verbs)}`,
@@ -373,12 +566,31 @@ function packageSummary(items: PrimitiveOption[]) {
   ].join(" · ");
 }
 
+function displayDie(primitive: PrimitiveOption) {
+  const notation = String(primitive.mechanicalRule?.bindings?.["dice"] ?? primitive.mechanicalOutputText.match(/\d*d\d+/i)?.[0] ?? primitive.name.match(/\d*d\d+/i)?.[0] ?? primitive.name);
+  return notation.replace(/^1(?=d\d+$)/i, "");
+}
+
+function startingExample(items: PrimitiveOption[]) {
+  const domains = items.filter((item) => item.category === "DOMAIN");
+  const verbs = items.filter((item) => item.category === "VERB_TIER");
+  const ranges = items.filter((item) => item.category === "RANGE");
+  const exampleObjects: Record<string, string> = { air: "a gust of air", cold: "a patch of frost", earth: "loose soil", fire: "an existing flame", ice: "a piece of ice", light: "a beam of light", lightning: "a spark", metal: "a metal latch", stone: "a stone", water: "water in a cup", wood: "a wooden branch" };
+  const domain = domains[0]?.name.replace(/^Domain of\s+/i, "").toLowerCase();
+  if (domains.length === 1 && verbs.some((item) => tierOf(item) === 1) && ranges.length === 1 && domain && exampleObjects[domain]) {
+    const reach = ranges[0]!.name.toLowerCase().includes("touch") ? "I can touch" : "within my reach";
+    return `“I try to move ${exampleObjects[domain]} ${reach}.” Tier I includes move; ${domains[0]!.name} is the subject; ${ranges[0]!.name} sets the reach.`;
+  }
+  return "Describe an action using one of your subjects. Your action tiers say what you can do; your purchased range and effect dice set your reach and damage or healing.";
+}
+
 interface StartingAccessProps {
   options: Record<PackageSlot, PrimitiveOption[]>;
   selectedIds: number[];
   mirrorCredit: number;
   loading: boolean;
   togglePrimitive: (id: number) => void;
+  onClearSelection: () => void;
   packageCost: number;
   budget: number;
   effectiveLevel: number;
@@ -395,11 +607,11 @@ function PackageCard({ preset, index, active, onChoose }: { preset: PackagePrese
   return <button type="button" className={active ? "is-active" : ""} aria-pressed={active} onClick={onChoose}>
     <i aria-hidden>{String(index + 1).padStart(2, "0")}</i>
     <span><b>{preset.name}</b><small>{preset.description}</small><small className="sw-access-preset-summary">{packageSummary(preset.items)}</small></span>
-    <em>{preset.cost} BU</em><strong>{active ? "Chosen" : "Use package"}</strong>
+    <em>{preset.cost} BU</em><strong>{active ? "Chosen" : "Choose this set"}</strong>
   </button>;
 }
 
-function StartingAccessStep({ options, selectedIds, mirrorCredit, loading, togglePrimitive, packageCost, budget, effectiveLevel, shuffleBudget, onShuffleBudgetChange, suggestions: shuffledSuggestions, savedPackages, onChoosePackage, onRemovePackage, onShuffle }: StartingAccessProps) {
+function StartingAccessStep({ options, selectedIds, mirrorCredit, loading, togglePrimitive, onClearSelection, packageCost, budget, effectiveLevel, shuffleBudget, onShuffleBudgetChange, suggestions: shuffledSuggestions, savedPackages, onChoosePackage, onRemovePackage, onShuffle }: StartingAccessProps) {
   const [family, setFamily] = useState<PackageSlot>("verb");
   const [builderOpen, setBuilderOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -410,6 +622,7 @@ function StartingAccessStep({ options, selectedIds, mirrorCredit, loading, toggl
   const { openDrawer } = useGlobalControls();
   const bracket = levelBracket(effectiveLevel);
   const availableBu = budget + mirrorCredit;
+  const beginnerOptions = useMemo(() => beginnerStartingOptions(options), [options]);
   const minimumPackageCost = (Object.keys(options) as PackageSlot[]).reduce((sum, slot) => sum + (options[slot][0]?.buCost ?? 0), 0);
   const commitShuffleBudget = () => {
     const parsed = Number(shuffleBudgetDraft);
@@ -420,19 +633,26 @@ function StartingAccessStep({ options, selectedIds, mirrorCredit, loading, toggl
     onShuffleBudgetChange(next);
     return next;
   };
-  const initialSuggestions = useMemo(() => recommendedPackages(options, effectiveLevel, availableBu, 0), [options, effectiveLevel, availableBu]);
+  const initialSuggestions = useMemo(() => recommendedPackages(beginnerOptions, effectiveLevel, shuffleBudget, 0), [beginnerOptions, effectiveLevel, shuffleBudget]);
   const validPackage = (preset: PackagePreset) => preset.cost <= availableBu;
-  const currentPackages = (shuffledSuggestions ?? initialSuggestions).filter(validPackage);
-  const packages = currentPackages.length === 3 ? currentPackages : [
-    ...currentPackages,
-    ...initialSuggestions.filter((preset) => validPackage(preset) && !currentPackages.some((item) => item.key === preset.key)),
-  ].slice(0, 3);
-  const saved = savedPackages.filter(validPackage);
+  const availableSuggestions = (shuffledSuggestions ?? initialSuggestions).filter((preset) => validPackage(preset) && !savedPackages.some((item) => item.key === preset.key));
+  const freshSuggestions = availableSuggestions.length < 3
+    ? recommendedPackages(shuffledSuggestions ? options : beginnerOptions, effectiveLevel, shuffleBudget, 4999 + savedPackages.length, [...savedPackages.map((item) => item.key), ...availableSuggestions.map((item) => item.key)]).filter(validPackage)
+    : [];
+  const packages = [...availableSuggestions, ...freshSuggestions].slice(0, 3);
   const packageActive = (preset: PackagePreset) => preset.items.length === selectedIds.length && preset.items.every((item) => selectedIds.includes(item.id));
+  const saved = savedPackages.filter((preset) => !packageActive(preset));
   const choosePackage = (preset: PackagePreset) => { onChoosePackage(preset); setBuilderOpen(false); };
   const availableTiers = [...new Set(options[family].map(tierOf))].sort((a, b) => a - b);
   const visible = options[family].filter((item) => `${item.name} ${item.mechanicalOutputText} ${item.narrativeRule}`.toLowerCase().includes(query.toLowerCase()) && (tierFilter === null || tierOf(item) === tierFilter) && (originFilter === "all" || originOf(item) === originFilter));
   const selected = ACCESS_FAMILIES.flatMap(([slot]) => options[slot]).filter((item) => selectedIds.includes(item.id));
+  const selectedSubjects = selected.filter((item) => item.category === "DOMAIN").map((item) => item.name.replace(/^Domain of\s+/i, "")).join(" · ");
+  const selectedFacts = [
+    ["Subjects", selectedSubjects],
+    ["Actions", selected.filter((item) => item.category === "VERB_TIER").map(displayActionTier).join(" · ")],
+    ["Reach", selected.filter((item) => item.category === "RANGE").map((item) => item.name.replace(/\s+Range$/i, "")).join(" · ")],
+    ["Effect dice", selected.filter((item) => item.category === "INTENSITY_DICE").map(displayDie).join(" · ")],
+  ];
   const consideredDomains = consideredDomainIds.map((id) => options.domain.find((item) => item.id === id)).filter((item): item is PrimitiveOption => Boolean(item));
   const chooseDomain = (id: number) => {
     if (!selectedIds.includes(id)) setConsideredDomainIds((current) => current.includes(id) ? current : [...current, id].slice(-4));
@@ -445,21 +665,19 @@ function StartingAccessStep({ options, selectedIds, mirrorCredit, loading, toggl
   const definitions = [...MARKET_TEMPLATES, ...CANONICAL_EXPRESSIONS].filter((item) => item.familyKey === FAMILY_KEYS[family]);
 
   return <div className="sw-forge-stack">
-    <section className="sw-forge-package-intro">
-      <div><span>Starting access · Library instrument</span><h3>Choose a foundation</h3><p>BU (Build Units) pay for primitives. Your chosen weakness adds {mirrorCredit} BU credit, giving you {availableBu} BU in total. Any tier is available at any level if it fits your BU budget. Choose a package or build your own. After creation, you can add more primitives and arrange them into Lineage, Upbringing, Manifest, or capabilities on the character sheet.</p></div>
-      <div className={packageCost > availableBu ? "is-over" : ""}><span>Available to spend</span><strong>{availableBu} BU</strong><small>{budget} base · +{mirrorCredit} mirror credit</small></div>
-    </section>
     {loading ? <div className="sw-forge-loading"><Loader2 className="animate-spin" aria-hidden /> Opening the primitive library…</div> : <>
+      {selected.length ? <section className="sw-forge-current-set" aria-live="polite"><div className="sw-forge-current-set__head"><div><span><Check aria-hidden /> SELECTED STARTER</span><h3>{selectedSubjects || "Your starting vocabulary"}</h3><p>This is your opening set, not your whole character. Keep some BU for proficiencies, resistances, bonuses, capabilities, and other choices on the sheet.</p></div><div><b>{packageCost} BU</b><small>spent of {availableBu}</small><strong>{availableBu - packageCost} left for later</strong></div></div><div className="sw-forge-current-set__facts">{selectedFacts.map(([label, value]) => <div key={label}><small>{label}</small><strong>{value || "Not chosen"}</strong></div>)}</div><div className="sw-forge-current-set__example"><span>AT THE TABLE</span><p>{startingExample(selected)}</p><p>Your subjects and action tiers come from purchased primitives. Reaching beyond Touch or using an output die also needs its matching primitive. Targets, shape, size, placement, effect duration, and casting time can be described without buying one for each detail: for example, spread a gust across several targets or hold a metal door for longer. Those choices scale through the action’s intrinsic cost.</p><p>Greater scale, impact, complexity, or compressed time raises Strain. The cost might be Vitality, a resource, a hazard, a narrative twist, lost access, or a condition negotiated with the DM. You can accept it, reduce your intent, suggest another cost, or stop before rolling.</p></div></section> : null}
       <section className="sw-access-presets">
-        <header><div><span>Recommended foundations</span><h3>Choose a package for {bracket.label}</h3></div><div className="sw-access-presets__actions"><label className="sw-access-presets__budget"><span>Shuffle up to</span><input type="text" inputMode="numeric" pattern="[0-9]*" aria-label="Shuffle budget in BU" value={shuffleBudgetDraft} onChange={(event) => setShuffleBudgetDraft(event.target.value.replace(/\D/g, ""))} onBlur={commitShuffleBudget} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>BU of {availableBu}</small></label><button type="button" onClick={() => onShuffle(commitShuffleBudget())} disabled={!initialSuggestions.length}><Shuffle aria-hidden /> Shuffle packages</button></div></header>
+        <header><div><span>Recommended for {bracket.label}</span><h3>{selected.length ? "Or try another set" : "Pick a starting set"}</h3><p>Each set combines a subject, action tier, reach, and effect die. They are building blocks for actions, not a fixed spell list. You have {availableBu} BU{mirrorCredit ? ` including ${mirrorCredit} from your weakness` : ""}; these suggestions deliberately leave room for later choices.</p></div><div className="sw-access-presets__actions"><button type="button" onClick={() => onShuffle(commitShuffleBudget())} disabled={!initialSuggestions.length}><Shuffle aria-hidden /> Different ideas</button><details className="sw-access-presets__budget-advanced"><summary>Set a BU limit</summary><label className="sw-access-presets__budget"><span>Shuffle up to</span><input type="text" inputMode="numeric" pattern="[0-9]*" aria-label="Shuffle budget in BU" value={shuffleBudgetDraft} onChange={(event) => setShuffleBudgetDraft(event.target.value.replace(/\D/g, ""))} onBlur={commitShuffleBudget} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><small>BU of {availableBu}</small></label></details></div></header>
         <div>
           {packages.map((preset, index) => <PackageCard key={preset.key} preset={preset} index={index} active={packageActive(preset)} onChoose={() => choosePackage(preset)} />)}
+          {!packages.length ? <p className="sw-access-presets__empty">All new suggestions are already saved below. Remove a saved set or change the shuffle limit to see more.</p> : null}
           <button type="button" className={`sw-access-presets__custom${builderOpen ? " is-active" : ""}`} aria-expanded={builderOpen} aria-controls="sw-starting-access-library" onClick={() => setBuilderOpen((open) => !open)}>
-            <i aria-hidden><Plus /></i><span><b>Or create your own</b><small>Choose any combination of access primitives.</small><small className="sw-access-preset-summary">Verb tiers · Ranges · Output dice · Domains</small></span><strong>{builderOpen ? "Close Library" : selectedIds.length ? "Customize selection" : "Open Library"}</strong>
+            <i aria-hidden><Plus /></i><span><b>Make your own set</b><small>Open the Library to add, remove, or replace the selected parts.</small><small className="sw-access-preset-summary">Subjects · Actions · Reach · Effect dice</small></span><strong>{builderOpen ? "Close Library" : "Open Library"}</strong>
           </button>
         </div>
       </section>
-      {savedPackages.length ? <section className="sw-forge-comparison sw-forge-comparison--packages"><header><div><span>Kept for comparison</span><h3>Packages you considered</h3></div><small>{savedPackages.length} / 4 kept</small></header>{saved.length ? <div className="sw-access-presets__saved-grid">{saved.map((preset, index) => <div className="sw-forge-considered-item" key={preset.key}><PackageCard preset={preset} index={index} active={packageActive(preset)} onChoose={() => choosePackage(preset)} /><button type="button" className="sw-forge-considered-item__remove" aria-label={`Remove ${preset.name} from considered packages`} onClick={() => onRemovePackage(preset)}><X aria-hidden /></button></div>)}</div> : <p>Your saved packages exceed the current BU limit.</p>}</section> : null}
+      {saved.length ? <section className="sw-forge-comparison sw-forge-comparison--packages"><header><div><span>Saved ideas</span><h3>Sets you kept</h3></div><small>{saved.length} / 4 kept</small></header><div className="sw-access-presets__saved-grid">{saved.map((preset, index) => <div className="sw-forge-considered-item" key={preset.key}><PackageCard preset={preset} index={index} active={packageActive(preset)} onChoose={() => validPackage(preset) && choosePackage(preset)} /><button type="button" className="sw-forge-considered-item__remove" aria-label={`Remove ${preset.name} from considered packages`} onClick={() => onRemovePackage(preset)}><X aria-hidden /></button>{!validPackage(preset) ? <span className="sw-access-presets__over-budget">Above current budget</span> : null}</div>)}</div></section> : null}
       {builderOpen ? <section id="sw-starting-access-library" className="sw-access-library">
         <nav className="sw-access-library__families" aria-label="Starting access families">{ACCESS_FAMILIES.map(([id, label, hint], index) => <button type="button" key={id} className={family === id ? "is-active" : ""} onClick={() => { setFamily(id); setQuery(""); setTierFilter(null); }}><i aria-hidden>◇</i><span>{label}</span><small>{selected.filter((item) => options[id].some((option) => option.id === item.id)).length} chosen · {hint}</small><em>{String(index + 1).padStart(2, "0")}</em></button>)}</nav>
         <div className="sw-access-library__corpus">
@@ -471,44 +689,47 @@ function StartingAccessStep({ options, selectedIds, mirrorCredit, loading, toggl
           <div className="sw-access-library__entries">{visible.map((item) => <PrimitiveSelectCard key={item.id} item={item} selected={selectedIds.includes(item.id)} onToggle={() => family === "domain" ? chooseDomain(item.id) : togglePrimitive(item.id)} />)}{visible.length === 0 ? <p className="sw-access-library__empty">No entries match these filters.</p> : null}</div>
           {family === "domain" && consideredDomains.length ? <section className="sw-access-domains-considered"><header><span>Kept for comparison</span><strong>Domains you considered</strong><small>{consideredDomains.length} / 4 kept</small></header><div>{consideredDomains.map((item) => <div key={item.id} className="sw-access-domains-considered__item"><button type="button" onClick={() => chooseDomain(item.id)} aria-pressed={selectedIds.includes(item.id)}><strong>{item.name}</strong><small data-copy="mechanical">{item.mechanicalOutputText}</small><em>{selectedIds.includes(item.id) ? "Selected" : "Choose Domain"} · {item.buCost} BU</em></button><button type="button" aria-label={`Remove ${item.name} from considered domains`} onClick={() => removeConsideredDomain(item.id)}><X aria-hidden /></button></div>)}</div></section> : null}
         </div>
-        <aside className="sw-access-ledger"><header><span>Character ledger</span><strong>{selected.length}</strong></header>{selected.length ? <div>{selected.map((item) => <button type="button" key={item.id} onClick={() => togglePrimitive(item.id)}><span>{item.name}</span><small>{item.buCost} BU · remove</small></button>)}</div> : <p>Selections appear here as you add them.</p>}</aside>
+        <aside className="sw-access-ledger"><header><span>Selected parts</span><strong>{selected.length}</strong></header>{selected.length ? <><button type="button" className="sw-access-ledger__clear" onClick={onClearSelection}>Clear all and start fresh</button><div>{selected.map((item) => <button type="button" key={item.id} onClick={() => togglePrimitive(item.id)}><span>{item.name}</span><small>{item.buCost} BU · remove</small></button>)}</div></> : <p>Choose one or more from each family: subjects, actions, reach, and effect dice.</p>}</aside>
       </section> : null}
     </>}
   </div>;
 }
 
-function MirrorOptionCard({ item, active, onSelect }: { item: PrimitiveOption; active: boolean; onSelect: () => void }) {
+function MirrorOptionCard({ item, active, disabled, onSelect }: { item: PrimitiveOption; active: boolean; disabled?: boolean; onSelect: () => void }) {
   const credit = item.mirrorBuCredit ?? item.buCost;
   const mechanicalCopy = item.mechanicalOutputText.replace(/\bwhen is when\b/gi, "when").trim();
-  return <button type="button" className={active ? "is-active" : ""} aria-pressed={active} onClick={onSelect}>
+  return <button type="button" className={active ? "is-active" : ""} aria-pressed={active} disabled={disabled} onClick={onSelect}>
     <span className="sw-mirror-choices__icon">{item.iconSource ? <IconDisplay iconSource={item.iconSource} iconKey={item.iconKey ?? null} iconUrl={item.iconUrl ?? null} iconColor={item.iconColor ?? null} size={30} alt="" /> : "◇"}</span>
-    <span className="sw-mirror-choices__copy"><span>Mirrored primitive · {item.category.replaceAll("_", " ")}</span><strong>{item.name}</strong><small>{mirrorConsequence(item)}</small>{mechanicalCopy ? <em>Original rule: {mechanicalCopy}</em> : null}</span>
-    <span className="sw-mirror-choices__credit">+{credit}<small>BU credit</small></span><b>{active ? "Selected weakness" : "Choose weakness"}</b>
+    <span className="sw-mirror-choices__copy"><span>Optional drawback · {item.category.replaceAll("_", " ")}</span><strong>{item.name}</strong><small>{mirrorConsequence(item)}</small>{mechanicalCopy ? <em>Original benefit: {mechanicalCopy}</em> : null}</span>
+    <span className="sw-mirror-choices__credit">+{credit}<small>BU credit</small></span><b>{active ? "Remove drawback" : disabled ? "Above debt limit" : "Choose drawback"}</b>
   </button>;
 }
 
-function MirroringStep({ options, selectedId, onSelect, onRemove, savedIds, suggestionIds, shuffleSeed, onShuffle, budget, ceiling, characterName }: { options: PrimitiveOption[]; selectedId: number | null; onSelect: (id: number | null) => void; onRemove: (id: number) => void; savedIds: number[]; suggestionIds: number[] | null; shuffleSeed: number; onShuffle: () => void; budget: number; ceiling: number; characterName: string }) {
-  const selected = options.find((item) => item.id === selectedId);
-  const credit = selected ? selected.mirrorBuCredit ?? selected.buCost : 0;
-  const currentSuggestions = suggestionIds === null ? [] : suggestionIds.map((id) => options.find((item) => item.id === id)).filter((item): item is PrimitiveOption => item !== undefined && !savedIds.includes(item.id));
+function MirroringStep({ options, selectedIds, onSelect, onRemove, savedIds, suggestionIds, shuffleSeed, onShuffle, budget, ceiling, characterName }: { options: PrimitiveOption[]; selectedIds: number[]; onSelect: (id: number | null) => void; onRemove: (id: number) => void; savedIds: number[]; suggestionIds: number[] | null; shuffleSeed: number; onShuffle: () => void; budget: number; ceiling: number; characterName: string }) {
+  const selected = options.filter((item) => selectedIds.includes(item.id));
+  const credit = selected.reduce((sum, item) => sum + (item.mirrorBuCredit ?? item.buCost), 0);
+  const excluded = [...new Set([...savedIds, ...selectedIds])];
+  const affordable = options.filter((item) => (item.mirrorBuCredit ?? item.buCost) <= ceiling - credit);
+  const currentSuggestions = suggestionIds === null ? [] : suggestionIds.map((id) => affordable.find((item) => item.id === id)).filter((item): item is PrimitiveOption => item !== undefined && !excluded.includes(item.id));
   const suggestions = currentSuggestions.length === 3 ? currentSuggestions : [
     ...currentSuggestions,
-    ...chooseMirrorSuggestions(options, characterName, shuffleSeed, savedIds, currentSuggestions.map((item) => item.id))
+    ...chooseMirrorSuggestions(affordable, characterName, shuffleSeed, excluded, currentSuggestions.map((item) => item.id))
       .filter((item) => !currentSuggestions.some((current) => current.id === item.id)),
   ].slice(0, 3);
-  const saved = savedIds.map((id) => options.find((item) => item.id === id)).filter((item): item is PrimitiveOption => Boolean(item));
-  const canShuffle = options.filter((item) => !savedIds.includes(item.id)).length > 1;
+  const saved = [...new Set([...selectedIds, ...savedIds])].map((id) => options.find((item) => item.id === id)).filter((item): item is PrimitiveOption => Boolean(item));
+  const canShuffle = affordable.some((item) => !excluded.includes(item.id));
+  const canAdd = (item: PrimitiveOption) => selectedIds.includes(item.id) || credit + (item.mirrorBuCredit ?? item.buCost) <= ceiling;
 
   return <div className="sw-forge-stack sw-mirror-step">
     <section className="sw-mirror-principle">
-      <div><span>Optional · Volatility instrument</span><h3>Choose a weakness. Gain room to build.</h3><p>A mirrored primitive costs nothing to acquire. Its benefit becomes a weakness and grants BU credit, up to this level’s debt ceiling. Choose one or skip it now; the next step uses the credit when suggesting packages.</p></div>
-      <div className="sw-mirror-ledger"><span><small>Base budget</small><strong>{budget} BU</strong></span><span><small>Debt ceiling</small><strong>{ceiling} BU</strong></span><span><small>Mirror credit</small><strong>+{credit} BU</strong></span><span><small>Starting access budget</small><strong>{budget + credit} BU</strong></span></div>
+      <div><span>Optional choice</span><h3>Take drawbacks for more abilities</h3><p>A drawback turns one helpful rule into the weakness shown on its card. You can choose several, as long as their total credit stays within your level’s debt limit. You can also skip this and decide later.</p><details className="sw-mirror-rules"><summary>How do the extra points work?</summary><p>Each drawback costs no BU and grants the credit shown on its card. At your level, their combined credit may be up to {ceiling} BU. The next step adds that credit to your available points.</p></details></div>
+      <div className="sw-mirror-ledger"><span><small>Base budget</small><strong>{budget} BU</strong></span><span><small>Drawback credit</small><strong>+{credit} / {ceiling} BU</strong></span><span><small>Available together</small><strong>{budget + credit} BU</strong></span></div>
     </section>
-    <section className="sw-mirror-choices"><header><div><span>{options.length} eligible within your mirror debt ceiling</span><h3>Explore weaknesses</h3><p>Choose a weakness to keep it below. Shuffle draws up to three fresh suggestions from the remaining primitives with a working mirrored effect.</p></div><button type="button" onClick={onShuffle} disabled={!canShuffle}><Shuffle aria-hidden /> Shuffle all suggestions</button></header>
-      {suggestions.length ? <div className="sw-mirror-choices__grid">{suggestions.map((item) => <MirrorOptionCard key={item.id} item={item} active={item.id === selectedId} onSelect={() => onSelect(item.id)} />)}</div> : <p className="sw-mirror-choices__empty">No eligible weaknesses at this level. Continue without mirroring.</p>}
+    <button type="button" className={`sw-mirror-skip${selectedIds.length === 0 ? " is-active" : ""}`} aria-pressed={selectedIds.length === 0} onClick={() => onSelect(null)}><span>{selectedIds.length ? "Clear drawbacks" : "No drawback for now"}</span><small>Continue with {budget} BU. You can add drawbacks later.</small><ArrowRight aria-hidden /></button>
+    <section className="sw-mirror-choices"><header><div><span>{options.length} available at this level</span><h3>Explore drawbacks</h3><p>Choose as many as fit within {ceiling} BU total credit. Compare them below, or shuffle for new ideas.</p></div><button type="button" onClick={onShuffle} disabled={!canShuffle}><Shuffle aria-hidden /> New suggestions</button></header>
+      {suggestions.length ? <div className="sw-mirror-choices__grid">{suggestions.map((item) => <MirrorOptionCard key={item.id} item={item} active={false} onSelect={() => onSelect(item.id)} />)}</div> : <p className="sw-mirror-choices__empty">{credit >= ceiling ? "You have reached this level’s debt limit. Remove a chosen drawback to explore more." : "No remaining drawbacks fit your available debt credit. Continue or remove one to explore again."}</p>}
     </section>
-    {savedIds.length ? <section className="sw-forge-comparison"><header><div><span>Kept for comparison</span><h3>Weaknesses you considered</h3></div><small>{savedIds.length} / 4 kept</small></header><div className="sw-mirror-choices__grid">{saved.map((item) => <div className="sw-forge-considered-item" key={item.id}><MirrorOptionCard item={item} active={item.id === selectedId} onSelect={() => onSelect(item.id)} /><button type="button" className="sw-forge-considered-item__remove" aria-label={`Remove ${item.name} from considered weaknesses`} onClick={() => onRemove(item.id)}><X aria-hidden /></button></div>)}</div></section> : null}
-    <button type="button" className={`sw-mirror-skip${selectedId === null ? " is-active" : ""}`} aria-pressed={selectedId === null} onClick={() => onSelect(null)}><span>Skip mirroring for now</span><small>Continue with the standard BU budget; you can add a weakness later from Build mode.</small><ArrowRight aria-hidden /></button>
+    {saved.length ? <section className="sw-forge-comparison"><header><div><span>Chosen and saved</span><h3>Drawbacks you considered</h3></div><small>{selected.length} chosen · {credit} / {ceiling} BU credit</small></header><div className="sw-mirror-choices__grid">{saved.map((item) => <div className="sw-forge-considered-item" key={item.id}><MirrorOptionCard item={item} active={selectedIds.includes(item.id)} disabled={!canAdd(item)} onSelect={() => onSelect(item.id)} /><button type="button" className="sw-forge-considered-item__remove" aria-label={`Remove ${item.name} from considered weaknesses`} onClick={() => onRemove(item.id)}><X aria-hidden /></button></div>)}</div></section> : null}
   </div>;
 }
 

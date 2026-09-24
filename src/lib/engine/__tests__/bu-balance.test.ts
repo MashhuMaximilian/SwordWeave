@@ -29,12 +29,12 @@ describe("computeProgressionPool", () => {
     expect(computeProgressionPool(25, 5, 10)).toBe(79);
   });
 
-  it("L4 spike lands correctly (cumulative(4) = 59)", () => {
-    expect(computeProgressionPool(25, 4, 0)).toBe(59);
+  it("L4 matches the supplied cumulative threshold of 55", () => {
+    expect(computeProgressionPool(25, 4, 0)).toBe(55);
   });
 
-  it("L20 = cumulative(20) = 275 (no upper cap)", () => {
-    expect(computeProgressionPool(25, 20, 0)).toBe(275);
+  it("L20 = cumulative(20) = 255", () => {
+    expect(computeProgressionPool(25, 20, 0)).toBe(255);
   });
 
   it("buBudget override: 200 BU at L10 wins over cumulative(10)=127", () => {

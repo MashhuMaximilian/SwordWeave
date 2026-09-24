@@ -7,7 +7,7 @@
 //   - attrPhysical/Mental/Magical — three int fields, must sum to 10,
 //     each in [-1, +5] per the DB check constraint.
 //   - attrProficient — which attribute grants the proficiency bonus.
-//   - level — 1..20.
+//   - level — at least 1, no upper game cap.
 //   - startingBu — base BU pool (default 25, can be higher if the
 //     DM granted bonus BU).
 //
@@ -84,7 +84,7 @@ export function clampLevel(n: number): number {
 
 export function clampBu(n: number): number {
   if (!Number.isFinite(n)) return 25;
-  return Math.min(100000, Math.max(0, Math.floor(n)));
+  return Math.max(0, Math.floor(n));
 }
 
 /** Resolve the active BU budget for the current attributes state.
@@ -217,7 +217,7 @@ export function AttributesTab({ state, onChange }: AttributesTabProps) {
  * their build via EITHER character level OR a custom BU budget. The
  * two fields stay mutually consistent:
  *
- *   - Switching to "level" mode shows Level 1..20. The displayed BU
+ *   - Switching to "level" mode shows any positive level. The displayed BU
  *     budget derives from cumulativeBuForLevel(level).
  *   - Switching to "buBudget" mode shows a free integer BU pool.
  *     A "≈ level N" hint appears when the budget matches a canon
@@ -296,7 +296,6 @@ function BuildSizingControl({
             }}
             commitDefault={1}
             min={1}
-            maxLength={4}
           />
           <span className="block text-xs text-muted-foreground">
             BU budget:{" "}
@@ -332,7 +331,6 @@ function BuildSizingControl({
             }}
             commitDefault={25}
             min={0}
-            maxLength={6}
           />
           <span className="block text-xs text-muted-foreground">
             {derivedLevel != null
@@ -369,7 +367,7 @@ interface IntegerFieldProps {
    * cap (Phase 8.1 batch 11 made the level field unbounded).
    */
   max?: number;
-  maxLength: number;
+  maxLength?: number;
   /** Allow leading minus sign (used for attributes which can be -1). */
   allowNegative?: boolean;
   className?: string;

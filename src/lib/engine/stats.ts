@@ -7,7 +7,7 @@
  *  - Attribute range: −1 to +5, sum exactly 10 across Physical/Mental/Magical
  *  - One Attribute Proficiency per character (chosen at character creation)
  *  - PB = +2 at L1, +1 every 4 levels (L1=2, L5=3, L9=4, L13=5, L17=6)
- *  - Max Vitality base formula: (10 + PB) * Level
+ *  - Max Vitality base = (10 + PB) × level
  *  - Practice Proficiency grants +PB; Expertise Upgrade grants +2*PB
  *
  * (see AUDIT-REPORT.md for canonical sources)
@@ -49,7 +49,7 @@ import type {
  * L1=2, L5=3, L9=4, L13=5, L17=6 (rounds every 4 levels).
  * Formula: 2 + floor((level - 1) / 4)
  *
- * Capped at MAX_PB (+10) per Notion "beyond this, PB caps at +10".
+ * The progression continues without an upper level or PB cap.
  */
 export function proficiencyBonus(level: number): number {
   if (level < 1) {
@@ -57,15 +57,37 @@ export function proficiencyBonus(level: number): number {
       `Invalid level ${level}: must be >= 1. PB undefined below level 1.`,
     );
   }
-  return Math.min(MAX_PB, 2 + Math.floor((level - 1) / 4));
+  return 2 + Math.floor((level - 1) / 4);
 }
 
-/**
- * Max level the PB formula supports. Beyond this, PB caps at +10 (Tier 5 rules).
- * 2 + floor((50 - 1) / 4) = 14. Cap at +10 for safety.
- */
-export const MAX_LEVEL = 50;
-export const MAX_PB = 10;
+/** Apply numeric PB modifiers before deriving PB-based statistics. */
+export function calculateModifiedProficiencyBonus(
+  level: number,
+  modifiers: readonly HardModifier[] = [],
+): number {
+  let value = proficiencyBonus(level);
+  for (const mod of modifiers) {
+    if (mod.target !== "proficiency_bonus" && !modifierMatchesScope(mod, {
+      legacyTarget: "character.proficiencyBonus",
+      shortAxis: "proficiency_bonus",
+      scopeLayer: "METRIC",
+      scopeValue: "PROFICIENCY_BONUS",
+    })) continue;
+    const amount = typeof mod.value === "number" ? mod.value
+      : typeof mod.value === "string" ? Number(mod.value) : NaN;
+    if (!Number.isFinite(amount)) continue;
+    switch (mod.operation) {
+      case "add": value += amount; break;
+      case "subtract": value -= amount; break;
+      case "set": value = amount; break;
+      case "min": value = Math.min(value, amount); break;
+      case "max": value = Math.max(value, amount); break;
+      case "multiply": value *= amount; break;
+      case "divide": if (amount !== 0) value /= amount; break;
+    }
+  }
+  return value;
+}
 
 /**
  * Attribute boundaries (Notion: −1 to +5, sum exactly 10).
@@ -230,24 +252,24 @@ export function compileAttributes(
 // =============================================================================
 
 /**
- * Max Vitality = (10 + PB) * Level
+ * Max Vitality = (10 + effective PB) × Level
  *
  * Plus any modifier additions targeting character.maxVitality.
  *
  * Example:
- *   L1 character, PB=2, base formula: (10 + 2) * 1 = 12
- *   L5 character, PB=3, base formula: (10 + 3) * 5 = 65
+ *   L1 character, PB=2: (10 + 2) × 1 = 12
+ *   L5 character, PB=3: (10 + 3) × 5 = 65
  */
 export function calculateMaxVitality(
   level: number,
   modifiers: readonly HardModifier[] = [],
+  pb = calculateModifiedProficiencyBonus(level, modifiers),
 ): number {
   if (level < 1) {
     throw new Error(`Invalid level ${level}: must be >= 1.`);
   }
 
-  const pb = proficiencyBonus(level);
-  let value = (BASELINE_DEFENSE + pb) * level; // 10 + PB * Level (Path A baseline)
+  let value = (10 + pb) * level;
 
   for (const mod of modifiers) {
     // Phase-7-D: accept either legacy dotted target or new short
@@ -623,9 +645,9 @@ export function compileEntityLiveStats(
 ): EntityLiveStats {
   const { level, baseAttributes, modifiers } = input;
 
-  const pb = proficiencyBonus(level);
+  const pb = calculateModifiedProficiencyBonus(level, modifiers);
   const attributes = compileAttributes(baseAttributes, modifiers);
-  const maxVitality = calculateMaxVitality(level, modifiers);
+  const maxVitality = calculateMaxVitality(level, modifiers, pb);
   // Phase 8.I i2.0: pass proficient attribute so the single Save DC
   // is derived from the right attribute modifier.
   const defenses = compileDefenses(

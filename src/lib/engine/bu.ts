@@ -58,13 +58,7 @@ export interface EffectInput {
 
 /**
  * Character level → max negative BU (volatility) ceiling.
- * Source: BU Market — Mirror-Vector Architecture, Tier-Matched Volatility Ceiling.
- *
- * Phase 8.1 batch 11 (Mashu 2026-07-22): the bracket boundaries
- * moved to 4-wide blocks matching the new debt rule. The string
- * labels are kept in the same shape ("L1-L4", "L5-L8", ...) so
- * consumers don't need to change, but the underlying math is now
- * uniform. The "L1" special case is gone.
+ * Source: user-provided level progression table (2026-09-24).
  */
 export type VolatilityCeiling = {
   readonly levelBracket:
@@ -109,67 +103,81 @@ export interface BuLedger {
 // ============================================================================
 
 /**
- * Phase 8.1 batch 11 (Mashu 2026-07-22): The canon formula is the
- * source of truth, and there is NO upper level cap. The rules are:
- *
- *   - Each level grants +10 BU (linear growth from L1's 25).
- *   - Every 4 levels (L4, L8, L12, L16, L20, L24, ...) grants an
- *     additional +level BU spike (so L4 = +4, L8 = +8, L12 = +12,
- *     L16 = +16, L20 = +20, L24 = +24, ...).
- *   - These rules continue past L20 — a level-100 character simply
- *     keeps accumulating. There is no max.
- *
- *   cumulative(L) = 25 + 10*(L-1) + sum(spikes)
- *   where spike is awarded at L = 4k for k = 1..floor(L/4),
- *   spike value at level L = 4k is L itself (== 4k).
- *
- * The debt ceiling also has no upper cap. It follows the same
- * brackets used for levels 1-20 (L1 = 4, L2-4 = 8, L5-10 = 12,
- * L11-15 = 16, L16+ = 24) and stays at 24 for L16 and above.
- *
- * Earlier in batch 10 we tried to encode this as a static table,
- * but that required the table to be infinite and we capped at L20.
- * The formula is cleaner and matches the canon at every level.
+ * The supplied table is authoritative through level 21. Beyond 21,
+ * preserve the open-ended progression using +10 per level and the
+ * established four-level bracket spikes. The level-21 row is an
+ * explicit +31 BU increase (255 → 286), so it is kept literally.
  */
 
-/**
- * Sum of progression spikes awarded at every 4th level up to and
- * including `level`. At L4k, the spike value equals 4k.
- *
- * Examples:
- *   spikesUpTo(3)  = 0   (no spikes yet)
- *   spikesUpTo(4)  = 4   (one spike of 4)
- *   spikesUpTo(8)  = 12  (4 + 8)
- *   spikesUpTo(12) = 24  (4 + 8 + 12)
- *   spikesUpTo(20) = 60  (4 + 8 + 12 + 16 + 20)
- *   spikesUpTo(24) = 84  (+ 24)
- */
-function spikesUpTo(level: number): number {
-  if (level < 4) return 0;
-  // Sum of arithmetic progression 4, 8, 12, ..., 4*floor(L/4)
-  // = 4 * sum(1..floor(L/4)) = 4 * k*(k+1)/2 where k = floor(L/4)
-  const k = Math.floor(level / 4);
-  return 4 * (k * (k + 1)) / 2;
-}
+export const CUMULATIVE_BU_BY_LEVEL = [
+  25, 35, 45, 55, 69, 79, 89, 99, 117, 127, 137, 147,
+  169, 179, 189, 199, 225, 235, 245, 255, 286,
+] as const;
 
 /**
  * Compute the cumulative BU budget for a given character level.
  * No upper bound — works for any L >= 1.
  *
- * Examples:
- *   L1 = 25
- *   L2 = 35  (25 + 10)
- *   L4 = 59  (25 + 30 + 4 spike)
- *   L5 = 69
- *   L8 = 107 (25 + 70 + 4 + 8 spikes)
- *   L20 = 275
- *   L21 = 285
- *   L24 = 319 (25 + 230 + 4 + 8 + 12 + 16 + 20 + 24)
+ * Through L21, values come directly from the supplied table.
  */
 export function cumulativeBuForLevel(level: number): number {
   if (!Number.isFinite(level)) return 25;
   if (level < 1) return 25;
-  return 25 + 10 * (level - 1) + spikesUpTo(level);
+  const wholeLevel = Math.floor(level);
+  if (wholeLevel <= CUMULATIVE_BU_BY_LEVEL.length) {
+    return CUMULATIVE_BU_BY_LEVEL[wholeLevel - 1]!;
+  }
+  const extraLevels = wholeLevel - CUMULATIVE_BU_BY_LEVEL.length;
+  const lastSpikeIndex = Math.floor((wholeLevel - 1) / 4);
+  // Bracket spikes after the supplied L21 value occur at L25, L29, ...
+  // Their values are 24, 28, ... . Closed form keeps high levels fast.
+  const laterSpikes = 2 * (lastSpikeIndex * (lastSpikeIndex + 1) - 30);
+  return CUMULATIVE_BU_BY_LEVEL.at(-1)! + extraLevels * 10 + laterSpikes;
+}
+
+/** Selected milestones for formula modals, including the current bracket. */
+export function buProgressionMilestones(level: number): ReadonlyArray<{
+  level: number;
+  spike: number;
+  cumulative: number;
+}> {
+  const currentBracket = Math.max(1, Math.floor((level - 1) / 4));
+  const indices = new Set([1, 2, 3, 4, 5]);
+  for (let k = Math.max(1, currentBracket - 2); k <= currentBracket + 1; k++) {
+    indices.add(k);
+  }
+  return [...indices].sort((a, b) => a - b).map((k) => {
+    const milestoneLevel = k * 4 + 1;
+    const spike = cumulativeBuForLevel(milestoneLevel) -
+      cumulativeBuForLevel(milestoneLevel - 1) - 10;
+    const cumulative = cumulativeBuForLevel(milestoneLevel) -
+      (25 + 10 * (milestoneLevel - 1));
+    return { level: milestoneLevel, spike, cumulative };
+  });
+}
+
+/** Representative debt brackets for formula modals, including high levels. */
+export function buDebtBracketsForLevel(level: number): ReadonlyArray<{
+  label: string;
+  minLevel: number;
+  maxLevel: number;
+  ceiling: number;
+}> {
+  const currentIndex = Math.max(0, Math.floor((level - 1) / 4));
+  const indices = new Set([0, 1, 2, 3, 4, 5, 6]);
+  for (let i = Math.max(0, currentIndex - 1); i <= currentIndex + 1; i++) {
+    indices.add(i);
+  }
+  return [...indices].sort((a, b) => a - b).map((i) => {
+    const minLevel = i * 4 + 1;
+    const maxLevel = minLevel + 3;
+    return {
+      label: `L${minLevel}-L${maxLevel}`,
+      minLevel,
+      maxLevel,
+      ceiling: maxBuDebtForLevel(minLevel),
+    };
+  });
 }
 
 /**
@@ -209,28 +217,17 @@ export function maxBuDebtForLevel(level: number): number {
  * returns the highest level whose cumulative budget is <= the
  * typed budget, i.e. "this budget is at least as much as level N".
  *
- * Note: this is intentionally a search rather than a closed-form
- * solve because the spike pattern (every 4 levels) makes a closed
- * form awkward. The search is bounded by the level the user
- * actually typed; for arbitrary BU values we use the canonical
- * formula in reverse.
+ * Binary search keeps this open ended even for large custom budgets.
  */
 export function levelForBuBudget(budget: number): number | null {
-  if (!Number.isFinite(budget)) return null;
+  if (!Number.isSafeInteger(budget)) return null;
   if (budget < 25) return null;
-  // Binary-search-like: try levels up to a reasonable cap. For very
-  // large budgets we still find the answer because cumulative is
-  // strictly monotonic. Cap at level 200 (~12.5k BU); beyond that
-  // the search is pointless for UX feedback.
-  for (let l = 1; l <= 200; l++) {
-    if (cumulativeBuForLevel(l) === budget) return l;
-    if (cumulativeBuForLevel(l) > budget) break;
-  }
-  return null;
+  const level = impliedLevelForBudget(budget);
+  return cumulativeBuForLevel(level) === budget ? level : null;
 }
 
 /**
- * Phase 8.1 batch 11 (Mashu 2026-07-22): "implied" level for a
+ * "Implied" level for a
  * budget — the highest level L such that cumulativeBuForLevel(L)
  * is <= the typed budget. When the budget doesn't exactly match
  * a canon threshold, this gives the bracket the character would
@@ -239,34 +236,25 @@ export function levelForBuBudget(budget: number): number | null {
  * when the user is in "By BU" mode and types a non-canon value.
  *
  * Returns 1 for budgets below 25 (treats any valid budget as
- * "at least L1"). Caps at level 200 to match levelForBuBudget.
+ * "at least L1"). No level cap.
  */
 export function impliedLevelForBudget(budget: number): number {
   if (!Number.isFinite(budget)) return 1;
   if (budget < 25) return 1;
-  let best = 1;
-  for (let l = 1; l <= 200; l++) {
-    if (cumulativeBuForLevel(l) <= budget) {
-      best = l;
-    } else {
-      break;
-    }
+  let low = 1;
+  let high = 2;
+  while (cumulativeBuForLevel(high) <= budget) {
+    low = high;
+    high *= 2;
   }
-  return best;
+  while (low + 1 < high) {
+    const middle = Math.floor((low + high) / 2);
+    if (cumulativeBuForLevel(middle) <= budget) low = middle;
+    else high = middle;
+  }
+  return low;
 }
 
-/**
- * Per the BU Market canon (Notion):
- * - Level 1: -4 BU debt (special case)
- * - Levels 2-4: -8 BU debt
- * - Levels 5-10: -12 BU debt
- * - Levels 11-15: -16 BU debt
- * - Levels 16+: -24 BU debt
- *
- * Returns the maximum negative BU the character can run. Kept for
- * backwards compatibility with code that consumes
- * `getVolatilityCeiling` — now derived from maxBuDebtForLevel.
- */
 /**
  * Compute the volatility ceiling metadata for a character level:
  * the maximum negative BU they can carry, the level bracket label

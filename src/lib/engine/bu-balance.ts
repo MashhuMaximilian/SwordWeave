@@ -10,9 +10,9 @@
  * starting_bu is canonically 25 and cumulative(level) wins for any
  * level >= 1; in "By BU" mode starting_bu is the user's typed value
  * and (typically) wins over the canon for the implied level. The
- * cumulative formula is the canon from the BU Market doc:
- *   cumulative(L) = 25 + 10*(L-1) + 4*k*(k+1)/2 where k = floor(L/4)
- * which is implemented in @/lib/engine/bu.ts as cumulativeBuForLevel.
+ * level table is implemented in @/lib/engine/bu.ts as
+ * cumulativeBuForLevel. Its values through L21 match the user's
+ * progression table supplied on 2026-09-24.
  *
  * Item BU does NOT count toward progression cap (per Q3 Mashu).
  */
@@ -43,9 +43,7 @@ export const RECOMMENDED_RACE_BU_CAP = 12;
 export const RECOMMENDED_BACKGROUND_BU_CAP = 8;
 
 /**
- * Phase 8.1 batch 10g (Mashu 2026-07-22): the per-level growth is
- * NO LONGER a flat 5 BU. The canon formula is +10 BU per level plus
- * a +level spike every 4 levels. This constant is kept as a
+ * The per-level growth is not a flat 5 BU. This constant is kept as a
  * backwards-compatible alias of the old value (5) so that legacy
  * imports keep working, but new code should call
  * cumulativeBuForLevel() directly instead. Will be removed in a
@@ -63,7 +61,7 @@ export const BU_PER_LEVEL = 5;
  * Examples:
  *   computeProgressionPool(25, 1, 0) = max(25, 25) = 25
  *   computeProgressionPool(25, 5, 0) = max(25, 69) = 69
- *   computeProgressionPool(25, 4, 0) = max(25, 59) = 59
+ *   computeProgressionPool(25, 4, 0) = max(25, 55) = 55
  *   computeProgressionPool(200, 10, 0) = max(200, 127) = 200
  *   computeProgressionPool(200, 10, 5) = max(200, 127) + 5 = 205
  */

@@ -199,12 +199,15 @@ The Build & Preview surface is a visible part of edit mode. It cannot depend on 
 
 Character creation is a guided instrument, separate from the Atelier sandbox. Entry points on the character roster and Creations page open this flow; Atelier keeps its exploratory character modal.
 
-The creation instrument has four required stages:
+The beginner route has five stages. Character identity comes before mechanics; a name, one-sentence concept, valid default attributes, and one complete starting vocabulary are required to save:
 
-1. **Identity:** name, size, private notes, and portrait by upload or image link. Size displays its carry capacity and base walking, swimming, and climbing speed in the control itself; the player must not need a later rules screen to understand the choice.
-2. **Attributes:** Physical, Mental, Magical, proficient Attribute, and level-derived or agreed custom BU.
-3. **Backstory:** origin and history, motivation and goals, ties and allies, and flaw and conflict.
-4. **Starting access:** independent multi-selection of Domain, Verb Tier, Range, and Output Die primitives drawn from the real Library. A character may begin with several primitives in any family. The interface does not invent package counts or force one Domain, Verb Tier, Range, and Output Die into repeated bundles.
+1. **Your character:** name, one-sentence concept, visible backstory prompts, optional portrait upload/link, and an explanation of the three roots in story terms. Lineage is inherited or created nature, Upbringing is formative life and training, and Manifest is the active path that evolves. Do not require bundle authoring here. The concept is saved with origin/history on the sheet.
+2. **Foundation:** size, starting level or agreed custom BU, and attributes belong together. Size displays carry capacity and walking, swimming, and climbing speed. A balanced attribute arrangement is ready to use; presets allow a focus without arithmetic and manual scoring remains available. The level or budget set here determines eligible weaknesses and the next steps' BU.
+3. **Weakness:** offer optional level-eligible mirroring before the player chooses what to buy. A narrative flaw need not be a mechanical weakness. Credit from a chosen weakness flows into the next stage.
+4. **Starting access:** one modest, familiar starter is selected by default and shown explicitly. Three set cards, including that selection, and a distinct custom Library entry form a 2×2 grid on desktop and stack on mobile. Explain that these are only the foundation and advise leaving BU for proficiencies, resistances, capabilities, and other sheet choices. The Library remains in place for independent multi-selection across all four families and all tiers.
+5. **Ready to play:** a read-only review shows the concept, any weakness, name, level, specialty, four access parts, and BU. Private notes are optional. The handoff explains that the sheet is where the player develops heritages, capabilities, and items.
+
+The creation route must teach only what the current decision requires. Story prompts and mechanical mirroring are optional, but concept precedes mechanics. Terminology follows plain-language meaning; mechanical detail remains discoverable. The initial suggestions favor familiar system Domains and modest BU cost, leaving room to grow. Shuffle draws from the full eligible system and community catalog up to the editable BU limit. Suggested-set labels and descriptions describe their actual contents. Choosing one replaces the current starting-access selection. Saved suggestions remain removable and visibly marked when over budget. A local draft survives refresh until creation succeeds or the player explicitly starts over.
 
 Desktop uses a progress rail beside one focused workbench. Mobile converts the rail into a compact, sticky step navigator and keeps Previous, Continue, and Forge controls reachable at the bottom. The flow must show live BU committed and remaining. Starting-access choices are saved as actual character primitive instances; presentation may not invent a second, decorative source of mechanical truth.
 

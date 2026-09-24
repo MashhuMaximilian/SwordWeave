@@ -78,46 +78,8 @@ import {
 // extend past L20 (the engine returns ceil(L/4)*4 which keeps
 // growing). We show a wider window — every bracket from L1
 // through L29+ — so high-level characters still see their row.
-import { maxBuDebtForLevel } from "@/lib/engine/bu";
+import { cumulativeBuForLevel, buProgressionMilestones, buDebtBracketsForLevel } from "@/lib/engine/bu";
 import { portraitFrameStyle } from "@/lib/character/portrait-frame";
-const PROGRESSION_SPIKES = [
-  { level: 4, spike: 4 },
-  { level: 8, spike: 8 },
-  { level: 12, spike: 12 },
-  { level: 16, spike: 16 },
-  { level: 20, spike: 20 },
-] as const;
-
-const VOLATILITY_BRACKETS = (() => {
-  const out: Array<{ label: string; minLevel: number; maxLevel: number; ceiling: number }> = [];
-  // Build [L1-L4, L5-L8, L9-L12, ...] up to L28. Per Notion
-  // canon (Leveling & Progression v1) and engine
-  // maxBuDebtForLevel, ceiling(L) = ceil(L/4)*4. So:
-  //   L1-L4   → 4
-  //   L5-L8   → 8
-  //   L9-L12  → 12
-  //   L13-L16 → 16
-  //   L17-L20 → 20
-  //   L21-L24 → 24
-  //   L25-L28 → 28
-  // We show the first row as "L1-L4" (4 levels) rather than
-  // splitting L1 and L2-L4 because per Mashu "you have at lvl
-  // 1 too" — L1 has the same 4-BU ceiling as L2-L4. Even
-  // though players typically can't slot mirrors at L1 (per
-  // the cascade rule), the engine doesn't enforce a hard L1
-  // exception — we render the truth.
-  for (let start = 1; start <= 28; start += 4) {
-    const end = start + 3;
-    const ceiling = Math.ceil(start / 4) * 4;
-    const label = start === 1 ? `L${start}-L${end}` : `L${start}-L${end}`;
-    out.push({ label, minLevel: start, maxLevel: end, ceiling });
-  }
-  return out;
-})();
-// Reference maxBuDebtForLevel so tree-shaking doesn't drop the import
-// and so the engine function is the canonical source of the ceiling.
-// (The VOLATILITY_BRACKETS table above mirrors maxBuDebtForLevel.)
-void maxBuDebtForLevel;
 
 // Phase 8.4 v25.2 (Mashu 2026-07-30): single source of truth for
 // the debt bar color rule. Mashu's spec is "green when full,
@@ -751,13 +713,6 @@ interface BuHeaderFormulaModalProps {
   readonly onClose: () => void;
 }
 
-function spikesUpToLevel(level: number): number {
-  // Same formula as character-sheet-view.tsx: 4 * k*(k+1)/2 for k = floor(L/4)
-  if (level < 4) return 0;
-  const k = Math.floor(level / 4);
-  return (4 * (k * (k + 1))) / 2;
-}
-
 function BuHeaderFormulaModal({
   mode,
   level,
@@ -774,8 +729,8 @@ function BuHeaderFormulaModal({
   onClose,
 }: BuHeaderFormulaModalProps) {
   const baseBu = 25 + 10 * (level - 1);
-  const spikesTotal = spikesUpToLevel(level);
-  const lifetimeBu = baseBu + spikesTotal;
+  const lifetimeBu = cumulativeBuForLevel(level);
+  const spikesTotal = lifetimeBu - baseBu;
 
   if (mode === "pools") {
     const remainingBu = Math.max(0, progressionPool - progressionSpent);
@@ -837,9 +792,7 @@ function BuHeaderFormulaModal({
                   </tr>
                 </thead>
                 <tbody className="font-mono">
-                  {PROGRESSION_SPIKES.map((s) => {
-                    const k = s.spike / 4;
-                    const cum = (4 * (k * (k + 1))) / 2;
+                  {buProgressionMilestones(level).map((s) => {
                     const reached = level >= s.level;
                     return (
                       <tr
@@ -851,7 +804,7 @@ function BuHeaderFormulaModal({
                           +{s.spike} BU
                         </td>
                         <td className="py-0.5 text-right tabular-nums">
-                          {cum} BU
+                          {s.cumulative} BU
                         </td>
                       </tr>
                     );
@@ -859,13 +812,13 @@ function BuHeaderFormulaModal({
                 </tbody>
               </table>
               <p className="mt-3 text-[11px] text-muted-foreground">
-                A progression spike fires every 4 levels (L4, L8, L12, L16,
-                L20…). The spike value equals the level itself — L4 = +4 BU,
-                L8 = +8 BU, etc. Formula:{" "}
+                The examples show +10 BU per level plus a spike at L5, L9,
+                L13, L17, L21 and every four levels thereafter. L21 has +21
+                spike BU, giving 286 cumulative BU. The progression continues
+                without a level cap.{" "}
                 <span className="font-mono text-foreground">
-                  Σ(4k) for k = 1..⌊L/4⌋
+                  See the current bracket above.
                 </span>
-                .
               </p>
               <p className="mt-3 text-[11px] text-muted-foreground border-t border-border pt-3">
                 <strong className="text-foreground">Soft cap, not hard cap:</strong>{" "}
@@ -967,7 +920,7 @@ function BuHeaderFormulaModal({
                 </tr>
               </thead>
               <tbody className="font-mono">
-                {VOLATILITY_BRACKETS.map((b) => {
+                {buDebtBracketsForLevel(level).map((b) => {
                   const reached = level >= b.minLevel && level <= b.maxLevel;
                   return (
                     <tr

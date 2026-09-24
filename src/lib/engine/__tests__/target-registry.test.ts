@@ -287,15 +287,33 @@ describe("resolveAllSaves", () => {
 // =============================================================================
 
 describe("resolveMaxVitality", () => {
-  it("returns (10 + PB) × level as baseline", () => {
+  it("uses effective PB for the vitality baseline", () => {
     const input: ResolvedCharacterInput = {
       ...TESSY,
       level: 18,
       pb: 6,
       slots: [],
     };
-    // (10 + 6) × 18 = 16 × 18 = 288
+    // (10 + 6) × 18 = 288.
     expect(resolveMaxVitality(input).total).toBe(288);
+  });
+
+  it("includes a primitive that changes PB in the vitality base", () => {
+    const input: ResolvedCharacterInput = {
+      ...TESSY,
+      slots: [
+        makeSlot({
+          primitiveId: 90,
+          hardModifiers: [{
+            kind: "modify",
+            target: "proficiency_bonus",
+            operation: "add",
+            value: 2,
+          }],
+        }),
+      ],
+    };
+    expect(resolveMaxVitality(input).total).toBe((10 + 8) * 18);
   });
 
   it("adds primitive contributions targeting maxVitality", () => {

@@ -5,8 +5,9 @@
 // item. Body is multipart/form-data with a single `file` field plus
 // optional `color` and `entityType`/`entityId` metadata.
 //
-// The upload goes straight into Vercel Blob (private access) at the
-// canonical path `user-uploads/<clerk-user-id>/<uuid>.<ext>`. The
+// The upload goes into Vercel Blob (private access), or local disk in
+// development without a Blob token, at the canonical path
+// `user-uploads/<clerk-user-id>/<uuid>.<ext>`. The
 // client receives the path back and stores it in the entity row's
 // `icon_url` column. The icon is served via /api/icons/blob/[...path]
 // which Clerk-auths the viewer and streams from Blob.
@@ -25,6 +26,8 @@ import { auth } from "@clerk/nextjs/server";
 import { put } from "@vercel/blob";
 import { type NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 
 export const dynamic = "force-dynamic";
 
@@ -82,6 +85,20 @@ export async function POST(req: NextRequest) {
   // UUID prevents collisions and makes guessing URLs hard.
   const ext = MIME_TO_EXT[file.type] ?? "bin";
   const pathname = `user-uploads/${clerkUserId}/${randomUUID()}.${ext}`;
+
+  // Local development has no Vercel Blob token. Keep uploads on disk so
+  // portraits (and other uploaded icons) still work during local playtests.
+  if (process.env.NODE_ENV === "development" && !process.env["BLOB_READ_WRITE_TOKEN"]) {
+    const destination = join(process.cwd(), ".local-uploads", pathname);
+    try {
+      await mkdir(join(process.cwd(), ".local-uploads", "user-uploads", clerkUserId), { recursive: true });
+      await writeFile(destination, Buffer.from(await file.arrayBuffer()), { flag: "wx" });
+      return NextResponse.json({ ok: true, pathname, contentType: file.type, size: file.size });
+    } catch (error) {
+      console.error("[api/icons/upload] local upload failed:", error);
+      return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+    }
+  }
 
   // `put` from @vercel/blob streams the body. We pass `access: "private"`
   // because the blob store is private. The token comes from

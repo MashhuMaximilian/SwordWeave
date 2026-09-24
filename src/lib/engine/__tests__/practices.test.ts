@@ -11,7 +11,6 @@ import {
   distributeAttributeSlices,
   getPracticeAttribute,
   getPracticeSlice,
-  MAX_PB,
   proficiencyBonus,
   STARTING_PB,
   validateAttributes,
@@ -190,8 +189,12 @@ describe("proficiencyBonus", () => {
     expect(proficiencyBonus(17)).toBe(6);
   });
 
-  it("caps at MAX_PB", () => {
-    expect(proficiencyBonus(100)).toBe(MAX_PB);
+  it("returns 7 at L21", () => {
+    expect(proficiencyBonus(21)).toBe(7);
+  });
+
+  it("continues beyond level 21", () => {
+    expect(proficiencyBonus(100)).toBe(26);
   });
 
   it("returns 0 for level 0 or negative", () => {
