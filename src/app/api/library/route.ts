@@ -45,9 +45,14 @@ export async function GET(req: NextRequest) {
     | null) ?? "LIKES";
   const limit = Math.min(parseInt(sp.get("limit") ?? "24", 10) || 24, 100);
   const offset = parseInt(sp.get("offset") ?? "0", 10) || 0;
+  const origin = sp.get("origin");
+  const tier = sp.get("tier");
 
   try {
     const result = await queryLibrary({
+      ...(clerkUserId ? { viewerClerkId: clerkUserId } : {}),
+      ...(origin === "system" || origin === "community" ? { origin } : {}),
+      ...(tier !== null && tier !== "" && Number.isInteger(Number(tier)) && Number(tier) >= 0 ? { tier: Number(tier) } : {}),
       ...(targetType ? { targetType: targetType as never } : {}),
       ...(category ? { category } : {}),
       ...(search ? { search } : {}),

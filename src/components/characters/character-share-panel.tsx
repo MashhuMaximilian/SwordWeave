@@ -31,6 +31,7 @@ interface ShareRow {
   username: string;
   displayName: string | null;
   canEdit: boolean;
+  canSuggest?: boolean;
   /** When the share was created (ISO string). For "shared 3d ago" UI. */
   createdAt: string;
 }
@@ -52,7 +53,9 @@ export function CharacterSharePanel({
   const [open, setOpen] = useState(initiallyOpen);
   const [shares, setShares] = useState(initialShares);
   const [username, setUsername] = useState("");
-  const [canEdit, setCanEdit] = useState(false);
+  const [role, setRole] = useState("SUGGESTER");
+  const canEdit = role === "EDITOR";
+  const canSuggest = role === "SUGGESTER";
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -67,10 +70,11 @@ export function CharacterSharePanel({
         body: JSON.stringify({
           username: username.trim(),
           canEdit,
+          canSuggest,
         }),
       });
       const json = (await res.json()) as
-        | { share: { id: string; canEdit: boolean } }
+        | { share: { id: string; canEdit: boolean; canSuggest: boolean } }
         | { error: string };
       if (!res.ok || "error" in json) {
         setError(
@@ -88,6 +92,7 @@ export function CharacterSharePanel({
           next[existingIdx] = {
             ...next[existingIdx]!,
             canEdit: json.share.canEdit,
+            canSuggest: json.share.canSuggest,
           };
           return next;
         }
@@ -98,12 +103,13 @@ export function CharacterSharePanel({
             username: username.trim(),
             displayName: null,
             canEdit: json.share.canEdit,
+            canSuggest: json.share.canSuggest,
             createdAt: new Date().toISOString(),
           },
         ];
       });
       setUsername("");
-      setCanEdit(false);
+      setRole("SUGGESTER");
       // Revalidate the server data so the next render is server-truth.
       startTransition(() => router.refresh());
     } catch (err) {
@@ -186,8 +192,7 @@ export function CharacterSharePanel({
               </button>
             </div>
             <p className="mt-2 text-sm text-muted-foreground">
-              Invite a DM or friend by username. Editors can propose
-              primitive/capability/item changes for your review.
+              Invite a DM or friend by username. Suggesters send changes for your approval. Direct editors may apply changes themselves.
             </p>
 
             {/* Invite row */}
@@ -203,15 +208,11 @@ export function CharacterSharePanel({
                 className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm"
                 autoComplete="off"
               />
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={canEdit}
-                  onChange={(e) => setCanEdit(e.target.checked)}
-                  className="size-4 accent-primary"
-                />
-                Can edit
-              </label>
+              <select aria-label="Permission" value={role} onChange={event => setRole(event.target.value)} className="rounded-md border border-border bg-background px-2 py-2 text-sm">
+                <option value="SUGGESTER">Can suggest</option>
+                <option value="VIEWER">View only</option>
+                <option value="EDITOR">Can edit directly</option>
+              </select>
               <button
                 type="submit"
                 disabled={isPending || !username.trim()}
@@ -271,7 +272,7 @@ export function CharacterSharePanel({
                           ) : (
                             <>
                               <Eye className="size-3" />
-                              Viewer
+                              {s.canSuggest ? "Can suggest" : "Viewer"}
                             </>
                           )}
                         </span>

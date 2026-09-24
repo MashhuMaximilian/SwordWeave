@@ -1,3 +1,4 @@
+import { resolveCharacterAccess, handleCharacterAccessError } from "@/lib/character/resolve-character-access";
 import { withCharacterMutation } from "@/lib/character/mutation-transaction";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
@@ -78,6 +79,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  try {
+    const { userId } = await auth();
+    await resolveCharacterAccess(userId, id);
+  } catch (error) { return handleCharacterAccessError(error); }
 
   const row = await db.query.characters.findFirst({
     where: eq(characters.id, id),
@@ -174,6 +179,7 @@ async function handlePATCH(
   try {
     const { userId } = await auth.protect();
     const { id } = await params;
+    await resolveCharacterAccess(userId, id, { require: "EDITOR" });
     const body: unknown = await request.json();
 
     if (!body || typeof body !== "object") {
@@ -788,8 +794,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    await auth.protect();
+    const { userId } = await auth.protect();
     const { id } = await params;
+    await resolveCharacterAccess(userId, id, { require: "OWNER" });
 
     const [deleted] = await db
       .delete(characters)
@@ -807,6 +814,7 @@ export async function DELETE(
 
     return NextResponse.json({ deleted: deleted.id });
   } catch (error) {
+    if (error instanceof Error && error.name === "CharacterAccessDenied") return handleCharacterAccessError(error);
     const message = error instanceof Error ? error.message : "Unknown error.";
     return NextResponse.json({ error: message }, { status: 400 });
   }

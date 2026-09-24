@@ -1,3 +1,5 @@
+import { withCharacterMutation } from "@/lib/character/mutation-transaction";
+import { saveSuggestionGrant } from "@/lib/character/suggestion-grants";
 // =============================================================================
 // POST /api/characters/[id]/shares — PLAN Eilxina Part C (Mashu 2026-09-09).
 //
@@ -30,7 +32,7 @@ import {
 function parsePostBody(
   body: unknown,
 ):
-  | { ok: true; value: { username: string; canEdit: boolean } }
+  | { ok: true; value: { username: string; canEdit: boolean; canSuggest: boolean } }
   | { ok: false; error: string } {
   if (!body || typeof body !== "object") {
     return { ok: false, error: "Body must be a JSON object." };
@@ -45,10 +47,10 @@ function parsePostBody(
     return { ok: false, error: "username must be at most 64 chars." };
   }
   const canEdit = typeof canEditRaw === "boolean" ? canEditRaw : false;
-  return { ok: true, value: { username, canEdit } };
+  return { ok: true, value: { username, canEdit, canSuggest: b["canSuggest"] === true } };
 }
 
-export async function POST(
+async function handlePOST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -78,7 +80,7 @@ export async function POST(
         { status: 400 },
       );
     }
-    const { username, canEdit } = parsed.value;
+    const { username, canEdit, canSuggest } = parsed.value;
 
     // Resolve username → internal user.id.
     // Usernames are lowercase by convention (see users.username column).
@@ -96,7 +98,7 @@ export async function POST(
     const targetInternalId = target[0]!.id;
 
     // Owner can't share with themselves.
-    if (target[0]!.clerkUserId === character.userId) {
+    if ((target[0]!.clerkUserId === character.userId || targetInternalId === character.userId)) {
       return NextResponse.json(
         { error: "You can't share a character with yourself." },
         { status: 400 },
@@ -122,6 +124,7 @@ export async function POST(
         .update(characterShares)
         .set({ canEdit, updatedAt: new Date() })
         .where(eq(characterShares.id, existing[0]!.id));
+      await saveSuggestionGrant(characterId, existing[0]!.id, canSuggest);
       return NextResponse.json(
         {
           share: {
@@ -129,6 +132,7 @@ export async function POST(
             characterId,
             sharedWithUserId: targetInternalId,
             canEdit,
+            canSuggest,
             updated: true,
           },
         },
@@ -153,7 +157,8 @@ export async function POST(
         createdAt: characterShares.createdAt,
       });
 
-    return NextResponse.json({ share: inserted[0] }, { status: 201 });
+    await saveSuggestionGrant(characterId, inserted[0]!.id, canSuggest);
+    return NextResponse.json({ share: { ...inserted[0], canSuggest } }, { status: 201 });
   } catch (e) {
     if (e instanceof CharacterAccessDenied) {
       return NextResponse.json({ error: e.message }, { status: 403 });
@@ -164,4 +169,9 @@ export async function POST(
       { status: 500 },
     );
   }
+}
+
+export async function POST(request: Request, context: {params: Promise<{id: string}>}) {
+ const {id} = await context.params;
+ return withCharacterMutation(id, () => handlePOST(request, context));
 }

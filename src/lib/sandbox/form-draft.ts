@@ -37,6 +37,8 @@ export function clearDraft(key: string) {
 export function makeDraftKey(
   buildMode: string,
   editingId: string | number | null,
+  namespace?: string,
 ): string {
-  return `${buildMode}:${editingId ?? "new"}`;
+  const key = `${buildMode}:${editingId ?? "new"}`;
+  return namespace ? `${namespace}:${key}` : key;
 }

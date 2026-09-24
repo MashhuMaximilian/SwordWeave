@@ -1,3 +1,4 @@
+import { shouldIsolateDraftEntity, markDraftAuthoredEntity, hasDraftExecutionScope } from "./draft-scope";
 import type { WorkspaceNode, WorkspaceEdge } from "./model";
 
 /** Adapt canonical junctions to the same payloads the Atelier composers submit.
@@ -41,7 +42,8 @@ export function containerPayload(
 export async function saveWorkspaceEntity(
   node: WorkspaceNode,
   payload: Record<string, unknown>,
-) {
+): Promise<{ id: string; outcome: string; result: Record<string, unknown> }> {
+  if (hasDraftExecutionScope()) payload = { ...payload, isPublic: false, intent: shouldIsolateDraftEntity(node.key) ? "fork" : "load", draftHash: undefined };
   const request = new Request(
     `http://workspace.internal/api/${node.kind}/${node.id}`,
     {
@@ -87,7 +89,16 @@ export async function saveWorkspaceEntity(
   const result = await response.json();
   if (!response.ok)
     throw new Error(result.error ?? "Unable to save this entity.");
-  return {
+  // The publishing dispatcher deliberately treats a draft matching LIVE
+  // content as a no-op. For an older pin that would lose the requested edit.
+  // Give its private fork an explicit version-copy title and retry once.
+  if (hasDraftExecutionScope() && node.data["workspaceHistoricalVersion"] && result.dispatchOutcome?.kind === "no-op") {
+    return saveWorkspaceEntity(
+      { ...node, data: { ...node.data, workspaceHistoricalVersion: false } },
+      { ...payload, name: `${String(payload["name"] ?? node.name)} (v${node.data["workspaceVersionNumber"] ?? "saved"} copy)` },
+    );
+  }
+  const saved = {
     id: String(
       result.dispatchOutcome?.newId ??
         result[node.kind]?.id ??
@@ -97,6 +108,8 @@ export async function saveWorkspaceEntity(
     outcome: String(result.dispatchOutcome?.kind ?? "version-update"),
     result,
   };
+  if (saved.id !== node.id) markDraftAuthoredEntity(`${node.kind}:${saved.id}`);
+  return saved;
 }
 
 export async function createWorkspaceEntity(
@@ -141,5 +154,6 @@ export async function createWorkspaceEntity(
   const id =
     result.dispatchOutcome?.newId ?? result[kind]?.id ?? result.template?.id;
   if (!id) throw new Error("The save did not return an entity identity.");
+  markDraftAuthoredEntity(`${kind}:${id}`);
   return { id: String(id), result };
 }

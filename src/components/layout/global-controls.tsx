@@ -438,22 +438,8 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
                 if (pathname === "/atelier") {
                   openDrawer(isMobile && sandboxSplit ? "preview" : "build");
                 } else if (isCharacterSheetRoute) {
-                  const previewTrigger = document.querySelector<HTMLButtonElement>(
-                    ".v12-workspace-authoring-bridge button",
-                  );
-                  if (previewTrigger) {
-                    previewTrigger.click();
-                    return;
-                  }
-                  const editModeTrigger = document.querySelector<HTMLButtonElement>(
-                    ".v12-character-mode-panel.is-play > button",
-                  );
-                  if (editModeTrigger) {
-                    editModeTrigger.click();
-                    return;
-                  }
                   window.dispatchEvent(new CustomEvent("sw-character-open-atelier"));
-                  window.setTimeout(() => openDrawer("build"), 0);
+                  openDrawer("build");
                 } else {
                   window.dispatchEvent(new CustomEvent("sw-navigate-away", { detail: "/atelier" }));
                 }

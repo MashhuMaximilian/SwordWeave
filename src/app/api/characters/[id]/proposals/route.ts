@@ -1,3 +1,5 @@
+import { validateVersionProposal } from "@/lib/character/validate-version-proposal";
+import { withCharacterMutation } from "@/lib/character/mutation-transaction";
 // =============================================================================
 // POST /api/characters/[id]/proposals — PLAN Eilxina Part C
 // (Mashu 2026-09-09).
@@ -90,7 +92,7 @@ function parsePostBody(body: unknown):
   };
 }
 
-export async function POST(
+async function handlePOST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -102,7 +104,7 @@ export async function POST(
     const { permission } = await resolveCharacterAccess(
       clerkUserId,
       characterId,
-      { require: "EDITOR" },
+      { require: "SUGGESTER" },
     );
     // (permission is guaranteed OWNER | EDITOR here.)
     void permission;
@@ -115,6 +117,9 @@ export async function POST(
     const { targetKind, targetId, currentVersionId, proposedVersionId, rationale } =
       parsed.value;
 
+    const instanceId = typeof (body as Record<string, unknown>)["instanceId"] === "string" ? (body as Record<string, unknown>)["instanceId"] as string : undefined;
+    const binding = await validateVersionProposal(characterId, targetKind, targetId, currentVersionId, proposedVersionId, instanceId);
+    if (!binding) return NextResponse.json({ error: "The versions must belong to this definition and match one current character occurrence. Select the occurrence again." }, { status: 409 });
     // Load both version snapshots so we can build the diff.
     const currentSnap = await loadSnapshot(targetKind, currentVersionId);
     const proposedSnap = await loadSnapshot(targetKind, proposedVersionId);
@@ -124,7 +129,7 @@ export async function POST(
         { status: 404 },
       );
     }
-    const diff = computeProposalDiff(currentSnap, proposedSnap);
+    const diff = { ...computeProposalDiff(currentSnap, proposedSnap), ...binding };
     if (diff.fieldChanges.length === 0) {
       return NextResponse.json(
         {
@@ -146,6 +151,7 @@ export async function POST(
           eq(characterProposals.targetKind, targetKind),
           eq(characterProposals.targetId, targetId),
           eq(characterProposals.status, "PENDING"),
+          eq(characterProposals.proposerUserId, clerkUserId),
         ),
       )
       .limit(1);
@@ -219,4 +225,9 @@ async function loadSnapshot(
   if (!snap || typeof snap !== "object") return null;
   // The version table stores the FULL payload directly (not wrapped).
   return snap as Record<string, unknown>;
+}
+
+export async function POST(request: Request, context: {params: Promise<{id: string}>}) {
+ const {id} = await context.params;
+ return withCharacterMutation(id, () => handlePOST(request, context));
 }

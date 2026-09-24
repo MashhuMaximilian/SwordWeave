@@ -51,7 +51,7 @@ interface ProposalSummary {
 interface ProposalReviewScreenProps {
   characterId: string;
   characterName: string;
-  viewerPermission: "OWNER" | "EDITOR" | "VIEWER";
+  viewerPermission: "OWNER" | "EDITOR" | "SUGGESTER" | "VIEWER";
   proposal: ProposalSummary;
   currentSnapshot: Record<string, unknown> | null;
   proposedSnapshot: Record<string, unknown> | null;

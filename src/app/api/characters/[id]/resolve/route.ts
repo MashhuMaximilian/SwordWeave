@@ -1,3 +1,5 @@
+import { effectivePrimitiveLinks } from "@/lib/character/workspace/effective-primitives";
+import { resolveCharacterAccess, handleCharacterAccessError } from "@/lib/character/resolve-character-access";
 import { auth } from "@clerk/nextjs/server";
 import { characterConsequences } from "@/db/schema/workspace";
 import { consequenceAdjustedSlots } from "@/lib/character/consequences/resolve";
@@ -133,7 +135,7 @@ export async function GET(
   }
 
   const {userId}=await auth.protect();
-  if(charRow.userId!==userId)return NextResponse.json({error:'You do not own this character.'},{status:403});
+  try { await resolveCharacterAccess(userId,id); } catch(error) { return handleCharacterAccessError(error); }
   if (targetFilter) {
     const cached = getResolverCache(id, targetFilter);
     if (cached) {
@@ -149,6 +151,7 @@ export async function GET(
   const slotRows = await db
     .select({
       primitiveId: characterPrimitives.primitiveId,
+      versionId: characterPrimitives.versionId,
       instanceId: characterPrimitives.instanceId,
       directSource: characterPrimitives.directSource,
       originItemId: characterPrimitives.originItemId,
@@ -186,17 +189,25 @@ export async function GET(
     if (c.slotTab) capSlotTabs.set(c.id, c.slotTab);
   }
 
-  let slots: ResolvedPrimitiveSlot[] = slotRows.map((row) => ({
+  const pinnedLinks = await effectivePrimitiveLinks(slotRows.map(row => ({
+    primitiveId: row.primitiveId, versionId: row.versionId,
+    primitive: { id: row.primitiveId, name: row.primitiveName, category: row.primitiveCategory,
+      hardModifiers: row.primitiveHardModifiers, isMirrorable: row.primitiveIsMirrorable,
+      mirrorVector: row.primitiveMirrorVector, consequenceBehavior: row.consequenceBehavior },
+  })));
+  let slots: ResolvedPrimitiveSlot[] = slotRows.map((row, index) => {
+    const primitive = pinnedLinks[index]!.primitive;
+    return ({
     primitiveId: row.primitiveId,
     instanceId: row.instanceId,
     directSource: row.directSource,
     originItemId: row.originItemId,
-    name: row.primitiveName,
-    category: row.primitiveCategory,
-    hardModifiers: (row.consequenceBehavior ? [] : row.primitiveHardModifiers ?? []) as ResolvedPrimitiveSlot["hardModifiers"],
+    name: primitive.name,
+    category: primitive.category,
+    hardModifiers: (primitive.consequenceBehavior ? [] : primitive.hardModifiers ?? []) as ResolvedPrimitiveSlot["hardModifiers"],
     isMirrored: row.isMirrored,
-    isMirrorable: row.primitiveIsMirrorable,
-    mirrorVector: row.primitiveMirrorVector,
+    isMirrorable: primitive.isMirrorable,
+    mirrorVector: primitive.mirrorVector,
     originHeritageId: row.originHeritageId,
     originCapabilityId: row.originCapabilityId,
     originEffectId: row.originEffectId,
@@ -209,7 +220,7 @@ export async function GET(
       row.originCapabilityId
         ? capSlotTabs.get(row.originCapabilityId) ?? null
         : (row.source ?? null),
-  }));
+  }); });
 
   const consequenceRecords = await db.select().from(characterConsequences).where(eq(characterConsequences.characterId, id));
   slots = consequenceAdjustedSlots(slots, await readWorkspace(id), consequenceRecords.filter(r => !r.deletedAt).map(r => r.occurrence));

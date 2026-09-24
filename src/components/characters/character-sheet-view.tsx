@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useTransition, useEffect, useCallback } from "react";
+import { useState, useMemo, useTransition, useEffect, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import {
@@ -46,6 +46,8 @@ import { VitalityDisplayCard } from "@/components/characters/vitality-display-ca
 import { CapabilityCard } from "@/components/characters/capability-card";
 import { ItemCard } from "@/components/characters/item-card";
 import { DmBonusEditor } from "@/components/characters/dm-bonus-editor";
+import { openCharacterEditor, parseCharacterEditorIntent, type CharacterEditorIntent } from "./workspace/editor-events";
+import type { CharacterPermission } from "@/lib/character/permission-policy";
 import { CharacterEditButton } from "@/components/characters/character-edit-button";
 import { CharacterVisibilityControl } from "@/components/characters/character-visibility-control";
 import { CharacterSharePanel } from "@/components/characters/character-share-panel";
@@ -322,7 +324,7 @@ export type CharacterSheetProps = {
   // viewer actions. OWNER sees Share panel + Edit/Clone.
   // EDITOR sees Propose flow + (currently) Edit/Clone disabled
   // until Part D wires it. VIEWER sees the sheet read-only.
-  viewerPermission?: "OWNER" | "EDITOR" | "VIEWER";
+  viewerPermission?: "OWNER" | "EDITOR" | "SUGGESTER" | "VIEWER";
   // Active shares for the OWNER's SharePanel. Empty array for
   // non-owners (the panel isn't rendered).
   ownerShares?: Array<{
@@ -330,6 +332,7 @@ export type CharacterSheetProps = {
     username: string;
     displayName: string | null;
     canEdit: boolean;
+    canSuggest?: boolean;
     createdAt: string;
   }>;
   // Pending proposal count + first pending id for the OWNER's
@@ -762,6 +765,43 @@ function buildAccessRules(links: ReadonlyArray<SheetPrimitiveLink>): ReadonlyArr
 
 export function CharacterSheetView(props: CharacterSheetProps) {
   const [tab, setTab] = useState<Tab>("capabilities");
+  const permission = props.viewerPermission ?? "VIEWER";
+  const canDraft = permission !== "VIEWER";
+  const canWrite = permission === "OWNER" || permission === "EDITOR";
+  const [localSheetMode, setLocalSheetMode] = useState<"BUILD" | "PLAY" | null>(null);
+  const [editorIntent, setEditorIntent] = useState<CharacterEditorIntent>("overview");
+  const sheetMode = canDraft ? localSheetMode ?? props.mode ?? "PLAY" : "PLAY";
+  const activeSheetMode = useRef(sheetMode);
+  activeSheetMode.current = sheetMode;
+  useEffect(() => {
+    const open = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (!canDraft || (detail?.characterId && detail.characterId !== props.id)) return;
+      if (!detail?.intent && activeSheetMode.current === "BUILD") return;
+      if (detail?.intent) setEditorIntent(parseCharacterEditorIntent(detail.intent));
+      setTab("capabilities");
+      setLocalSheetMode("BUILD");
+    };
+    const mode = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (!canDraft || (detail?.characterId && detail.characterId !== props.id)) return;
+      const next = typeof detail === "string" ? detail : detail?.mode;
+      if (next === "BUILD" || next === "PLAY") setLocalSheetMode(next);
+    };
+    window.addEventListener("sw-character-open-editor", open);
+    window.addEventListener("sw-character-open-atelier", open);
+    window.addEventListener("sw-character-build-mode", mode);
+    const params = new URLSearchParams(window.location.search);
+    if (canDraft && params.get("edit") === "1") {
+      setEditorIntent(parseCharacterEditorIntent(params.get("intent")));
+      setLocalSheetMode("BUILD");
+    }
+    return () => {
+      window.removeEventListener("sw-character-open-editor",open);
+      window.removeEventListener("sw-character-open-atelier",open);
+      window.removeEventListener("sw-character-build-mode",mode);
+    };
+  }, [canDraft, props.id]);
   const [levelUpConfirm, setLevelUpConfirm] = useState(false);
   // PLAN Eilxina Part F (Mashu 2026-09-10): the "Update all"
   // modal shares state across the in-page <header> indicator
@@ -1131,15 +1171,15 @@ export function CharacterSheetView(props: CharacterSheetProps) {
             now lives in the SheetIdentityHeader's expanded
             view (mobile). */}
         <div className="flex flex-wrap items-center gap-2">
-          <CharacterEditButton
+          {canDraft && <CharacterEditButton
             characterId={props.id}
             className="flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-card"
-            title="Open in the atelier for editing"
-          />
-          {(
+            title="Edit this character in its workshop"
+          />}
+          {canWrite && (
             <button
               type="button"
-              onClick={() => setLevelUpConfirm(true)}
+              onClick={() => openCharacterEditor(props.id,"foundation")}
               className="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
               <ArrowUp className="size-4" />
@@ -1158,11 +1198,11 @@ export function CharacterSheetView(props: CharacterSheetProps) {
               /api/creations/visibility with targetType='CHARACTER'.
               The server route already enforces authorship and keeps
               characters.isPublic in sync via our new syncIsPublic case. */}
-          <CharacterVisibilityControl
+          {permission === "OWNER" && <CharacterVisibilityControl
             characterId={props.id}
             initialVisibility={props.publicationVisibility}
             variant="compact"
-          />
+          />}
           {/* PLAN Eilxina Part E (Mashu 2026-09-09): Versions link.
               Visible to ALL viewers (read-only) so collaborators
               can audit the character's history. Restoring requires
@@ -1201,7 +1241,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
           <StaleUpdatesIndicatorWithBump
             characterId={props.id}
             count={staleCount}
-            mode={props.mode ?? "PLAY"}
+            mode={permission === "OWNER" ? sheetMode : "PLAY"}
             onOpenUpdateModal={() => setUpdateAllModalOpen(true)}
           />
           {/* PLAN Eilxina Part G (Mashu 2026-09-10): companion chip
@@ -1210,7 +1250,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
           <UnversionedSlotsIndicator
             characterId={props.id}
             count={unversionedCount}
-            mode={props.mode ?? "PLAY"}
+            mode={permission === "OWNER" ? sheetMode : "PLAY"}
           />
         </div>
       </header>
@@ -1280,13 +1320,14 @@ export function CharacterSheetView(props: CharacterSheetProps) {
              white-screen the entire sheet. The error message is
              shown inline so the user can keep using the other tabs. */
           <TabErrorBoundary tabName="Capabilities">
-          <CharacterWorkspace characterId={props.id} mode={props.mode ?? "PLAY"} directCapabilityCount={props.capabilityLinks.length} />
+          <CharacterWorkspace characterId={props.id} permission={permission} initialIntent={editorIntent} mode={sheetMode} directCapabilityCount={props.capabilityLinks.length} />
           </TabErrorBoundary>
         )}
         {tab === "items" && (
           <ItemsTab
             characterId={props.id}
-            mode={props.mode ?? "PLAY"}
+            mode={sheetMode}
+            permission={permission}
             items={props.itemLinks.map((l) => ({
               ...l.item,
               equipped: l.equipped,
@@ -1307,6 +1348,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         {tab === "notes" && (
           <NotesTab
             id={props.id}
+            permission={permission}
             initialNotes={props.notes ?? ""}
             showToast={showToast}
           />
@@ -1314,6 +1356,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         {tab === "backstory" && (
           <BackstoryTab
             id={props.id}
+            permission={permission}
             initial={props.backstory}
             showToast={showToast}
           />
@@ -1441,12 +1484,12 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         // count — separate from the stale count, drives a different
         // "Pin all" affordance in the header chip.
         unversionedCount={unversionedCount}
-        mode={props.mode}
+        mode={sheetMode}
         attrSum={attrSum}
         portraitUrl={props.portraitUrl ?? null}
         portraitFrame={props.portraitFrame}
         canLevelUp
-        onLevelUp={() => setLevelUpConfirm(true)}
+        {...(canWrite ? {onLevelUp: () => openCharacterEditor(props.id,"foundation")} : {})}
         buBalance={{
           progressionSpent: props.buBalance.progressionSpent,
           progressionPool: props.buBalance.progressionPool,
@@ -1474,6 +1517,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
           sharedWithUserId: "",
           sharedWithUsername: s.username,
           canEdit: s.canEdit,
+          canSuggest: s.canSuggest ?? false,
           createdAt: s.createdAt,
         }))}
         viewerPermission={props.viewerPermission}
@@ -3703,6 +3747,7 @@ function DirectPrimitivesCard({
 function ItemsTab({
   characterId,
   mode,
+  permission,
   items,
   encumbrance,
   // Phase 8.5 / Session H6 round 10 (Mashu
@@ -3714,6 +3759,7 @@ function ItemsTab({
 }: {
   characterId: string;
   mode: "BUILD" | "PLAY";
+  permission: CharacterPermission;
   items: Array<{
     id: string;
     name: string;
@@ -3814,6 +3860,7 @@ function ItemsTab({
     </ul>
   );
 
+  if (mode === "BUILD" && permission !== "VIEWER") return <CharacterWorkspace characterId={characterId} mode={mode} permission={permission} items />;
   return (
     <div className="v12-sheet-items">
       <section className="v12-inventory-command" aria-label="Inventory status and mode">
@@ -3822,18 +3869,8 @@ function ItemsTab({
           <h3>{mode === "BUILD" ? "Inventory workshop" : "Readied gear and carried goods"}</h3>
           <p>{mode === "BUILD" ? "Create, bring in, equip, and inspect items without leaving the sheet." : "Equipment that changes play stays separate from supplies, currency, and keepsakes."}</p>
         </div>
-        <BuildModeBanner characterId={characterId} initialMode={mode} />
+        <BuildModeBanner characterId={characterId} initialMode={mode} permission={permission} />
       </section>
-
-      {mode === "BUILD" && (
-        <details className="v12-inventory-workshop" aria-label="Item authoring workspace">
-          <summary className="v12-inventory-section-head">
-            <div><span>Workshop</span><h3>Add, create, or edit an item</h3></div>
-            <p>The same item authoring and Library flow used in the Atelier.</p>
-          </summary>
-          <div className="v12-inventory-workshop-body"><CharacterWorkspace characterId={characterId} mode={mode} items /></div>
-        </details>
-      )}
 
       <div className="v12-sheet-load-deck">
         <div className="v12-inventory-meter">
@@ -3898,10 +3935,12 @@ function ItemsTab({
 
 function NotesTab({
   id,
+  permission,
   initialNotes,
   showToast,
 }: {
   id: string;
+  permission: CharacterPermission;
   initialNotes: string;
   showToast: (msg: string, type: "success" | "error") => void;
 }) {
@@ -3960,6 +3999,7 @@ function NotesTab({
       ? "Unsaved changes"
       : "Up to date";
 
+  if (permission === "VIEWER" || permission === "SUGGESTER") return <div className="v12-sheet-notes"><section className="v12-notes-console"><h3>Notes</h3>{initialNotes.trim() ? <Markdown>{initialNotes}</Markdown> : <p className="text-muted-foreground">No notes yet.</p>}{permission === "SUGGESTER" && <button className="v12-metal-button" type="button" onClick={() => openCharacterEditor(id,"concept")}>Suggest changes to notes</button>}</section></div>;
   return (
     <div className="v12-sheet-notes">
       {/* ---- Player-visible notes (always editable) ---- */}
@@ -4066,97 +4106,20 @@ function formatRelative(d: Date): string {
 // is read-only with an "Edit in modal" button that opens the
 // edit modal. Saves go through POST /api/characters/[id]/backstory.
 
-function BackstoryTab({
-  id,
-  initial,
-  showToast,
-}: {
+function BackstoryTab({ id, initial, permission }: {
   id: string;
   initial: CharacterBackstory;
+  permission: CharacterPermission;
   showToast: (msg: string, type: "success" | "error") => void;
 }) {
-  const [data, setData] = useState<CharacterBackstory>(initial);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  async function save(updates: CharacterBackstory) {
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/characters/${id}/backstory`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ backstory: updates }),
-      });
-      const body = await res.json();
-      if (!res.ok) {
-        showToast(body.error ?? "Save failed.", "error");
-        return;
-      }
-      const cleaned = sanitizeBackstory(parseBackstory(body.backstory));
-      setData(cleaned);
-      setModalOpen(false);
-      showToast("Backstory saved.", "success");
-    } catch (err) {
-      showToast(
-        err instanceof Error ? err.message : "Network error.",
-        "error",
-      );
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  const empty = isBackstoryEmpty(data);
-
-  return (
-    <div className="v12-sheet-backstory">
-      <div className="v12-backstory-toolbar">
-        <p className="text-xs text-muted-foreground">
-          Four freeform fields. Edit in the modal — saves back to the
-          character's backstory column.
-        </p>
-        <button
-          type="button"
-          onClick={() => setModalOpen(true)}
-          className="v12-metal-button v12-metal-button--primary inline-flex min-h-8 shrink-0 items-center gap-1 whitespace-nowrap px-3 py-1.5 text-xs font-medium"
-        >
-          <Pencil className="size-3" />
-          {empty ? "Write backstory" : "Edit"}
-        </button>
-      </div>
-
-      {empty ? (
-        <div className="rounded-md border border-dashed border-border bg-card p-8 text-center">
-          <BookOpen className="mx-auto size-8 text-muted-foreground" />
-          <p className="mt-2 text-sm font-medium">No backstory yet.</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Add origin, motivation, ties, and flaw to bring the
-            character to life.
-          </p>
-        </div>
-      ) : (
-        <div className="v12-backstory-grid">
-          {BACKSTORY_FIELDS.map((f) => (
-            <BackstoryFieldCard
-              key={f.key}
-              label={f.label}
-              description={f.description}
-              iconKey={f.iconKey}
-              value={data[f.key]}
-            />
-          ))}
-        </div>
-      )}
-
-      <BackstoryEditModal
-        open={modalOpen}
-        initial={data}
-        onClose={() => setModalOpen(false)}
-        onSave={save}
-        saving={saving}
-      />
+  const empty = isBackstoryEmpty(initial);
+  return <div className="v12-sheet-backstory">
+    <div className="v12-backstory-toolbar">
+      <p className="text-xs text-muted-foreground">Their origins, ambitions, relationships, and inner conflicts.</p>
+      {permission !== "VIEWER" && <button type="button" onClick={() => openCharacterEditor(id,"backstory")} className="v12-metal-button v12-metal-button--primary inline-flex min-h-8 items-center gap-1 px-3 py-1.5 text-xs"><Pencil className="size-3"/>{empty ? "Write backstory" : "Edit backstory"}</button>}
     </div>
-  );
+    {empty ? <div className="rounded-md border border-dashed border-border bg-card p-8 text-center"><BookOpen className="mx-auto size-8 text-muted-foreground"/><p className="mt-2 text-sm font-medium">No backstory yet.</p><p className="mt-1 text-xs text-muted-foreground">Add origin, motivation, ties, and flaws to bring the character to life.</p></div> : <div className="v12-backstory-grid">{BACKSTORY_FIELDS.map(field => <BackstoryFieldCard key={field.key} label={field.label} description={field.description} iconKey={field.iconKey} value={initial[field.key]}/>)}</div>}
+  </div>;
 }
 
 const BACKSTORY_ICON_BY_KEY: Record<

@@ -130,7 +130,7 @@ const configuration = {
 export type LoadedNode = {
   row: Record<string, unknown>;
   links: Link[];
-  versions: { id: string; number: number; latest: boolean }[];
+  versions: { id: string; number: number; latest: boolean; deltaKind: string; snapshot: Record<string, unknown> }[];
 };
 /** One batch per entity type and depth, independent of character inventory size. */
 export async function loadWorkspaceNodes(
@@ -179,6 +179,8 @@ export async function loadWorkspaceNodes(
               id: String(v["id"]),
               number: Number(v["versionNumber"]),
               latest: Boolean(v["isLatest"]),
+              deltaKind: String(v["deltaKind"] ?? "FULL"),
+              snapshot: (v["snapshot"] ?? {}) as Record<string, unknown>,
             })),
         });
       }

@@ -8,8 +8,7 @@ import {
   type ReactNode,
   type ComponentProps,
 } from "react";
-import Link from "next/link";
-import { Eye, ExternalLink, Wrench } from "lucide-react";
+import { Eye, Wrench } from "lucide-react";
 import { PrimitiveForm } from "@/components/sandbox/primitive-form";
 import { CapabilityForm } from "@/components/sandbox/capability-form";
 import { EffectForm } from "@/components/sandbox/effect-form";
@@ -20,12 +19,14 @@ import { CapabilityFormPreview } from "@/components/sandbox/capability-form-prev
 import { EffectFormPreview } from "@/components/sandbox/effect-form-preview";
 import { HeritageFormPreview } from "@/components/sandbox/heritage-form-preview";
 import { ItemFormPreview } from "@/components/sandbox/item-form-preview";
-import { useDrawerSlot } from "@/components/layout/build-preview-drawer";
+import { PersistentAuthoringSurface } from "./persistent-authoring-surface";
+import { CharacterAuthoringProvider, type CharacterSlotMetadata } from "@/components/sandbox/character-authoring-context";
 import { WorkspaceLibraryPicker } from "./library-picker";
 import { canContain } from "@/lib/character/workspace/model";
 import type {
   WorkspaceGraph,
   WorkspaceNode,
+  WorkspaceEdge,
   EntityKind,
   EntityKey,
 } from "@/lib/character/workspace/model";
@@ -36,16 +37,26 @@ export function EntityComposer({
   kind,
   category,
   selection = [],
+  selectionEdges = [],
   saveRequest,
   onSaved,
+  sessionKey,
+  incomingPiece,
+  onPreviewChange,
+  integratedSources = false,
 }: {
   graph: WorkspaceGraph;
   node?: WorkspaceNode | undefined;
   kind: EntityKind;
   category: "LINEAGE" | "UPBRINGING" | "MANIFEST";
   selection?: EntityKey[];
+  selectionEdges?: WorkspaceEdge[];
   saveRequest: typeof fetch;
   onSaved: () => void;
+  sessionKey?: string;
+  incomingPiece?: ({ key: EntityKey; label: string; sequence: number } & CharacterSlotMetadata) | null;
+  onPreviewChange?: (preview: ReactNode) => void;
+  integratedSources?: boolean;
 }) {
   const [heritageKind, setHeritageKind] = useState(category);
   const [slotEvents] = useState(() => new EventTarget());
@@ -65,7 +76,13 @@ export function EntityComposer({
     id: string;
     label: string;
     sequence: number;
-  } | null>(null);
+  } & CharacterSlotMetadata | null>(null);
+  useEffect(() => { onPreviewChange?.(previewNode); }, [previewNode, onPreviewChange]);
+  useEffect(() => {
+    if (incomingPiece) void choose(incomingPiece.key, incomingPiece.label, incomingPiece).catch((cause) => setError(cause.message));
+    // Deliver each explicit selection once; graph updates must not repeat it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incomingPiece?.sequence]);
   const graph = useMemo(
     () => ({
       ...initialGraph,
@@ -86,7 +103,7 @@ export function EntityComposer({
         }),
       );
   }, [delivery, slotEvents]);
-  async function choose(key: EntityKey, label: string) {
+  async function choose(key: EntityKey, label: string, metadata: CharacterSlotMetadata = {}) {
     const [childKind, id] = key.split(":") as [EntityKind, string];
     if (!graph.nodes.some((n) => n.key === key)) {
       const endpoint =
@@ -122,6 +139,9 @@ export function EntityComposer({
       kind: childKind,
       id,
       label,
+      ...(metadata.isMirrored !== undefined ? { isMirrored: metadata.isMirrored } : {}),
+      ...(metadata.quantity !== undefined ? { quantity: metadata.quantity } : {}),
+      ...(metadata.role !== undefined ? { role: metadata.role } : {}),
       sequence: (previous?.sequence ?? 0) + 1,
     }));
     setLibrary(false);
@@ -131,6 +151,7 @@ export function EntityComposer({
       graph.nodes
         .filter((n) => n.kind === "primitive")
         .map((n) => ({
+          ...n.data,
           id: Number(n.id),
           name: n.name,
           category: String(n.data["category"]),
@@ -143,6 +164,7 @@ export function EntityComposer({
       graph.nodes
         .filter((n) => n.kind === "capability")
         .map((n) => ({
+          ...n.data,
           id: n.id,
           name: n.name,
           type: String(n.data["type"]),
@@ -154,7 +176,7 @@ export function EntityComposer({
     () =>
       graph.nodes
         .filter((n) => n.kind === "effect")
-        .map((n) => ({ id: n.id, name: n.name })),
+        .map((n) => ({ ...n.data, id: n.id, name: n.name })),
     [graph.nodes],
   );
   const previewFingerprintRef = useRef("");
@@ -271,13 +293,24 @@ export function EntityComposer({
       ? { ...node.data, primitiveLinks, capabilityLinks, effectLinks }
       : undefined,
   );
-  const initialPrimitiveIds = selection
+  const initialPrimitiveSlots: Record<number, CharacterSlotMetadata> = Object.fromEntries(selectionEdges
+    .filter((edge) => edge.child.startsWith("primitive:"))
+    .map((edge) => [Number(edge.child.slice(10)), {
+      isMirrored: edge.isMirrored,
+      ...(typeof edge.data?.["quantity"] === "number" ? { quantity: edge.data["quantity"] } : {}),
+      ...(typeof edge.data?.["role"] === "string" ? { role: edge.data["role"] } : {}),
+      ...(typeof edge.data?.["slotLabel"] === "string" ? { slotLabel: edge.data["slotLabel"] } : {}),
+      ...(typeof edge.data?.["notes"] === "string" ? { notes: edge.data["notes"] } : {}),
+    }]));
+  const initialMirroredIds = selectionEdges.filter((edge) => edge.isMirrored && edge.child.startsWith("primitive:")).map((edge) => Number(edge.child.slice(10)));
+  const selectedKeys = [...new Set([...selection, ...selectionEdges.map((edge) => edge.child)])];
+  const initialPrimitiveIds = selectedKeys
     .filter((k) => k.startsWith("primitive:"))
     .map((k) => Number(k.slice(10)));
-  const initialEffectIds = selection
+  const initialEffectIds = selectedKeys
     .filter((k) => k.startsWith("effect:"))
     .map((k) => k.slice(7));
-  const initialCapabilityIds = selection
+  const initialCapabilityIds = selectedKeys
     .filter((k) => k.startsWith("capability:"))
     .map((k) => k.slice(11));
   const shared = {
@@ -318,6 +351,7 @@ export function EntityComposer({
           availablePrimitives={primitives}
           availableEffects={effects}
           initialPrimitiveIds={initialPrimitiveIds}
+          initialPrimitiveSlots={initialPrimitiveSlots}
           initialEffectIds={initialEffectIds}
         />
       );
@@ -335,6 +369,7 @@ export function EntityComposer({
           }
           availablePrimitives={primitives}
           initialPrimitiveIds={initialPrimitiveIds}
+          initialPrimitiveSlots={initialPrimitiveSlots}
         />
       );
       break;
@@ -353,6 +388,7 @@ export function EntityComposer({
           availablePrimitives={primitives}
           availableCapabilities={capabilities}
           initialPrimitiveIds={initialPrimitiveIds}
+          initialMirroredIds={initialMirroredIds}
           initialCapabilityIds={initialCapabilityIds}
         />
       );
@@ -372,6 +408,7 @@ export function EntityComposer({
           availableCapabilities={capabilities}
           availableEffects={effects}
           initialPrimitiveIds={initialPrimitiveIds}
+          initialMirroredIds={initialMirroredIds}
           initialCapabilityIds={initialCapabilityIds}
           initialEffectIds={initialEffectIds}
         />
@@ -425,18 +462,19 @@ export function EntityComposer({
           </select>
         </label>
       )}
-      {compositionStudio}
+      {!integratedSources && compositionStudio}
+      {integratedSources && kinds.length > 0 && <p className="sheet-guidance">Use Find on the left to bring rules into this piece. Add the finished piece to your draft when it is ready.</p>}
+      {error && integratedSources && <p role="alert">{error}</p>}
       {form}
     </div>
   );
-  useDrawerSlot(useMemo(() => ({ build: authoringStudio, preview: previewNode }), [authoringStudio, previewNode]));
   return (
     <section className="v12-character-atelier" data-active-pane={studioTab}>
       <header className="v12-character-atelier-head">
         <div>
           <span>Character Atelier</span>
           <strong>{node ? `Editing ${node.name}` : `New ${kind}`}</strong>
-          <p>The saved result attaches to this character after review.</p>
+          <p>Add this piece to your draft, then review all changes together.</p>
         </div>
         <nav aria-label="Build and preview panes">
           <button type="button" aria-pressed={studioTab === "build"} onClick={() => setStudioTab("build")}>
@@ -448,17 +486,14 @@ export function EntityComposer({
           <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("sw-open-build-drawer", { detail: studioTab }))}>
             Focus
           </button>
-          <Link href={`/atelier?build=${kind}${node ? `&edit=${encodeURIComponent(node.id)}&intent=load` : "&new=1"}`}>
-            <ExternalLink className="size-3.5" /> Edit in Atelier
-          </Link>
         </nav>
       </header>
       <div className="v12-character-atelier-stage">
         <div className="v12-character-atelier-build" data-atelier-pane="build" data-drawer-build>
-          {authoringStudio}
+          <PersistentAuthoringSurface preview={previewNode}><CharacterAuthoringProvider characterId={graph.characterId} sessionKey={sessionKey ?? `${kind}:${node?.key ?? "new"}`} isEditing={!!node} destinationLabel={category.toLowerCase()}>{authoringStudio}</CharacterAuthoringProvider></PersistentAuthoringSurface>
         </div>
         <aside className="v12-character-atelier-preview" data-atelier-pane="preview" aria-label="Live entity preview">
-          <div className="v12-character-atelier-preview-label"><span>Live preview</span><b>Global entity renderer</b></div>
+          <div className="v12-character-atelier-preview-label"><span>Live preview</span><b>How it reads at the table</b></div>
           {previewNode}
         </aside>
       </div>

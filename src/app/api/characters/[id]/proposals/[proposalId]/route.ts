@@ -1,3 +1,5 @@
+import { validateVersionProposal } from "@/lib/character/validate-version-proposal";
+import { withCharacterMutation } from "@/lib/character/mutation-transaction";
 // =============================================================================
 // PATCH /api/characters/[id]/proposals/[proposalId] — PLAN Eilxina
 // Part C (Mashu 2026-09-09).
@@ -28,13 +30,14 @@
 
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   characterProposals,
   characterPrimitives,
   characterCapabilities,
   characterItems,
+  characterWorkspaceState,
 } from "@/db/schema";
 import {
   resolveCharacterAccess,
@@ -60,7 +63,7 @@ function parsePatchBody(body: unknown):
   return { ok: true, value: { action, note } };
 }
 
-export async function PATCH(
+async function handlePATCH(
   request: Request,
   { params }: {
     params: Promise<{ id: string; proposalId: string }>;
@@ -88,6 +91,8 @@ export async function PATCH(
         targetId: characterProposals.targetId,
         proposedVersionId: characterProposals.proposedVersionId,
         currentVersionId: characterProposals.currentVersionId,
+        proposedDiff: characterProposals.proposedDiff,
+        proposerUserId: characterProposals.proposerUserId,
       })
       .from(characterProposals)
       .where(
@@ -130,6 +135,11 @@ export async function PATCH(
       );
     }
 
+    // Revocation and the exact occurrence/version are rechecked at the application boundary.
+    await resolveCharacterAccess(proposal.proposerUserId, characterId, { require: "SUGGESTER" });
+    const instanceId = (proposal.proposedDiff as {instanceId?: string})?.instanceId;
+    const binding = await validateVersionProposal(characterId, proposal.targetKind, proposal.targetId, proposal.currentVersionId, proposal.proposedVersionId, instanceId);
+    if (!binding) return NextResponse.json({ error: "This occurrence changed or is ambiguous. Ask for an updated proposal; nothing was applied." }, { status: 409 });
     // APPROVE path — write the slot's versionId.
     const slotUpdated = await writeSlotVersionId({
       characterId,
@@ -140,6 +150,7 @@ export async function PATCH(
       // primitive when we computed the diff).
       targetId: proposal.targetId,
       proposedVersionId: proposal.proposedVersionId,
+      instanceId: binding.instanceId,
     });
 
     if (!slotUpdated) {
@@ -195,6 +206,7 @@ export async function PATCH(
     // Recompute BU so the next sheet render shows the new totals.
     // recomputeBuSpentAndBustCache already busts the resolver cache.
     await recomputeBuSpentAndBustCache(characterId);
+    await db.insert(characterWorkspaceState).values({ characterId, revision: 1 }).onConflictDoUpdate({ target: characterWorkspaceState.characterId, set: { revision: sql`${characterWorkspaceState.revision} + 1` } });
 
     return NextResponse.json(
       { status: "APPLIED", proposalId, slotUpdated: true },
@@ -220,12 +232,13 @@ async function writeSlotVersionId(args: {
   targetKind: "PRIMITIVE" | "CAPABILITY" | "ITEM";
   targetId: string;
   proposedVersionId: string;
+  instanceId?: string | undefined;
 }): Promise<boolean> {
   const { characterId, targetKind, targetId, proposedVersionId } = args;
   if (targetKind === "PRIMITIVE") {
     // targetId is an integer (primitive id). Drizzle bigserial.
     const primId = Number(targetId);
-    if (!Number.isFinite(primId)) return false;
+    if (!Number.isFinite(primId) || !args.instanceId) return false;
     const result = await db
       .update(characterPrimitives)
       .set({ versionId: proposedVersionId })
@@ -233,6 +246,7 @@ async function writeSlotVersionId(args: {
         and(
           eq(characterPrimitives.characterId, characterId),
           eq(characterPrimitives.primitiveId, primId),
+          eq(characterPrimitives.instanceId, args.instanceId),
         ),
       )
       .returning({ characterId: characterPrimitives.characterId });
@@ -265,4 +279,9 @@ async function writeSlotVersionId(args: {
     )
     .returning({ characterId: characterItems.characterId });
   return result.length > 0;
+}
+
+export async function PATCH(request: Request, context: {params: Promise<{id: string; proposalId: string}>}) {
+ const {id} = await context.params;
+ return withCharacterMutation(id, () => handlePATCH(request, context));
 }

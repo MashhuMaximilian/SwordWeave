@@ -11,6 +11,9 @@ import { FullscreenInit } from "@/components/layout/fullscreen-init";
 import "./globals.css";
 import "./v12.css";
 import "./character-forge.css";
+import "./character-workshop.css";
+import "./character-foundation.css";
+import "./character-suggestions.css";
 
 // Retain the previous typefaces behind the data-ui switch so setting
 // NEXT_PUBLIC_SW_UI_VERSION=legacy is a complete visual rollback.

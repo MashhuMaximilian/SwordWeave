@@ -52,7 +52,7 @@ export type AuthorableCompositionFamily =
 function display(value: unknown): string {
   if (Array.isArray(value)) return renderEquation(value as Operand[]);
   if (value && typeof value === "object" && "kind" in value) {
-    return tokenLabel(value as ValueToken);
+    return tokenLabel(value as ValueToken) ?? "[value]";
   }
   return String(value ?? "").trim();
 }

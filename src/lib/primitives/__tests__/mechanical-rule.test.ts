@@ -3,6 +3,9 @@ import { mechanicalDescriptionFromModifiers, parseAuthorableCompositionRule, ren
 import { CANONICAL_EXPRESSIONS } from "../canonical-market";
 
 describe("canonical mechanical sentences", () => {
+  it("does not crash catalog rendering for a legacy unknown value token", () => {
+    expect(renderMechanicalRule({ family: "GENERIC", operation: "add", target: "Defense", value: { kind: "legacy-unrecognized" } as never })).toContain("[value]");
+  });
   it("renders domain templates and expressions", () => {
     expect(renderMechanicalRule({family:"DOMAIN_ACCESS",bindings:{}})).toBe("Grant [domain] domain access.");
     expect(renderMechanicalRule({family:"DOMAIN_ACCESS",bindings:{domain:"fire"}})).toBe("Grant [fire] domain access.");

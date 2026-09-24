@@ -14,8 +14,7 @@
  *   the single source of truth for which mode the page is in.
  */
 
-import { useCallback, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import { Hammer, Loader2, ShieldCheck } from "lucide-react";
 
 export type SheetMode = "BUILD" | "PLAY";
@@ -25,43 +24,28 @@ interface BuildModeBannerProps {
   initialMode: SheetMode;
   /** Optional: which tab to focus the user on (used by /characters/new). */
   defaultTab?: string;
+  permission?: "OWNER" | "EDITOR" | "SUGGESTER" | "VIEWER" | undefined;
 }
 
 export function BuildModeBanner({
   characterId,
   initialMode,
+  permission = "VIEWER",
 }: BuildModeBannerProps) {
-  const router = useRouter();
   const [mode, setMode] = useState<SheetMode>(initialMode);
-  const [isPending, startTransition] = useTransition();
+  const isPending = false;
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => setMode(initialMode), [initialMode]);
   const toggle = useCallback(() => {
+    if (permission === "VIEWER") return;
     const next: SheetMode = mode === "BUILD" ? "PLAY" : "BUILD";
     setError(null);
-    startTransition(async () => {
-      try {
-        const res = await fetch(`/api/characters/${characterId}/mode`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ mode: next }),
-        });
-        if (!res.ok) {
-          const payload = (await res.json().catch(() => ({}))) as {
-            error?: string;
-          };
-          setError(payload.error ?? `Mode toggle failed (${res.status}).`);
-          return;
-        }
-        setMode(next);
-        router.refresh();
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Unexpected error toggling mode.",
-        );
-      }
-    });
-  }, [characterId, mode, router]);
+    setMode(next);
+    window.dispatchEvent(new CustomEvent("sw-character-build-mode", { detail: { characterId, mode: next } }));
+  }, [characterId, mode, permission]);
+
+  if (permission === "VIEWER") return null;
 
   if (mode === "BUILD") {
     return (
@@ -72,7 +56,7 @@ export function BuildModeBanner({
           </span>
           <div className="space-y-0.5">
             <p className="text-sm font-semibold text-foreground">
-              Character edit mode
+              {permission === "SUGGESTER" ? "Proposing changes" : "Character edit mode"}
             </p>
             <p className="hidden text-xs leading-5 text-muted-foreground sm:block sm:text-sm">
               Create pieces in the workspace, reuse pieces on this character,
@@ -88,7 +72,7 @@ export function BuildModeBanner({
           className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-primary/40 sm:self-auto"
         >
           {isPending && <Loader2 className="size-4 animate-spin" />}
-          Finish editing
+          Back to Play
         </button>
         {error && (
           <p
@@ -125,7 +109,7 @@ export function BuildModeBanner({
         className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-md border border-primary/50 bg-card px-4 py-2 text-sm font-semibold text-primary shadow-sm transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-60 sm:self-auto"
       >
         {isPending && <Loader2 className="size-4 animate-spin" />}
-        Open edit mode
+        {permission === "SUGGESTER" ? "Suggest changes" : "Open edit mode"}
       </button>
       {error && (
         <p

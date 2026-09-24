@@ -2,6 +2,7 @@ import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import * as s from "@/db/schema";
 import { loadWorkspaceNodes, type LoadedNode } from "./load-nodes";
+import { resolvePinnedNode } from "./pinned-versions";
 import type {
   EntityKey,
   EntityKind,
@@ -123,6 +124,16 @@ export async function readWorkspace(
         slot,
       );
   }
+  const pins = new Map<EntityKey, string[]>();
+  for (const [kind, slots, field] of [
+    ["primitive", primitiveSlots, "primitiveId"], ["capability", capabilitySlots, "capabilityId"],
+    ["heritage", heritageSlots, "heritageId"], ["item", itemSlots, "itemId"], ["effect", effectSlots, "effectId"],
+  ] as const) for (const slot of slots) {
+    const data = slot as unknown as Record<string, unknown>;
+    if (typeof data["versionId"] !== "string") continue;
+    const key: EntityKey = `${kind}:${data[field]}`;
+    pins.set(key, [...(pins.get(key) ?? []), data["versionId"]]);
+  }
   const loaded = new Map<EntityKey, LoadedNode>();
   while (pending.size) {
     const missing = [...pending].filter((k) => !loaded.has(k));
@@ -136,8 +147,9 @@ export async function readWorkspace(
     const kind = key.slice(0, split) as EntityKind;
     const id = key.slice(split + 1);
     const entry = loaded.get(key);
-    const row = entry?.row;
-    const links = entry?.links ?? [];
+    const effective = entry ? resolvePinnedNode(kind, entry, pins.get(key) ?? []) : null;
+    const row = effective?.row;
+    const links = effective?.links ?? [];
     if (kind === "heritage")
       for (const e of edges)
         if (e.child === key && e.parent === null)
@@ -147,15 +159,8 @@ export async function readWorkspace(
       for (const e of edges)
         if (e.child === key && e.parent === null)
           e.data = { ...e.data, isNotEquippable: row["isNotEquippable"] };
-    const latestVersionId =
-      entry?.versions
-        .filter((v) => v.latest)
-        .sort((a, b) => b.number - a.number)[0]?.id ?? null;
-    const versionId =
-      edges.find((e) => e.child === key && e.parent === null)?.versionId ??
-      latestVersionId;
-    row["workspaceVersionNumber"] =
-      entry?.versions.find((v) => v.id === versionId)?.number ?? null;
+    const latestVersionId = effective!.latestVersionId;
+    const versionId = effective!.versionId;
     nodes.set(key, {
       key,
       kind,

@@ -8,7 +8,7 @@ import { SortableBundleList,SortableMember } from "@/components/characters/works
 // Slots primitives (ITEM_AUGMENT category) + capabilities + effects.
 
 import { Trash2 } from "lucide-react";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useMemo, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   saveDraft,
@@ -22,6 +22,7 @@ import type {
 } from "./item-form-preview";
 import { IconSlot } from "@/components/icons/icon-slot";
 import type { IconSource } from "@/components/icons/icon-display";
+import { useCharacterAuthoring, useCharacterFormRecovery } from "./character-authoring-context";
 import { AuthorPublishFields } from "./author-publish-fields";
 import { saveIntentLabel } from "@/lib/publishing/save-intent";
 import {
@@ -120,11 +121,12 @@ export function ItemForm({
   saveRequest = fetch,
   slotEvents,
   initialPrimitiveIds = [],
+  initialMirroredIds = [],
   initialEffectIds = [],
   initialCapabilityIds = [],
-  availablePrimitives,
-  availableCapabilities,
-  availableEffects,
+  availablePrimitives: sourcePrimitives,
+  availableCapabilities: sourceCapabilities,
+  availableEffects: sourceEffects,
   intent,
   sourceId: _sourceId, // Phase 2: kept for the future when forms use sourceId in the body; the PATCH route reads it from the URL.
   onStateChange,
@@ -134,6 +136,7 @@ export function ItemForm({
   saveRequest?: typeof fetch;
   slotEvents?: EventTarget;
   initialPrimitiveIds?: number[];
+  initialMirroredIds?: number[];
   initialEffectIds?: string[];
   initialCapabilityIds?: string[];
   initialItem?: ItemRow | null;
@@ -184,6 +187,12 @@ export function ItemForm({
   onSaved?: (item: ItemRow) => void;
   onReset?: () => void;
 }) {
+  const characterAuthoring = useCharacterAuthoring();
+  const [recoveredCatalog, setRecoveredCatalog] = useState<{ primitives: typeof sourcePrimitives; capabilities: typeof sourceCapabilities; effects: typeof sourceEffects } | null>(null);
+  const availablePrimitives = useMemo(() => [...sourcePrimitives, ...(recoveredCatalog?.primitives ?? []).filter((entry) => !sourcePrimitives.some((current) => current.id === entry.id))], [sourcePrimitives, recoveredCatalog]);
+  const availableCapabilities = useMemo(() => [...sourceCapabilities, ...(recoveredCatalog?.capabilities ?? []).filter((entry) => !sourceCapabilities.some((current) => current.id === entry.id))], [sourceCapabilities, recoveredCatalog]);
+  const availableEffects = useMemo(() => [...sourceEffects, ...(recoveredCatalog?.effects ?? []).filter((entry) => !sourceEffects.some((current) => current.id === entry.id))], [sourceEffects, recoveredCatalog]);
+
   const [orderChanged,setOrderChanged]=useState(false);
   const [form, setForm] = useState<ItemFormState>(blankForm);
   const [primitiveIds, setPrimitiveIds] = useState<number[]>(initialPrimitiveIds);
@@ -191,7 +200,7 @@ export function ItemForm({
   // mirrored. Same pattern as the template form — flat primitiveIds for
   // UI, primitiveSlots at payload-time.
   const [isMirroredIds, setIsMirroredIds] = useState<Set<number>>(
-    () => new Set<number>(),
+    () => new Set<number>(initialMirroredIds),
   );
   const [capabilityIds, setCapabilityIds] = useState<string[]>(initialCapabilityIds);
   const [effectIds, setEffectIds] = useState<string[]>(initialEffectIds);
@@ -199,9 +208,14 @@ export function ItemForm({
   const [isPending, startTransition] = useTransition();
   const [isDirty, setIsDirty] = useState(false);
   const router = useRouter();
+  const recovery = useCharacterFormRecovery("item", { catalog: { primitives: availablePrimitives.filter((entry) => primitiveIds.includes(entry.id)), capabilities: availableCapabilities.filter((entry) => capabilityIds.includes(entry.id)), effects: availableEffects.filter((entry) => effectIds.includes(entry.id)) }, form, primitiveIds, capabilityIds, effectIds, mirroredIds: [...isMirroredIds], orderChanged }, isDirty, (saved) => {
+    setRecoveredCatalog(saved.catalog); setForm(saved.form); setPrimitiveIds(saved.primitiveIds); setCapabilityIds(saved.capabilityIds); setEffectIds(saved.effectIds); setIsMirroredIds(new Set(saved.mirroredIds)); setOrderChanged(saved.orderChanged);
+    setIsDirty(true); setMessage("Restored your unfinished character piece.");
+  });
 
   const bootstrappedRef = useRef<string | null>(null);
   useEffect(() => {
+    if (recovery.restored) return;
     const id = initialItem?.id ?? null;
     if (bootstrappedRef.current === id) return;
     bootstrappedRef.current = id;
@@ -240,7 +254,7 @@ export function ItemForm({
     // Check for a saved draft (e.g. when the form unmounted in the panel
     // and remounted in the drawer). If a draft exists, restore all three
     // slot arrays from it instead of the initial data.
-    const draftKey = makeDraftKey("item", id);
+    const draftKey = makeDraftKey("item", id, characterAuthoring?.namespace);
     const draft = loadDraft(draftKey);
     if (draft) {
       setPrimitiveIds(draft.primitiveIds);
@@ -284,7 +298,7 @@ export function ItemForm({
     );
     setIsDirty(false); // pristine after load
     setMessage(
-      initialItem.userId
+      characterAuthoring ? "Editing this character’s draft. Apply changes after review." : initialItem.userId
         ? "Loaded your item for editing."
         : "Loaded library item. Saving creates your private copy.",
     );
@@ -294,6 +308,7 @@ export function ItemForm({
   // mode exit) or in the drawer, save the current primitiveIds/capabilityIds/
   // effectIds so the other instance can restore them on mount.
   useEffect(() => {
+    if (characterAuthoring) return;
     return () => {
       const id = initialItem?.id ?? null;
       const draftKey = makeDraftKey("item", id);
@@ -362,6 +377,7 @@ export function ItemForm({
         id: number | string;
         label: string;
         operation?: "add-reference";
+        isMirrored?: boolean;
       }>;
       if (e.detail.kind === "primitive") {
         const id =
@@ -370,6 +386,11 @@ export function ItemForm({
         setPrimitiveIds((prev) =>
           prev.includes(id) ? (e.detail.operation === "add-reference" ? prev : prev.filter((x) => x !== id)) : [...prev, id],
         );
+        if (e.detail.isMirrored !== undefined) setIsMirroredIds((previous) => {
+          const next = new Set(previous);
+          if (e.detail.isMirrored) next.add(id); else next.delete(id);
+          return next;
+        });
         setIsDirty(true);
         return;
       }
@@ -428,6 +449,7 @@ export function ItemForm({
   }
 
   function resetEditor() {
+    recovery.clear();
     setForm(blankForm);
     setPrimitiveIds([]);
     setCapabilityIds([]);
@@ -469,7 +491,7 @@ export function ItemForm({
       // the carried-but-not-equippable flag in every save
       // payload, including the legacy-form path.
       isNotEquippable: form.isNotEquippable,
-      isPublic: form.isPublic,
+      isPublic: characterAuthoring ? false : form.isPublic,
       sourceOrigin: form.sourceOrigin.trim() || null,
       tags: form.tags
         .split(",")
@@ -537,11 +559,12 @@ export function ItemForm({
 
       if (item) {
         window.dispatchEvent(new CustomEvent("sw:library-changed"));
+      recovery.clear();
       onSaved?.(item);
       }
       resetEditor();
-      router.refresh();
-      setMessage(`Item "${item?.name ?? "(unnamed)"}" saved.`);
+      if (!characterAuthoring) router.refresh();
+      setMessage(characterAuthoring ? "Saved to the character draft. Review changes before applying." : `Item "${item?.name ?? "(unnamed)"}" saved.`);
     });
   }
 
@@ -571,6 +594,7 @@ export function ItemForm({
             {initialItem ? "Edit Item" : "New Item"}
           </p>
           {(() => {
+            if (characterAuthoring) return null;
             const label = saveIntentLabel(
               intent ?? null,
               initialItem?.name ?? null,
@@ -997,6 +1021,8 @@ export function ItemForm({
         >
           {isPending
             ? "Saving..."
+            : characterAuthoring
+              ? characterAuthoring.isEditing ? "Update draft" : "Add to draft"
             : initialItem
               ? "Save Changes"
               : "Create Item"}

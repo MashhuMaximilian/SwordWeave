@@ -1,3 +1,6 @@
+import { hasDraftExecutionScope } from "./draft-scope";
+import { pinnedOperationIssue } from "./pinned-versions";
+import { isAuthorizedDraftExecution } from "./draft-scope";
 import { createHash, randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -158,9 +161,9 @@ export async function executeWorkspaceCommand(
       .from(characters)
       .where(eq(characters.id, characterId))
       .for("update");
-    if (!character || character.userId !== userId)
+    if (!character || (character.userId !== userId && !isAuthorizedDraftExecution(characterId, userId)))
       throw new Error("You do not own this character.");
-    if (character.mode !== "BUILD")
+    if (character.mode !== "BUILD" && !isAuthorizedDraftExecution(characterId, userId))
       throw new Error("Switch to BUILD to edit membership.");
     const [receipt] = await db
       .select()
@@ -193,6 +196,8 @@ export async function executeWorkspaceCommand(
       throw new WorkspaceConflict(
         "The character changed. Your draft is retained; review the latest character before saving.",
       );
+    const pinIssue = pinnedOperationIssue(graph, command, hasDraftExecutionScope());
+    if (pinIssue) throw new WorkspaceConflict(pinIssue);
     const target = graph.nodes.find((n) => n.key === command.target);
     if (!target)
       throw new WorkspaceConflict("This entity is no longer on the character.");
@@ -577,6 +582,7 @@ export async function executeWorkspaceCommand(
         revision: added["revision"],
         buSpent: added["buSpent"],
         memberships: added["memberships"],
+        replacements: { ...replacements, ...((added["replacements"] ?? {}) as Record<string, EntityKey>) },
         move: {
           sourceCommandId,
           destinationCommandId,

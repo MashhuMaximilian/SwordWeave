@@ -113,7 +113,7 @@ export async function materializeWorkspace(
               characterId: id,
               primitiveId: Number(node.id),
               acquiredAtLevel: level,
-              versionId: node.latestVersionId,
+              versionId: node.versionId,
               slotSource: resolveSlotSource({
                 entity: {
                   userId: node.userId,
@@ -171,7 +171,7 @@ export async function materializeWorkspace(
           capabilityId: node.id,
           originHeritageId,
           acquiredAtLevel: level,
-          versionId: node.latestVersionId,
+          versionId: node.versionId,
           slotSource: resolveSlotSource({
             entity: {
               userId: node.userId,

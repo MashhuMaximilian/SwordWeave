@@ -9,12 +9,13 @@ import { SortableBundleList,SortableMember } from "@/components/characters/works
 // PATCH (update via initialCapability).
 
 import { Trash2 } from "lucide-react";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useMemo, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type {
   CapabilityFormState,
   CapabilitySlot,
 } from "./capability-form-preview";
+import { type CharacterSlotMetadata, useCharacterAuthoring, useCharacterFormRecovery } from "./character-authoring-context";
 import { AuthorPublishFields } from "./author-publish-fields";
 import { saveIntentLabel } from "@/lib/publishing/save-intent";
 import { IconSlot } from "@/components/icons/icon-slot";
@@ -158,9 +159,10 @@ export function CapabilityForm({
   saveRequest = fetch,
   slotEvents,
   initialPrimitiveIds = [],
+  initialPrimitiveSlots = {},
   initialEffectIds = [],
-  availablePrimitives,
-  availableEffects,
+  availablePrimitives: sourcePrimitives,
+  availableEffects: sourceEffects,
   intent,
   sourceId: _sourceId, // Phase 2: kept for the future when forms use sourceId in the body; the PATCH route reads it from the URL.
   onStateChange,
@@ -170,6 +172,7 @@ export function CapabilityForm({
   saveRequest?: typeof fetch;
   slotEvents?: EventTarget;
   initialPrimitiveIds?: number[];
+  initialPrimitiveSlots?: Record<number, CharacterSlotMetadata>;
   initialEffectIds?: string[];
   initialCapability?: CapabilityRow | null;
   availablePrimitives: Array<{
@@ -205,13 +208,18 @@ export function CapabilityForm({
   onSaved?: (capability: CapabilityRow) => void;
   onReset?: () => void;
 }) {
+  const characterAuthoring = useCharacterAuthoring();
+  const [recoveredCatalog, setRecoveredCatalog] = useState<{ primitives: typeof sourcePrimitives; effects: typeof sourceEffects } | null>(null);
+  const availablePrimitives = useMemo(() => [...sourcePrimitives, ...(recoveredCatalog?.primitives ?? []).filter((entry) => !sourcePrimitives.some((current) => current.id === entry.id))], [sourcePrimitives, recoveredCatalog]);
+  const availableEffects = useMemo(() => [...sourceEffects, ...(recoveredCatalog?.effects ?? []).filter((entry) => !sourceEffects.some((current) => current.id === entry.id))], [sourceEffects, recoveredCatalog]);
+
   const [orderChanged,setOrderChanged]=useState(false);
   const [form, setForm] = useState<CapabilityFormState>(blankForm);
   const scopedInitial=useRef<typeof initialCapability>(undefined);
   const [slots, setSlots] = useState<CapabilitySlot[]>(() => {
     const seeded = initialPrimitiveIds.flatMap((id, index) => {
       const primitive = availablePrimitives.find((entry) => entry.id === id);
-      return primitive ? [{ primitiveId: id, primitive, quantity: 1, isMirrored: false, role: defaultRoleForCategory(primitive.category), sortOrder: index, slotLabel: null }] : [];
+      return primitive ? [{ primitiveId: id, primitive, quantity: 1, isMirrored: false, role: defaultRoleForCategory(primitive.category), sortOrder: index, slotLabel: null, ...initialPrimitiveSlots[id] }] : [];
     });
     if (seeded.length || initialCapability) return seeded;
     const touch = availablePrimitives.find((primitive) => primitive.category === "RANGE" && primitive.name.toLowerCase() === "touch range");
@@ -226,9 +234,14 @@ export function CapabilityForm({
   const [isPending, startTransition] = useTransition();
   const [isDirty, setIsDirty] = useState(false);
   const router = useRouter();
+  const recovery = useCharacterFormRecovery("capability", { catalog: { primitives: availablePrimitives.filter((entry) => slots.some((slot) => slot.primitiveId === entry.id)), effects: availableEffects.filter((entry) => effectIds.includes(entry.id)) }, form, slots, effectIds, tableDraft, orderChanged }, isDirty, (saved) => {
+    setRecoveredCatalog(saved.catalog); setForm(saved.form); setSlots(saved.slots); setEffectIds(saved.effectIds); setTableDraft(saved.tableDraft); setOrderChanged(saved.orderChanged);
+    setIsDirty(true); setMessage("Restored your unfinished character piece.");
+  });
 
   const bootstrappedRef = useRef<string | number | null>(null);
   useEffect(() => {
+    if (recovery.restored) return;
     const id = initialCapability?.id ?? null;
     // Only bootstrap on first mount OR when the user loads a different
     // entity (different id). Re-bootstrapping resets the form to the new
@@ -241,7 +254,7 @@ export function CapabilityForm({
     // Check for a saved draft (e.g. when the form unmounted in the panel
     // and remounted in the drawer). If a draft exists for this entity,
     // restore the slots/effects from it instead of the initial data.
-    const draftKey = makeDraftKey("capability", id);
+    const draftKey = makeDraftKey("capability", id, characterAuthoring?.namespace);
     const draft = loadDraft(draftKey);
     setForm({
       name: initialCapability.name,
@@ -305,7 +318,7 @@ export function CapabilityForm({
     );
     setIsDirty(false); // pristine after load
     setMessage(
-      initialCapability.userId
+      characterAuthoring ? "Editing this character’s draft. Apply changes after review." : initialCapability.userId
         ? "Loaded your capability for editing."
         : "Loaded library capability. Saving creates your private copy.",
     );
@@ -315,6 +328,7 @@ export function CapabilityForm({
   // mode exit) or in the drawer, save the current slots/effects so the
   // other instance can restore them on mount.
   useEffect(() => {
+    if (characterAuthoring) return;
     return () => {
       const id = initialCapability?.id ?? null;
       const draftKey = makeDraftKey("capability", id);
@@ -354,12 +368,16 @@ export function CapabilityForm({
         id: number | string;
         label: string;
         operation?: "add-reference";
-      }>;
+      } & CharacterSlotMetadata>;
       if (e.detail.kind === "primitive") {
         const id =
           typeof e.detail.id === "string" ? Number(e.detail.id) : e.detail.id;
         if (!Number.isFinite(id)) return;
-        addSlot(id, e.detail.operation === "add-reference");
+        addSlot(id, e.detail.operation === "add-reference", {
+          ...(e.detail.isMirrored !== undefined ? { isMirrored: e.detail.isMirrored } : {}),
+          ...(e.detail.quantity !== undefined ? { quantity: e.detail.quantity } : {}),
+          ...(e.detail.role !== undefined ? { role: e.detail.role } : {}),
+        });
         return;
       }
       if (e.detail.kind === "effect") {
@@ -382,13 +400,13 @@ export function CapabilityForm({
     setForm((current) => ({ ...current, [field]: value }));
   }
 
-  function addSlot(primitiveId: number, referenceOnly = false) {
+  function addSlot(primitiveId: number, referenceOnly = false, metadata: CharacterSlotMetadata = {}) {
     const primitive = availablePrimitives.find((p) => p.id === primitiveId);
     if (!primitive) return;
-    const role = defaultRoleForCategory(primitive.category);
+    const role = metadata.role ?? defaultRoleForCategory(primitive.category);
     setIsDirty(true);
     setSlots((prev) => {
-      if (referenceOnly && prev.some(s=>s.primitiveId===primitiveId)) return prev;
+      if (referenceOnly && prev.some(s=>s.primitiveId===primitiveId)) return Object.keys(metadata).length ? prev.map((slot) => slot.primitiveId === primitiveId ? { ...slot, ...metadata } : slot) : prev;
       const next = {
         primitiveId,
         role,
@@ -398,6 +416,7 @@ export function CapabilityForm({
         // Phase 7 Q-M-UX: per-slot Mirrored flag.
         isMirrored: false,
         primitive,
+        ...metadata,
       };
       if (DEDICATED_ROLES.includes(role as DedicatedRole)) {
         const retained = prev.filter((slot) => resolvedSlotRole(slot) !== role);
@@ -445,6 +464,7 @@ export function CapabilityForm({
   }
 
   function resetEditor() {
+    recovery.clear();
     setForm(blankForm);
     const touch = availablePrimitives.find((primitive) => primitive.category === "RANGE" && primitive.name.toLowerCase() === "touch range");
     setSlots(touch ? [{ primitiveId: touch.id, primitive: touch, role: "RANGE", quantity: 1, isMirrored: false, sortOrder: 0, slotLabel: touch.name }] : []);
@@ -465,7 +485,7 @@ export function CapabilityForm({
       return;
     }
     if (slots.length === 0) {
-      setMessage("Add at least one primitive to compile.");
+      setMessage(characterAuthoring ? "Choose at least one rule for this capability." : "Add at least one primitive to compile.");
       return;
     }
 
@@ -480,7 +500,7 @@ export function CapabilityForm({
         .split(",")
         .map((t) => t.trim())
         .filter(Boolean),
-      isPublic: form.isPublic,
+      isPublic: characterAuthoring ? false : form.isPublic,
       primitiveSlots: slots.map((s) => ({
         primitiveId: s.primitiveId,
         role: s.role,
@@ -550,11 +570,12 @@ export function CapabilityForm({
 
       if (capability) {
         window.dispatchEvent(new CustomEvent("sw:library-changed"));
+      recovery.clear();
       onSaved?.(capability);
       }
       resetEditor();
-      router.refresh();
-      setMessage(`Capability "${capability?.name ?? "(unnamed)"}" saved.`);
+      if (!characterAuthoring) router.refresh();
+      setMessage(characterAuthoring ? "Saved to the character draft. Review changes before applying." : `Capability "${capability?.name ?? "(unnamed)"}" saved.`);
     });
   }
 
@@ -770,9 +791,10 @@ export function CapabilityForm({
       <div className="v12-capability-author-head flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <p className="text-xs font-semibold uppercase text-muted-foreground">
-            {initialCapability ? "Edit Capability" : "Compiler Inputs"}
+            {characterAuthoring ? (initialCapability ? "Edit capability" : "Build a capability") : initialCapability ? "Edit Capability" : "Compiler Inputs"}
           </p>
           {(() => {
+            if (characterAuthoring) return null;
             const label = saveIntentLabel(
               intent ?? null,
               initialCapability?.name ?? null,
@@ -1093,6 +1115,8 @@ export function CapabilityForm({
         >
           {isPending
             ? "Saving..."
+            : characterAuthoring
+              ? characterAuthoring.isEditing ? "Update draft" : "Add to draft"
             : initialCapability
               ? "Save Changes"
               : "Compile Capability"}

@@ -2,10 +2,11 @@
 // `row.userId !== userId` checks across /api/characters/* routes
 // + /characters/[id]/page.tsx.
 //
-// Three permission levels:
+// Character permission levels:
 //   - OWNER    (full read + write)        — the row's userId matches the caller
 //   - EDITOR   (full read + write)        — character_shares.canEdit=true
-//   - VIEWER   (read only)                — character_shares.canEdit=false
+//   - SUGGESTER (private drafts + proposals) — explicit active-share role extension
+//   - VIEWER   (read only)                — existing canEdit=false grants without that extension
 //   - NONE     (caller gets 403 / redirect)
 //
 // Design choices:
@@ -36,13 +37,14 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/db/client";
-import { characters, characterShares } from "@/db/schema";
+import { characters, characterShares, characterWorkspaceCommands } from "@/db/schema";
 import {
   resolveLocalAuthorIdentity,
   resolveUserIdByClerkId,
 } from "@/lib/auth/author-resolver";
 
-export type CharacterPermission = "OWNER" | "EDITOR" | "VIEWER";
+import { permissionFromShare, type CharacterPermission } from "./permission-policy";
+export type { CharacterPermission } from "./permission-policy";
 
 export interface ResolvedCharacter {
   /** The character row (minimal — id + userId + version columns + timestamps). */
@@ -124,7 +126,7 @@ async function resolveCharacter(
   }
 
   const shareRow = await db
-    .select({ canEdit: characterShares.canEdit })
+    .select({ id: characterShares.id, canEdit: characterShares.canEdit })
     .from(characterShares)
     .where(
       and(
@@ -139,9 +141,10 @@ async function resolveCharacter(
     return null;
   }
 
+  const suggestGrant = await db.select({ result: characterWorkspaceCommands.result }).from(characterWorkspaceCommands).where(and(eq(characterWorkspaceCommands.characterId, characterId), eq(characterWorkspaceCommands.commandId, `share-role:${shareRow[0]!.id}`))).limit(1);
   return {
     character: charRow,
-    permission: shareRow[0]!.canEdit ? "EDITOR" : "VIEWER",
+    permission: permissionFromShare(shareRow[0]!.canEdit, suggestGrant[0]?.result["canSuggest"] === true),
     viewerInternalId,
     ownerInternalId: null, // not needed for non-owner callers
   };
@@ -157,7 +160,7 @@ async function resolveCharacter(
  *     const { character, permission } = await canResolveCharacter(
  *       clerkUserId, characterId
  *     );
- *     if (permission === "VIEWER" && isMutating) return 403;
+ *     if (permission !== "OWNER" && permission !== "EDITOR" && isMutating) return 403;
  *     // ... use character ...
  *   } catch (e) {
  *     if (e instanceof CharacterAccessDenied) {

@@ -18,6 +18,7 @@ import type {
 import { IconSlot } from "@/components/icons/icon-slot";
 import type { IconSource } from "@/components/icons/icon-display";
 import type { PrimitiveFormState } from "./primitive-form-preview";
+import { useCharacterAuthoring, useCharacterFormRecovery } from "./character-authoring-context";
 import { AuthorPublishFields } from "./author-publish-fields";
 import { saveIntentLabel } from "@/lib/publishing/save-intent";
 import { computePrimitiveContentHash } from "@/lib/publishing/hash-content";
@@ -951,6 +952,7 @@ export function PrimitiveForm({
    */
   initialModifierDrafts?: ReadonlyArray<Partial<ModifierDraft>> | null;
 }) {
+  const characterAuthoring = useCharacterAuthoring();
   const contextualBlankForm = useMemo<PrimitiveFormState>(() => {
     const family = initialCategory
       ? MARKET_FAMILIES.find((item) => item.key === initialCategory)
@@ -999,11 +1001,16 @@ export function PrimitiveForm({
   // successful save (resetEditor runs there too).
   const [isDirty, setIsDirty] = useState(false);
   const router = useRouter();
+  const recovery = useCharacterFormRecovery("primitive", { form, familyKey, ruleKind, composition, modifierCounter, modifiers }, isDirty, (saved) => {
+    setForm(saved.form); setFamilyKey(saved.familyKey); setRuleKind(saved.ruleKind); setComposition(saved.composition); setModifierCounter(saved.modifierCounter); setModifiers(saved.modifiers);
+    setIsDirty(true); setMessage("Restored your unfinished character piece.");
+  });
   // Pre-load from initialPrimitive — only on mount or when the user
   // loads a different primitive (id changes). Without the id check,
   // switching rows in the library would not refresh the form.
   const bootstrappedRef = useRef<number | null>(null);
   useEffect(() => {
+    if (recovery.restored) return;
     const id = initialPrimitive?.id ?? null;
     if (bootstrappedRef.current === id) return;
     bootstrappedRef.current = id;
@@ -1065,7 +1072,7 @@ export function PrimitiveForm({
     setMessage((current) =>
       current
         ? current
-        : initialPrimitive.userId
+        : characterAuthoring ? "Editing this character’s draft. Apply changes after review." : initialPrimitive.userId
           ? "Loaded your primitive for editing."
           : "Loaded library primitive. Saving creates your private copy.",
     );
@@ -1118,7 +1125,7 @@ export function PrimitiveForm({
   // if the same caller re-renders the form with the same drafts.
   const draftsBootstrapRef = useRef(false);
   useEffect(() => {
-    if (draftsBootstrapRef.current) return;
+    if (recovery.restored || draftsBootstrapRef.current) return;
     if (
       !initialModifierDrafts ||
       !Array.isArray(initialModifierDrafts) ||
@@ -1206,6 +1213,7 @@ export function PrimitiveForm({
   }
 
   function resetEditor() {
+    recovery.clear();
     setForm(contextualBlankForm);
     setFamilyKey(
       familyForCategory(contextualBlankForm.category)?.key ??
@@ -1262,7 +1270,7 @@ export function PrimitiveForm({
         mechanicalOutputText: mechanicalSentence,
         mechanicalRule,
         narrativeRule: form.narrativeRule,
-        isPublic: form.isPublic,
+        isPublic: characterAuthoring ? false : form.isPublic,
         isMirrorable: form.isMirrorable,
         mirrorVector: form.mirrorVector,
         mirrorBuCredit: form.mirrorBuCredit,
@@ -1358,6 +1366,7 @@ export function PrimitiveForm({
         // Phase 1: pass dispatchOutcome through so the parent can
         // swap URL params on fork-path saves.
         window.dispatchEvent(new CustomEvent("sw:library-changed"));
+      recovery.clear();
       onSaved?.({ ...primitive, dispatchOutcome });
       }
       // Phase 1 fork path: if dispatchOutcome.swapTarget is true,
@@ -1375,7 +1384,7 @@ export function PrimitiveForm({
       if (!outcome?.swapTarget) {
         resetEditor();
       }
-      setMessage("Primitive saved to your account.");
+      setMessage(characterAuthoring ? "Saved to the character draft. Review changes before applying." : "Primitive saved to your account.");
       // Flip isSaving false SYNCHRONOUSLY before triggering router.refresh().
       // The refresh fires-and-forgets — we don't await it — so the button
       // label snaps back to "Save Primitive" the moment the server has
@@ -1384,7 +1393,7 @@ export function PrimitiveForm({
       setIsSaving(false);
       // void (not awaited): this is the naviguation refresh. It's a
       // fire-and-forget side effect, separate from the save completion.
-      void router.refresh();
+      if (!characterAuthoring) void router.refresh();
     })();
   }
 
@@ -1395,7 +1404,7 @@ export function PrimitiveForm({
       {
         name: form.name || "Unnamed Primitive",
         category: form.category,
-        isPublic: form.isPublic,
+        isPublic: characterAuthoring ? false : form.isPublic,
         costTier: form.costTier,
         buCost: Number(form.buCost) || 0,
         mechanicalOutputText: mechanicalSentence,
@@ -1433,6 +1442,7 @@ export function PrimitiveForm({
             otherwise from the form's current `name` field.
           */}
           {(() => {
+            if (characterAuthoring) return null;
             const label = saveIntentLabel(
               intent ?? null,
               initialPrimitive?.name ?? null,
@@ -1933,7 +1943,7 @@ export function PrimitiveForm({
           type="submit"
           data-sandbox-submit
         >
-          {isSaving ? "Saving..." : "Save Primitive"}
+          {isSaving ? "Saving..." : characterAuthoring ? (characterAuthoring.isEditing ? "Update draft" : "Add to draft") : "Save Primitive"}
         </button>
         {message ? (
           <p className="text-sm text-muted-foreground">{message}</p>

@@ -1,3 +1,5 @@
+import { effectivePrimitiveLinks } from "@/lib/character/workspace/effective-primitives";
+import { getSuggestionGrants } from "@/lib/character/suggestion-grants";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { and, eq, inArray, isNull } from "drizzle-orm";
@@ -112,6 +114,7 @@ export default async function CharacterSheetPage({
   });
 
   if (!row) notFound();
+  row.primitiveLinks = await effectivePrimitiveLinks(row.primitiveLinks);
 
   // PLAN Eilxina Part E follow-up (Mashu 2026-09-10): flat-attach each
   // slotted heritage's primitive + capability bundles onto row.heritageLinks[i].heritage.
@@ -284,6 +287,7 @@ export default async function CharacterSheetPage({
         )
     : [];
   const shareUserMap = new Map(shareUsers.map((u) => [u.id, u]));
+  const suggestionGrants = activeShareRows.length ? await getSuggestionGrants(id) : new Set<string>();
   const ownerShares = activeShareRows.map((r) => {
     const u = shareUserMap.get(r.sharedWithUserId);
     return {
@@ -291,6 +295,7 @@ export default async function CharacterSheetPage({
       username: u?.username ?? "(unknown)",
       displayName: u?.displayName ?? null,
       canEdit: r.canEdit,
+      canSuggest: suggestionGrants.has(r.id),
       createdAt:
         r.createdAt instanceof Date
           ? r.createdAt.toISOString()

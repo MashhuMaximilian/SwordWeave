@@ -1,5 +1,6 @@
 "use client";
 
+import { useCharacterAuthoring } from "./character-authoring-context";
 import { VisibilitySelect } from "@/components/library/visibility-select";
 import { useId } from "react";
 
@@ -26,6 +27,12 @@ export function AuthorPublishFields({
   sourcePlaceholder = "World, book, or setting",
 }: AuthorPublishFieldsProps) {
   const visibilityLabelId = useId();
+  const characterAuthoring = useCharacterAuthoring();
+  if (characterAuthoring) return <section className="v12-character-author-finish">
+    <h3>Ready for {characterAuthoring.destinationLabel}</h3>
+    <p>{characterAuthoring.isEditing ? "Update" : "Add to"} your draft using the button below. You can review the rule, its placement, and the complete budget before applying changes.</p>
+    <p>This stays within the character. It is not published to the Library.</p>
+  </section>;
   return (
     <div className="v12-author-publish">
       <section

@@ -9,6 +9,8 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronRight, ArrowLeft, Eye, Plus, Search, Trash2 } from "lucide-react";
+import { parseCharacterEditorIntent, type CharacterEditorIntent } from "./editor-events";
+import { CharacterBuildWorkspace } from "./character-build-workspace";
 import { BundleContents } from "./bundle-contents";
 import { WorkspaceSurface } from "./workspace-surface";
 import { WorkspaceEntityPreview } from "./workspace-entity-preview";
@@ -109,15 +111,60 @@ function supplyPathLabel(graph: WorkspaceGraph, path: ReturnType<typeof displayS
     : " · Live";
   return `${source}${mirrored}${version}`;
 }
-export function CharacterWorkspace({
+export function CharacterWorkspace(props: {
+  characterId: string;
+  mode: "BUILD" | "PLAY";
+  items?: boolean;
+  directCapabilityCount?: number;
+  permission?: "OWNER" | "EDITOR" | "SUGGESTER" | "VIEWER";
+  initialIntent?: CharacterEditorIntent;
+}) {
+  const permission = props.permission ?? "VIEWER";
+  const [intent, setIntent] = useState<CharacterEditorIntent>(props.initialIntent ?? "overview");
+  useEffect(() => { if (props.initialIntent) setIntent(props.initialIntent); }, [props.initialIntent]);
+  const [localMode, setLocalMode] = useState<"BUILD" | "PLAY" | null>(null);
+  useEffect(() => {
+    const change = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (detail?.characterId && detail.characterId !== props.characterId) return;
+      if (permission === "VIEWER") return;
+      const mode = typeof detail === "string" ? detail : detail?.mode;
+      if (mode === "BUILD" || mode === "PLAY") setLocalMode(mode);
+    };
+    const open = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (permission === "VIEWER" || (detail?.characterId && detail.characterId !== props.characterId)) return;
+      if (detail?.intent) setIntent(parseCharacterEditorIntent(detail.intent));
+      setLocalMode("BUILD");
+    };
+    window.addEventListener("sw-character-build-mode", change);
+    window.addEventListener("sw-character-open-atelier", open);
+    window.addEventListener("sw-character-open-editor", open);
+    return () => {
+      window.removeEventListener("sw-character-build-mode", change);
+      window.removeEventListener("sw-character-open-atelier", open);
+      window.removeEventListener("sw-character-open-editor", open);
+    };
+  }, [props.characterId, permission]);
+  useEffect(() => setLocalMode(null), [props.mode]);
+  const mode = localMode ?? props.mode;
+  if (mode === "BUILD" && permission !== "VIEWER") return <CharacterBuildWorkspace
+    characterId={props.characterId} initialRoot={props.items ? "ITEM" : "ALL"}
+    permission={permission} initialIntent={intent} onPlay={() => { setLocalMode("PLAY"); window.dispatchEvent(new CustomEvent("sw-character-build-mode", {detail:{characterId:props.characterId,mode:"PLAY"}})); }} />;
+  return <LegacyCharacterWorkspace {...props} mode="PLAY" />;
+}
+
+function LegacyCharacterWorkspace({
   characterId,
   mode,
+  permission = "VIEWER",
   items = false,
 }: {
   characterId: string;
   mode: "BUILD" | "PLAY";
   items?: boolean;
   directCapabilityCount?: number;
+  permission?: "OWNER" | "EDITOR" | "SUGGESTER" | "VIEWER";
 }) {
   const router = useRouter();
   const [graph, setGraph] = useState<WorkspaceGraph | null>(null);
@@ -180,13 +227,12 @@ export function CharacterWorkspace({
   const restrictions = activeRestrictions(conditions);
   useEffect(() => {
     const openAtelier = () => {
-      setPath([]);
+      if (mode === "PLAY") return;
       setPreview(false);
-      setComposer({ kind: items ? "item" : "primitive" });
     };
     window.addEventListener("sw-character-open-atelier", openAtelier);
     return () => window.removeEventListener("sw-character-open-atelier", openAtelier);
-  }, [items]);
+  }, [items, mode]);
   const storageKey = `sw:workspace:${characterId}:${items ? "items" : "capabilities"}`;
   const reload = useCallback(async () => {
     const response = await fetch(`/api/characters/${characterId}/workspace`, {
@@ -700,7 +746,7 @@ export function CharacterWorkspace({
         </div>
         <p>{lens === "expressions" ? "Capabilities and effects with their outputs" : "Every owned primitive with its source path"}</p>
         <div className="v12-projection-actions">
-          <BuildModeBanner characterId={characterId} initialMode={mode} />
+          <BuildModeBanner characterId={characterId} initialMode={mode} permission={permission} />
           <label>
             <Search className="size-4" aria-hidden="true" />
             <input aria-label="Search character pieces" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search…" />

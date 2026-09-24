@@ -1,5 +1,6 @@
 "use client";
 
+import { useCharacterAuthoring } from "./character-authoring-context";
 import { Children, isValidElement, useId, useState, type ReactNode, type ReactElement } from "react";
 
 export type AuthoringGuideKind = "primitive" | "effect" | "capability" | "lineage" | "upbringing" | "manifest" | "item";
@@ -57,6 +58,8 @@ export function AuthorChapter({ children }: { id: string; title: string; childre
 
 /** Keeps every field mounted: switching chapters never discards a draft. */
 export function AuthorChapters({ children, defaultActive, order, guideKind }: { children: ReactNode; defaultActive?: string; order?: string[]; guideKind?: AuthoringGuideKind }) {
+  const characterAuthoring = useCharacterAuthoring();
+  const chapterTitle = (id: string, title: string) => characterAuthoring && id === "publish" ? "Finish" : title;
   const prefix = useId();
   const chapters = Children.toArray(children).filter(isValidElement) as ReactElement<{
     id: string;
@@ -90,9 +93,9 @@ export function AuthorChapters({ children, defaultActive, order, guideKind }: { 
         const next = chapters[(index + (event.key === "ArrowRight" ? 1 : chapters.length - 1)) % chapters.length]!;
         setActive(next.props.id);
         document.getElementById(`${prefix}-${next.props.id}-tab`)?.focus();
-      }}>{props.title}</button>)}
+      }}>{chapterTitle(props.id, props.title)}</button>)}
     </div>
     {validationMessage ? <p role="alert">{validationMessage}</p> : null}
-    {chapters.map(({ props }) => <section key={props.id} role="tabpanel" id={`${prefix}-${props.id}`} aria-labelledby={`${prefix}-${props.id}-tab`} data-author-chapter={props.id} hidden={active !== props.id} className="v12-author-chapter"><div className="v12-form-chapter"><p className="v12-kicker">{props.title}</p></div>{props.children}</section>)}
+    {chapters.map(({ props }) => <section key={props.id} role="tabpanel" id={`${prefix}-${props.id}`} aria-labelledby={`${prefix}-${props.id}-tab`} data-author-chapter={props.id} hidden={active !== props.id} className="v12-author-chapter"><div className="v12-form-chapter"><p className="v12-kicker">{chapterTitle(props.id, props.title)}</p></div>{props.children}</section>)}
   </div>;
 }

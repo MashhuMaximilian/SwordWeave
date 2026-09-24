@@ -1,3 +1,4 @@
+import { withCharacterMutation } from "@/lib/character/mutation-transaction";
 // =============================================================================
 // DELETE /api/characters/[id]/shares/[shareId] — PLAN Eilxina Part C
 // (Mashu 2026-09-09).
@@ -18,7 +19,7 @@ import {
   CharacterAccessDenied,
 } from "@/lib/character/can-resolve-character";
 
-export async function DELETE(
+async function handleDELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string; shareId: string }> },
 ) {
@@ -75,4 +76,9 @@ export async function DELETE(
       { status: 500 },
     );
   }
+}
+
+export async function DELETE(request: Request, context: {params: Promise<{id: string; shareId: string}>}) {
+ const {id} = await context.params;
+ return withCharacterMutation(id, () => handleDELETE(request, context));
 }

@@ -1,3 +1,4 @@
+import { meetsCharacterPermission } from "./permission-policy";
 // =============================================================================
 // resolve-character-access — PLAN Eilxina Part C (Mashu 2026-09-09).
 //
@@ -33,12 +34,7 @@ export async function resolveCharacterAccess(
 ): Promise<ResolvedCharacter> {
   const resolved = await canResolveCharacter(clerkUserId, characterId);
   if (opts.require) {
-    const rank: Record<CharacterPermission, number> = {
-      OWNER: 2,
-      EDITOR: 1,
-      VIEWER: 0,
-    };
-    if (rank[resolved.permission] < rank[opts.require]) {
+    if (!meetsCharacterPermission(resolved.permission, opts.require)) {
       throw new CharacterAccessDenied(characterId);
     }
   }

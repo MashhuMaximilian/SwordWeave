@@ -191,9 +191,10 @@ export interface SheetIdentityHeaderProps {
     readonly sharedWithUserId: string;
     readonly sharedWithUsername: string | null;
     readonly canEdit: boolean;
+    readonly canSuggest?: boolean;
     readonly createdAt: string;
   }> | undefined;
-  readonly viewerPermission?: "OWNER" | "EDITOR" | "VIEWER" | "PUBLIC_READER" | "NOT_FOUND" | undefined;
+  readonly viewerPermission?: "OWNER" | "EDITOR" | "SUGGESTER" | "VIEWER" | "PUBLIC_READER" | "NOT_FOUND" | undefined;
 }
 
 export function SheetIdentityHeader({
@@ -362,10 +363,10 @@ export function SheetIdentityHeader({
               <span className="font-semibold uppercase text-muted-foreground">
                 DM Bonus
               </span>
-              <DmBonusEditor
+              {viewerPermission === "OWNER" || viewerPermission === "EDITOR" ? <DmBonusEditor
                 characterId={characterId}
                 initialValue={buBalance.dmBonusBu}
-              />
+              /> : <span>{buBalance.dmBonusBu}</span>}
               <button type="button" onClick={() => setBuPopup("pools")} aria-label="Explain BU pools">?</button>
             </span>
             <button type="button" onClick={() => setBuPopup("pools")} className="v12-identity-pool-card inline-flex items-center gap-1">
@@ -552,13 +553,13 @@ export function SheetIdentityHeader({
           {/* Edit / Clone / Level Up — Mashu 2026-07-28:
               "we need the clone and level up buttons too there." */}
           <div className="v12-identity-actions mt-3 flex flex-wrap items-center gap-2">
-            <div className="v12-identity-action-group is-atelier">
+            {(viewerPermission === "OWNER" || viewerPermission === "EDITOR" || viewerPermission === "SUGGESTER") && <div className="v12-identity-action-group is-atelier">
               <CharacterEditButton
                 characterId={characterId}
-                label="Edit in Atelier"
+                label={viewerPermission === "SUGGESTER" ? "Suggest changes" : "Edit character"}
                 className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium hover:bg-secondary"
               />
-            </div>
+            </div>}
             <div className="v12-identity-action-group is-character">
               <Link
                 href={`/characters/${characterId}/clone`}
@@ -584,18 +585,18 @@ export function SheetIdentityHeader({
                 picker inside the expanded panel. Same component used
                 in the in-page header (desktop); only difference is the
                 variant — compact chips fit in this dense action row. */}
-            <CharacterVisibilityControl
+            {viewerPermission === "OWNER" && <CharacterVisibilityControl
               characterId={characterId}
               initialVisibility={publicationVisibility}
               variant="compact"
-            />
+            />}
             {/* PLAN Eilxina Part D (Mashu 2026-09-09): mobile stale-updates
                 chip. Matches the in-page indicator; PLAY shows the count
                 passively, BUILD lets the user click to update all. */}
             <StaleUpdatesIndicator
               count={staleUpdatesCount}
-              mode={mode ?? "PLAY"}
-              {...((mode ?? "PLAY") !== "PLAY"
+              mode={viewerPermission === "OWNER" ? mode ?? "PLAY" : "PLAY"}
+              {...(viewerPermission === "OWNER" && (mode ?? "PLAY") !== "PLAY"
                 ? { onUpdateAll: () => setUpdateModalOpen(true) }
                 : {})}
             />
@@ -608,7 +609,7 @@ export function SheetIdentityHeader({
             <UnversionedSlotsIndicator
               count={unversionedCount}
               characterId={characterId}
-              mode={mode ?? "PLAY"}
+              mode={viewerPermission === "OWNER" ? mode ?? "PLAY" : "PLAY"}
             />
             {/* PLAN Eilxina Part E (Mashu 2026-09-10): Versions link
                 in the drawer. The in-page <header> is hidden by
@@ -632,6 +633,7 @@ export function SheetIdentityHeader({
                   username: s.sharedWithUsername ?? "(unknown)",
                   displayName: null,
                   canEdit: s.canEdit,
+                  canSuggest: s.canSuggest ?? false,
                   createdAt: s.createdAt,
                 }))}
               />

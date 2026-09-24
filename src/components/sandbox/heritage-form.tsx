@@ -9,7 +9,7 @@ import { SortableBundleList,SortableMember } from "@/components/characters/works
 // PATCH support via initialTemplate.
 
 import { Trash2 } from "lucide-react";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useMemo, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   saveDraft,
@@ -21,6 +21,7 @@ import type {
   HeritageFormState,
   TemplateSlot,
 } from "./heritage-form-preview";
+import { useCharacterAuthoring, useCharacterFormRecovery } from "./character-authoring-context";
 import { AuthorPublishFields } from "./author-publish-fields";
 import { IconSlot } from "@/components/icons/icon-slot";
 import type { IconSource } from "@/components/icons/icon-display";
@@ -118,8 +119,8 @@ export function HeritageForm({
   initialPrimitiveIds = [],
   initialCapabilityIds = [],
   initialMirroredIds = [],
-  availablePrimitives,
-  availableCapabilities,
+  availablePrimitives: sourcePrimitives,
+  availableCapabilities: sourceCapabilities,
   intent,
   sourceId: _sourceId, // Phase 2: kept for the future when forms use sourceId in the body; the PATCH route reads it from the URL.
   onStateChange,
@@ -174,6 +175,11 @@ export function HeritageForm({
   onSaved?: (template: HeritageRow) => void | boolean | Promise<void | boolean>;
   onReset?: () => void;
 }) {
+  const characterAuthoring = useCharacterAuthoring();
+  const [recoveredCatalog, setRecoveredCatalog] = useState<{ primitives: typeof sourcePrimitives; capabilities: typeof sourceCapabilities } | null>(null);
+  const availablePrimitives = useMemo(() => [...sourcePrimitives, ...(recoveredCatalog?.primitives ?? []).filter((entry) => !sourcePrimitives.some((current) => current.id === entry.id))], [sourcePrimitives, recoveredCatalog]);
+  const availableCapabilities = useMemo(() => [...sourceCapabilities, ...(recoveredCatalog?.capabilities ?? []).filter((entry) => !sourceCapabilities.some((current) => current.id === entry.id))], [sourceCapabilities, recoveredCatalog]);
+
   const [orderChanged,setOrderChanged]=useState(false);
   const [form, setForm] = useState<HeritageFormState>({
     ...blankForm,
@@ -195,9 +201,14 @@ export function HeritageForm({
   const [isPending, startTransition] = useTransition();
   const [isDirty, setIsDirty] = useState(false);
   const router = useRouter();
+  const recovery = useCharacterFormRecovery("heritage", { catalog: { primitives: availablePrimitives.filter((entry) => primitiveIds.includes(entry.id)), capabilities: availableCapabilities.filter((entry) => capabilityIds.includes(entry.id)) }, form, primitiveIds, capabilityIds, mirroredIds: [...isMirroredIds], orderChanged }, isDirty, (saved) => {
+    setRecoveredCatalog(saved.catalog); setForm(saved.form); setPrimitiveIds(saved.primitiveIds); setCapabilityIds(saved.capabilityIds); setIsMirroredIds(new Set(saved.mirroredIds)); setOrderChanged(saved.orderChanged);
+    setIsDirty(true); setMessage("Restored your unfinished character piece.");
+  });
 
   const bootstrappedRef = useRef<string | null>(null);
   useEffect(() => {
+    if (recovery.restored) return;
     const id = initialTemplate?.id ?? null;
     if (bootstrappedRef.current === id) return;
     bootstrappedRef.current = id;
@@ -223,7 +234,7 @@ export function HeritageForm({
     // Check for a saved draft (e.g. when the form unmounted in the panel
     // and remounted in the drawer). If a draft exists, restore primitiveIds
     // and capabilityIds from it instead of the initial data.
-    const draftKey = makeDraftKey("template", id);
+    const draftKey = makeDraftKey("template", id, characterAuthoring?.namespace);
     const draft = loadDraft(draftKey);
     if (draft) {
       setPrimitiveIds(draft.primitiveIds);
@@ -264,7 +275,7 @@ export function HeritageForm({
     );
     setIsDirty(false); // pristine after load
     setMessage(
-      initialTemplate.userId
+      characterAuthoring ? "Editing this character’s draft. Apply changes after review." : initialTemplate.userId
         ? "Loaded your template for editing."
         : "Loaded library template. Saving creates your private copy.",
     );
@@ -280,7 +291,7 @@ export function HeritageForm({
   // the parent's initialKind changes AND we're not editing an existing
   // template (edits must preserve the loaded template's kind).
   useEffect(() => {
-    if (initialTemplate) return; // editing — don't override loaded kind
+    if (recovery.restored || initialTemplate) return; // editing — don't override loaded kind
     const targetKind = initialKind ?? "LINEAGE";
     setForm((f) => (f.kind === targetKind ? f : { ...f, kind: targetKind }));
   }, [initialKind, initialTemplate]);
@@ -289,6 +300,7 @@ export function HeritageForm({
   // mode exit) or in the drawer, save the current primitiveIds/capabilityIds
   // so the other instance can restore them on mount.
   useEffect(() => {
+    if (characterAuthoring) return;
     return () => {
       const id = initialTemplate?.id ?? null;
       const draftKey = makeDraftKey("template", id);
@@ -358,6 +370,7 @@ export function HeritageForm({
         id: number | string;
         label: string;
         operation?: "add-reference";
+        isMirrored?: boolean;
       }>;
       if (e.detail.kind === "primitive") {
         const id =
@@ -366,6 +379,11 @@ export function HeritageForm({
         setPrimitiveIds((prev) =>
           prev.includes(id) ? (e.detail.operation === "add-reference" ? prev : prev.filter((x) => x !== id)) : [...prev, id],
         );
+        if (e.detail.isMirrored !== undefined) setIsMirroredIds((previous) => {
+          const next = new Set(previous);
+          if (e.detail.isMirrored) next.add(id); else next.delete(id);
+          return next;
+        });
         setIsDirty(true);
         return;
       }
@@ -412,6 +430,7 @@ export function HeritageForm({
   }
 
   function resetEditor() {
+    recovery.clear();
     setForm({ ...blankForm, kind: initialKind ?? "LINEAGE" });
     setPrimitiveIds([]);
     setCapabilityIds([]);
@@ -438,7 +457,7 @@ export function HeritageForm({
       imageUrl: form.imageUrl.trim() || null,
       description: form.description.trim() || null,
       suggestedTraits: form.suggestedTraits.trim() || null,
-      isPublic: form.isPublic,
+      isPublic: characterAuthoring ? false : form.isPublic,
       // Phase 8 rev 10: heritage parity — items/capabilities/effects
       // already POST sourceOrigin + tags. Heritage was missing both;
       // adding them here + on the server closes the gap. Tags are
@@ -512,10 +531,11 @@ export function HeritageForm({
 
       if (template) {
         if ((await onSaved?.(template)) === false) return;
+        recovery.clear();
       }
       resetEditor();
-      router.refresh();
-      setMessage(`Template "${template?.name ?? "(unnamed)"}" saved.`);
+      if (!characterAuthoring) router.refresh();
+      setMessage(characterAuthoring ? "Saved to the character draft. Review changes before applying." : `Template "${template?.name ?? "(unnamed)"}" saved.`);
     });
   }
 
@@ -542,6 +562,7 @@ export function HeritageForm({
               : `New ${kindSingular(form.kind)}`}
           </p>
           {(() => {
+            if (characterAuthoring) return null;
             const label = saveIntentLabel(
               intent ?? null,
               initialTemplate?.name ?? null,
@@ -768,6 +789,8 @@ export function HeritageForm({
         >
           {isPending
             ? "Saving..."
+            : characterAuthoring
+              ? characterAuthoring.isEditing ? "Update draft" : "Add to draft"
             : initialTemplate
               ? "Save Changes"
               : `Create ${kindSingular(form.kind)}`}

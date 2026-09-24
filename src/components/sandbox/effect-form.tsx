@@ -8,9 +8,10 @@ import { SortableBundleList,SortableMember } from "@/components/characters/works
 // Fires onStateChange so the page can render a live preview.
 // Save logic lives here. Library + preview + saved-effects are owned by the page.
 import { Trash2 } from "lucide-react";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useMemo, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { EffectFormState, SlottedPrimitive } from "./effect-form-preview";
+import { type CharacterSlotMetadata, useCharacterAuthoring, useCharacterFormRecovery } from "./character-authoring-context";
 import { AuthorPublishFields } from "./author-publish-fields";
 import { saveIntentLabel } from "@/lib/publishing/save-intent";
 import { computeEffectContentHash } from "@/lib/publishing/hash-content";
@@ -90,7 +91,8 @@ export function EffectForm({
   saveRequest = fetch,
   slotEvents,
   initialPrimitiveIds = [],
-  availablePrimitives,
+  initialPrimitiveSlots = {},
+  availablePrimitives: sourcePrimitives,
   intent,
   sourceId: _sourceId, // Phase 2: kept for the future when forms use sourceId in the body; the PATCH route reads it from the URL.
   onStateChange,
@@ -100,6 +102,7 @@ export function EffectForm({
   saveRequest?: typeof fetch;
   slotEvents?: EventTarget;
   initialPrimitiveIds?: number[];
+  initialPrimitiveSlots?: Record<number, CharacterSlotMetadata>;
   initialEffect?: EffectRow | null;
   /**
    * The list of primitives the user can slot in. Passed from the page so the
@@ -136,19 +139,28 @@ export function EffectForm({
   onSaved?: (effect: EffectRow) => void;
   onReset?: () => void;
 }) {
+  const characterAuthoring = useCharacterAuthoring();
+  const [recoveredCatalog, setRecoveredCatalog] = useState<{ primitives: typeof sourcePrimitives } | null>(null);
+  const availablePrimitives = useMemo(() => [...sourcePrimitives, ...(recoveredCatalog?.primitives ?? []).filter((entry) => !sourcePrimitives.some((current) => current.id === entry.id))], [sourcePrimitives, recoveredCatalog]);
+
   const [orderChanged,setOrderChanged]=useState(false);
   const [form, setForm] = useState<EffectFormState>(blankForm);
-  const [slots, setSlots] = useState<EffectFormSlot[]>(() => initialPrimitiveIds.flatMap((id, index) => { const primitive = availablePrimitives.find(p => p.id === id); return primitive ? [{ primitiveId: id, primitive, quantity: 1, isMirrored: false }] : []; }));
+  const [slots, setSlots] = useState<EffectFormSlot[]>(() => initialPrimitiveIds.flatMap((id, index) => { const primitive = availablePrimitives.find(p => p.id === id); return primitive ? [{ primitiveId: id, primitive, quantity: 1, isMirrored: false, ...initialPrimitiveSlots[id] }] : []; }));
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const [isDirty, setIsDirty] = useState(false);
   const router = useRouter();
+  const recovery = useCharacterFormRecovery("effect", { catalog: { primitives: availablePrimitives.filter((entry) => slots.some((slot) => slot.primitiveId === entry.id)) }, form, slots, orderChanged }, isDirty, (saved) => {
+    setRecoveredCatalog(saved.catalog); setForm(saved.form); setSlots(saved.slots); setOrderChanged(saved.orderChanged);
+    setIsDirty(true); setMessage("Restored your unfinished character piece.");
+  });
 
   // Pre-load from initialEffect — only on mount or when the user loads
   // a different entity (id changes). Without the id check, switching
   // rows in the library would not refresh the form.
   const bootstrappedRef = useRef<string | null>(null);
   useEffect(() => {
+    if (recovery.restored) return;
     const id = initialEffect?.id ?? null;
     if (bootstrappedRef.current === id) return;
     bootstrappedRef.current = id;
@@ -178,7 +190,7 @@ export function EffectForm({
     );
     setIsDirty(false); // pristine after load
     setMessage(
-      initialEffect.userId
+      characterAuthoring ? "Editing this character’s draft. Apply changes after review." : initialEffect.userId
         ? "Loaded your effect for editing."
         : "Loaded library effect. Saving creates your private copy.",
     );
@@ -207,12 +219,16 @@ export function EffectForm({
         id: number | string;
         label: string;
         operation?: "add-reference";
-      }>;
+      } & CharacterSlotMetadata>;
       if (e.detail.kind !== "primitive") return;
       const id =
         typeof e.detail.id === "string" ? Number(e.detail.id) : e.detail.id;
       if (!Number.isFinite(id)) return;
-      addSlot(id, e.detail.operation === "add-reference");
+      addSlot(id, e.detail.operation === "add-reference", {
+          ...(e.detail.isMirrored !== undefined ? { isMirrored: e.detail.isMirrored } : {}),
+          ...(e.detail.quantity !== undefined ? { quantity: e.detail.quantity } : {}),
+          ...(e.detail.role !== undefined ? { role: e.detail.role } : {}),
+        });
     };
     (slotEvents ?? window).addEventListener("sw-sandbox-slot", handler);
     return () => (slotEvents ?? window).removeEventListener("sw-sandbox-slot", handler);
@@ -224,11 +240,11 @@ export function EffectForm({
     setForm((current) => ({ ...current, [field]: value }));
   }
 
-  function addSlot(primitiveId: number, referenceOnly = false) {
+  function addSlot(primitiveId: number, referenceOnly = false, metadata: CharacterSlotMetadata = {}) {
     setIsDirty(true);
     setSlots((current) => {
       const existing = current.find((s) => s.primitiveId === primitiveId);
-      if (existing && referenceOnly) return current;
+      if (existing && referenceOnly) return Object.keys(metadata).length ? current.map((slot) => slot.primitiveId === primitiveId ? { ...slot, ...metadata } : slot) : current;
       if (existing) {
         return current.map((s) =>
           s.primitiveId === primitiveId
@@ -240,7 +256,7 @@ export function EffectForm({
       if (!primitive) return current;
       return [
         ...current,
-        { primitiveId, quantity: 1, primitive, isMirrored: false },
+        { primitiveId, quantity: 1, primitive, isMirrored: false, ...metadata },
       ];
     });
   }
@@ -262,6 +278,7 @@ export function EffectForm({
   }
 
   function resetEditor() {
+    recovery.clear();
     setForm(blankForm);
     setSlots([]);
     setIsDirty(false); // pristine after reset
@@ -283,7 +300,7 @@ export function EffectForm({
         .split(",")
         .map((t) => t.trim())
         .filter(Boolean),
-      isPublic: form.isPublic,
+      isPublic: characterAuthoring ? false : form.isPublic,
       primitiveSlots: slots.map((s) => ({
         primitiveId: s.primitiveId,
         quantity: s.quantity,
@@ -346,11 +363,12 @@ export function EffectForm({
 
       if (effect) {
         window.dispatchEvent(new CustomEvent("sw:library-changed"));
+      recovery.clear();
       onSaved?.(effect);
       }
       resetEditor();
-      router.refresh();
-      setMessage(`Effect "${effect?.name ?? "(unnamed)"}" saved.`);
+      if (!characterAuthoring) router.refresh();
+      setMessage(characterAuthoring ? "Saved to the character draft. Review changes before applying." : `Effect "${effect?.name ?? "(unnamed)"}" saved.`);
     });
   }
 
@@ -370,6 +388,7 @@ export function EffectForm({
             {initialEffect ? "Inspect Effect" : "Add New Effect"}
           </p>
           {(() => {
+            if (characterAuthoring) return null;
             const label = saveIntentLabel(
               intent ?? null,
               initialEffect?.name ?? null,
@@ -547,7 +566,7 @@ export function EffectForm({
           type="submit"
           data-sandbox-submit
         >
-          {isPending ? "Saving..." : "Save Effect"}
+          {isPending ? "Saving..." : characterAuthoring ? (characterAuthoring.isEditing ? "Update draft" : "Add to draft") : "Save Effect"}
         </button>
         {message ? (
           <p className="text-sm text-muted-foreground">{message}</p>

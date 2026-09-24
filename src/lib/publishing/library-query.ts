@@ -306,6 +306,19 @@ export interface LibraryResult {
  * heritage + characters, with engagement metrics and sort/filter/pagination.
  */
 export async function queryLibrary(q: LibraryQuery): Promise<LibraryResult> {
+  return queryLibraryResult(q, false);
+}
+
+/** Internal discovery surfaces need the complete authorized corpus, not a UI page.
+ * Reuse the same visibility/classification pipeline without repeating every DB
+ * query once per page. Public HTTP browsing remains capped at 100 entries. */
+export async function queryCompleteLibrary(q: LibraryQuery): Promise<LibraryItem[]> {
+  return (await queryLibraryResult(q, true)).items;
+}
+
+type LibraryFetchQuery = LibraryQuery & { complete?: boolean };
+
+async function queryLibraryResult(q: LibraryQuery, complete: boolean): Promise<LibraryResult> {
   const limit = Math.min(q.limit ?? 24, 100);
   const offset = q.offset ?? 0;
   const sort = q.sort ?? "LIKES";
@@ -322,16 +335,16 @@ export async function queryLibrary(q: LibraryQuery): Promise<LibraryResult> {
   const wantAll = !q.targetType;
   const fetchJobs: Promise<LibraryItem[]>[] = [];
   if (wantAll || q.targetType === "PRIMITIVE") {
-    fetchJobs.push(fetchPrimitives(q));
+    fetchJobs.push(fetchPrimitives({ ...q, complete }));
   }
   if (wantAll || q.targetType === "CAPABILITY") {
-    fetchJobs.push(fetchCapabilities(q));
+    fetchJobs.push(fetchCapabilities({ ...q, complete }));
   }
   if (wantAll || q.targetType === "EFFECT") {
-    fetchJobs.push(fetchEffects(q));
+    fetchJobs.push(fetchEffects({ ...q, complete }));
   }
   if (wantAll || q.targetType === "ITEM") {
-    fetchJobs.push(fetchItems(q));
+    fetchJobs.push(fetchItems({ ...q, complete }));
   }
   if (
     wantAll ||
@@ -339,10 +352,10 @@ export async function queryLibrary(q: LibraryQuery): Promise<LibraryResult> {
     q.targetType === "UPBRINGING_TEMPLATE" ||
     q.targetType === "MANIFEST_TEMPLATE"
   ) {
-    fetchJobs.push(fetchTemplates(q));
+    fetchJobs.push(fetchTemplates({ ...q, complete }));
   }
   if (wantAll || q.targetType === "BUILD_TEMPLATE") {
-    fetchJobs.push(fetchBuilds(q));
+    fetchJobs.push(fetchBuilds({ ...q, complete }));
   }
   // PLAN Eilxina Part A (Mashu 2026-09-09): surface CHARACTER rows
   // in the library codex. The type was already in LibraryTargetType
@@ -350,7 +363,7 @@ export async function queryLibrary(q: LibraryQuery): Promise<LibraryResult> {
   // this addition, /library?targetType=CHARACTER + the browse page
   // finally return published characters.
   if (wantAll || q.targetType === "CHARACTER") {
-    fetchJobs.push(fetchCharacters(q));
+    fetchJobs.push(fetchCharacters({ ...q, complete }));
   }
   const branches = await Promise.all(fetchJobs);
   const items: LibraryItem[] = branches.flat();
@@ -368,7 +381,7 @@ export async function queryLibrary(q: LibraryQuery): Promise<LibraryResult> {
   });
 
   const total = filtered.length;
-  const paged = filtered.slice(offset, offset + limit);
+  const paged = complete ? filtered : filtered.slice(offset, offset + limit);
 
   return { items: paged, total, limit, offset };
 }
@@ -553,20 +566,6 @@ function uniquePrimitiveBu(paths: LibraryCompositionPath[]) {
 }
 
 /**
- * NOT EXISTS condition: exclude entities that have an unpublished publication.
- * This ensures entities explicitly set to PRIVATE via the visibility API
- * don't appear in the library, even if their isPublic boolean is stale.
- */
-function notUnpublished(targetType: string, idExpr: SQL) {
-  return sql`NOT EXISTS (
-    SELECT 1 FROM publications
-    WHERE target_type = ${targetType}
-      AND target_id = CAST(${idExpr} AS text)
-      AND unpublished_at IS NOT NULL
-  )`;
-}
-
-/**
  * Phase 9 follow-up: enforce visibility tier at the DB level so
  * PRIVATE rows of OTHER users don't leak into the library browse
  * or profile pages. The previous implementation skipped the isPublic
@@ -581,6 +580,7 @@ function notUnpublished(targetType: string, idExpr: SQL) {
  *     unpublished_at IS NULL AND visibility = PUBLIC → visible
  *   - Row has a publications row with visibility = FOLLOWERS_ONLY
  *     AND viewer follows the author → visible
+ *   - No publication record and current is_public=true → legacy public
  *   - Otherwise → not visible (PRIVATE or FOLLOWERS_ONLY without
  *     a follow)
  *
@@ -602,17 +602,18 @@ function notUnpublished(targetType: string, idExpr: SQL) {
  *     for "anonymous viewer" (e.g. unauthenticated browse).
  */
 export function visibilityCondition(
-  targetType: string,
+  targetType: string | SQL,
   entityIdExpr: SQL,
   entityUserIdExpr: SQL,
   viewerClerkId: string | undefined,
+  legacyPublicExpr?: SQL,
 ): SQL {
   // Owner case: row.user_id = viewer's clerk ID. Direct equality —
   // both sides are Clerk IDs (text). If viewerClerkId is undefined,
   // isOwner is always false (no entity's user_id can match an
   // unknown string).
   const isOwner = viewerClerkId
-    ? eq(entityUserIdExpr, viewerClerkId)
+    ? sql`COALESCE(${entityUserIdExpr} = ${viewerClerkId}, false)`
     : sql`false`;
 
   // Public case: a publications row exists for this (type, id) with
@@ -648,10 +649,21 @@ export function visibilityCondition(
       )`
     : sql`false`;
 
-  return or(isOwner, isPublic, isFollowersOnlyVisible)!;
+  // Compatibility with established explicitly public legacy definitions.
+  // Look up the current row, never trust a client or historical snapshot flag.
+  // Any publication record (including PRIVATE or unpublished) overrides this.
+  const legacyTables: Record<string, string> = { PRIMITIVE: "primitives", CAPABILITY: "capabilities", EFFECT: "effects", ITEM: "items", CHARACTER: "characters", LINEAGE_TEMPLATE: "heritage", UPBRINGING_TEMPLATE: "heritage", MANIFEST_TEMPLATE: "heritage", BUILD_TEMPLATE: "builds" };
+  const legacyTable = typeof targetType === "string" ? legacyTables[targetType] : undefined;
+  const explicitLegacyPublic = legacyPublicExpr ?? (legacyTable
+    ? sql`EXISTS (SELECT 1 FROM ${sql.identifier(legacyTable)} legacy_entity WHERE CAST(legacy_entity.id AS text) = CAST(${entityIdExpr} AS text) AND legacy_entity.is_public = true)`
+    : sql`false`);
+  const legacyPublic = sql`(${explicitLegacyPublic}) AND NOT EXISTS (
+    SELECT 1 FROM publications WHERE target_type = ${targetType} AND target_id = CAST(${entityIdExpr} AS text)
+  )`;
+  return or(isOwner, isPublic, isFollowersOnlyVisible, legacyPublic)!;
 }
 
-async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
+async function fetchPrimitives(q: LibraryFetchQuery): Promise<LibraryItem[]> {
   // Phase 9 follow-up: when filtering by authorClerkId (profile page),
   // surface only the rows the viewer is allowed to see — owner sees
   // everything; others see PUBLIC + FOLLOWERS_ONLY (the latter only
@@ -659,11 +671,9 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
   // canonical privacy gate; the kind filter (fork/creation) further
   // slices by sourceOrigin.
   //
-  // For unauthenticated viewers on the public library (no
-  // authorClerkId, no viewerClerkId), we fall back to the
-  // isPublic/system rule — same as before this round. The library
-  // browse page passes viewerClerkId when signed in so the visibility
-  // filter fires correctly.
+  // Every browsing surface uses the same publication/owner/follower gate
+  // as adding a Library entry to a character. Legacy explicit public flags
+  // apply only when no publication record has ever overridden them.
   const conditions: SQL[] = [];
   // Templates live in the canonical ladder; exact-entry results contain only
   // complete, executable expressions.
@@ -680,16 +690,13 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
     );
   } else {
     conditions.push(
-      or(eq(primitives.isPublic, true), isNull(primitives.userId))!,
+      visibilityCondition("PRIMITIVE", sql`${primitives.id}`, sql`${primitives.userId}`, q.viewerClerkId, sql`${primitives.isPublic}`),
     );
-    // For unauthenticated browse, also enforce visibility tier via
-    // the same helper. The isPublic gate above already restricts to
-    // public/system rows; the helper is a defence-in-depth check.
+    // Explicit public-only browsing remains public-only.
     if (q.visibility) {
       conditions.push(eq(sql`true`, q.visibility === "PUBLIC"));
     }
   }
-  conditions.push(notUnpublished("PRIMITIVE", sql`${primitives.id}`));
   if (q.kind === "fork") conditions.push(like(primitives.sourceOrigin, "fork:%"));
   if (q.kind === "creation") conditions.push(or(isNull(primitives.sourceOrigin), notLike(primitives.sourceOrigin, "fork:%"))!);
 
@@ -724,7 +731,7 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
     );
   }
 
-  const rows = await db
+  const entityQuery = db
     .select({
       id: primitives.id,
       name: primitives.name,
@@ -772,8 +779,8 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
       lexiconFamilies,
       eq(lexiconFamilies.key, primitiveMarketClassifications.familyKey),
     )
-    .where(and(...conditions))
-    .limit(500); // hard cap before in-memory filter
+    .where(and(...conditions));
+  const rows = await (q.complete ? entityQuery : entityQuery.limit(500));
 
   const lineageCounts = new Map<string, { direct: number; descendants: number }>();
   if (rows.length) {
@@ -872,7 +879,7 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
   });
 }
 
-async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
+async function fetchCapabilities(q: LibraryFetchQuery): Promise<LibraryItem[]> {
   const conditions: SQL[] = [];
   if (q.authorClerkId) {
     conditions.push(eq(capabilities.userId, q.authorClerkId));
@@ -886,13 +893,12 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
     );
   } else {
     conditions.push(
-      or(eq(capabilities.isPublic, true), isNull(capabilities.userId))!,
+      visibilityCondition("CAPABILITY", sql`${capabilities.id}`, sql`${capabilities.userId}`, q.viewerClerkId, sql`${capabilities.isPublic}`),
     );
     if (q.visibility) {
       conditions.push(eq(sql`true`, q.visibility === "PUBLIC"));
     }
   }
-  conditions.push(notUnpublished("CAPABILITY", sql`${capabilities.id}`));
   if (q.kind === "fork") conditions.push(like(capabilities.sourceOrigin, "fork:%"));
   if (q.kind === "creation") conditions.push(or(isNull(capabilities.sourceOrigin), notLike(capabilities.sourceOrigin, "fork:%"))!);
 
@@ -931,7 +937,7 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
     );
   }
 
-  const rows = await db
+  const entityQuery = db
     .select({
       id: capabilities.id,
       name: capabilities.name,
@@ -954,8 +960,8 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
       iconProposedColor: capabilities.iconProposedColor,
     })
     .from(capabilities)
-    .where(and(...conditions))
-    .limit(500);
+    .where(and(...conditions));
+  const rows = await (q.complete ? entityQuery : entityQuery.limit(500));
 
   // Compute BU totals by joining primitive_links + primitives
   const capabilityIds = rows.map((r) => r.id);
@@ -1054,7 +1060,7 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
 // `isPublic` boolean is sync'd via syncIsPublic in
 // /api/creations/visibility — see the CHARACTER case added in Part A).
 // =============================================================================
-async function fetchCharacters(q: LibraryQuery): Promise<LibraryItem[]> {
+async function fetchCharacters(q: LibraryFetchQuery): Promise<LibraryItem[]> {
   const conditions: SQL[] = [];
   if (q.authorClerkId) {
     conditions.push(eq(characters.userId, q.authorClerkId));
@@ -1093,7 +1099,7 @@ async function fetchCharacters(q: LibraryQuery): Promise<LibraryItem[]> {
     // characters don't carry username directly; resolve via users join below.
   }
 
-  const rows = await db
+  const entityQuery = db
     .select({
       id: characters.id,
       name: characters.name,
@@ -1112,8 +1118,8 @@ async function fetchCharacters(q: LibraryQuery): Promise<LibraryItem[]> {
       sourceOrigin: characters.sourceOrigin,
     })
     .from(characters)
-    .where(and(...conditions))
-    .limit(500);
+    .where(and(...conditions));
+  const rows = await (q.complete ? entityQuery : entityQuery.limit(500));
 
   const authorMap = await resolveAuthorMap(rows.map((r) => r.userId));
   const engagementMap = await resolveEngagementMap(
@@ -1163,7 +1169,7 @@ async function fetchCharacters(q: LibraryQuery): Promise<LibraryItem[]> {
   });
 }
 
-async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
+async function fetchEffects(q: LibraryFetchQuery): Promise<LibraryItem[]> {
   const conditions: SQL[] = [];
   if (q.authorClerkId) {
     conditions.push(eq(effects.userId, q.authorClerkId));
@@ -1177,13 +1183,12 @@ async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
     );
   } else {
     conditions.push(
-      or(eq(effects.isPublic, true), isNull(effects.userId))!,
+      visibilityCondition("EFFECT", sql`${effects.id}`, sql`${effects.userId}`, q.viewerClerkId, sql`${effects.isPublic}`),
     );
     if (q.visibility) {
       conditions.push(eq(sql`true`, q.visibility === "PUBLIC"));
     }
   }
-  conditions.push(notUnpublished("EFFECT", sql`${effects.id}`));
   if (q.kind === "fork") conditions.push(like(effects.sourceOrigin, "fork:%"));
   if (q.kind === "creation") conditions.push(or(isNull(effects.sourceOrigin), notLike(effects.sourceOrigin, "fork:%"))!);
 
@@ -1210,7 +1215,7 @@ async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
     // username at the SQL level without a join. Skip for now.
   }
 
-  const rows = await db
+  const entityQuery = db
     .select({
       id: effects.id,
       name: effects.name,
@@ -1231,8 +1236,8 @@ async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
       iconProposedColor: effects.iconProposedColor,
     })
     .from(effects)
-    .where(and(...conditions))
-    .limit(500);
+    .where(and(...conditions));
+  const rows = await (q.complete ? entityQuery : entityQuery.limit(500));
 
   const authorMap = await resolveAuthorMap(rows.map((r) => r.userId));
   const engagementMap = await resolveEngagementMap(
@@ -1307,7 +1312,7 @@ async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
   });
 }
 
-async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
+async function fetchItems(q: LibraryFetchQuery): Promise<LibraryItem[]> {
   const conditions: SQL[] = [];
   if (q.authorClerkId) {
     conditions.push(eq(items.userId, q.authorClerkId));
@@ -1321,13 +1326,12 @@ async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
     );
   } else {
     conditions.push(
-      or(eq(items.isPublic, true), isNull(items.userId))!,
+      visibilityCondition("ITEM", sql`${items.id}`, sql`${items.userId}`, q.viewerClerkId, sql`${items.isPublic}`),
     );
     if (q.visibility) {
       conditions.push(eq(sql`true`, q.visibility === "PUBLIC"));
     }
   }
-  conditions.push(notUnpublished("ITEM", sql`${items.id}`));
   if (q.kind === "fork") conditions.push(like(items.sourceOrigin, "fork:%"));
   if (q.kind === "creation") conditions.push(or(isNull(items.sourceOrigin), notLike(items.sourceOrigin, "fork:%"))!);
 
@@ -1404,7 +1408,7 @@ async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
     }
   }
 
-  const rows = await db
+  const entityQuery = db
     .select({
       id: items.id,
       name: items.name,
@@ -1428,8 +1432,8 @@ async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
       iconProposedColor: items.iconProposedColor,
     })
     .from(items)
-    .where(and(...conditions))
-    .limit(500);
+    .where(and(...conditions));
+  const rows = await (q.complete ? entityQuery : entityQuery.limit(500));
 
   const compositionMap = new Map<string, string[]>();
   const itemIds = rows.map((row) => row.id);
@@ -1501,27 +1505,28 @@ async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
   });
 }
 
-async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
+async function fetchTemplates(q: LibraryFetchQuery): Promise<LibraryItem[]> {
   const conditions: SQL[] = [];
+  const publicationType = sql`CASE ${heritage.kind} WHEN 'LINEAGE' THEN 'LINEAGE_TEMPLATE' WHEN 'UPBRINGING' THEN 'UPBRINGING_TEMPLATE' ELSE 'MANIFEST_TEMPLATE' END::publish_target_type`;
   if (q.authorClerkId) {
     conditions.push(eq(heritage.userId, q.authorClerkId));
     conditions.push(
       visibilityCondition(
-        "LINEAGE_TEMPLATE",
+        publicationType,
         sql`${heritage.id}`,
         sql`${heritage.userId}`,
         q.viewerClerkId,
+        sql`${heritage.isPublic}`,
       ),
     );
   } else {
     conditions.push(
-      or(eq(heritage.isPublic, true), isNull(heritage.userId))!,
+      visibilityCondition(publicationType, sql`${heritage.id}`, sql`${heritage.userId}`, q.viewerClerkId, sql`${heritage.isPublic}`),
     );
     if (q.visibility) {
       conditions.push(eq(sql`true`, q.visibility === "PUBLIC"));
     }
   }
-  conditions.push(notUnpublished("LINEAGE_TEMPLATE", sql`${heritage.id}`));
   if (q.kind === "fork") conditions.push(like(heritage.sourceOrigin, "fork:%"));
   if (q.kind === "creation") conditions.push(or(isNull(heritage.sourceOrigin), notLike(heritage.sourceOrigin, "fork:%"))!);
 
@@ -1587,7 +1592,7 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
     );
   }
 
-  const rows = await db
+  const entityQuery = db
     .select({
       id: heritage.id,
       name: heritage.name,
@@ -1614,8 +1619,8 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
       iconProposedColor: heritage.iconProposedColor,
     })
     .from(heritage)
-    .where(and(...conditions))
-    .limit(500);
+    .where(and(...conditions));
+  const rows = await (q.complete ? entityQuery : entityQuery.limit(500));
 
   const compositionMap = new Map<string, string[]>();
   const templateIds = rows.map((row) => row.id);
@@ -1728,7 +1733,7 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
 // so cards remain comparable in the grid.
 // =============================================================================
 
-async function fetchBuilds(q: LibraryQuery): Promise<LibraryItem[]> {
+async function fetchBuilds(q: LibraryFetchQuery): Promise<LibraryItem[]> {
   const conditions: SQL[] = [];
   if (q.authorClerkId) {
     conditions.push(eq(builds.userId, q.authorClerkId));
@@ -1742,13 +1747,12 @@ async function fetchBuilds(q: LibraryQuery): Promise<LibraryItem[]> {
     );
   } else {
     conditions.push(
-      or(eq(builds.isPublic, true), isNull(builds.userId))!,
+      visibilityCondition("BUILD_TEMPLATE", sql`${builds.id}`, sql`${builds.userId}`, q.viewerClerkId, sql`${builds.isPublic}`),
     );
     if (q.visibility) {
       conditions.push(eq(sql`true`, q.visibility === "PUBLIC"));
     }
   }
-  conditions.push(notUnpublished("BUILD_TEMPLATE", sql`${builds.id}`));
   if (q.kind === "fork") conditions.push(like(builds.sourceOrigin, "fork:%"));
   if (q.kind === "creation") conditions.push(or(isNull(builds.sourceOrigin), notLike(builds.sourceOrigin, "fork:%"))!);
 
@@ -1767,7 +1771,7 @@ async function fetchBuilds(q: LibraryQuery): Promise<LibraryItem[]> {
     // needs a join. Skip — filter in caller (handled in queryLibrary).
   }
 
-  const rows = await db
+  const entityQuery = db
     .select({
       id: builds.id,
       name: builds.name,
@@ -1792,8 +1796,8 @@ async function fetchBuilds(q: LibraryQuery): Promise<LibraryItem[]> {
       sourceOrigin: builds.sourceOrigin,
     })
     .from(builds)
-    .where(and(...conditions))
-    .limit(500);
+    .where(and(...conditions));
+  const rows = await (q.complete ? entityQuery : entityQuery.limit(500));
 
   const authorMap = await resolveAuthorMap(rows.map((r) => r.userId));
   const engagementMap = await resolveEngagementMap(
@@ -1932,7 +1936,7 @@ export async function listPrimitiveCategories(): Promise<
     })
     .from(primitives)
     .innerJoin(primitiveMarketClassifications,eq(primitiveMarketClassifications.primitiveId,primitives.id))
-    .where(or(eq(primitives.isPublic, true), isNull(primitives.userId))!)
+    .where(visibilityCondition("PRIMITIVE", sql`${primitives.id}`, sql`${primitives.userId}`, undefined))
     .groupBy(primitiveMarketClassifications.familyKey)
     .orderBy(asc(primitiveMarketClassifications.familyKey));
 
