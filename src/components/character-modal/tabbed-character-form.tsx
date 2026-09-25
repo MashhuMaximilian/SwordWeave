@@ -692,6 +692,8 @@ export function TabbedCharacterForm() {
       identity.size !== snap.identity.size ||
       identity.portraitUrl.trim() !== snap.identity.portraitUrl.trim() ||
       identity.notes.trim() !== snap.identity.notes.trim() ||
+      backstory.description !== snap.backstory.description ||
+      backstory.personality !== snap.backstory.personality ||
       backstory.origin !== snap.backstory.origin ||
       backstory.motivation !== snap.backstory.motivation ||
       backstory.ties !== snap.backstory.ties ||
@@ -925,6 +927,8 @@ export function TabbedCharacterForm() {
         // server-side value on every save, so we OMIT it instead.
         ...(!editCharacterId ? {currentVitality: initialCurrentVitality} : {expectedWorkspaceRevision:seededCharacter?.workspaceRevision}),
         backstory: {
+          description: backstory?.description?.trim() ?? "",
+          personality: backstory?.personality?.trim() ?? "",
           origin: backstory?.origin.trim() ?? "",
           motivation: backstory?.motivation.trim() ?? "",
           ties: backstory?.ties.trim() ?? "",

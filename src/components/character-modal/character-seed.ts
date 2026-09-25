@@ -55,6 +55,8 @@ export interface IdentityDraftSeed {
  * Subset of the backstory tab's state.
  */
 export interface BackstoryDraftSeed {
+  description: string;
+  personality: string;
   origin: string;
   motivation: string;
   ties: string;
@@ -264,6 +266,8 @@ export const IDENTITY_EMPTY: IdentityDraftSeed = {
 
 /** Returns a constant empty backstory seed. */
 export const BACKSTORY_EMPTY: BackstoryDraftSeed = {
+  description: "",
+  personality: "",
   origin: "",
   motivation: "",
   ties: "",
@@ -285,6 +289,8 @@ function isBackstoryShape(v: unknown): v is Partial<BackstoryDraftSeed> {
   if (!v || typeof v !== "object") return false;
   const obj = v as Record<string, unknown>;
   return (
+    typeof obj["description"] === "string" ||
+    typeof obj["personality"] === "string" ||
     typeof obj["origin"] === "string" ||
     typeof obj["motivation"] === "string" ||
     typeof obj["ties"] === "string" ||
@@ -302,6 +308,8 @@ export function seedBackstory(character: CharacterSeed): BackstoryDraftSeed {
   }
   const raw = character.backstory;
   return {
+    description: typeof raw.description === "string" ? raw.description : "",
+    personality: typeof raw.personality === "string" ? raw.personality : "",
     origin: typeof raw.origin === "string" ? raw.origin : "",
     motivation: typeof raw.motivation === "string" ? raw.motivation : "",
     ties: typeof raw.ties === "string" ? raw.ties : "",

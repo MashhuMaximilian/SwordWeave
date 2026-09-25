@@ -66,7 +66,7 @@ export function CharacterFoundationEditor({ character, characterId, operations =
   const [confirmClose, setConfirmClose] = useState(false);
   const dirty = fingerprint !== baseline;
   const recovery = useCharacterFormRecovery("foundation", editorState, dirty, (saved) => {
-    setName(saved.name); setNotes(saved.notes); setBackstory(saved.backstory); setRoots(saved.roots); setSize(saved.size); setMode(saved.mode); setLevelText(saved.levelText); setBuText(saved.buText); setScores(saved.scores); setSpecialty(saved.specialty); setPortraitUrl(saved.portraitUrl); setPortraitFrame(normalizePortraitFrame(saved.portraitFrame)); setNotice("Restored your unfinished foundation changes.");
+    setName(saved.name); setNotes(saved.notes); setBackstory(parseBackstory(saved.backstory)); setRoots(saved.roots); setSize(saved.size); setMode(saved.mode); setLevelText(saved.levelText); setBuText(saved.buText); setScores(saved.scores); setSpecialty(saved.specialty); setPortraitUrl(saved.portraitUrl); setPortraitFrame(normalizePortraitFrame(saved.portraitFrame)); setNotice("Restored your unfinished foundation changes.");
   }, characterId ? `character:${characterId}:foundation` : undefined);
   useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
   function requestClose() { if (dirty) setConfirmClose(true); else onClose(); }

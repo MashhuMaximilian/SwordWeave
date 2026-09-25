@@ -1,7 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-const state = vi.hoisted(() => ({ revision: 0, spent: 0, debtExceeded: false, effects: [] as string[], transactionDepth: 0, commits: 0 }));
+const state = vi.hoisted(() => ({ revision: 0, spent: 0, debtExceeded: false, effects: [] as string[], transactionDepth: 0, commits: 0, graphReads: 0, character: { id: "character", name: "Original", level: 1, mode: "PLAY", attrPhysical: 4, attrMental: 3, attrMagical: 3 } }));
 vi.mock("@/db/client", () => ({
-  db: { select: () => ({ from: () => ({ where: () => ({ for: async () => [{ id: "character", level: 1, mode: "PLAY" }] }) }) }) },
+  db: {
+    select: () => ({ from: () => ({ where: () => ({ for: async () => [{ ...state.character }] }) }) }),
+    update: () => ({ set: (payload: Record<string, unknown>) => ({ where: async () => { Object.assign(state.character, payload); } }) }),
+    insert: () => ({ values: (payload: {revision: number}) => ({ onConflictDoUpdate: async () => { state.revision = payload.revision; } }) }),
+  },
   withDatabaseTransaction: async (work: () => Promise<unknown>) => {
     if (state.transactionDepth) return work();
     const before = structuredClone(state); state.transactionDepth++;
@@ -9,7 +13,7 @@ vi.mock("@/db/client", () => ({
     catch (error) { Object.assign(state, before); throw error; }
   },
 }));
-vi.mock("../read", () => ({ readWorkspace: async () => ({ characterId: "character", revision: state.revision, nodes: [], edges: [] }) }));
+vi.mock("../read", () => ({ readWorkspace: async () => { state.graphReads++; return { characterId: "character", revision: state.revision, nodes: [], edges: [] }; } }));
 vi.mock("../draft-sheet", () => ({ readDraftSheet: async () => ({ buBalance: { progressionPool: 25, progressionSpent: state.spent, overBudget: state.spent > 25 }, buLedger: { netSpent: state.spent }, volatility: { exceeded: state.debtExceeded } }) }));
 vi.mock("../create", () => ({ executeWorkspaceCreate: async (_id: string, _user: string, command: { draft: { name: string } }) => {
   if (command.draft.name === "fail") throw new Error("Invalid contained piece");
@@ -21,7 +25,7 @@ vi.mock("@/lib/character/can-resolve-character", () => ({ canResolveCharacter: v
 import { draftOperationsSchema, executeDraftOperations, workspaceBuildFingerprint } from "../drafts";
 import type { DraftOperation } from "../draft-types";
 function create(index: number, name: string): DraftOperation { return { id: `26ca493d-20cf-48aa-b0fb-f5567bcb792${index}`, type: "create", payload: { kind: "effect", category: "MANIFEST", draft: { name } } }; }
-beforeEach(() => Object.assign(state, { revision: 0, spent: 0, debtExceeded: false, effects: [], transactionDepth: 0, commits: 0 }));
+beforeEach(() => Object.assign(state, { revision: 0, spent: 0, debtExceeded: false, effects: [], transactionDepth: 0, commits: 0, graphReads: 0, character: { id: "character", name: "Original", level: 1, mode: "PLAY", attrPhysical: 4, attrMental: 3, attrMagical: 3 } }));
 describe("atomic character drafts", () => {
   it("commits the whole operation sequence once", async () => {
     const result = await executeDraftOperations("character", "owner", 0, [create(1, "A"), create(2, "B")]);
@@ -79,5 +83,53 @@ describe("atomic character drafts", () => {
     const graph = { characterId: "character", revision: 0, nodes: [], edges: [] };
     expect(workspaceBuildFingerprint(graph, { name: "A", currentVitality: 10 })).toBe(workspaceBuildFingerprint(graph, { name: "A", currentVitality: 3 }));
     expect(workspaceBuildFingerprint(graph, { name: "A" })).not.toBe(workspaceBuildFingerprint(graph, { name: "B" }));
+  });
+});
+
+
+describe("draft graph reuse", () => {
+  it("reads the graph only once for a sequence of foundation changes and keeps the updated scores", async () => {
+    const operations: DraftOperation[] = [
+      { id: create(1,"x").id, type: "character", payload: { attrPhysical: 5, attrMental: 2 } },
+      { id: create(2,"x").id, type: "character", payload: { attrMental: 1, attrMagical: 4, name: "Updated" } },
+    ];
+    const result = await executeDraftOperations("character", "owner", 0, operations);
+    expect(state.graphReads).toBe(1);
+    expect(result.revision).toBe(2);
+    expect(result.beforeSnapshot?.foundation).toMatchObject({ name: "Original", attrPhysical: 4, attrMental: 3 });
+    expect(result.afterSnapshot?.foundation).toMatchObject({ name: "Updated", attrPhysical: 5, attrMental: 1, attrMagical: 4 });
+    expect(result.beforeSnapshot?.graph.revision).toBe(0);
+    expect(result.afterSnapshot?.graph.revision).toBe(2);
+  });
+  it("reuses the already locked and verified base without reloading it", async () => {
+    const base = { graph: { characterId: "character", revision: 0, nodes: [], edges: [] }, character: {...state.character} } as unknown as NonNullable<Parameters<typeof executeDraftOperations>[5]>;
+    const result = await executeDraftOperations("character", "owner", 0, [{ id: create(1,"x").id, type: "character", payload: { name: "Updated" } }], false, base);
+    expect(state.graphReads).toBe(0);
+    expect(result.revision).toBe(1);
+    expect(base.character.name).toBe("Original");
+    expect(base.graph.revision).toBe(0);
+  });
+  it("still rejects a stale verified base before any mutations", async () => {
+    const base = { graph: { characterId: "character", revision: 2, nodes: [], edges: [] }, character: {...state.character} } as unknown as NonNullable<Parameters<typeof executeDraftOperations>[5]>;
+    await expect(executeDraftOperations("character", "owner", 0, [create(1, "A")], false, base)).rejects.toThrow("character changed");
+    expect(state.effects).toEqual([]);
+    expect(state.commits).toBe(0);
+  });
+  it("rolls back foundation changes when a later score adjustment is invalid", async () => {
+    const operations: DraftOperation[] = [
+      { id: create(1,"x").id, type: "character", payload: { name: "Updated" } },
+      { id: create(2,"x").id, type: "character", payload: { attrMagical: 5 } },
+    ];
+    await expect(executeDraftOperations("character", "owner", 0, operations)).rejects.toThrow("total 10");
+    expect(state.character.name).toBe("Original");
+    expect(state.revision).toBe(0);
+    expect(state.commits).toBe(0);
+  });
+  it("allows an over-debt preview for review but still blocks applying it", async () => {
+    state.debtExceeded = true;
+    const result = await executeDraftOperations("character", "owner", 0, [], true);
+    expect(result.applied).toBe(false);
+    expect(result.sheet.volatility.exceeded).toBe(true);
+    await expect(executeDraftOperations("character", "owner", 0, [], false)).rejects.toThrow("drawback credit");
   });
 });

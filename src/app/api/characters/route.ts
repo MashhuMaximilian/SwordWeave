@@ -1,3 +1,4 @@
+import { parseBackstory } from "@/lib/character/character-backstory";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { and, asc, eq, inArray } from "drizzle-orm";
@@ -265,16 +266,7 @@ export async function POST(request: Request) {
 
     // Phase 8.2 batch 3: backstory freeform fields
     const rawBackstory = values["backstory"];
-    let backstory: { origin: string; motivation: string; ties: string; flaw: string } | null = null;
-    if (rawBackstory && typeof rawBackstory === "object") {
-      const rb = rawBackstory as Record<string, unknown>;
-      backstory = {
-        origin: typeof rb["origin"] === "string" ? (rb["origin"] as string).trim() : "",
-        motivation: typeof rb["motivation"] === "string" ? (rb["motivation"] as string).trim() : "",
-        ties: typeof rb["ties"] === "string" ? (rb["ties"] as string).trim() : "",
-        flaw: typeof rb["flaw"] === "string" ? (rb["flaw"] as string).trim() : "",
-      };
-    }
+    const backstory = rawBackstory && typeof rawBackstory === "object" ? Object.fromEntries(Object.entries(parseBackstory(rawBackstory)).map(([key, value]) => [key, value.trim()])) : null;
 
     // Phase 8.2 batch 8: lineage/upbringing/manifest names start as
     // whatever the modal sent (typically null — the modal doesn't

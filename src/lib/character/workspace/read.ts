@@ -135,12 +135,18 @@ export async function readWorkspace(
     pins.set(key, [...(pins.get(key) ?? []), data["versionId"]]);
   }
   const loaded = new Map<EntityKey, LoadedNode>();
+  const attempted = new Set<EntityKey>();
   while (pending.size) {
-    const missing = [...pending].filter((k) => !loaded.has(k));
-    if (missing.length)
+    const key = pending.values().next().value!;
+    // Drain already-loaded siblings before fetching their children. This keeps
+    // the existing queue/edge order, while batching the next whole frontier.
+    // Remember absent keys too, so dangling references are not queried again.
+    if (!loaded.has(key) && !attempted.has(key)) {
+      const missing = [...pending].filter((k) => !attempted.has(k));
+      for (const missingKey of missing) attempted.add(missingKey);
       for (const [key, value] of await loadWorkspaceNodes(missing))
         loaded.set(key, value);
-    const key = pending.values().next().value!;
+    }
     pending.delete(key);
     if (nodes.has(key)) continue;
     const split = key.indexOf(":");

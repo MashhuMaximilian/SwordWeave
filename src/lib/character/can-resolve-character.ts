@@ -108,6 +108,7 @@ async function resolveCharacter(
   // Resolve both to the same OWNER permission so every character surface uses
   // one answer after a local Clerk development instance is recreated.
   if (
+    charRow.userId === clerkUserId ||
     charRow.userId === effectiveClerkUserId ||
     (viewerInternalId !== null && charRow.userId === viewerInternalId)
   ) {

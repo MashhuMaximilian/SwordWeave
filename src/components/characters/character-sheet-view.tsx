@@ -4118,7 +4118,7 @@ function BackstoryTab({ id, initial, permission }: {
       <p className="text-xs text-muted-foreground">Their origins, ambitions, relationships, and inner conflicts.</p>
       {permission !== "VIEWER" && <button type="button" onClick={() => openCharacterEditor(id,"backstory")} className="v12-metal-button v12-metal-button--primary inline-flex min-h-8 items-center gap-1 px-3 py-1.5 text-xs"><Pencil className="size-3"/>{empty ? "Write backstory" : "Edit backstory"}</button>}
     </div>
-    {empty ? <div className="rounded-md border border-dashed border-border bg-card p-8 text-center"><BookOpen className="mx-auto size-8 text-muted-foreground"/><p className="mt-2 text-sm font-medium">No backstory yet.</p><p className="mt-1 text-xs text-muted-foreground">Add origin, motivation, ties, and flaws to bring the character to life.</p></div> : <div className="v12-backstory-grid">{BACKSTORY_FIELDS.map(field => <BackstoryFieldCard key={field.key} label={field.label} description={field.description} iconKey={field.iconKey} value={initial[field.key]}/>)}</div>}
+    {empty ? <div className="rounded-md border border-dashed border-border bg-card p-8 text-center"><BookOpen className="mx-auto size-8 text-muted-foreground"/><p className="mt-2 text-sm font-medium">No backstory yet.</p><p className="mt-1 text-xs text-muted-foreground">Describe their appearance, personality, history, goals, ties, and flaws to bring the character to life.</p></div> : <div className="v12-backstory-grid">{BACKSTORY_FIELDS.map(field => <BackstoryFieldCard key={field.key} label={field.label} description={field.description} iconKey={field.iconKey} value={initial[field.key]}/>)}</div>}
   </div>;
 }
 

@@ -87,12 +87,12 @@ export async function saveWorkspaceDraft(characterId: string, userId: string, ra
     if (existing && (existing.version !== body.expectedVersion || existing.status !== "editing"))
       throw new WorkspaceConflict("This draft changed in another tab. Reload it before saving.");
     if (!existing && body.expectedVersion !== 0) throw new WorkspaceConflict("This draft no longer exists.");
-    const graph = await readWorkspace(characterId);
-    if (!existing && graph.revision !== body.baseRevision)
+    const graph = existing ? null : await readWorkspace(characterId);
+    if (graph && graph.revision !== body.baseRevision)
       throw new WorkspaceConflict("The character changed. Reload it before starting a draft.");
     const draft: StoredDraft = {
       id: existing?.id ?? randomUUID(), authorId: userId, version: (existing?.version ?? 0) + 1,
-      baseRevision: existing?.baseRevision ?? body.baseRevision, baseHash: existing?.baseHash ?? workspaceBuildFingerprint(graph, character),
+      baseRevision: existing?.baseRevision ?? body.baseRevision, baseHash: existing?.baseHash ?? workspaceBuildFingerprint(graph!, character),
       status: "editing", updatedAt: new Date().toISOString(), operations: body.operations as DraftOperation[],
     };
     await db.insert(s.characterWorkspaceCommands).values({ characterId, commandId: draft.id, kind: draftKind, requestHash: hash(draft.operations), result: draft as unknown as Record<string, unknown> })
@@ -128,28 +128,30 @@ async function moveRoot(characterId: string, operation: Extract<DraftOperation, 
 
 /** Called after permission validation by owner apply / proposal approval. Every
  * child service joins this ONE transaction through AsyncLocalStorage. */
-export async function executeDraftOperations(characterId: string, userId: string, baseRevision: number, rawOperations: DraftOperation[], preview = false): Promise<WorkspaceDraftPreview> {
+export async function executeDraftOperations(characterId: string, userId: string, baseRevision: number, rawOperations: DraftOperation[], preview = false, verifiedBase?: { graph: WorkspaceGraph; character: typeof s.characters.$inferSelect }): Promise<WorkspaceDraftPreview> {
   const operations = draftOperationsSchema.parse(rawOperations) as DraftOperation[];
   return withDatabaseTransaction(async () => withDraftExecution(characterId, userId, async () => {
-    const initialCharacter = await lockCharacter(characterId);
-    const initial = await readWorkspace(characterId);
+    const initialCharacter = verifiedBase?.character ?? await lockCharacter(characterId);
+    const initial = verifiedBase?.graph ?? await readWorkspace(characterId);
     if (initial.revision !== baseRevision) throw new WorkspaceConflict("The character changed. Review the current sheet before applying this draft.");
-    const beforeSheet = await readDraftSheet(characterId);
+    const beforeSheet = await readDraftSheet(characterId, initial);
     const aliases = new Map<string, string>();
     const results: WorkspaceDraftPreview["results"] = [];
     const changedKeys = new Set<string>();
+    let latest = initial;
+    let latestCharacter = initialCharacter;
     for (const operation of operations) {
-      const current = await readWorkspace(characterId);
+      const current = latest;
       const op = mapDraftIdentities(operation, aliases);
       const pinIssue = pinnedOperationIssue(current, op, true);
       if (pinIssue) throw new WorkspaceConflict(pinIssue);
       let result: Record<string, unknown>;
       if (op.type === "relocate") result = await relocateWorkspacePiece(characterId, userId, current, op);
       else if (op.type === "character") {
-        const character = await lockCharacter(characterId);
-        const updated = { ...character, ...op.payload };
+        const updated = { ...latestCharacter, ...op.payload };
         if (updated.attrPhysical + updated.attrMental + updated.attrMagical !== 10) throw new Error("Base attribute scores must total 10.");
         await db.update(s.characters).set(op.payload).where(eq(s.characters.id, characterId));
+        latestCharacter = updated;
         await db.insert(s.characterWorkspaceState).values({ characterId, revision: current.revision + 1 }).onConflictDoUpdate({ target: s.characterWorkspaceState.characterId, set: { revision: current.revision + 1 } });
         result = { revision: current.revision + 1 };
       } else if (op.type === "move-root") result = await moveRoot(characterId, op, current);
@@ -168,7 +170,9 @@ export async function executeDraftOperations(characterId: string, userId: string
               draft: { ...(payload["draft"] as Record<string, unknown>), isPublic: false, visibility: "PRIVATE" } })
           : await executeWorkspaceCommand(characterId, userId, { ...payload, commandId: randomUUID(), expectedRevision: current.revision });
       }
-      const after = await readWorkspace(characterId);
+      // Foundation changes alter the revision, not graph memberships or rules.
+      const after = op.type === "character" ? { ...current, revision: current.revision + 1 } : await readWorkspace(characterId);
+      latest = after;
       // Only authored/forked nodes need virtual IDs; existing library entries
       // added by reference retain their real identity.
       const createdIds = new Set<string>();
@@ -184,8 +188,8 @@ export async function executeDraftOperations(characterId: string, userId: string
       }
       results.push({ operationId: operation.id, result });
     }
-    const graph = await readWorkspace(characterId);
-    const sheet = await readDraftSheet(characterId);
+    const graph = latest;
+    const sheet = await readDraftSheet(characterId, graph);
     // Existing character rules allow an over-budget build with a visible warning.
     const warnings = sheet.buLedger.netSpent > sheet.buBalance.progressionPool ? ["This build exceeds the available Build Units. Review the excess with your group."] : [];
     if (graph.nodes.some(n => n.data["workspaceVersionIssue"]))
@@ -215,7 +219,7 @@ export async function previewWorkspaceDraft(characterId: string, userId: string,
       if (draft.version !== expectedVersion || draft.status !== "editing") throw new WorkspaceConflict("The saved draft changed. Reload it.");
       const graph = await readWorkspace(characterId);
       if (workspaceBuildFingerprint(graph, character) !== draft.baseHash) throw new WorkspaceConflict("The character or a referenced rule changed. Your draft is saved; review it before applying.");
-      throw new PreviewRollback(await executeDraftOperations(characterId, userId, draft.baseRevision, draft.operations, true));
+      throw new PreviewRollback(await executeDraftOperations(characterId, userId, draft.baseRevision, draft.operations, true, {graph, character}));
     });
   } catch (error) { if (error instanceof PreviewRollback) return error.result; throw error; }
   throw new Error("Draft preview did not complete.");
@@ -230,7 +234,7 @@ export async function applyWorkspaceDraft(characterId: string, userId: string, d
     if (draft.status === "applied" && draft.appliedResult) return draft.appliedResult;
     const graph = await readWorkspace(characterId);
     if (workspaceBuildFingerprint(graph, character) !== draft.baseHash) throw new WorkspaceConflict("The character or a referenced rule changed. Your draft is saved; review it before applying.");
-    const result = await executeDraftOperations(characterId, userId, draft.baseRevision, draft.operations);
+    const result = await executeDraftOperations(characterId, userId, draft.baseRevision, draft.operations, false, {graph, character});
     const saved: StoredDraft = { ...draft, status: "applied", updatedAt: new Date().toISOString(), appliedResult: result };
     await db.update(s.characterWorkspaceCommands).set({ result: saved as unknown as Record<string, unknown>, updatedAt: new Date() }).where(and(eq(s.characterWorkspaceCommands.characterId, characterId), eq(s.characterWorkspaceCommands.commandId, draftId)));
     return result;

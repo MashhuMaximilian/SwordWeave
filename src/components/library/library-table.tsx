@@ -76,6 +76,8 @@ interface LibraryTableProps {
   emptyDescription?: string;
   /** Compact instrument-row treatment used by the Atelier source column. */
   surface?: "default" | "atelier";
+  /** Optional adjacent actions for embedded pickers, outside the clickable row. */
+  renderActions?: (item: LibraryItem) => React.ReactNode;
 }
 
 export function LibraryTable({
@@ -90,6 +92,7 @@ export function LibraryTable({
   emptyTitle,
   emptyDescription,
   surface = "default",
+  renderActions,
 }: LibraryTableProps) {
   if (items.length === 0) {
     return (
@@ -129,8 +132,8 @@ export function LibraryTable({
     return (
       <div className="space-y-2">
         {items.map((item) => (
+          <div key={item.id} className={renderActions ? "v12-library-action-row" : "contents"}>
           <ListItem
-            key={item.id}
             item={item}
             engagement={engagement}
             currentUserInternalId={currentUserInternalId}
@@ -138,6 +141,8 @@ export function LibraryTable({
             selected={selectedKey === item.id}
             surface={surface}
           />
+          {renderActions ? <div className="v12-library-row-additions">{item.mechanicalDescription ? <p data-copy-role="mechanical">{item.mechanicalDescription}</p> : null}<div className="v12-library-row-buttons">{renderActions(item)}</div></div> : null}
+          </div>
         ))}
         {pagination}
       </div>
@@ -172,8 +177,8 @@ export function LibraryTable({
           }}
         >
           {items.map((item) => (
+            <div key={item.id} className={renderActions ? "v12-library-action-row" : "contents"}>
             <GridCard
-              key={item.id}
               item={item}
               engagement={engagement}
               currentUserInternalId={currentUserInternalId}
@@ -181,6 +186,8 @@ export function LibraryTable({
               selected={selectedKey === item.id}
               surface={surface}
             />
+            {renderActions ? <div className="v12-library-row-buttons">{renderActions(item)}</div> : null}
+            </div>
           ))}
         </div>
         {pagination}

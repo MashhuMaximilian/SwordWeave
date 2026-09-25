@@ -83,12 +83,15 @@ export async function materializeWorkspace(
             r.originEffectId ||
             r.originItemId),
       );
-      if (prior)
-        await db
-          .update(characterPrimitives)
-          .set(values)
-          .where(eq(characterPrimitives.instanceId, prior.instanceId));
-      else {
+      if (prior) {
+        // Existing inherited occurrences retain their pin, instance, and direct
+        // purchase. Only write when the chosen supply path actually changed.
+        if (Object.entries(values).some(([key, value]) => prior[key as keyof typeof values] !== value))
+          await db
+            .update(characterPrimitives)
+            .set(values)
+            .where(eq(characterPrimitives.instanceId, prior.instanceId));
+      } else {
         const direct =
           !mirrored &&
           existing.find(
@@ -153,7 +156,7 @@ export async function materializeWorkspace(
     if (!originHeritageId) continue;
     const prior = caps.find((c) => c.capabilityId === node.id);
     if (prior) {
-      if (prior.originHeritageId)
+      if (prior.originHeritageId && prior.originHeritageId !== originHeritageId)
         await db
           .update(characterCapabilities)
           .set({ originHeritageId })

@@ -17,7 +17,7 @@ import { readWorkspace } from "@/lib/character/workspace/read";
 import { materializeWorkspace } from "@/lib/character/workspace/materialize";
 import { resolveSlotSource } from "@/lib/versions/slot-source";
 import { recomputeBuSpent } from "@/lib/engine/recompute-bu-spent";
-import type { EntityKey } from "@/lib/character/workspace/model";
+import type { EntityKey, WorkspaceNode } from "@/lib/character/workspace/model";
 export const workspaceCreateSchema = z.object({
   commandId: z.string().uuid(),
   expectedRevision: z.number().int(),
@@ -74,6 +74,7 @@ export async function executeWorkspaceCreate(id: string, userId: string, raw: un
       const pinIssue = pinnedOperationIssue(before, body, hasDraftExecutionScope());
       if (pinIssue) throw new WorkspaceConflict(pinIssue);
       let created;
+      let candidate: WorkspaceNode | undefined;
       if (body.existingId) {
         const selected = await readWorkspace(id, [
           `${body.kind}:${body.existingId}`,
@@ -82,6 +83,7 @@ export async function executeWorkspaceCreate(id: string, userId: string, raw: un
           (n) => n.key === `${body.kind}:${body.existingId}`,
         );
         if (!node) throw new Error("Library piece not found.");
+        candidate = node;
         const type =
           node.kind === "heritage"
             ? `${node.data["kind"]}_TEMPLATE`
@@ -106,8 +108,8 @@ export async function executeWorkspaceCreate(id: string, userId: string, raw: un
         created = await createWorkspaceEntity(body.kind, body.draft);
       }
       const child: EntityKey = `${body.kind}:${created.id}`;
+      if (!candidate && (body.mirrored || !body.target)) candidate = (await readWorkspace(id, [child])).nodes.find(n => n.key === child);
       if (body.mirrored) {
-        const candidate = (await readWorkspace(id, [child])).nodes.find(n => n.key === child);
         if (body.kind !== "primitive" || !candidate?.data["isMirrorable"]) throw new Error("Only mirrorable primitives can be taken as drawbacks.");
       }
       if (body.target && before.edges.some(edge => edge.parent === body.target && edge.child === child && edge.isMirrored !== Boolean(body.mirrored)))
@@ -134,8 +136,7 @@ export async function executeWorkspaceCreate(id: string, userId: string, raw: un
             e.isMirrored === Boolean(body.mirrored),
         )
       ) {
-        const graph = await readWorkspace(id, [child]);
-        const node = graph.nodes.find((n) => n.key === child)!;
+        const node = candidate!;
         if (body.kind === "heritage" && node.data["kind"] !== body.category)
           throw new Error("Choose the category that matches this heritage.");
         const versionId = node.versionId;

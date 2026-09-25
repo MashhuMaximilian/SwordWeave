@@ -3,7 +3,7 @@
  *
  * Backstory shape lives in `characters.backstory jsonb` (migration
  * 0039). The schema is freeform: the current keys are
- * `origin | motivation | ties | flaw`, but new ones can be added
+ * `description | personality | origin | motivation | ties | flaw`, but new ones can be added
  * without migration.
  *
  * This helper:
@@ -13,13 +13,15 @@
  *      with safe defaults
  *
  * The Backstory tab on the character sheet uses this to render
- * the four fields as labeled cards, and to validate input from
+ * the story fields as labeled cards, and to validate input from
  * the edit modal.
  */
 
-export type BackstoryKey = "origin" | "motivation" | "ties" | "flaw";
+export type BackstoryKey = "description" | "personality" | "origin" | "motivation" | "ties" | "flaw";
 
 export interface CharacterBackstory {
+  description: string;
+  personality: string;
   origin: string;
   motivation: string;
   ties: string;
@@ -36,6 +38,8 @@ export interface BackstoryFieldMeta {
 
 /** Display order + label. Keep in sync with the icon registry. */
 export const BACKSTORY_FIELDS: ReadonlyArray<BackstoryFieldMeta> = [
+  { key: "description", label: "Full description", description: "What do they look, sound, and move like? Describe the details that make them recognizable.", iconKey: "scroll" },
+  { key: "personality", label: "Personality", description: "How do they think and act? Their temperament, habits, values, and contradictions.", iconKey: "users" },
   {
     key: "origin",
     label: "Origin & History",
@@ -69,6 +73,8 @@ export const BACKSTORY_FIELDS: ReadonlyArray<BackstoryFieldMeta> = [
  */
 export function parseBackstory(value: unknown): CharacterBackstory {
   const out: CharacterBackstory = {
+    description: "",
+    personality: "",
     origin: "",
     motivation: "",
     ties: "",
@@ -97,12 +103,14 @@ export function parseBackstory(value: unknown): CharacterBackstory {
  * jsonb (no hard cap), but unbounded text in a textarea is a UX
  * trap — 4000 chars per field is generous for character backstory.
  */
-export function sanitizeBackstory(input: CharacterBackstory): CharacterBackstory {
-  const cap = (s: string): string => {
+export function sanitizeBackstory(input: Partial<CharacterBackstory>): CharacterBackstory {
+  const cap = (s: string | undefined): string => {
     const t = (s ?? "").trim();
     return t.length > 4000 ? t.slice(0, 4000) : t;
   };
   return {
+    description: cap(input.description),
+    personality: cap(input.personality),
     origin: cap(input.origin),
     motivation: cap(input.motivation),
     ties: cap(input.ties),
@@ -114,11 +122,6 @@ export function sanitizeBackstory(input: CharacterBackstory): CharacterBackstory
  * Returns true if every backstory field is empty (used to decide
  * whether to render an empty-state placeholder on the Backstory tab).
  */
-export function isBackstoryEmpty(b: CharacterBackstory): boolean {
-  return (
-    b.origin.trim() === "" &&
-    b.motivation.trim() === "" &&
-    b.ties.trim() === "" &&
-    b.flaw.trim() === ""
-  );
+export function isBackstoryEmpty(b: Partial<CharacterBackstory>): boolean {
+  return BACKSTORY_FIELDS.every(({ key }) => !(b[key] ?? "").trim());
 }

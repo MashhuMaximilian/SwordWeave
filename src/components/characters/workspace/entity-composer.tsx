@@ -23,6 +23,7 @@ import { PersistentAuthoringSurface } from "./persistent-authoring-surface";
 import { CharacterAuthoringProvider, type CharacterSlotMetadata } from "@/components/sandbox/character-authoring-context";
 import { WorkspaceLibraryPicker } from "./library-picker";
 import { canContain } from "@/lib/character/workspace/model";
+import type { QuickRuleSeed } from "@/lib/character/workspace/discovery/quick-rules";
 import type {
   WorkspaceGraph,
   WorkspaceNode,
@@ -44,6 +45,7 @@ export function EntityComposer({
   incomingPiece,
   onPreviewChange,
   integratedSources = false,
+  primitiveSeed,
 }: {
   graph: WorkspaceGraph;
   node?: WorkspaceNode | undefined;
@@ -57,6 +59,7 @@ export function EntityComposer({
   incomingPiece?: ({ key: EntityKey; label: string; sequence: number } & CharacterSlotMetadata) | null;
   onPreviewChange?: (preview: ReactNode) => void;
   integratedSources?: boolean;
+  primitiveSeed?: QuickRuleSeed;
 }) {
   const [heritageKind, setHeritageKind] = useState(category);
   const [slotEvents] = useState(() => new EventTarget());
@@ -291,7 +294,13 @@ export function EntityComposer({
   const [row] = useState(() =>
     node
       ? { ...node.data, primitiveLinks, capabilityLinks, effectLinks }
-      : undefined,
+      : primitiveSeed ? {
+        ...primitiveSeed,
+        id: -1, userId: null, isPublic: false, isMirrorable: false,
+        mirrorVector: "STANDARD_ONLY", mirrorBuCredit: 0, mirrorEligibilityNotes: "",
+        iconSource: null, iconKey: null, iconUrl: null, iconColor: "#d4af37",
+        sourceOrigin: null, tags: [],
+      } : undefined,
   );
   const initialPrimitiveSlots: Record<number, CharacterSlotMetadata> = Object.fromEntries(selectionEdges
     .filter((edge) => edge.child.startsWith("primitive:"))
@@ -469,7 +478,7 @@ export function EntityComposer({
     </div>
   );
   return (
-    <section className="v12-character-atelier" data-active-pane={studioTab}>
+    <section className="v12-character-atelier" data-active-pane={studioTab} data-integrated-sources={integratedSources}>
       <header className="v12-character-atelier-head">
         <div>
           <span>Character Atelier</span>

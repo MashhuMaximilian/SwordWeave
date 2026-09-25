@@ -17,8 +17,9 @@ export async function GET(_request: Request, { params }: Context) {
   const { userId } = await auth.protect(); const { id } = await params;
   try {
     const draft = await getWorkspaceDraft(id, userId);
-    const [sheet, graph] = await Promise.all([readDraftSheet(id), readWorkspace(id)]);
-    return NextResponse.json({ draft, sheet, graph });
+    const graph = await readWorkspace(id);
+    const sheet = await readDraftSheet(id, graph);
+    return NextResponse.json({ draft, sheet, graph, authorId: userId });
   } catch (error) { return failure(error); }
 }
 export async function PUT(request: Request, { params }: Context) {

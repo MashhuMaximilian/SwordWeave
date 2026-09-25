@@ -1,13 +1,28 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BookmarkPlus, Check, Eye, Shuffle, X } from "lucide-react";
-import { DISCOVERY_INTENTS, drawDiscoverySuggestions, incrementalDiscoveryCost, discoverySetCost, type DiscoveryIntent, type DiscoverySuggestion } from "@/lib/character/workspace/discovery/matching";
+import { BookmarkPlus, Check, Eye, Shuffle, X, WandSparkles } from "lucide-react";
+import { DISCOVERY_INTENTS, rankDiscoveryCandidates, type DiscoveryCandidate, drawDiscoverySuggestions, incrementalDiscoveryCost, discoverySetCost, type DiscoveryIntent, type DiscoverySuggestion } from "@/lib/character/workspace/discovery/matching";
 import { supplyPaths, type EntityKey, type EntityKind, type WorkspaceGraph } from "@/lib/character/workspace/model";
+
+import { QuickRuleBuilder } from "./quick-rule-builder";
+import { matchesDiscoveryDestination, type DiscoveryHeritageCategory } from "@/lib/character/workspace/discovery/compatibility";
+import type { QuickRuleSeed } from "@/lib/character/workspace/discovery/quick-rules";
+
+const DISCOVERY_TYPES = [
+  { key: "primitive", kind: "primitive", label: "Primitives" },
+  { key: "effect", kind: "effect", label: "Effects" },
+  { key: "capability", kind: "capability", label: "Capabilities" },
+  { key: "LINEAGE", kind: "heritage", label: "Lineages" },
+  { key: "UPBRINGING", kind: "heritage", label: "Upbringings" },
+  { key: "MANIFEST", kind: "heritage", label: "Manifests" },
+  { key: "item", kind: "item", label: "Items" },
+] as const;
 
 interface WorkspaceSuggestionsProps {
   characterId: string;
   destinationLabel: string;
+  heritageCategory?: DiscoveryHeritageCategory;
   kinds?: EntityKind[];
   /** Current draft allowance, not the character's original total budget. */
   budget: number;
@@ -21,9 +36,13 @@ interface WorkspaceSuggestionsProps {
   onAdd: (candidate: DiscoverySuggestion) => void | Promise<void>;
   onPreview?: (key: EntityKey) => void;
   onBuildOwn?: () => void;
+  onBuildRule?: (seed: QuickRuleSeed) => void;
 }
 
-export function WorkspaceSuggestions({ characterId, destinationLabel, kinds = ["primitive"], budget, debtAvailable = 0, excludedKeys = [], graph, destinationIsItem = false, replaceTarget, onReplace, onAddSet, onAdd, onPreview, onBuildOwn }: WorkspaceSuggestionsProps) {
+export function WorkspaceSuggestions({ characterId, destinationLabel, heritageCategory, kinds = ["primitive"], budget, debtAvailable = 0, excludedKeys = [], graph, destinationIsItem = false, replaceTarget, onReplace, onAddSet, onAdd, onPreview, onBuildOwn, onBuildRule }: WorkspaceSuggestionsProps) {
+  const [mode, setMode] = useState<"library" | "rule">("library");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [origin, setOrigin] = useState<"all" | "system" | "community">("all");
   const [query, setQuery] = useState("");
   const [replaceMode, setReplaceMode] = useState(false);
   const [setKeys, setSetKeys] = useState<EntityKey[]>([]);
@@ -41,6 +60,7 @@ export function WorkspaceSuggestions({ characterId, destinationLabel, kinds = ["
   const [retry, setRetry] = useState(0);
   const [catalogCount, setCatalogCount] = useState(0);
   const [loadedRequest, setLoadedRequest] = useState("");
+  const catalogCache = useRef(new Map<string, Promise<DiscoveryCandidate[]>>());
   const keptRef = useRef(kept);
   useEffect(() => { keptRef.current = kept; }, [kept]);
   const replacing = replaceMode && !!replaceTarget && !!onReplace;
@@ -49,14 +69,17 @@ export function WorkspaceSuggestions({ characterId, destinationLabel, kinds = ["
   const allowanceNumber = allowance === "" ? cap : Number(allowance);
   const validAllowance = Number.isFinite(allowanceNumber) && allowanceNumber >= 0;
   const limit = validAllowance ? Math.min(cap, allowanceNumber) : 0;
-  const kindsKey = replacing ? replaceTarget.key.split(":")[0]! : [...kinds].sort().join(",");
+  const compatibleTypes = DISCOVERY_TYPES.filter(type => kinds.includes(type.kind) && matchesDiscoveryDestination(type.kind, type.key, heritageCategory));
+  const selectedType = compatibleTypes.find(type => type.key === typeFilter);
+  const effectiveType = intent === "weakness" ? "primitive" : selectedType?.key ?? "all";
+  const kindsKey = replacing ? replaceTarget.key.split(":")[0]! : intent === "weakness" ? "primitive" : selectedType ? selectedType.kind : [...kinds].sort().join(",");
   const excludedKey = [...excludedKeys].sort().join(",");
   const suppliedKeys = useMemo(() => graph?.nodes.filter((node) => node.kind === "primitive" && supplyPaths(graph, node.key).some((path) => !path.item && !path.edges.some((edge) => edge.isMirrored) && (!replacing || !path.nodes.includes(replaceTarget!.key)))).map((node) => node.key) ?? [], [graph, replacing, replaceTarget]);
   const suppliedKey = [...suppliedKeys].sort().join(",");
   const suppliedSet = new Set(suppliedKeys);
   const excludedSet = new Set([...excludedKeys, ...pendingAdded]);
   const visibleSuggestions = suggestions.filter((item) => !excludedSet.has(item.key));
-  const selectedSet = kept.filter((item) => setKeys.includes(item.key) && !excludedSet.has(item.key) && kinds.includes(item.kind));
+  const selectedSet = kept.filter((item) => setKeys.includes(item.key) && !excludedSet.has(item.key) && kinds.includes(item.kind) && matchesDiscoveryDestination(item.kind, item.heritageType, heritageCategory));
   const setCost = discoverySetCost(selectedSet, suppliedKeys, destinationIsItem);
   const setFits = setCost.credit <= Math.max(0, debtAvailable) && setCost.cost <= Math.max(0, budget) + setCost.credit;
   useEffect(() => {
@@ -66,7 +89,7 @@ export function WorkspaceSuggestions({ characterId, destinationLabel, kinds = ["
     return () => clearTimeout(timer);
   }, [pendingAdded, excludedKey, excludedKeys]);
 
-  const requestKey = JSON.stringify([characterId, query, intent, budget, currentBudget, debtAvailable, limit, kindsKey, excludedKey, suppliedKey, destinationIsItem, retry]);
+  const requestKey = JSON.stringify([characterId, query, intent, budget, currentBudget, debtAvailable, limit, kindsKey, excludedKey, suppliedKey, destinationIsItem, effectiveType, origin, heritageCategory, retry]);
   const isLoading = loading || loadedRequest !== requestKey;
   useEffect(() => {
     const abort = new AbortController();
@@ -75,33 +98,45 @@ export function WorkspaceSuggestions({ characterId, destinationLabel, kinds = ["
       setError("");
       setSuggestions([]);
       if (!kindsKey) { setPool([]); setCatalogCount(0); setLoading(false); setLoadedRequest(requestKey); return; }
-      void fetch(`/api/characters/${characterId}/workspace/suggestions`, {
-        method: "POST", signal: abort.signal, headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, intent, budget: intent === "weakness" ? Math.max(0, currentBudget) : limit, debtAvailable: intent === "weakness" ? limit : debtAvailable, kinds: kindsKey.split(","), excludedKeys: excludedKey ? excludedKey.split(",") : [], suppliedPrimitiveKeys: suppliedKey ? suppliedKey.split(",") : [], destinationIsItem }),
-      }).then(async (response) => {
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || "Could not load suggestions.");
+      const catalogKey = JSON.stringify([characterId, kindsKey, retry]);
+      let catalogRequest = catalogCache.current.get(catalogKey);
+      if (!catalogRequest) {
+        catalogRequest = fetch(`/api/characters/${characterId}/workspace/suggestions`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ catalogOnly: true, budget: 0, kinds: kindsKey.split(",") }),
+        }).then(async response => {
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || "Could not load suggestions.");
+          return result.catalog as DiscoveryCandidate[];
+        }).catch(cause => { catalogCache.current.delete(catalogKey); throw cause; });
+        catalogCache.current.set(catalogKey, catalogRequest);
+      }
+      void catalogRequest.then(catalog => {
         if (abort.signal.aborted) return;
-        const nextPool = result.suggestions as DiscoverySuggestion[];
+        const nextPool = rankDiscoveryCandidates(catalog, { query, intent, budget: intent === "weakness" ? Math.max(0, currentBudget) : limit,
+          debtAvailable: intent === "weakness" ? limit : debtAvailable, kinds: kindsKey.split(",") as EntityKind[],
+          excludedKeys: excludedKey ? excludedKey.split(",") as EntityKey[] : [], suppliedPrimitiveKeys: suppliedKey ? suppliedKey.split(",") as EntityKey[] : [], destinationIsItem })
+          .filter(item => matchesDiscoveryDestination(item.kind, item.heritageType, heritageCategory) && (origin === "all" || item.origin === origin) &&
+            (effectiveType === "all" || !["LINEAGE", "UPBRINGING", "MANIFEST"].includes(effectiveType) || item.heritageType === effectiveType));
         const next = drawDiscoverySuggestions(nextPool, keptRef.current.map((item) => item.key), [], []);
-        setPool(nextPool); setSuggestions(next); setSeen(next.map((item) => item.key)); setCatalogCount(result.catalogCount);
+        setPool(nextPool); setSuggestions(next); setSeen(next.map((item) => item.key)); setCatalogCount(catalog.length);
         setAnnouncement(`${nextPool.length} matching options. ${next.length} suggestions shown.`);
       }).catch((cause) => {
         if (!abort.signal.aborted) { setError(cause instanceof Error ? cause.message : "Could not load suggestions."); setPool([]); }
       }).finally(() => { if (!abort.signal.aborted) { setLoading(false); setLoadedRequest(requestKey); } });
     }, 250);
     return () => { clearTimeout(timer); abort.abort(); };
-  }, [characterId, query, intent, budget, currentBudget, debtAvailable, limit, kindsKey, excludedKey, suppliedKey, destinationIsItem, retry, requestKey]);
+  }, [characterId, query, intent, budget, currentBudget, debtAvailable, limit, kindsKey, excludedKey, suppliedKey, destinationIsItem, effectiveType, origin, heritageCategory, retry, requestKey]);
 
   function shuffle() {
     const next = drawDiscoverySuggestions(pool, [...kept.map((item) => item.key), ...excludedSet], seen, suggestions.map((item) => item.key));
     setSuggestions(next);
     setSeen((current) => [...new Set([...current, ...next.map((item) => item.key)])]);
-    setAnnouncement(`${next.length} suggestions shown. Kept choices remain below.`);
+    setAnnouncement(`${next.length} suggestions shown. Saved comparisons remain below.`);
   }
   function keep(item: DiscoverySuggestion) {
     if (kept.some((candidate) => candidate.key === item.key)) return;
-    if (kept.length >= 4) { setAnnouncement("Four choices kept. Remove one before keeping another."); return; }
+    if (kept.length >= 4) { setAnnouncement("Four comparisons saved. Remove one before saving another."); return; }
     const nextKept = [...kept, item];
     setKept(nextKept);
     // Fill only the vacated slot, leaving the other two choices in place.
@@ -114,7 +149,7 @@ export function WorkspaceSuggestions({ characterId, destinationLabel, kinds = ["
     setAdding(item.key); setError("");
     try {
       const priced = incrementalDiscoveryCost(item, suppliedSet, destinationIsItem) as DiscoverySuggestion;
-      if (excludedSet.has(item.key)) return;
+      if (excludedSet.has(item.key) || !matchesDiscoveryDestination(item.kind, item.heritageType, heritageCategory)) return;
       if (replacing) await onReplace!(priced, replaceTarget!.key);
       else await onAdd(priced);
       setPendingAdded((keys) => [...new Set([...keys, item.key])]);
@@ -138,7 +173,7 @@ export function WorkspaceSuggestions({ characterId, destinationLabel, kinds = ["
   function card(original: DiscoverySuggestion, retained: boolean) {
     const item = incrementalDiscoveryCost(original, suppliedSet, destinationIsItem) as DiscoverySuggestion;
     const alreadyAdded = excludedSet.has(item.key);
-    const compatible = replacing ? item.kind === replaceTarget!.key.split(":")[0] : kinds.includes(item.kind);
+    const compatible = (replacing ? item.kind === replaceTarget!.key.split(":")[0] : kinds.includes(item.kind)) && matchesDiscoveryDestination(item.kind, item.heritageType, heritageCategory);
     const affordable = item.mirrored ? (item.mirrorCredit ?? Infinity) <= Math.max(0, debtAvailable) : item.cost <= Math.max(0, currentBudget);
     return <article key={item.key} data-added={alreadyAdded} data-kept={retained} className="v12-workspace-suggestion-card rounded-lg border border-amber-200/40 bg-gradient-to-br from-slate-800/60 via-slate-950/80 to-black p-3 shadow-[inset_0_1px_rgba(255,239,186,0.2)]">
       <div className="flex items-start justify-between gap-3">
@@ -155,22 +190,28 @@ export function WorkspaceSuggestions({ characterId, destinationLabel, kinds = ["
       <div className="discovery-card-actions mt-3 flex flex-wrap items-center gap-2">
         {onPreview && <button type="button" className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs" onClick={() => onPreview(item.key)}><Eye size={14} />Preview</button>}
         {retained ? <button type="button" className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs" aria-label={`Remove ${item.name} from considered choices`} onClick={() => { setKept((current) => current.filter((candidate) => candidate.key !== item.key)); setSetKeys((keys) => keys.filter((key) => key !== item.key)); setAnnouncement(`${item.name} removed from considered choices.`); }}><X size={14} />Remove</button>
-          : <button type="button" disabled={kept.length >= 4} className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs disabled:opacity-50" onClick={() => keep(item)}><BookmarkPlus size={14} />Keep</button>}
+          : <button type="button" disabled={kept.length >= 4} className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs disabled:opacity-50" onClick={() => keep(item)}><BookmarkPlus size={14} />Save for comparison</button>}
         <button type="button" disabled={!compatible || !affordable || alreadyAdded || adding !== null} className="inline-flex items-center gap-1 rounded border border-amber-200/60 bg-amber-200/10 px-2 py-1 text-xs text-amber-100 disabled:opacity-50" onClick={() => void add(item)}>{alreadyAdded ? <><Check size={14} />In draft</> : adding === item.key ? "Adding…" : replacing ? `Replace ${replaceTarget!.name}` : "Add to draft"}</button>
       </div>
     </article>;
   }
   return <section className="v12-workspace-suggestions space-y-3" aria-label="Purposeful character suggestions">
-    <header><h3 className="font-semibold text-amber-100">What would you like to explore?</h3><p className="text-sm text-muted-foreground">Find ideas for {destinationLabel}. Keep options to compare, then add the ones you want to your draft.</p></header>
+    <header><h3 className="font-semibold text-amber-100">What would you like to explore?</h3><p className="text-sm text-muted-foreground">Explore options for {destinationLabel}. Add a choice to your draft, or save it below to compare first.</p></header>
+    {onBuildRule && kinds.includes("primitive") && <div className="discovery-mode discovery-main-mode" aria-label="Ideas mode"><button type="button" aria-pressed={mode === "library"} onClick={() => setMode("library")}><Shuffle size={14} />Explore Library</button><button type="button" aria-pressed={mode === "rule"} onClick={() => setMode("rule")}><WandSparkles size={14} />Build a rule</button></div>}
+    {mode === "rule" && onBuildRule && kinds.includes("primitive") ? <QuickRuleBuilder budget={Math.max(0, budget)} onBuild={onBuildRule} {...(onBuildOwn ? { onBuildOwn } : {})} /> : <>
     {replaceTarget && onReplace && <div className="discovery-mode" aria-label="Suggestion operation"><button type="button" aria-pressed={!replacing} onClick={() => setReplaceMode(false)}>Add something</button><button type="button" aria-pressed={replacing} onClick={() => { setReplaceMode(true); setIntent("surprise"); }}>Replace {replaceTarget.name}</button></div>}
     {replacing && <p className="discovery-replacement-note">Find an alternative to this occurrence of {replaceTarget!.name}. The complete replacement is checked together before it enters the draft.</p>}
+    {!replacing && <fieldset className="discovery-type-field"><legend>What are you looking for?</legend><div className="discovery-kind-options"><button type="button" aria-pressed={effectiveType === "all"} disabled={intent === "weakness"} onClick={() => setTypeFilter("all")}>All compatible</button>{compatibleTypes.map(type => <button key={type.key} type="button" disabled={intent === "weakness" && type.kind !== "primitive"} aria-pressed={effectiveType === type.key} onClick={() => setTypeFilter(type.key)}>{type.label}</button>)}</div></fieldset>}
+    {heritageCategory && kinds.includes("heritage") && <p className="discovery-replacement-note">Choose another root above to explore its heritage bundles.</p>}
+    <div className="discovery-origin-options" aria-label="Library origin">{(["all", "system", "community"] as const).map(value => <button type="button" key={value} aria-pressed={origin === value} onClick={() => setOrigin(value)}>{value === "all" ? "System + Community" : value === "system" ? "System" : "Community"}</button>)}</div>
     <div className="discovery-intents flex flex-wrap gap-2">{DISCOVERY_INTENTS.map((item) => <button type="button" key={item.id} aria-pressed={intent === item.id} className={`rounded border px-2 py-1 text-xs ${intent === item.id ? "border-amber-200 bg-amber-200/15 text-amber-100" : "border-border text-muted-foreground"}`} onClick={() => setIntent(item.id)}>{item.label}</button>)}</div>
     <label className="block text-sm">Describe the idea<input className="mt-1 w-full rounded border border-border bg-background p-2" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="For example: hard to hurt with spells" maxLength={500} /></label>
     {/anti[ -]?magic/i.test(query) && <div className="flex flex-wrap gap-2 text-xs"><span>What should it do?</span>{["Resist magic", "Interrupt spells", "Detect magic", "Dispel magic"].map((choice) => <button type="button" key={choice} className="rounded border border-amber-200/40 px-2 py-1" onClick={() => setQuery(choice)}>{choice}</button>)}</div>}
-    <div className="flex flex-wrap items-end gap-2"><label className="min-w-0 flex-1 text-xs">{intent === "weakness" ? "Maximum drawback credit" : "Spend up to"}<div className="mt-1 flex items-center gap-2"><input type="text" inputMode="decimal" aria-label="Suggestion BU allowance" className="w-24 rounded border border-border bg-background p-2 text-sm" placeholder={String(cap)} value={allowance} onChange={(event) => setAllowance(event.target.value)} /><span>BU · {cap} available</span></div></label><button type="button" disabled={isLoading || !pool.length || !validAllowance} onClick={shuffle} className="discovery-shuffle inline-flex items-center gap-2 rounded border border-amber-200/60 bg-gradient-to-br from-amber-200/20 to-amber-950/30 px-3 py-2 text-sm text-amber-100 disabled:opacity-50"><Shuffle size={16} />Shuffle ideas</button></div>
+    <div className="flex flex-wrap items-end gap-2"><label className="min-w-0 flex-1 text-xs">{intent === "weakness" ? "Maximum drawback credit" : "Spend up to"}<div className="mt-1 flex items-center gap-2"><input type="text" inputMode="decimal" aria-label="Suggestion BU allowance" className="w-24 rounded border border-border bg-background p-2 text-sm" placeholder={String(cap)} value={allowance} onChange={(event) => setAllowance(event.target.value)} /><span>BU requested</span></div></label><button type="button" disabled={isLoading || !pool.length || !validAllowance} onClick={shuffle} className="discovery-shuffle inline-flex items-center gap-2 rounded border border-amber-200/60 bg-gradient-to-br from-amber-200/20 to-amber-950/30 px-3 py-2 text-sm text-amber-100 disabled:opacity-50"><Shuffle size={16} />Shuffle ideas</button></div>
     {!validAllowance && <p role="alert" className="text-sm text-red-300">Enter zero or a positive number.</p>}
-    {allowanceNumber > cap && <p className="text-xs text-muted-foreground">Using your available allowance of {cap} BU.</p>}
-    <p className="text-xs text-muted-foreground">Matches names, descriptions, tags, families, and mechanical rules using related wording. Tiers are not locked by level. BU shows an estimate of extra character cost when your draft is available; review checks the complete result before applying.</p>
+    <p className="discovery-budget-summary">Searching up to <strong>{limit} BU</strong> · {cap} BU {intent === "weakness" ? "drawback allowance" : "available"}{allowanceNumber > cap ? ` (your ${allowanceNumber} BU request is above this allowance)` : ""}.</p>
+    {cap === 0 && intent !== "weakness" && <p className="discovery-replacement-note">No unspent BU remains. Results can still include free rules and rules your character already owns. Remove a draft choice or increase the character’s agreed budget to explore paid options.</p>}
+    <p className="text-xs text-muted-foreground">Search in your own words, such as “hard to hurt with spells.” Results use related words across names, descriptions, tags, and rules. Check each rule before adding it; similar wording does not guarantee the same effect. Tiers are not locked by level.</p>
     <span className="sr-only" role="status" aria-live="polite">{announcement}</span>
     {error && <div role="alert" className="text-sm text-red-300">{error} <button type="button" className="underline" onClick={() => setRetry((current) => current + 1)}>Retry</button></div>}
     {isLoading ? <p role="status" className="text-sm">Searching the complete compatible Library…</p> : <>
@@ -179,6 +220,7 @@ export function WorkspaceSuggestions({ characterId, destinationLabel, kinds = ["
       {!visibleSuggestions.length && <div className="rounded border border-border p-3 text-sm"><p>{pool.length ? "All matching choices are kept below. Remove one to explore it again, or change your search." : "No matching option fits this allowance. Try a broader idea, adjust the allowance, or build your own."}</p>{onBuildOwn && <button type="button" className="mt-2 text-amber-100 underline" onClick={onBuildOwn}>Build my own</button>}</div>}
       {visibleSuggestions.length > 0 && visibleSuggestions.length < 3 && <p className="text-xs text-muted-foreground">Only {visibleSuggestions.length} unkept matching {visibleSuggestions.length === 1 ? "option remains" : "options remain"}. Kept choices are never repeated here.</p>}
     </>}
-    {!!kept.length && <section className="space-y-2 border-t border-amber-200/30 pt-3" aria-label="Considered suggestions"><h4 className="text-sm font-semibold text-amber-100">Kept for comparison · {kept.length}/4</h4><p className="text-xs text-muted-foreground">Keeping a choice does not spend BU or change your character.</p><div className="grid gap-3">{kept.map((item) => card(item, true))}</div>{onAddSet && !replacing && selectedSet.length > 0 && <div className="discovery-set-summary"><span>{selectedSet.length} selected · estimated {setCost.cost} BU{setCost.credit > 0 ? ` · +${setCost.credit} drawback credit` : ""}</span>{!setFits && <p>This set exceeds your remaining budget or drawback allowance.</p>}<button type="button" disabled={selectedSet.length < 2 || !setFits || adding !== null} onClick={() => void addSet()}>{adding === "set" ? "Checking set…" : "Add selected together"}</button><small>Reviewed as one change. Shared rules are counted in the estimate; the full draft validates cost and compatibility.</small></div>}</section>}
+    {!!kept.length && <section className="space-y-2 border-t border-amber-200/30 pt-3" aria-label="Considered suggestions"><h4 className="text-sm font-semibold text-amber-100">Saved for comparison · {kept.length}/4</h4><p className="text-xs text-muted-foreground">Saved comparisons do not spend BU or change your character. Use Add to draft when you decide.</p><div className="grid gap-3">{kept.map((item) => card(item, true))}</div>{onAddSet && !replacing && selectedSet.length > 0 && <div className="discovery-set-summary"><span>{selectedSet.length} selected · estimated {setCost.cost} BU{setCost.credit > 0 ? ` · +${setCost.credit} drawback credit` : ""}</span>{!setFits && <p>This set exceeds your remaining budget or drawback allowance.</p>}<button type="button" disabled={selectedSet.length < 2 || !setFits || adding !== null} onClick={() => void addSet()}>{adding === "set" ? "Checking set…" : "Add selected together"}</button><small>Reviewed as one change. Shared rules are counted in the estimate; the full draft validates cost and compatibility.</small></div>}</section>}
+    </>}
   </section>;
 }

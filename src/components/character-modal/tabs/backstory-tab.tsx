@@ -19,6 +19,8 @@ import { useCharacterModal } from "../character-modal-store";
 const STORAGE_KEY = "swordweave:character-modal:draft:backstory";
 
 export type BackstoryState = {
+  description: string;
+  personality: string;
   origin: string;
   motivation: string;
   ties: string;
@@ -26,6 +28,8 @@ export type BackstoryState = {
 };
 
 export const BACKSTORY_EMPTY: BackstoryState = {
+  description: "",
+  personality: "",
   origin: "",
   motivation: "",
   ties: "",
@@ -51,6 +55,8 @@ const FIELDS: Array<{
   help: string;
   placeholder: string;
 }> = [
+  { key: "description", label: "Full description", help: "What do they look, sound, and move like?", placeholder: "Appearance, voice, clothing, and distinguishing details…" },
+  { key: "personality", label: "Personality", help: "How do they think and act?", placeholder: "Temperament, habits, values, and contradictions…" },
   {
     key: "origin",
     label: "Origin & History",

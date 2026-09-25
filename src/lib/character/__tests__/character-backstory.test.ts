@@ -15,6 +15,8 @@ import {
 describe("parseBackstory", () => {
   it("returns all-empty on null", () => {
     expect(parseBackstory(null)).toEqual({
+      description: "",
+      personality: "",
       origin: "",
       motivation: "",
       ties: "",
@@ -24,6 +26,8 @@ describe("parseBackstory", () => {
 
   it("returns all-empty on undefined", () => {
     expect(parseBackstory(undefined)).toEqual({
+      description: "",
+      personality: "",
       origin: "",
       motivation: "",
       ties: "",
@@ -33,6 +37,8 @@ describe("parseBackstory", () => {
 
   it("returns all-empty on non-object (number)", () => {
     expect(parseBackstory(42)).toEqual({
+      description: "",
+      personality: "",
       origin: "",
       motivation: "",
       ties: "",
@@ -49,6 +55,8 @@ describe("parseBackstory", () => {
         flaw: "Distrusts authority",
       }),
     ).toEqual({
+      description: "",
+      personality: "",
       origin: "Born in the ashes",
       motivation: "Find the truth",
       ties: "Bromir the Smith",
@@ -65,6 +73,8 @@ describe("parseBackstory", () => {
         flaw: { nested: true },
       }),
     ).toEqual({
+      description: "",
+      personality: "",
       origin: "",
       motivation: "",
       ties: '["a","b"]',
@@ -80,6 +90,8 @@ describe("parseBackstory", () => {
         anotherFuture: 123,
       }),
     ).toEqual({
+      description: "",
+      personality: "",
       origin: "valid",
       motivation: "",
       ties: "",
@@ -96,6 +108,8 @@ describe("parseBackstory", () => {
         flaw: "",
       }),
     ).toEqual({
+      description: "",
+      personality: "",
       origin: "",
       motivation: "",
       ties: "",
@@ -145,6 +159,8 @@ describe("sanitizeBackstory", () => {
       flaw: "Quick to anger",
     });
     expect(out).toEqual({
+      description: "",
+      personality: "",
       origin: "Born under a star",
       motivation: "Seeking redemption",
       ties: "Brother Calden",
@@ -185,5 +201,17 @@ describe("isBackstoryEmpty", () => {
         flaw: "",
       }),
     ).toBe(true);
+  });
+});
+
+describe("extended story fields", () => {
+  it("preserves description and personality with existing fields through save and reload", () => {
+    const saved = sanitizeBackstory(parseBackstory({ description: " **An imposing bear** ", personality: " Gentle, until provoked. ", origin: "From the mountains", ties: "An old friend" }));
+    expect(parseBackstory(JSON.parse(JSON.stringify(saved)))).toEqual({ description: "**An imposing bear**", personality: "Gentle, until provoked.", origin: "From the mountains", ties: "An old friend", motivation: "", flaw: "" });
+    expect(isBackstoryEmpty(parseBackstory({ personality: "Curious" }))).toBe(false);
+    expect(isBackstoryEmpty(parseBackstory({ description: "Blue eyes" }))).toBe(false);
+  });
+  it("loads historical four-field records without losing their content", () => {
+    expect(parseBackstory({ origin: "Home", motivation: "Explore", ties: "Family", flaw: "Pride" })).toEqual({description: "", personality: "", origin: "Home", motivation: "Explore", ties: "Family", flaw: "Pride"});
   });
 });

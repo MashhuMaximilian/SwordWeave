@@ -367,3 +367,19 @@ Acceptance is measured with concrete tasks:
 ## Checkpoint scope
 
 `2ae2897` contains the approved character-creation work and progression correction, including the prepared `0067_open_ended_progression.sql`. The database migration was not applied by this design audit. A Git checkpoint restores code; it is not a database snapshot. Generated screenshots, scratch files, and `next-env.d.ts` regeneration were not added to the checkpoint.
+
+## September 25 feedback follow-up
+
+- Character creation and character editing share Full description and Personality alongside the existing backstory prompts. Numeric level entry permits an empty in-progress value.
+- The workshop Library reuses Atelier's search, family/tier/origin controls and canonical rows. Row selection inspects; Add is explicit. Forms fill the integrated middle column; the right side has separate Piece preview and Character numbers disclosures.
+- Ideas separates exploring the authorized System + Community Library from starting a rule using priced canonical options. A comparison is a bookmark, not a character mutation. Arbitrary modifier amounts must go through the rule authoring and validation flow; do not infer a generic linear price.
+- Draft changes remain separate from the live character until Review → Apply. Server drafts can be resumed; browser recovery protects unfinished forms and unsent draft operations. Conflict checks must remain authoritative.
+- Test characters: Bartholomew Vey for a new base character, Tessy3 for an existing character with bundles. The development roster must honor both the actual signed-in identity and the explicitly resolved legacy local profile.
+
+### Later: one rules reference inside the sheet FAB
+
+Add an Info action opening a searchable, sectioned rules modal. This is a future task, not part of the current workshop changes. Two clear entry points: **Mechanics & numbers** (BU, debt/mirroring, level, PB, vitality, attributes/practices, capabilities, primitives, conditions, scaling and Strain) and **Playing at the table** (declare an intention, assemble a capability, negotiate cost, roll and resolve, examples of play). Reuse the existing authoritative rule helpers and explanations from builders, scaling/action drawers and sheet modals; do not introduce another disconnected rules source. Cross-link contextual help to the relevant section. Keep the same entry point for a newly created or existing character.
+
+Validation for this pass: 140 focused tests passed (the opt-in database integration suite was skipped; separate rollback-only database smokes covered add/apply/idempotent retry/undo). Bartholomew was verified in the roster and opened in the workshop. Tessy3's existing pending draft and bundles were preserved. Desktop composer width and 390px mobile layout were checked.
+
+Latency probe on Tessy3: three foundation operations in a rollback preview went from about 21.2s to 1.7–2.6s after graph reuse/batching. A structural addition over its 47-node graph still took roughly 9–10s against the remote database. Do not describe the workshop as fully offline or all edits as instant: the local journal protects interrupted saves, but composing authoritative graphs still requires server validation. A future dedicated client projection engine could provide immediate structural previews; it must preserve pinned versions, identity aliases, shared memberships, budget semantics and conflict handling.

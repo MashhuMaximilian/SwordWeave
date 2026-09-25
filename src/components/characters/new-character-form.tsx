@@ -1,4 +1,5 @@
 "use client";
+import { parseBackstory, type CharacterBackstory } from "@/lib/character/character-backstory";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ComponentProps, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
@@ -86,14 +87,14 @@ interface FormState {
   sizingMode: "level" | "bu";
   level: number;
   customBu: number;
-  backstory: { origin: string; motivation: string; ties: string; flaw: string };
+  backstory: CharacterBackstory;
 }
 
 const INITIAL_STATE: FormState = {
   name: "", concept: "", portraitUrl: "", portraitFrame: { x: 50, y: 50, zoom: 1 }, size: "MEDIUM", notes: "",
   attrPhysical: 4, attrMental: 3, attrMagical: 3, attrProficient: "PHYSICAL",
   sizingMode: "level", level: 1, customBu: 25,
-  backstory: { origin: "", motivation: "", ties: "", flaw: "" },
+  backstory: parseBackstory(null),
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -129,7 +130,7 @@ export function NewCharacterForm() {
         const saved = window.localStorage.getItem(DRAFT_KEY);
         if (saved) {
           const draft = JSON.parse(saved) as { state?: FormState; selectedPrimitiveIds?: number[]; mirroredPrimitiveIds?: number[]; mirroredPrimitiveId?: number | null; savedMirrorIds?: number[]; savedPackages?: PackagePreset[]; packageShuffleBudget?: number | null; step?: StepId };
-          if (draft.state && typeof draft.state.name === "string" && draft.state.backstory) setState({ ...INITIAL_STATE, ...draft.state, concept: draft.state.concept ?? "" });
+          if (draft.state && typeof draft.state.name === "string" && draft.state.backstory) setState({ ...INITIAL_STATE, ...draft.state, concept: draft.state.concept ?? "", backstory: parseBackstory(draft.state.backstory) });
           if (Array.isArray(draft.selectedPrimitiveIds)) {
             setSelectedPrimitiveIds(draft.selectedPrimitiveIds.filter(Number.isInteger));
             if (draft.selectedPrimitiveIds.length) starterApplied.current = true;
@@ -444,7 +445,7 @@ function FoundationStep({ state, setField, setState, attrSum, budget, effectiveL
         <div className="sw-forge-budget-control">
           <div className="sw-forge-budget-control__heading"><label htmlFor="sw-forge-budget-value">{state.sizingMode === "level" ? "Starting level" : "Agreed Build Units"}</label><div className="sw-forge-mode" role="group" aria-label="Starting budget source"><button type="button" aria-pressed={state.sizingMode === "level"} className={state.sizingMode === "level" ? "is-active" : ""} onClick={() => setField("sizingMode", "level")}>By level</button><button type="button" aria-pressed={state.sizingMode === "bu"} className={state.sizingMode === "bu" ? "is-active" : ""} onClick={() => setField("sizingMode", "bu")}>Custom BU</button></div></div>
           <small>{state.sizingMode === "level" ? "Leave this at 1 unless your group starts higher." : `Only if your group agreed on a budget. This implies level ${effectiveLevel} for eligible weaknesses.`}</small>
-          {state.sizingMode === "level" ? <input id="sw-forge-budget-value" type="number" min={1} value={state.level} onChange={(event) => setField("level", clamp(Number(event.target.value), 1, Number.MAX_SAFE_INTEGER))} /> : <input id="sw-forge-budget-value" type="number" min={25} value={state.customBu} onChange={(event) => setField("customBu", clamp(Number(event.target.value), 25, Number.MAX_SAFE_INTEGER))} />}
+          <EditableBudgetInput key={state.sizingMode} value={state.sizingMode === "level" ? state.level : state.customBu} min={state.sizingMode === "level" ? 1 : 25} onChange={(value) => setField(state.sizingMode === "level" ? "level" : "customBu", value)} />
         </div>
       </div>
       <div className="sw-forge-size-reading"><span><small>Carry</small>{SIZE_CAPACITY[state.size]} load</span><span><small>Walk</small>{speed} ft</span><span><small>Swim</small>{Math.ceil(speed / 2)} ft</span><span><small>Climb</small>{Math.ceil(speed / 2)} ft</span></div>
@@ -473,7 +474,7 @@ function AttributesStep({ state, setField, setState, attrSum }: { state: FormSta
 }
 
 function BackstoryStep({ state, setState, hideMotivation = false }: { state: FormState; setState: React.Dispatch<React.SetStateAction<FormState>>; hideMotivation?: boolean }) {
-  const fields: Array<[keyof FormState["backstory"], string, string, string]> = [["origin", "Origin & history", "Where from, what happened", "Family, birthplace, culture, and defining events…"], ["motivation", "Motivation & goals", "What drives them now", "What do they want, and why can’t they let it go?"], ["ties", "Ties & allies", "Who matters", "Friends, rivals, family, patrons, promises…"], ["flaw", "Flaw & conflict", "What gets in their way", "A fear, contradiction, obligation, or recurring mistake…"]];
+  const fields: Array<[keyof FormState["backstory"], string, string, string]> = [["description", "Full description", "What makes them recognizable", "Appearance, voice, movement, clothing, and distinguishing details…"], ["personality", "Personality", "How they think and act", "Temperament, habits, values, and contradictions…"], ["origin", "Origin & history", "Where from, what happened", "Family, birthplace, culture, and defining events…"], ["motivation", "Motivation & goals", "What drives them now", "What do they want, and why can’t they let it go?"], ["ties", "Ties & allies", "Who matters", "Friends, rivals, family, patrons, promises…"], ["flaw", "Flaw & conflict", "What gets in their way", "A fear, contradiction, obligation, or recurring mistake…"]];
   return <div className="sw-forge-story-grid">{fields.filter(([key]) => !hideMotivation || key !== "motivation").map(([key, label, hint, placeholder], index) => <section key={key} className={`sw-forge-panel ${index % 2 ? "sw-forge-panel--teal" : "sw-forge-panel--brass"}`}><PanelTitle number={String.fromCharCode(65 + index)} title={label} subtitle={hint} /><MarkdownEditor className="sw-forge-markdown" rows={3} ariaLabel={label} value={state.backstory[key]} onChange={(value) => setState((current) => ({ ...current, backstory: { ...current.backstory, [key]: value } }))} placeholder={placeholder} /></section>)}</div>;
 }
 
@@ -755,3 +756,18 @@ function PrimitiveSelectCard({ item, selected, onToggle }: { item: PrimitiveOpti
 
 function PanelTitle({ number, title, subtitle }: { number: string; title: string; subtitle: string }) { return <header className="sw-forge-panel__title"><span>{number}</span><div><h3>{title}</h3><p>{subtitle}</p></div></header>; }
 function ForgeField({ label, hint, required, children }: { label: string; hint?: string; required?: boolean; children: React.ReactNode }) { return <label className="sw-forge-field"><span>{label}{required ? <b>Required</b> : null}</span>{hint ? <small>{hint}</small> : null}{children}</label>; }
+
+/** Keep the input text separate from the valid build value so it can be cleared. */
+function EditableBudgetInput({ value, min, onChange }: { value: number; min: number; onChange: (value: number) => void }) {
+  const [text, setText] = useState(String(value));
+  return <input id="sw-forge-budget-value" type="text" inputMode="numeric" pattern="[0-9]*" value={text} onChange={(event) => {
+    const next = event.target.value;
+    if (!/^\d*$/.test(next)) return;
+    setText(next);
+    const number = Number(next);
+    if (next && Number.isSafeInteger(number) && number >= min) onChange(number);
+  }} onBlur={() => {
+    const number = text === "" ? value : clamp(Number(text), min, Number.MAX_SAFE_INTEGER);
+    setText(String(number)); onChange(number);
+  }} />;
+}

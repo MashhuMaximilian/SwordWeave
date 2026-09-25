@@ -6,6 +6,7 @@ import { loadDiscoveryCatalog } from "@/lib/character/workspace/discovery/catalo
 import { rankDiscoveryCandidates } from "@/lib/character/workspace/discovery/matching";
 
 const requestSchema = z.object({
+  catalogOnly: z.boolean().default(false),
   query: z.string().trim().max(500).default(""),
   intent: z.enum(["surprise", "defense", "mobility", "training", "healing", "weakness"]).default("surprise"),
   budget: z.number().finite().min(0),
@@ -27,6 +28,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const criteria = parsed.data;
     const kinds = criteria.intent === "weakness" ? ["primitive" as const] : criteria.kinds;
     const catalog = await loadDiscoveryCatalog(kinds, userId);
+    // The editor can reuse this authorized snapshot for local searches. No shared cache:
+    // publication visibility is evaluated for this viewer, and Apply checks it again.
+    if (criteria.catalogOnly) return NextResponse.json({ catalog, catalogCount: catalog.length }, { headers: { "Cache-Control": "private, no-store" } });
     const suggestions = rankDiscoveryCandidates(catalog, { ...criteria, kinds, suppliedPrimitiveKeys: criteria.suppliedPrimitiveKeys as `primitive:${string}`[], excludedKeys: criteria.excludedKeys as `${typeof kinds[number]}:${string}`[] });
     return NextResponse.json({ suggestions, catalogCount: catalog.length, matchingCount: suggestions.length, matchingMethod: "Related words and mechanical fields; no generated rules." }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {

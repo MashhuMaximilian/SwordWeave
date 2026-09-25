@@ -18,7 +18,7 @@
 
 import Link from "next/link";
 import { Suspense } from "react";
-import { asc, eq } from "drizzle-orm";
+import { asc, inArray } from "drizzle-orm";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { ArrowRight, Plus, UserRound, UsersRound } from "lucide-react";
 import {
@@ -46,7 +46,8 @@ export default async function CharactersPage({ searchParams }: PageProps) {
   const ownerIdentity = clerkId
     ? await resolveLocalAuthorIdentity(clerkId, clerkAccount?.username)
     : null;
-  const ownerClerkId = ownerIdentity?.clerkUserId ?? clerkId;
+  // The current session owns new rows; the local profile may own older rows.
+  const ownerIds = [...new Set([clerkId, ownerIdentity?.clerkUserId, ownerIdentity?.internalUserId].filter((id): id is string => Boolean(id)))];
   const params = await searchParams;
 
   const initialTab: CharacterTab = (() => {
@@ -70,9 +71,9 @@ export default async function CharactersPage({ searchParams }: PageProps) {
   // error.tsx can't render it.
   const [ownRows, sharedRows, publicResult] = (await (async () => {
     try {
-      const ownedPromise: Promise<any[]> = ownerClerkId
+      const ownedPromise: Promise<any[]> = ownerIds.length
         ? (db.query.characters.findMany({
-            where: eq(characters.userId, ownerClerkId),
+            where: inArray(characters.userId, ownerIds),
             orderBy: [asc(characters.level), asc(characters.name)],
             with: {
               primitiveLinks: { with: { primitive: true } },

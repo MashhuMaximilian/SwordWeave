@@ -193,3 +193,30 @@ body[data-ui="v12"] .v12-workspace-suggestions .discovery-set-summary {
   font: 11px/16px var(--font-system);
 }
 body[data-ui="v12"] .v12-workspace-suggestions .discovery-set-summary small { color: #bfc5bc; font: 11px/15px var(--font-body); }
+
+/* Ideas use two distinct actions: discover an existing entry, or author a priced rule. */
+body[data-ui="v12"] .v12-workspace-suggestions .discovery-main-mode { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 6px; }
+body[data-ui="v12"] .v12-workspace-suggestions .discovery-main-mode button { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 39px; }
+body[data-ui="v12"] .v12-workspace-suggestions .discovery-type-field { min-width: 0; border: 0; padding: 0; }
+body[data-ui="v12"] .v12-workspace-suggestions .discovery-type-field legend { margin-bottom: 7px; color: #ead4a0; font: 600 11px/1.4 var(--font-system); }
+body[data-ui="v12"] .v12-workspace-suggestions .discovery-kind-options,
+body[data-ui="v12"] .v12-workspace-suggestions .discovery-origin-options { display: flex; flex-wrap: wrap; gap: 5px; }
+body[data-ui="v12"] .v12-workspace-suggestions .discovery-kind-options [aria-pressed="true"],
+body[data-ui="v12"] .v12-workspace-suggestions .discovery-rule-choices [aria-pressed="true"] {
+  color: #fff0c7;
+  background: linear-gradient(130deg,#53452e,#292820 50%,#11181c) padding-box, linear-gradient(125deg,#98652a,#fff4be 23%,#c7a269 52%,#809991 79%,#ceaa61) border-box;
+  box-shadow: inset 3px 0 #e7bf71,inset 0 1px #fff1bd38;
+}
+body[data-ui="v12"] .v12-workspace-suggestions .discovery-origin-options [aria-pressed="true"] { color: #d4f8ef; background: linear-gradient(140deg,#274d4b,#101e23) padding-box,linear-gradient(135deg,#4b8883,#bdede0 28%,#477b78 70%,#9dcabe) border-box; }
+body[data-ui="v12"] .v12-workspace-suggestions .discovery-budget-summary { color: #cbc8bc; font: 12px/1.5 var(--font-body); }
+body[data-ui="v12"] .v12-workspace-suggestions .discovery-budget-summary strong { color: #f4d28b; font-weight: 400; }
+body[data-ui="v12"] .v12-workspace-suggestions .discovery-quick-rule { display: grid; gap: 12px; min-width: 0; }
+body[data-ui="v12"] .v12-workspace-suggestions .discovery-quick-rule > p { font: 13px/1.5 var(--font-body); color: #d5d0c6; }
+body[data-ui="v12"] .v12-workspace-suggestions .discovery-quick-rule label { display: grid; gap: 6px; }
+body[data-ui="v12"] .v12-workspace-suggestions .discovery-quick-rule input { width: 100%; padding: 8px; }
+body[data-ui="v12"] .v12-workspace-suggestions .discovery-rule-choices { display: grid; gap: 4px; max-height: 220px; overflow-y: auto; padding: 3px; overscroll-behavior: contain; }
+body[data-ui="v12"] .v12-workspace-suggestions .discovery-rule-choices button { display: flex; justify-content: space-between; gap: 12px; text-align: left; }
+body[data-ui="v12"] .v12-workspace-suggestions .discovery-rule-choices button span:last-child { white-space: nowrap; font-family: var(--font-technical); color: #ead09b; }
+body[data-ui="v12"] .v12-workspace-suggestions .discovery-rule-preview { display: grid; gap: 10px; }
+body[data-ui="v12"] .v12-workspace-suggestions .discovery-rule-preview > button,
+body[data-ui="v12"] .v12-workspace-suggestions .discovery-quick-rule > button { display: flex; align-items: center; justify-content: center; gap: 7px; }

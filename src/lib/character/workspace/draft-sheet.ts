@@ -3,6 +3,7 @@ import { applyConditionOverrides, runtimeConditionModifiers } from "@/lib/charac
 import { activeRestrictions, occurrenceEnabled } from "@/lib/character/consequences/types";
 import { effectiveAvailability, instanceSupplyPaths } from "./model";
 import { readWorkspace } from "./read";
+import type { WorkspaceGraph } from "./model";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { characters, characterConsequences } from "@/db/schema";
@@ -10,7 +11,7 @@ import { aggregateCharacterSheet, type CharacterSheetInput } from "@/lib/engine/
 
 /** Uses the same materialized membership rows and two-pass condition evaluation
  * as the sheet page. It intentionally bypasses the live resolver cache. */
-export async function readDraftSheet(characterId: string) {
+export async function readDraftSheet(characterId: string, currentGraph?: WorkspaceGraph) {
   const row = await db.query.characters.findFirst({
     where: eq(characters.id, characterId),
     with: {
@@ -21,7 +22,7 @@ export async function readDraftSheet(characterId: string) {
   });
   if (!row) throw new Error("Character not found.");
   const [graph, conditionRows, pinnedLinks] = await Promise.all([
-    readWorkspace(characterId),
+    currentGraph ?? readWorkspace(characterId),
     db.select().from(characterConsequences).where(eq(characterConsequences.characterId, characterId)),
     effectivePrimitiveLinks(row.primitiveLinks),
   ]);
