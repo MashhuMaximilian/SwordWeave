@@ -220,3 +220,6 @@ body[data-ui="v12"] .v12-workspace-suggestions .discovery-rule-choices button sp
 body[data-ui="v12"] .v12-workspace-suggestions .discovery-rule-preview { display: grid; gap: 10px; }
 body[data-ui="v12"] .v12-workspace-suggestions .discovery-rule-preview > button,
 body[data-ui="v12"] .v12-workspace-suggestions .discovery-quick-rule > button { display: flex; align-items: center; justify-content: center; gap: 7px; }
+body[data-ui="v12"] .v12-workspace-suggestions .discovery-condition-options { border: 0; padding: 9px 0 0; min-width: 0; display: grid; gap: 8px; border-top: 1px solid #bfa77344; }
+body[data-ui="v12"] .v12-workspace-suggestions .discovery-condition-options legend { color: #ebd49e; font: 600 11px/1.5 var(--font-system); padding-top: 8px; }
+body[data-ui="v12"] .v12-workspace-suggestions .discovery-condition-options small { color: #bfc8c3; font: 12px/1.45 var(--font-body); }

@@ -53,6 +53,8 @@ import {
   libraryCompositeId,
 } from "@/components/library/library-item-preview";
 import { humanizeMechanicalTarget } from "@/components/characters/operator-symbol";
+import { mechanicalDescriptionFromModifiers } from "@/lib/primitives/mechanical-rule";
+import type { HardModifier } from "@/types/swordweave";
 
 // Prettify a stored modifier value. The primitive form persists values in a
 // compact syntax like `behavior:/240/[ft]` (target : value : unit). Render it
@@ -465,6 +467,7 @@ function ModifierCards({
     condition?: unknown;
     scopeValues: string[];
     narrowScope: string;
+    sentence?: string;
   };
 
   const cards: Card[] = (buildModifiers ?? (row.hardModifiers as Array<Record<string, unknown>> | undefined) ?? []).map((m, i): Card => {
@@ -624,7 +627,12 @@ function ModifierCards({
     // "narrative"}, and the build-form {pills,operators,narrative}.
     const condition = m["condition"];
 
-    return { op, target, valueText, stacking, scopeValues: tv, narrowScope: narrow, condition };
+    // Saved mechanics use the same projection as the editor and Library.
+    // Conditions have their own readable row immediately below the sentence.
+    const sentence = !buildModifiers && typeof m["target"] === "string"
+      ? mechanicalDescriptionFromModifiers([{ ...m, condition: undefined } as unknown as HardModifier])
+      : undefined;
+    return { op, target, valueText, stacking, scopeValues: tv, narrowScope: narrow, condition, ...(sentence ? { sentence } : {}) };
   });
 
   if (cards.length === 0) {
@@ -659,7 +667,7 @@ function ModifierCards({
                   {mirrorable && mirrorOp ? <>Mirrors as {opLabel(mirrorOp)}</> : "Mirror locked"}
                 </span>
               </div>
-              <ModifierRuleSentence op={c.op} value={c.valueText} target={c.target} />
+              {c.sentence ? <div className="v12-behavior-rule" aria-label={c.sentence}><span>{c.sentence}</span></div> : <ModifierRuleSentence op={c.op} value={c.valueText} target={c.target} />}
               {c.scopeValues.length > 0 || c.narrowScope ? (
                 <div className="v12-behavior-scope">
                   <span>Applies to</span>
@@ -894,7 +902,7 @@ export function EntityPreview({
       );
 
   return (
-    <div className="v12-entity-preview flex min-h-0 flex-col">
+    <div className="v12-entity-preview flex min-h-0 flex-col" data-preview-layout="responsive">
       {actionPlacement === "top" && resolvedActionBar ? <PreviewActions {...resolvedActionBar} /> : null}
       <div className="v12-entity-preview-content min-h-0 pr-1">
         {body}

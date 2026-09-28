@@ -46,7 +46,7 @@ describe("canonical mechanical sentences", () => {
     expect(renderMechanicalRule({family:"DOMAIN_ACCESS",operation:"grant",recipient:"SELF",bindings:{domain:"metal",tier:"Tier III"}})).toBe("Grant [metal] domain access at Tier III.");
   });
   it("renders behavior permissions separately from behavior counters", () => {
-    expect(renderMechanicalRule({family:"BEHAVIOR_ACCESS",operation:"grant",bindings:{behavior:"Trigger Interceptive"}})).toBe("Grant the Trigger Interceptive behavior.");
+    expect(renderMechanicalRule({family:"BEHAVIOR_ACCESS",operation:"grant",bindings:{behavior:"Trigger Interceptive"}})).toBe("Grant Trigger Interceptive to self.");
     expect(renderMechanicalRule({family:"BEHAVIOR_COUNTER",operation:"add",value:1,bindings:{behavior:"Legendary Resistance"}})).toBe("Add 1 Legendary Resistance use.");
   });
   it("accepts only authorable typed composition shapes", () => {
@@ -62,7 +62,7 @@ describe("mechanicalDescriptionFromModifiers", () => {
       kind:"modify", operation:"grant", target:"skill_practice_check",
       value:{kind:"keyword",text:"advantage"},
       metadata:{targetScope:{layer:"PRACTICE",values:["PROWESS","FINESSE","FIELDCRAFT"]}},
-    }])).toBe("Grant advantage to Prowess, Finesse, and Fieldcraft.");
+    }])).toBe("Grant advantage on Prowess, Finesse, and Fieldcraft to self.");
   });
 
   it("renders numeric subtraction and a target condition", () => {

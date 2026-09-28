@@ -101,14 +101,14 @@ function countStacks(
   // AND the per-axis counter at behavior.advantage.<target> /
   // behavior.disadvantage.<target>.
   const local = (byTarget[target] ?? []).filter((c) =>
-    c.op === "grant" && c.tags.includes(tag),
+    c.op === "grant" && c.tags.includes(tag) && !c.inhibited && c.conditionActive !== false,
   ).length;
   const advKey = `behavior.${tag}.${target}`;
   const perAxis = (byTarget[advKey] ?? []).reduce(
-    (sum, c) => sum + (c.op === "add" || c.op === "subtract" ? c.value : 0),
+    (sum, c) => sum + (!c.inhibited && c.conditionActive !== false && (c.op === "add" || c.op === "subtract") ? c.value : 0),
     0,
   );
-  return local + perAxis;
+  return Math.max(0, local + perAxis);
 }
 
 /** Phase 8.I i3: find min/max floor/ceiling values from contributions

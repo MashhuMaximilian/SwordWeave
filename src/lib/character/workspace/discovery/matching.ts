@@ -1,3 +1,4 @@
+import type { QuickRuleSeed } from "./quick-rules";
 import type { EntityKey, EntityKind } from "../model";
 
 export const DISCOVERY_INTENTS = [
@@ -24,6 +25,7 @@ export interface DiscoveryCandidate {
   libraryCost?: number;
   primitiveCosts?: Array<{ key: EntityKey; cost: number }>;
   versionNumber: number | null;
+  ruleSeed?: QuickRuleSeed;
   heritageType?: string;
   mirrorCredit?: number;
   mirrorDescription?: string;

@@ -9254,3 +9254,12 @@ body[data-ui="v12"] .sw-access-domains-considered__item > button:last-child svg 
   body[data-ui="v12"] .sw-forge-considered-item__remove { top:auto;bottom:5px;right:5px; }
   body[data-ui="v12"] .sw-access-domains-considered > div { grid-template-columns:minmax(0,1fr); }
 }
+/* Shared rule examples: wrap to the host column, including the sheet drawer. */
+body[data-ui="v12"] .v12-rule-starters { border:1px solid transparent; border-radius:8px; padding:12px; background:linear-gradient(135deg,var(--v12-panel,#172027),var(--v12-inset,#080e13)) padding-box,var(--v12-gold-edge,linear-gradient(120deg,#80541e,#fff2bc,#b88632,#e2e9e9,#986425)) border-box; }
+body[data-ui="v12"] .v12-rule-starters summary { cursor:pointer; color:var(--v12-gold-hi,#f0d58d); font-weight:600; }
+body[data-ui="v12"] .v12-rule-starters > p { margin:10px 0; font-size:14px; line-height:1.5; }
+body[data-ui="v12"] .v12-rule-starter-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr)); gap:8px; }
+body[data-ui="v12"] .v12-rule-starter-grid button { display:flex; flex-direction:column; gap:5px; text-align:left; padding:10px 12px; border:1px solid #747b7d; border-radius:5px; background:linear-gradient(135deg,#232b30,#080e13); color:#ece9e0; }
+body[data-ui="v12"] .v12-rule-starter-grid button:hover { border-color:#f2d486; box-shadow:inset 0 1px #ffe6a2; }
+body[data-ui="v12"] .v12-rule-starter-grid button b { color:#f0d58d; font-size:14px; }
+body[data-ui="v12"] .v12-rule-starter-grid button span { font-family:var(--font-body); font-weight:400; font-size:14px; line-height:1.4; }

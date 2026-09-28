@@ -597,14 +597,14 @@ const eq = resolveEquation(operandsRaw as never, ctx);
       let behaviorKey: string | null = null;
       if (target === "behavior") {
         behaviorKey = behaviorName;
-      } else if (target.startsWith("behavior.")) {
+      } else if (target.startsWith("behavior.") || target.startsWith("behavior:")) {
         behaviorKey = target.slice("behavior.".length);
         if (behaviorKey.length === 0) behaviorKey = null;
       }
       if (behaviorKey !== null) {
         // Apply the op to the existing variable (default 0).
         const prev = behaviorVariables[behaviorKey] ?? 0;
-        const next = applyOperation(prev, mod.operation, resolvedValue);
+        const next = conditionActive && !slotInhibited ? applyOperation(prev, mod.operation, resolvedValue) : prev;
         behaviorVariables[behaviorKey] = numericOr(
           next,
           prev,
@@ -642,6 +642,14 @@ const eq = resolveEquation(operandsRaw as never, ctx);
     }
   }
 
+  function biasKeyword(value: unknown): "advantage" | "disadvantage" | null {
+    if (!value || typeof value !== "object") return null;
+    const token = value as Record<string, unknown>;
+    const raw = token["kind"] === "behavior" ? token["name"] : token["kind"] === "keyword" ? token["text"] ?? token["value"] : null;
+    const name = typeof raw === "string" ? raw.replace(/^\[+|\]+$/g, "").trim().toLowerCase() : "";
+    return name === "advantage" || name === "disadvantage" ? name : null;
+  }
+
   // ───────────────────────────────────────────────────────────────────
   // PASS 2 — apply the resolved values to totals + byTarget.
   // Phase 8.I i2.5 (Mashu 2026-08-05): when the modifier has
@@ -662,7 +670,8 @@ const eq = resolveEquation(operandsRaw as never, ctx);
 
     // Build the list of all byTarget keys this contribution
     // lands on: the raw target + any scoped sub-target keys.
-    const allTargets = [target, ...scopedTargets];
+    const allTargets = [...new Set([target, ...scopedTargets])];
+    const bias = (mod.operation === "grant" || mod.operation === "revoke") ? biasKeyword(mod.value) : null;
 
     for (const t of allTargets) {
       const list = byTarget[t] ?? [];
@@ -672,7 +681,7 @@ const eq = resolveEquation(operandsRaw as never, ctx);
         primitiveName: slot.name,
         primitiveCategory: slot.category,
         op: mod.operation,
-        value: t.startsWith("skill_practice_check.") && mod.operation === "grant" && practiceGrant(mod.value) ? 0 : effectiveValue,
+        value: bias || (t.startsWith("skill_practice_check.") && mod.operation === "grant" && practiceGrant(mod.value)) ? 0 : effectiveValue,
         rawValue: mod.value,
         preMirrorValue,
         tags,
@@ -700,48 +709,50 @@ const eq = resolveEquation(operandsRaw as never, ctx);
       });
       byTarget[t] = list;
 
-      // Phase 8.K K8: keyword grants (e.g. {kind:keyword, value:advantage})
-      // on per-axis targets feed into the per-axis behavior counter.
-      // The marker in the UI (⇈(N)) reads from this counter.
+      // Bias changes the roll's advantage counter, never its numeric score.
+      if (bias) {
+        const mirrorMetadata = mod.metadata?.["mirror"] as { optedOut?: boolean } | undefined;
+        const reverse = slot.isMirrored && slot.isMirrorable && slot.mirrorVector === "VARIABLE_VECTOR" && !mirrorMetadata?.optedOut;
+        const direction = (mod.operation === "revoke" ? -1 : 1) * (reverse ? -1 : 1);
+        const t2 = `behavior.${bias}.${t}`;
+        const list2 = byTarget[t2] ?? [];
+        list2.push({
+          target: t2,
+          primitiveId: slot.primitiveId,
+          primitiveName: slot.name,
+          primitiveCategory: slot.category,
+          op: "add",
+          value: conditionActive && !entryInhibited ? direction : 0,
+          rawValue: mod.value,
+          preMirrorValue: null,
+          tags: [],
+          condition: conditionRaw,
+          originCapabilityId: slot.originCapabilityId ?? null,
+          conditionActive,
+          hasCondition,
+          conditionComputable,
+          stacking: mod.stacking ?? "stack",
+          inhibited: entryInhibited,
+          provenance: {
+            heritageName: sourceNames?.get(slot.primitiveId)?.heritageName ?? null,
+            capabilityName: sourceNames?.get(slot.primitiveId)?.capabilityName ?? null,
+            effectName: sourceNames?.get(slot.primitiveId)?.effectName ?? null,
+            accordion: sourceNames?.get(slot.primitiveId)?.accordion ?? null,
+            kind: deriveProvenanceKind(slot),
+          },
+        });
+        byTarget[t2] = list2;
+        totals[t2] = (totals[t2] ?? 0) + (conditionActive && !entryInhibited ? direction : 0);
+        continue;
+      }
+
       if (mod.operation === "grant") {
         const v = mod.value;
         if (v && typeof v === "object" && (v as { kind?: string }).kind === "keyword") {
           const kwRaw = (v as { text?: string; value?: string }).text
-            ?? (v as { value?: string }).value
-            ?? "";
-          const kw = kwRaw.replace(/^\[+|\]+$/g, "").trim();
-          if (kw === "advantage" || kw === "disadvantage") {
-            // Increment per-axis adv/disadv counter
-            const advKey = kw === "advantage" ? "advantage" : "disadvantage";
-            const t2 = `behavior.${advKey}.${t}`;
-            const list2 = byTarget[t2] ?? [];
-            list2.push({
-              target: t2,
-              primitiveId: slot.primitiveId,
-              primitiveName: slot.name,
-              primitiveCategory: slot.category,
-              op: "add",
-              value: 1,
-              rawValue: mod.value,
-              preMirrorValue: null,
-              tags: [],
-              condition: conditionRaw,
-              originCapabilityId: slot.originCapabilityId ?? null,
-              conditionActive,
-              hasCondition,
-              conditionComputable,
-              stacking: mod.stacking ?? "stack",
-              inhibited: entryInhibited,
-              provenance: {
-                heritageName: sourceNames?.get(slot.primitiveId)?.heritageName ?? null,
-                capabilityName: sourceNames?.get(slot.primitiveId)?.capabilityName ?? null,
-                effectName: sourceNames?.get(slot.primitiveId)?.effectName ?? null,
-                accordion: sourceNames?.get(slot.primitiveId)?.accordion ?? null,
-                kind: deriveProvenanceKind(slot),
-              },
-            });
-            byTarget[t2] = list2;
-          } else if (kw === "proficiency_bonus" || kw === "pb" || kw === "proficiency") {
+            ?? (v as { value?: string }).value ?? "";
+          const kw = kwRaw.replace(/^\[+|\]+$/g, "").trim().toLowerCase();
+          if (kw === "proficiency_bonus" || kw === "pb" || kw === "proficiency") {
             // Phase 8.L round 132/134 (Mashu): keyword grant
             // \`[proficiency_bonus]\` / \`[proficiency]\` /
             // \`[pb]\` on an attribute target adds PB to that

@@ -20,6 +20,8 @@ export type MechanicalRuleFamily =
   | "PRACTICE_PROFICIENCY"
   | "BEHAVIOR_ACCESS"
   | "BEHAVIOR_COUNTER"
+  | "FEATURE_ACCESS"
+  | "DAMAGE_MULTIPLIER"
   | "UNIVERSAL_MODIFIER"
   | "DESCRIPTIVE"
   | "DOCUMENTED"
@@ -52,6 +54,10 @@ export type AuthorableCompositionFamily =
 function display(value: unknown): string {
   if (Array.isArray(value)) return renderEquation(value as Operand[]);
   if (value && typeof value === "object" && "kind" in value) {
+    if (value.kind === "keyword") {
+      const keyword = value as Record<string, unknown>;
+      return `[${String(keyword["text"] ?? keyword["value"] ?? "")}]`;
+    }
     return tokenLabel(value as ValueToken) ?? "[value]";
   }
   return String(value ?? "").trim();
@@ -60,7 +66,7 @@ function display(value: unknown): string {
 function modifierValue(value: unknown): string {
   if (value && typeof value === "object" && "kind" in value) {
     const token = value as ValueToken;
-    return token.kind === "keyword" ? token.text : tokenLabel(token);
+    return token.kind === "keyword" ? String((value as Record<string, unknown>)["text"] ?? (value as Record<string, unknown>)["value"] ?? "") : tokenLabel(token);
   }
   return display(value);
 }
@@ -130,6 +136,17 @@ export function renderMechanicalRule(rule: CanonicalMechanicalRule): string {
     return sentence && !/[.!?]$/.test(sentence) ? `${sentence}.` : sentence;
   }
   const bindings = rule.bindings ?? {};
+  if (rule.family === "FEATURE_ACCESS") {
+    const feature = display(bindings["feature"] || rule.target || "feature").replaceAll("_", " ").toLowerCase().replace(/^fly speed$/, "flight");
+    const removing = rule.operation === "revoke";
+    return withCondition(`${removing ? "Revoke" : "Grant"} ${feature} ${removing ? "from" : "to"} ${(rule.recipient ?? "SELF").toLowerCase()}`, rule.conditionText);
+  }
+  if (rule.family === "DAMAGE_MULTIPLIER") {
+    const damage = display(bindings["damage"] || "named").replaceAll("_", " ").toLowerCase();
+    const factor = Number(display(rule.value));
+    const outcome = factor === 0.5 ? "half" : factor === 2 ? "double" : factor === 0 ? "no" : `${display(rule.value)}×`;
+    return withCondition(`${rule.recipient === "TARGET" ? "Target takes" : rule.recipient === "SCENE" ? "Scene takes" : "Take"} ${outcome} ${damage} damage`, rule.conditionText);
+  }
   if (rule.family === "DOMAIN_ACCESS") {
     const domain = (display(bindings["domain"]) || "domain").toLowerCase();
     const tier = display(bindings["tier"]);
@@ -207,9 +224,10 @@ export function renderMechanicalRule(rule: CanonicalMechanicalRule): string {
     );
   }
   if (rule.family === "BEHAVIOR_ACCESS") {
-    const behavior = display(bindings["behavior"] || rule.target || "behavior");
+    const behavior = display(bindings["behavior"] || rule.target || "feature").replace(/^behavior[.:]/i, "").replaceAll("_", " ");
+    const feature = /^fly speed$/i.test(behavior) ? "flight" : behavior;
     const verb = rule.operation === "revoke" ? "Revoke" : "Grant";
-    return withCondition(`${verb} the ${behavior} behavior`, rule.conditionText);
+    return withCondition(`${verb} ${feature} ${rule.operation === "revoke" ? "from" : "to"} ${(rule.recipient ?? "SELF").toLowerCase()}`, rule.conditionText);
   }
   if (rule.family === "BEHAVIOR_COUNTER") {
     const behavior = display(bindings["behavior"] || rule.target || "behavior");
@@ -228,6 +246,10 @@ export function renderMechanicalRule(rule: CanonicalMechanicalRule): string {
   const value = display(rawValue);
   const isEquation = Array.isArray(rawValue);
   const operation = rule.operation ?? "add";
+  const bias = value.replace(/^\[|\]$/g, "").replace(/^Behavior:/i, "").trim().toLowerCase();
+  if ((operation === "grant" || operation === "revoke") && (bias === "advantage" || bias === "disadvantage")) {
+    return withCondition(`${operation === "grant" ? "Grant" : "Revoke"} ${bias} on ${target} ${operation === "grant" ? "to" : "from"} ${(rule.recipient ?? "SELF").toLowerCase()}`, rule.conditionText);
+  }
   const recipient =
     rule.recipient && rule.recipient !== "SELF"
       ? ` for ${title(rule.recipient)}`
@@ -310,16 +332,27 @@ export function mechanicalRuleFromModifier(
   const targetValues = Array.isArray(scope.values)
     ? scope.values.map(String)
     : [];
+  const recipient = String(metadata["recipient"] ?? "SELF").toUpperCase() as "SELF" | "TARGET" | "SCENE";
+  const condition = conditionText(modifier.condition);
+  const rawTarget = String(modifier.target);
+  const namedTarget = String(metadata["scopeName"] ?? metadata["behaviorName"] ?? "");
+  const behaviorName = namedTarget || rawTarget.replace(/^behavior[.:]/, "");
+  const numberValue = Number(display(modifier.value));
+  if ((rawTarget === "behavior" || /^behavior[.:]/.test(rawTarget)) && behaviorName && behaviorName !== "behavior" && (modifier.operation === "grant" || modifier.operation === "revoke") && numberValue === 1) {
+    return { family: "FEATURE_ACCESS", operation: modifier.operation, bindings: { feature: behaviorName }, recipient, conditionText: condition };
+  }
+  if ((rawTarget === "damage_modifier" || rawTarget.startsWith("damage_modifier.")) && modifier.operation === "multiply") {
+    return { family: "DAMAGE_MULTIPLIER", value: modifier.value, bindings: { damage: namedTarget || naturalList(targetValues) || (rawTarget.startsWith("damage_modifier.") ? rawTarget.slice("damage_modifier.".length) : "named") }, recipient, conditionText: condition };
+  }
   return {
     family: "GENERIC",
     operation: modifier.operation,
     target: targetValues.length
       ? naturalList(targetValues.map(title))
-      : readableTarget(modifier.target),
-    value: modifier.value,
-    recipient: String(metadata["recipient"] ?? "SELF").toUpperCase() as
-      "SELF" | "TARGET" | "SCENE",
-    conditionText: conditionText(modifier.condition),
+      : namedTarget ? title(namedTarget) : readableTarget(modifier.target),
+    value: modifier.target === "speed" && Number.isFinite(numberValue) ? `${numberValue} ft` : modifier.value,
+    recipient,
+    conditionText: condition,
   };
 }
 

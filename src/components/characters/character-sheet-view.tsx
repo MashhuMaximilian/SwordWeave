@@ -1358,6 +1358,8 @@ export function CharacterSheetView(props: CharacterSheetProps) {
             id={props.id}
             permission={permission}
             initial={props.backstory}
+            portraitUrl={props.portraitUrl}
+            characterName={props.name}
             showToast={showToast}
           />
         )}
@@ -4106,19 +4108,38 @@ function formatRelative(d: Date): string {
 // is read-only with an "Edit in modal" button that opens the
 // edit modal. Saves go through POST /api/characters/[id]/backstory.
 
-function BackstoryTab({ id, initial, permission }: {
+function BackstoryTab({ id, initial, permission, portraitUrl, characterName }: {
   id: string;
   initial: CharacterBackstory;
+  portraitUrl: string | null;
+  characterName: string;
   permission: CharacterPermission;
   showToast: (msg: string, type: "success" | "error") => void;
 }) {
   const empty = isBackstoryEmpty(initial);
+  const [portrait, setPortrait] = useState<{ url: string; shape: "portrait" | "landscape" | "square"; failed?: boolean } | null>(null);
+  const hasPortrait = Boolean(portraitUrl && !(portrait?.url === portraitUrl && portrait.failed));
+  const shape = portrait?.url === portraitUrl ? portrait.shape : "portrait";
   return <div className="v12-sheet-backstory">
     <div className="v12-backstory-toolbar">
       <p className="text-xs text-muted-foreground">Their origins, ambitions, relationships, and inner conflicts.</p>
       {permission !== "VIEWER" && <button type="button" onClick={() => openCharacterEditor(id,"backstory")} className="v12-metal-button v12-metal-button--primary inline-flex min-h-8 items-center gap-1 px-3 py-1.5 text-xs"><Pencil className="size-3"/>{empty ? "Write backstory" : "Edit backstory"}</button>}
     </div>
+    <div className="v12-backstory-layout" data-portrait-shape={hasPortrait ? shape : "none"}>
+      {hasPortrait && portraitUrl && <figure className="v12-backstory-portrait">
+        <a href={portraitUrl} target="_blank" rel="noopener noreferrer" aria-label={`Open the full portrait of ${characterName}`}>
+          {/* This is the complete artwork; the avatar crop belongs only to compact identity views. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={portraitUrl} alt={`Portrait of ${characterName}`} onLoad={(event) => {
+            const image = event.currentTarget;
+            const ratio = image.naturalWidth / image.naturalHeight;
+            setPortrait({ url: portraitUrl, shape: ratio > 1.2 ? "landscape" : ratio < 0.85 ? "portrait" : "square" });
+          }} onError={() => setPortrait({url: portraitUrl, shape: "portrait", failed: true})} />
+        </a>
+        <figcaption><span>Portrait</span><strong>{characterName}</strong></figcaption>
+      </figure>}
     {empty ? <div className="rounded-md border border-dashed border-border bg-card p-8 text-center"><BookOpen className="mx-auto size-8 text-muted-foreground"/><p className="mt-2 text-sm font-medium">No backstory yet.</p><p className="mt-1 text-xs text-muted-foreground">Describe their appearance, personality, history, goals, ties, and flaws to bring the character to life.</p></div> : <div className="v12-backstory-grid">{BACKSTORY_FIELDS.map(field => <BackstoryFieldCard key={field.key} label={field.label} description={field.description} iconKey={field.iconKey} value={initial[field.key]}/>)}</div>}
+    </div>
   </div>;
 }
 

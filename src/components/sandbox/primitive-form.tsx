@@ -33,6 +33,7 @@ import {
   selectionForModifier,
   scopeForSelection,
 } from "@/lib/primitives/modifier-scope";
+import { RULE_STARTERS, ruleStarterPatch } from "@/lib/primitives/rule-starters";
 import { validateModifierDrafts } from "@/lib/primitives/modifier-validator";
 import {
   parseValueField,
@@ -1721,6 +1722,22 @@ export function PrimitiveForm({
               defines a construction permission. Otherwise its verbose
               description is the complete player-facing explanation.
         </p>
+        <details className="v12-rule-starters" open={!ruleKind || undefined}>
+          <summary>Start with a common rule</summary>
+          <p>Choose an example, then change its subject, value, recipient, or condition. These examples set the mechanic; choose the appropriate BU cost when you finish.</p>
+          <div className="v12-rule-starter-grid">
+            {RULE_STARTERS.map((starter) => (
+              <button key={starter.id} type="button" onClick={() => {
+                setModifiers([{ ...blankModifier, ...ruleStarterPatch(starter), id: `modifier-${modifierCounter}` }]);
+                setModifierCounter((value) => value + 1);
+                setRuleKind("MODIFIER");
+                setIsDirty(true);
+              }}>
+                <b>{starter.label}</b><span>{starter.example}</span>
+              </button>
+            ))}
+          </div>
+        </details>
             <div
               className="v12-rule-kind-picker"
               aria-label="Mechanical rule kind"
@@ -1894,6 +1911,7 @@ export function PrimitiveForm({
             ) : null}
             {ruleKind === "MODIFIER" && modifiers[0] ? (
               <PrimitiveRuleInstrument
+                key={modifiers[0].id}
                 modifier={modifiers[0]}
                 onPatch={(patch) => patchModifier(modifiers[0]!.id, patch)}
                 onOperation={(operation) =>

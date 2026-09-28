@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState, useRef, type ReactNode } fro
 import { useRouter } from "next/navigation";
 import { Group, Panel, Separator } from "react-resizable-panels";
 import { ArrowLeft, ArrowRight, Check, ChevronRight, Dna, Eye, Hammer, Library, Plus, Redo2, Shield, Sparkles, Swords, Undo2, X } from "lucide-react";
+import { FabThemeIcon } from "@/components/layout/fab-theme-icon";
+import { resolveComposerHandoff } from "@/lib/character/workspace/composer-handoff";
 import { useCharacterDraft } from "./use-character-draft";
 import { CharacterFoundationEditor, type CharacterFoundationValues } from "./character-foundation-editor";
 import { BuildLibrary } from "./build-library";
@@ -69,7 +71,7 @@ export function CharacterBuildWorkspace({ characterId, initialRoot = "ALL", perm
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [help, setHelp] = useState(true);
-  const { openDrawer, closeDrawer } = useGlobalControls();
+  const { dark, openDrawer, closeDrawer } = useGlobalControls();
   const refresh = useCallback(async () => {
     const [graphResponse, characterResponse] = await Promise.all([fetch(`/api/characters/${characterId}/workspace`), fetch(`/api/characters/${characterId}`)]);
     const graph = await graphResponse.json(), info = await characterResponse.json();
@@ -168,15 +170,23 @@ export function CharacterBuildWorkspace({ characterId, initialRoot = "ALL", perm
     setNotice("Saved to draft. Your live character is unchanged.");
     return result;
   }
-  async function add(key: EntityKey, name: string, mirrored = false) {
+  async function add(key: EntityKey, name: string, mirrored = false, focused = false) {
     if (!destinationChosen) { setNotice("Choose Lineage, Upbringing, Manifest, or Items before adding a piece."); setMobile("build"); return; }
-    if (composer) { setInspecting(false); setIncomingPiece({key,label:name,sequence:Date.now(),isMirrored:mirrored}); setNotice(`Added ${name} to the open ${composer.kind}. Finish it to save to your draft.`); return; }
+    if (composer) { setInspecting(false); setIncomingPiece({key,label:name,sequence:Date.now(),isMirrored:mirrored}); setNotice(`Added ${name} to the open ${composer.kind}. Finish it to save to your draft.`); if (focused) openDrawer("build"); return; }
     const [kind, id] = key.split(":") as [EntityKind, string];
     const operation: DraftOperation = { id: crypto.randomUUID(), type: "create", label: `Add ${name} to ${destination}`, payload: {
       kind, category, existingId: id, draft: {}, mirrored,
       ...(selected ? { target: selected.key, path, expectedHash: hash(selected) } : {}),
     } };
-    await stage(operation);
+    const updated = await stage(operation);
+    if (focused && graph) {
+      const result = updated.results.find((entry) => entry.operationId === operation.id)?.result;
+      const handoff = result && resolveComposerHandoff({ before: graph, after: updated.graph, result, parentPath: selected ? path : [], category, mirrored });
+      if (!handoff) throw new Error("Added to your draft. Open the piece from its destination to edit it.");
+      setInspecting(false); setIncomingPiece(null); setLivePreview(null); setExternal(null);
+      setPath(handoff.path); setComposer({ kind: handoff.node.kind, node: handoff.node }); setMobile("build");
+      openDrawer("build");
+    }
   }
 
   async function showPreview(key: EntityKey) {
@@ -256,7 +266,7 @@ export function CharacterBuildWorkspace({ characterId, initialRoot = "ALL", perm
   const chooser = <div className="sheet-create-menu"><h3>What are you making?</h3><p>Start with the idea. The preview will show its rule and cost.</p>{kinds.map((kind) => <button type="button" className="sheet-create-choice" key={kind} onClick={() => startBuild(kind)}><Plus size={18}/><span><strong>{names[kind]}</strong><small>{kind === "primitive" ? "A single rule, bonus, subject, or drawback" : kind === "capability" ? "An ability made from the rules you choose" : kind === "heritage" ? "Group traits under a part of your story" : kind === "item" ? "Equipment and the abilities it supplies" : "A group of rules to reuse in abilities"}</small></span><ChevronRight size={16}/></button>)}</div>;
   const find = <aside className="sheet-find"><header><span className="sheet-kicker">Discover & compose</span><h3>Find something</h3></header><nav className="sheet-source-tabs" aria-label="Find sources">{([["library", "Library"], ["owned", "On character"], ["suggestions", "Ideas"]] as const).map(([value,label]) => <button type="button" key={value} aria-pressed={source === value} onClick={() => setSource(value)}>{label}</button>)}</nav><div className="sheet-destination"><small>Adding to</small><strong>{destinationChosen ? destination : "Choose a heritage or Items"}</strong></div>
     {!destinationChosen && <p className="sheet-empty">Choose a destination in the center to start. Nothing is added until you choose it.</p>}<div hidden={!destinationChosen}>
-    {!kinds.length && <div className="sheet-empty"><h3>One rule at a time</h3><p>A primitive describes a single rule. Use the form to refine it; return to the composition to combine it with other pieces.</p><button className="sheet-button" onClick={() => navigate(() => {if (composer) setComposer(null); else setPath(path.slice(0,-1));})}>Return to composition</button></div>}<div hidden={source !== "library" || !kinds.length}>{!kinds.length ? <p className="sheet-empty">This is a single rule. Return to its parent to add another piece.</p> : <BuildLibrary heritageCategory={category} kinds={kinds} destination={destination} disabled={compositionBlocked} onAdd={(key,name) => attempt(() => add(key,name))} onAddFocused={(key,name) => attempt(async () => {await add(key,name);openDrawer("build");})} onPreview={(item) => attempt(() => showPreview(`${previewKind(item.targetType)}:${item.targetId}`))}/>}</div>
+    {!kinds.length && <div className="sheet-empty"><h3>One rule at a time</h3><p>A primitive describes a single rule. Use the form to refine it; return to the composition to combine it with other pieces.</p><button className="sheet-button" onClick={() => navigate(() => {if (composer) setComposer(null); else setPath(path.slice(0,-1));})}>Return to composition</button></div>}<div hidden={source !== "library" || !kinds.length}>{!kinds.length ? <p className="sheet-empty">This is a single rule. Return to its parent to add another piece.</p> : <BuildLibrary heritageCategory={category} kinds={kinds} destination={destination} disabled={compositionBlocked} onAdd={(key,name) => attempt(() => add(key,name))} onAddFocused={(key,name) => attempt(() => add(key,name,false,true))} onPreview={(item) => attempt(() => showPreview(`${previewKind(item.targetType)}:${item.targetId}`))}/>}</div>
     <div hidden={source !== "owned" || !kinds.length}><p>Reuse a rule you already have. Its conditions and source still apply.</p>{graph!.nodes.filter((node) => kinds.includes(node.kind)).map((node) => <article className="sheet-catalogue-row" key={node.key}><strong>{node.name}</strong><p className="sheet-rule" data-copy-role="mechanical">{String(node.data["mechanicalOutputText"] || node.description)}</p><div className="sheet-row-actions"><button type="button" onClick={() => attempt(() => showPreview(node.key))}>Preview</button><button type="button" disabled={busy} onClick={() => attempt(() => add(node.key,node.name))}>Use in {destination}</button></div></article>)}</div>
     <div hidden={source !== "suggestions" || !kinds.length}><WorkspaceSuggestions heritageCategory={category} characterId={characterId} destinationLabel={destination} kinds={kinds} graph={graph!} destinationIsItem={root === "ITEM"} budget={Math.max(0, remaining)} debtAvailable={Math.max(0,debtMax-credit)} excludedKeys={graph!.nodes.map((node) => node.key)} onAdd={(item) => add(item.key,item.name,item.mirrored)} {...(!composer ? {onAddSet:addSet} : {})} {...(selected && !composer ? {replaceTarget:{key:selected.key,name:selected.name,availableBudget:Math.max(0,remaining + bundleBu(graph!,selected.key))},onReplace:replace} : {})} onPreview={(key) => attempt(() => showPreview(key))} onBuildRule={(seed) => navigate(() => {setInspecting(false);setIncomingPiece(null);setLivePreview(null);setComposer({kind:"primitive",primitiveSeed:seed});setShowCreate(false);setMobile("build");})} onBuildOwn={() => { setShowCreate(true); setMobile("build"); }}/></div></div>
   </aside>;
@@ -271,7 +281,7 @@ export function CharacterBuildWorkspace({ characterId, initialRoot = "ALL", perm
       <div className="sheet-pieces">{children.map((edge) => row(edge))}{!children.length && <div className="sheet-empty"><Sparkles size={24}/><h3>{selected?.kind === "primitive" ? "A single rule" : "Room for your next idea"}</h3><p>{selected?.kind === "primitive" ? "Edit this rule or preview its effect. Rules do not contain other pieces." : "Add only what helps express this character. An empty heritage is fine."}</p></div>}</div></>}
   </main>;
   return <section className="sheet-build" data-mobile-view={mobile} data-preview-collapsed={previewCollapsed}>
-    <header className="sheet-build-top"><div><span className="sheet-kicker">Character workshop</span><h2>{draftCharacter.name}<span>{permission === "SUGGESTER" ? "Proposed changes" : "Build"}</span></h2></div><div className="sheet-top-actions"><span role="status">{draftStatus}</span><button type="button" className="sheet-button sheet-preview-toggle" aria-pressed={!previewCollapsed} onClick={() => setPreviewCollapsed(value => !value)}>{previewCollapsed ? "Show preview" : "Hide preview"}</button><button type="button" className="sheet-button" onClick={() => openDrawer("build")}><Eye size={15}/> Build & Preview</button><button type="button" className="sheet-button" onClick={() => navigate(onPlay)}>Back to play</button></div></header>
+    <header className="sheet-build-top"><div><span className="sheet-kicker">Character workshop</span><h2>{draftCharacter.name}<span>{permission === "SUGGESTER" ? "Proposed changes" : "Build"}</span></h2></div><div className="sheet-top-actions"><span role="status">{draftStatus}</span><button type="button" className="sheet-button sheet-preview-toggle" aria-pressed={!previewCollapsed} onClick={() => setPreviewCollapsed(value => !value)}>{previewCollapsed ? "Show preview" : "Hide preview"}</button><button type="button" className="sheet-button" onClick={() => openDrawer("build")}><FabThemeIcon iconKey="lorc/anvil-impact" dark={dark}/> Build & Preview</button><button type="button" className="sheet-button" onClick={() => navigate(onPlay)}>Back to play</button></div></header>
     <nav className="sheet-root-nav" aria-label="Character roots">{roots.map((entry) => <button type="button" key={entry.key} aria-pressed={root === entry.key} onClick={() => changeRoot(entry.key)}><entry.icon size={16}/>{entry.name}</button>)}</nav>
     <div className="sheet-build-budget"><span><b>{remaining}</b> BU available</span><span>{spent} allocated · {pool} budget</span><span>Drawbacks {credit}/{debtMax}</span><span className="sheet-budget-note">Leaving BU unspent is fine.</span></div>
     {controller.pendingRecovery && <section className="sheet-recovery" role="alert"><div><strong>An interrupted change is saved in this browser</strong><p>{controller.recoveryConflict || "Recover it to continue your draft. Nothing has been applied to the live character."}</p><details><summary>See saved changes</summary><ul>{controller.pendingRecovery.request.operations.map(operation => <li key={operation.id}>{operation.label ?? operation.type}</li>)}</ul></details></div><div className="sheet-row-actions"><button className="sheet-button is-gold" disabled={busy || !!controller.recoveryConflict} onClick={() => attempt(async () => {const recovered = await controller.recoverPending();if(recovered){discardUnfinished();setFoundation(null);setNotice("Recovered and checked your draft. Review it before applying.");}})}>Recover local change</button><button className="sheet-button" disabled={busy} onClick={() => attempt(async () => {controller.dismissPending();await controller.reload();})}>Discard local copy</button></div></section>}

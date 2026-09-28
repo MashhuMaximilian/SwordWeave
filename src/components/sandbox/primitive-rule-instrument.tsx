@@ -96,8 +96,8 @@ const TARGET_FAMILIES: readonly TargetFamily[] = [
   },
   {
     id: "custom",
-    label: "Custom runtime value",
-    help: "Create a stable named value when the system does not have one yet.",
+    label: "Features, states & resources",
+    help: "Name what you grant or track: flight, invisible, focus points, or a custom resource.",
     targets: ["behavior"],
   },
 ];
@@ -108,14 +108,14 @@ const TARGET_HELP: Partial<Record<ModifierTarget, string>> = {
   skill_practice_check:
     "A bonus or penalty applied when a Practice is rolled. Choose Any to affect every Practice.",
   action_roll:
-    "Attack, save, initiative, or another roll made to resolve an action.",
+    "Attack rolls, Physical/Mental/Magical saves, or a named roll such as initiative or a profession check. For Awareness or Fieldcraft, use Practice checks.",
   damage_healing_output:
     "The numeric or dice output produced as damage or healing when the rule resolves.",
   targeting:
     "Who or what the capability can affect and the geometric shape it can use.",
   duration: "How long an effect remains active after it is created.",
   behavior:
-    "A named runtime number or switch, such as tracking_bonus or legendary_resistance.",
+    "Grant or revoke a named feature (flight, invisible), or set a resource (focus points). Use Speed for distances and Rolls & checks for advantage.",
   damage_modifier:
     "A multiplier for a named damage type: resistance, vulnerability, immunity, or a custom scale.",
   maintained_capability:
@@ -521,7 +521,7 @@ export function PrimitiveRuleInstrument({
     targetFamilyFor(String(modifier.target)).id,
   );
   const [targetSearch, setTargetSearch] = useState("");
-  const [valueFamily, setValueFamily] = useState("fixed");
+  const [valueFamily, setValueFamily] = useState(modifier.valueKind === "equation" ? "formula" : modifier.tokens[0]?.kind === "keyword" || modifier.tokens[0]?.kind === "behavior" ? "state" : modifier.tokens[0]?.kind === "number" ? "fixed" : "sheet");
   const [valueSearch, setValueSearch] = useState("");
   const [customValue, setCustomValue] = useState("");
   const [formulaOpen, setFormulaOpen] = useState(false);
@@ -536,6 +536,8 @@ export function PrimitiveRuleInstrument({
 
   const triggerMode = triggerModeFor(modifier.v1Condition);
   const operation = operationWords(modifier.operation);
+  const flagRule = modifier.target === "behavior" && (modifier.operation === "grant" || modifier.operation === "revoke") && modifier.tokens[0]?.kind === "number" && modifier.tokens[0].value === 1;
+  const biasRule = modifier.tokens[0]?.kind === "keyword" && ["advantage", "disadvantage"].includes(modifier.tokens[0].text.toLowerCase());
   const parsedFormula = useMemo(
     () => parseRuleFormula(formulaText),
     [formulaText],
@@ -574,7 +576,7 @@ export function PrimitiveRuleInstrument({
 
   const chooseOperation = (next: ModifierOperation) => {
     onOperation(next);
-    setValueFamily(next === "grant" || next === "revoke" ? "state" : "fixed");
+    setValueFamily(next === "grant" || next === "revoke" ? modifier.target === "behavior" || modifier.target === "speed" ? "fixed" : "state" : "fixed");
   };
 
   const patchPill = (index: number, patch: ConditionPillPatch) => {
@@ -799,7 +801,7 @@ export function PrimitiveRuleInstrument({
     value: {
       eyebrow: "3 · Value",
       title: "What value does it use?",
-      help: "Use a fixed value, a character value, dice, a formula, a state, or any named runtime value.",
+      help: flagRule ? "A feature uses 1 for present. Grant enables it; Revoke removes it. Its speed, range, or other numbers are separate rules." : "Use a fixed value, a character value, dice, a formula, a state, or a named runtime value. The Result is what changes; a runtime Value reads a number from somewhere else.",
     },
     recipient: {
       eyebrow: "4 · Recipient",
@@ -855,7 +857,12 @@ export function PrimitiveRuleInstrument({
       </nav>
 
       <div className="v12-rule-sentence" aria-label="Mechanical rule sentence">
-        {modifier.operation === "grant" || modifier.operation === "revoke" ? (
+        {flagRule ? (
+          <>
+            <button type="button" className="is-operation" onClick={() => setActivePanel("operation")}>{operation.lead}</button>
+            <button type="button" className="is-variable" onClick={() => setActivePanel("target")}>{targetLabel(modifier)}</button>
+          </>
+        ) : modifier.operation === "grant" || modifier.operation === "revoke" ? (
           <>
             <button
               type="button"
@@ -871,7 +878,7 @@ export function PrimitiveRuleInstrument({
             >
               {valueLabel(modifier)}
             </button>
-            <span className="is-grammar">{operation.join}</span>
+            <span className="is-grammar">{biasRule ? "on" : operation.join}</span>
             <button
               type="button"
               className="is-variable"
@@ -907,7 +914,7 @@ export function PrimitiveRuleInstrument({
             </button>
           </>
         )}
-        <span className="is-grammar">for</span>
+        <span className="is-grammar">{flagRule || biasRule ? modifier.operation === "revoke" ? "from" : "to" : "for"}</span>
         <button
           type="button"
           className="is-scope"
@@ -1055,7 +1062,7 @@ export function PrimitiveRuleInstrument({
                     (spec.widget === "free-text" ||
                       spec.widget === "checklist-with-free-text") ? (
                       <label className="v12-rule-custom-key">
-                        <span>Stable runtime name</span>
+                        <span>{target === "behavior" ? "Feature, state, or resource name" : target === "damage_modifier" ? "Damage type" : "Named result"}</span>
                         <input
                           value={modifier.freeTextNarrowFocus}
                           onChange={(event) =>
@@ -1064,9 +1071,7 @@ export function PrimitiveRuleInstrument({
                               targetValues: [],
                             })
                           }
-                          placeholder={
-                            spec.freeTextPlaceholder ?? "e.g. tracking_bonus"
-                          }
+                          placeholder={target === "behavior" ? "e.g. flight, invisible, focus_points" : spec.freeTextPlaceholder ?? "e.g. tracking_bonus"}
                         />
                       </label>
                     ) : null}

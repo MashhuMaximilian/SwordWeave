@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, Plus, Maximize2 } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
+import { FabThemeIcon } from "@/components/layout/fab-theme-icon";
+import { useGlobalControls } from "@/components/layout/global-controls";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
 import { LibraryTable } from "@/components/library/library-table";
 import { libraryFamilyGlyph } from "@/components/library/library-market-rail";
@@ -26,6 +28,7 @@ export function BuildLibrary({ kinds, destination, heritageCategory, onAdd, onAd
   onPreview: (item: LibraryItem) => void;
   disabled?: boolean;
 }) {
+  const { dark } = useGlobalControls();
   const choices = TYPES.filter(([type]) => kinds.includes(previewKind(type)) && matchesDiscoveryDestination(previewKind(type), type.replace("_TEMPLATE", ""), heritageCategory));
   const [type, setType] = useState<LibraryTargetType>("PRIMITIVE");
   const effectiveType = choices.some(([value]) => value === type) ? type : choices[0]?.[0] ?? "PRIMITIVE";
@@ -102,7 +105,7 @@ export function BuildLibrary({ kinds, destination, heritageCategory, onAdd, onAd
       <div aria-busy={pending}>
         {rows.length > 0 && <LibraryTable surface="atelier" items={rows} view="LIST" engagement={EMPTY_ENGAGEMENT} currentUserInternalId={null} selectedKey={selectedKey} onSelect={(item) => { setSelectedKey(item.id); onPreview(item); }} renderActions={(item) => <>
           <button type="button" className="v12-metal-button" disabled={disabled || pending} onClick={() => onAdd(`${previewKind(item.targetType)}:${item.targetId}`, item.name)} title={`Add to ${destination}`} aria-label={`Add ${item.name} to ${destination}`}><Plus size={14}/> Add</button>
-          {onAddFocused && <button type="button" className="v12-metal-button" disabled={disabled || pending} onClick={() => onAddFocused(`${previewKind(item.targetType)}:${item.targetId}`, item.name)} title="Add and open Build & Preview" aria-label={`Add ${item.name} in Build & Preview`}><Maximize2 size={13}/> Add in Build & Preview</button>}
+          {onAddFocused && <button type="button" className="v12-metal-button" disabled={disabled || pending} onClick={() => onAddFocused(`${previewKind(item.targetType)}:${item.targetId}`, item.name)} title="Add and open Build & Preview" aria-label={`Add ${item.name} in Build & Preview`}><FabThemeIcon iconKey="lorc/anvil-impact" dark={dark}/> Add in Build & Preview</button>}
         </>} />}
       </div>
       {pending && !error && <p role="status" className="sheet-library-status">Finding entries…</p>}

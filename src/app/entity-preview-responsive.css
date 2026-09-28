@@ -1,0 +1,72 @@
+/* The same preview appears in a resizable column, a nested modal and the FAB.
+   Its own width determines its layout, regardless of the desktop viewport. */
+body[data-ui="v12"] .v12-entity-preview[data-preview-layout] {
+  container:entity-preview / inline-size;
+  width:100%; min-width:0;
+}
+body[data-ui="v12"] .v12-live-recipe { container:live-preview / inline-size; min-width:0; }
+body[data-ui="v12"] .v12-behavior-rule>span:only-child { font-weight:400; overflow-wrap:anywhere; min-width:0; }
+body[data-ui="v12"] .v12-entity-preview .v12-behavior-ledger>:only-child { grid-column:1 / -1; }
+
+@container entity-preview (max-width:780px) {
+  body[data-ui="v12"] .v12-entity-preview[data-preview-layout] .v12-entity-preview-content :is(.v12-primitive-preview-body,.v12-composite-preview-body,.v12-composite-preview-primary,.v12-composite-preview-secondary) {
+    display:grid!important; grid-template-columns:minmax(0,1fr)!important; gap:10px!important; min-width:0;
+  }
+  body[data-ui="v12"] .v12-entity-preview[data-preview-layout] .v12-entity-preview-content :is(.v12-primitive-preview-body,.v12-composite-preview-body,.v12-composite-preview-primary,.v12-composite-preview-secondary)>* {
+    grid-column:1!important; grid-row:auto!important; min-width:0; margin-block:0!important;
+  }
+  body[data-ui="v12"] .v12-entity-preview[data-preview-layout] .v12-entity-preview-content .v12-composed-ledger,
+  body[data-ui="v12"] .v12-entity-preview[data-preview-layout] .v12-entity-preview-content .v12-composite-preview-secondary>section .v12-composed-ledger,
+  body[data-ui="v12"] .v12-entity-preview[data-preview-layout] .v12-entity-preview-content .v12-behavior-ledger {
+    grid-template-columns:minmax(0,1fr)!important; gap:8px;
+  }
+  body[data-ui="v12"] .v12-entity-preview[data-preview-layout] .v12-behavior-card-head { flex-wrap:wrap; gap:6px 10px; }
+  body[data-ui="v12"] .v12-entity-preview[data-preview-layout] :is(.v12-behavior-operation,.v12-behavior-mirror) { white-space:normal; line-height:1.4; font-size:10px; overflow-wrap:anywhere; }
+  body[data-ui="v12"] .v12-entity-preview[data-preview-layout] .v12-behavior-rule { font-size:14px; line-height:1.5; }
+  body[data-ui="v12"] .v12-entity-preview[data-preview-layout] .v12-behavior-rule strong { max-width:100%; font-size:14px; line-height:1.4; }
+  body[data-ui="v12"] .v12-entity-preview[data-preview-layout] .v12-behavior-meta>span { flex-wrap:wrap; min-width:0; gap:4px; }
+  body[data-ui="v12"] .v12-entity-preview[data-preview-layout] .v12-behavior-meta :is(b,small) { white-space:normal; overflow-wrap:anywhere; line-height:1.4; }
+  body[data-ui="v12"] .v12-entity-preview[data-preview-layout] .v12-entity-preview-content .v12-composed-ledger-row {
+    grid-template-columns:26px minmax(0,1fr) auto 12px!important; gap:8px; padding:10px!important;
+  }
+  body[data-ui="v12"] .v12-entity-preview[data-preview-layout] .v12-entity-preview-content :is(.v12-composed-ledger-name,.v12-composition-node-name) {
+    overflow-wrap:anywhere; text-overflow:clip; white-space:normal; font-size:14px!important; line-height:1.35!important;
+  }
+  body[data-ui="v12"] .v12-entity-preview[data-preview-layout] .v12-entity-preview-content :is(.v12-composed-ledger-rule,.v12-composition-node-note) {
+    display:block; -webkit-line-clamp:unset; overflow:visible; font-size:13px!important; line-height:1.5!important;
+  }
+  body[data-ui="v12"] .v12-entity-preview[data-preview-layout] .v12-entity-preview-content :is(.v12-composed-ledger-titleline,.v12-composition-node-titleline) { align-items:flex-start; flex-wrap:wrap; }
+  body[data-ui="v12"] .v12-entity-preview[data-preview-layout] .v12-preview-owner-bar { align-items:flex-start; flex-direction:column; gap:8px; }
+  body[data-ui="v12"] .v12-entity-preview[data-preview-layout] .v12-preview-owner-bar>* { min-width:0; max-width:100%; }
+}
+
+@container entity-preview (max-width:520px) {
+  body[data-ui="v12"] .v12-entity-preview[data-preview-layout] .v12-entity-preview-content .v12-preview-identity {
+    display:grid!important; grid-template-columns:48px minmax(0,1fr)!important; gap:10px!important; align-items:center!important;
+  }
+  body[data-ui="v12"] .v12-entity-preview[data-preview-layout] .v12-entity-preview-content .v12-preview-medallion {
+    width:44px!important; height:44px!important; padding:6px!important; margin:0!important;
+  }
+  body[data-ui="v12"] .v12-entity-preview[data-preview-layout] .v12-preview-destination-grid { grid-template-columns:minmax(0,1fr)!important; }
+  body[data-ui="v12"] .v12-entity-preview[data-preview-layout] .v12-preview-action-group { flex-wrap:wrap; }
+  body[data-ui="v12"] .v12-entity-preview[data-preview-layout] .v12-entity-preview-content .v12-composed-ledger-row { grid-template-columns:minmax(0,1fr) auto 12px!important; }
+  body[data-ui="v12"] .v12-entity-preview[data-preview-layout] .v12-entity-preview-content .v12-composed-ledger-index { display:none; }
+  body[data-ui="v12"] .v12-entity-preview[data-preview-layout] .v12-entity-preview-content .v12-composition-node-row { grid-template-columns:20px minmax(0,1fr) auto 20px!important; gap:5px; }
+  body[data-ui="v12"] .v12-entity-preview[data-preview-layout] .v12-entity-preview-content .v12-composition-node-kind { display:none; }
+  body[data-ui="v12"] .v12-entity-preview[data-preview-layout] .v12-entity-preview-content .v12-composition-node-children { margin-left:8px; padding-left:7px; }
+}
+
+/* Live forms render the same reading hierarchy before an entity is saved. */
+body[data-ui="v12"] .v12-live-rule-head>strong { min-width:0; overflow-wrap:anywhere; font:600 15px/1.4 var(--font-subtitle); }
+body[data-ui="v12"] .v12-live-rule-head>span { flex-shrink:0; }
+@container live-preview (max-width:780px) {
+  body[data-ui="v12"] .v12-live-recipe .v12-live-composition.grid { grid-template-columns:minmax(0,1fr); }
+}
+@container live-preview (max-width:520px) {
+  body[data-ui="v12"] .v12-live-recipe .v12-live-emblem { width:68px; height:68px; margin:0 0 12px; box-shadow:inset 0 0 0 7px color-mix(in srgb,var(--v12-silver) 7%,transparent); }
+  body[data-ui="v12"] .v12-live-recipe .v12-live-emblem img { width:34px; height:34px; }
+  body[data-ui="v12"] .v12-live-recipe .v12-live-identity h2 { font-size:24px; }
+  body[data-ui="v12"] .v12-live-recipe :is(.v12-live-description,.v12-live-mechanics,.v12-live-rule,.v12-live-composition) { font-size:15px; line-height:1.5; }
+  body[data-ui="v12"] .v12-live-recipe .v12-live-badges>span { font-size:12px; padding:3px 7px; }
+  body[data-ui="v12"] .v12-live-recipe .v12-live-effect { padding:8px; }
+}

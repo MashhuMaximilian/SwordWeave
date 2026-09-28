@@ -25,8 +25,9 @@
  *   Primitives: resistance:fire (0.5x) + resistance:fire (0.5x)
  *   Final: 10 * 0.5 * 0.5 = 2.5 (stacking halves)
  */
-import { walkPrimitiveContributionsForAxis } from "./primitive-walk";
-import type { ConditionContext } from "./condition-evaluator";
+import { evaluateCondition, isConditionComputable, type ConditionContext } from "./condition-evaluator";
+import type { ModifierCondition } from "@/types/condition";
+import { hasMeaningfulCondition } from "./condition-dictionary";
 
 export interface ResolveDamageInput {
   /** Incoming damage amount (positive integer typically). */
@@ -64,15 +65,6 @@ export interface ResolveDamageResult {
  * vulnerability → 0.5x) — same as other modifiers' sign inversion.
  */
 export function resolveDamage(input: ResolveDamageInput): ResolveDamageResult {
-  const axisWalk = walkPrimitiveContributionsForAxis(
-    input.primitiveLinks as Parameters<typeof walkPrimitiveContributionsForAxis>[0],
-    "damage_modifier",
-    input.type.toLowerCase(),
-    input.conditionContext,
-  );
-
-  // Each contribution's delta is a multiplier. The walk sums them
-  // but we need to multiply, not sum. Re-walk to get raw multipliers.
   let multiplier = 1;
   const contributions: Array<{
     primitiveId: number;
@@ -81,46 +73,50 @@ export function resolveDamage(input: ResolveDamageInput): ResolveDamageResult {
     target: string;
   }> = [];
 
-  for (const link of input.primitiveLinks as Parameters<typeof walkPrimitiveContributionsForAxis>[0]) {
-    const isMirrored = link.isMirrored === true;
-    const mods = Array.isArray(link.primitive?.hardModifiers)
-      ? (link.primitive.hardModifiers as Array<{
-          target?: unknown;
-          operation?: unknown;
-          value?: unknown;
-          condition?: unknown;
-        }>)
-      : [];
+  type Link = {
+    primitive?: { id?: number; name?: string; hardModifiers?: unknown };
+    isMirrored?: boolean;
+    isToggledOff?: boolean;
+  };
+  const record = (value: unknown): Record<string, unknown> => value && typeof value === "object" ? value as Record<string, unknown> : {};
+  for (const link of input.primitiveLinks as readonly Link[]) {
+    if (link.isToggledOff) continue;
+    const mods = Array.isArray(link.primitive?.hardModifiers) ? link.primitive.hardModifiers : [];
+    for (const raw of mods) {
+      const mod = record(raw);
+      const target = String(mod["target"] ?? mod["targetAxis"] ?? "");
+      const [axis, ...suffix] = target.split(".");
+      const meta = record(mod["metadata"]);
+      const scope = record(meta["targetScope"]);
+      const scopes = suffix.length ? [suffix.join(".")] :
+        Array.isArray(scope["values"]) && scope["values"].length ? scope["values"] :
+        [meta["scopeName"] ?? mod["targetKey"] ?? ""];
+      // Missing scope must never turn a named resistance into universal immunity.
+      if (!scopes.some(value => [input.type.trim().toLowerCase(), "all", "*"].includes(String(value).trim().toLowerCase()))) continue;
 
-    for (const rawMod of mods) {
-      const target = String(rawMod.target ?? "");
-      const op = String(rawMod.operation ?? "");
-      const value = Number(rawMod.value);
-      if (!Number.isFinite(value)) continue;
-
-      // Only multiply ops on damage_modifier.<type>.
-      if (op !== "multiply") continue;
-      const dotIdx = target.indexOf(".");
-      if (dotIdx <= 0) continue;
-      const candidateAxis = target.slice(0, dotIdx);
-      const candidateSub = target.slice(dotIdx + 1);
-      if (candidateAxis !== "damage_modifier") continue;
-      if (candidateSub.toLowerCase() !== input.type.toLowerCase()) continue;
-
-      let modMultiplier = value;
-      // Mirror: invert the multiplier. Resistance (0.5) becomes
-      // vulnerability (2), vulnerability (2) becomes resistance (0.5),
-      // immunity (0) stays at 0.
-      if (isMirrored) {
-        modMultiplier = modMultiplier === 0 ? 0 : 1 / modMultiplier;
+      const token = record(mod["value"]);
+      let value: number | undefined;
+      if (axis === "damage_modifier" && mod["operation"] === "multiply") {
+        const rawValue = token["kind"] === "number" ? token["value"] : mod["value"];
+        if (typeof rawValue === "number" || (typeof rawValue === "string" && rawValue.trim() !== "")) value = Number(rawValue);
+      } else if (axis === "damage_type" && mod["operation"] === "grant" && (token["kind"] === "keyword" || token["kind"] === "behavior")) {
+        // Compatibility for older resistance grants; ordinary damage-type access is not resistance.
+        const keyword = String(token["text"] ?? token["value"] ?? token["name"] ?? "").replace(/^\[+|\]+$/g, "").trim().toLowerCase();
+        value = ({ resistance: 0.5, vulnerability: 2, immunity: 0 } as Record<string, number>)[keyword];
       }
-
+      if (value === undefined || !Number.isFinite(value) || value < 0) continue;
+      const condition = mod["condition"] as ModifierCondition | undefined;
+      if (hasMeaningfulCondition(condition)) {
+        if (!input.conditionContext || !isConditionComputable(condition, input.conditionContext) || !evaluateCondition(condition, input.conditionContext)) continue;
+      }
+      const mirror = record(meta["mirror"]);
+      const modMultiplier = link.isMirrored && !mirror["optedOut"] && value !== 0 ? 1 / value : value;
       multiplier *= modMultiplier;
       contributions.push({
         primitiveId: Number(link.primitive?.id ?? 0),
         primitiveName: String(link.primitive?.name ?? "Unknown"),
         multiplier: modMultiplier,
-        target,
+        target: `damage_modifier.${input.type.trim().toLowerCase()}`,
       });
     }
   }

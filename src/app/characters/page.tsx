@@ -300,6 +300,7 @@ async function CharacterCard({
     <article className="v12-roster-card group">
       <div className="v12-roster-card-head">
         <div className="v12-roster-avatar-frame">
+          <div className="v12-roster-avatar-crop">
           {portrait ? (
             <img
               src={portrait}
@@ -312,6 +313,7 @@ async function CharacterCard({
               {character.name.charAt(0).toUpperCase()}
             </div>
           )}
+          </div>
         </div>
         <div className="min-w-0 flex-1">
           <p className="v12-roster-record-code">Sheet record · level {character.level}</p>
