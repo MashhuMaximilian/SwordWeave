@@ -1,4 +1,5 @@
 "use client";
+import { EditableNumberInput } from "@/components/ui/editable-number-input";
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -718,7 +719,7 @@ export function CapabilityComposer({
                             </option>
                           ))}
                         </select>
-                        <input
+                        <EditableNumberInput
                           type="number"
                           min={1}
                           value={slot.quantity}

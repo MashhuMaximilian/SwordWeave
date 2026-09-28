@@ -1,4 +1,5 @@
 "use client";
+import { readJsonResponse } from "@/lib/http/read-json-response";
 import {
   useCallback,
   useEffect,
@@ -238,7 +239,7 @@ function LegacyCharacterWorkspace({
     const response = await fetch(`/api/characters/${characterId}/workspace`, {
       cache: "no-store",
     });
-    const value = await response.json();
+    const value = await readJsonResponse(response);
     if (!response.ok)
       throw new Error(value.error ?? "Unable to load workspace.");
     setGraph(value);
@@ -317,7 +318,7 @@ function LegacyCharacterWorkspace({
       signal: controller.signal,
     })
       .then(async (response) => {
-        const value = await response.json();
+        const value = await readJsonResponse(response);
         if (!response.ok) throw new Error(value.error);
         setCostPreview({ key: previewBody, ...value });
       })
@@ -399,7 +400,7 @@ function LegacyCharacterWorkspace({
     if (composer?.node) {
       const response = await command("edit", { draft });
       if (!response.ok) return response;
-      const result = await response.json();
+      const result = await readJsonResponse(response);
       savedKey.current = `${composer.node.kind}:${result.id}`;
       return Response.json(result.entityResponse);
     }
@@ -1952,7 +1953,7 @@ function WorkspaceRow({
                     members[index - 1]!,
                   );
                   const response = await command("reorder", { order });
-                  const result = await response.json();
+                  const result = await readJsonResponse(response);
                   if (!response.ok) throw new Error(result.error);
                   await changed();
                 } catch (error) {
@@ -1983,7 +1984,7 @@ function WorkspaceRow({
                         expectedHash: node.data["contentHash"] ?? null,
                       })
                         .then(async (response) => {
-                          const result = await response.json();
+                          const result = await readJsonResponse(response);
                           if (!response.ok) throw new Error(result.error);
                           onSaved(node.key);
                           await changed();

@@ -146,6 +146,7 @@ export function useDrawerSlot(content: Partial<DrawerSlotState>) {
 }
 
 export function BuildPreviewDrawer() {
+  const buildHost = useRef<HTMLDivElement>(null);
   const { drawerOpen, drawerTab, closeDrawer, setDrawerTab } =
     useGlobalControls();
   useEffect(() => {
@@ -166,16 +167,14 @@ export function BuildPreviewDrawer() {
 
   // Find the inner form's Save/Reset buttons by data-attribute.
   function dispatchReset() {
-    document.querySelector<HTMLButtonElement>('[data-drawer-build] [data-drawer-reset]')?.click();
+    buildHost.current?.querySelector<HTMLButtonElement>('[data-drawer-reset]')?.click();
   }
   function dispatchSave() {
-    const submitBtn = document.querySelector<HTMLButtonElement>(
-      '[data-drawer-build] button[type="submit"][data-sandbox-submit]',
+    const submitBtn = buildHost.current?.querySelector<HTMLButtonElement>(
+      'button[type="submit"][data-sandbox-submit]',
     );
     if (submitBtn) {
       submitBtn.click();
-    } else {
-      window.dispatchEvent(new CustomEvent("sw-sandbox-submit"));
     }
   }
 
@@ -252,7 +251,7 @@ export function BuildPreviewDrawer() {
                 : "No build context on this page."}
             </div>
           ) : (
-            <div data-drawer-build className={drawerTab === "build" ? "block" : "hidden"}>
+            <div ref={buildHost} data-drawer-build className={drawerTab === "build" ? "block" : "hidden"}>
               {slot.build}
             </div>
           )}
@@ -323,7 +322,7 @@ function DrawerShell({
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !document.querySelector('[data-modal-stack-top="true"]')) onClose();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);

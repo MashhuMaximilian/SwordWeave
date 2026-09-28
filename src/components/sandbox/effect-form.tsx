@@ -1,4 +1,8 @@
 "use client";
+import {readTableGuidance,writeTableGuidance,type TableGuidance} from "@/lib/capabilities/table-guidance";
+import { RollResolutionEditor } from "./roll-resolution-editor";
+import { EMPTY_RESOLUTION, readRollResolution, writeRollResolution, type RollResolution } from "@/lib/capabilities/roll-resolution";
+import { readJsonResponse } from "@/lib/http/read-json-response";
 import { RecipePrimitiveIdentity } from "./recipe-primitive-identity";
 import { AuthorChapters, AuthorChapter } from "./author-chapters";
 import { SortableBundleList,SortableMember } from "@/components/characters/workspace/sortable-bundle-list";
@@ -143,6 +147,8 @@ export function EffectForm({
   const [recoveredCatalog, setRecoveredCatalog] = useState<{ primitives: typeof sourcePrimitives } | null>(null);
   const availablePrimitives = useMemo(() => [...sourcePrimitives, ...(recoveredCatalog?.primitives ?? []).filter((entry) => !sourcePrimitives.some((current) => current.id === entry.id))], [sourcePrimitives, recoveredCatalog]);
 
+  const [table,setTable]=useState<TableGuidance|null>(null);
+  const [resolution,setResolution] = useState<RollResolution>({...EMPTY_RESOLUTION});
   const [orderChanged,setOrderChanged]=useState(false);
   const [form, setForm] = useState<EffectFormState>(blankForm);
   const [slots, setSlots] = useState<EffectFormSlot[]>(() => initialPrimitiveIds.flatMap((id, index) => { const primitive = availablePrimitives.find(p => p.id === id); return primitive ? [{ primitiveId: id, primitive, quantity: 1, isMirrored: false, ...initialPrimitiveSlots[id] }] : []; }));
@@ -150,8 +156,8 @@ export function EffectForm({
   const [isPending, startTransition] = useTransition();
   const [isDirty, setIsDirty] = useState(false);
   const router = useRouter();
-  const recovery = useCharacterFormRecovery("effect", { catalog: { primitives: availablePrimitives.filter((entry) => slots.some((slot) => slot.primitiveId === entry.id)) }, form, slots, orderChanged }, isDirty, (saved) => {
-    setRecoveredCatalog(saved.catalog); setForm(saved.form); setSlots(saved.slots); setOrderChanged(saved.orderChanged);
+  const recovery = useCharacterFormRecovery("effect", { catalog: { primitives: availablePrimitives.filter((entry) => slots.some((slot) => slot.primitiveId === entry.id)) }, form, slots, resolution, table, orderChanged }, isDirty, (saved) => {
+    setTable(saved.table ?? null); setRecoveredCatalog(saved.catalog); setForm(saved.form); setResolution(saved.resolution ?? {...EMPTY_RESOLUTION}); setSlots(saved.slots); setOrderChanged(saved.orderChanged);
     setIsDirty(true); setMessage("Restored your unfinished character piece.");
   });
 
@@ -165,9 +171,16 @@ export function EffectForm({
     if (bootstrappedRef.current === id) return;
     bootstrappedRef.current = id;
     if (!initialEffect) return;
+    const guidance=readTableGuidance(initialEffect.narrativeDescription);
+    // Hydrate optional play intent when loading an effect.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTable(guidance.table);
+    const resolved=readRollResolution(guidance.description);
+    // Rehydrate the loaded entity together with the rest of this editor.
+    setResolution(resolved.resolution);
     setForm({
       name: initialEffect.name,
-      narrativeDescription: initialEffect.narrativeDescription,
+      narrativeDescription: resolved.description,
       sourceOrigin: initialEffect.sourceOrigin ?? "",
       tags: (initialEffect.tags ?? []).join(", "),
       isPublic: initialEffect.isPublic,
@@ -198,8 +211,8 @@ export function EffectForm({
 
   // Fire onStateChange.
   useEffect(() => {
-    onStateChange?.({ form, slots, isDirty });
-  }, [form, slots, onStateChange, isDirty]);
+    onStateChange?.({ form:{...form,narrativeDescription:writeTableGuidance(writeRollResolution(form.narrativeDescription,resolution),table)}, slots, isDirty });
+  }, [form, slots, onStateChange, isDirty, resolution, table]);
 
   // External reset trigger from the speed-dial FAB / pinned Save/Reset footer.
   useEffect(() => {
@@ -279,6 +292,7 @@ export function EffectForm({
 
   function resetEditor() {
     recovery.clear();
+    setResolution({...EMPTY_RESOLUTION}); setTable(null);
     setForm(blankForm);
     setSlots([]);
     setIsDirty(false); // pristine after reset
@@ -294,7 +308,7 @@ export function EffectForm({
     const body: Record<string, unknown> = {
       ...(orderChanged?{membershipOrder:slots.map(s=>`primitive:${s.primitiveId}`)}:{}),
       name: form.name,
-      narrativeDescription: form.narrativeDescription,
+      narrativeDescription: writeTableGuidance(writeRollResolution(form.narrativeDescription,resolution),table),
       sourceOrigin: form.sourceOrigin || null,
       tags: form.tags
         .split(",")
@@ -323,12 +337,13 @@ export function EffectForm({
     const method = initialEffect ? "PATCH" : "POST";
 
     startTransition(async () => {
+      try {
       const response = await saveRequest(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const payload: unknown = await response.json();
+      const payload: unknown = await readJsonResponse(response);
 
       if (!response.ok) {
         const error =
@@ -369,6 +384,7 @@ export function EffectForm({
       resetEditor();
       if (!characterAuthoring) router.refresh();
       setMessage(characterAuthoring ? "Saved to the character draft. Review changes before applying." : `Effect "${effect?.name ?? "(unnamed)"}" saved.`);
+      } catch (cause) { setMessage(cause instanceof Error ? cause.message : "Unable to save. Your edits are still here; please retry."); }
     });
   }
 
@@ -423,7 +439,7 @@ export function EffectForm({
         </button>
       </div>
 
-      <AuthorChapters defaultActive="identity" order={["identity", "pieces", "publish"]} guideKind="effect">
+      <AuthorChapters defaultActive="identity" order={["identity", "pieces", "table", "publish"]} guideKind="effect">
         <AuthorChapter id="pieces" title="Pieces">
       <section className="rounded-md border border-border bg-background p-4">
         <div className="flex items-center justify-between gap-3">
@@ -545,6 +561,7 @@ export function EffectForm({
       </label>
 
         </AuthorChapter>
+        <AuthorChapter id="table" title="At the table"><RollResolutionEditor value={resolution} onChange={value=>{setResolution(value);setIsDirty(true);}}/></AuthorChapter>
         <AuthorChapter id="publish" title="Publish">
       <AuthorPublishFields
         tags={form.tags}

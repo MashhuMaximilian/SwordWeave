@@ -49,7 +49,7 @@ export function WorkspaceSurface({
     document.body.style.overflow = "hidden";
     panel.current?.focus();
     const keyboard = (e: KeyboardEvent) => {
-      if (coveredRef.current) return;
+      if (coveredRef.current || document.querySelector('[data-modal-stack-top="true"]')) return;
       if (e.key === "Escape") {
         e.preventDefault();
         e.stopImmediatePropagation();

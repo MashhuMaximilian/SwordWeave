@@ -1,0 +1,5 @@
+"use client";
+import {DEFAULT_TABLE,TABLE_AXES,TABLE_HELP,type TableGuidance,type TableAxis} from "@/lib/capabilities/table-guidance";
+export function TableIntentEditor({value,onChange}:{value:TableGuidance|null;onChange:(value:TableGuidance|null)=>void}) {
+ return <section className="v12-roll-resolution"><label><input type="checkbox" checked={!!value} onChange={e=>onChange(e.target.checked?{...DEFAULT_TABLE}:null)}/> Include optional play declarations</label>{value && <div className="generated-reference-slots">{Object.entries(TABLE_AXES).map(([key,axis])=><label key={key}>{axis.label}<input list={`effect-table-${key}`} value={value[key as TableAxis]} onChange={e=>onChange({...value,[key]:e.target.value})}/><datalist id={`effect-table-${key}`}>{axis.values.filter(v=>v!=="Custom").map(v=><option key={v} value={v}/>)}</datalist><small>{TABLE_HELP[key]?.[value[key as TableAxis]] ?? "Choose an example or describe your own."}</small></label>)}</div>}<p>These describe play intent. Range and output dice come from the primitives in Pieces.</p></section>;
+}

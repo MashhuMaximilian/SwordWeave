@@ -1,4 +1,5 @@
 "use client";
+import { EditableNumberInput } from "@/components/ui/editable-number-input";
 
 import { useMemo, useState, useTransition } from "react";
 import { ToastViewport, useToasts } from "@/components/ui/toast";
@@ -559,7 +560,7 @@ export function ItemComposer({
                                     —
                                   </div>
                                 ) : (
-                                  <input
+                                  <EditableNumberInput
                                     type="number"
                                     min={form.isTwoHanded ? 2 : 1}
                                     value={form.slotCost}
@@ -626,7 +627,7 @@ export function ItemComposer({
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Quantity">
-                <input
+                <EditableNumberInput
                   type="number"
                   min={1}
                   value={form.quantity ?? 1}
@@ -656,7 +657,7 @@ export function ItemComposer({
                   parked in Session J / T16 (see
                   swordweave-character-items SKILL "Open followup #2"). */}
               <Field label="Extra BU cost">
-                <input
+                <EditableNumberInput
                   type="number"
                   min={0}
                   value={form.buCost}

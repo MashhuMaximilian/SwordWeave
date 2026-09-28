@@ -94,6 +94,7 @@ export interface TransitiveBuResult {
 
 export function computeTransitiveBu(
   input: TransitiveBuInput,
+  options: {allowTemporaryIds?:boolean} = {},
 ): TransitiveBuResult {
   const seen = new Set<number>();
   const primitiveIds: number[] = [];
@@ -101,7 +102,7 @@ export function computeTransitiveBu(
 
   function consider(link: PrimitiveLinkShape): void {
     const id = link.primitiveId;
-    if (!Number.isInteger(id) || id <= 0) return;
+    if (!Number.isInteger(id) || id === 0 || (id < 0 && !options.allowTemporaryIds)) return;
     if (seen.has(id)) return;
     seen.add(id);
     primitiveIds.push(id);

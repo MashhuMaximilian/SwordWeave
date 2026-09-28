@@ -47,6 +47,8 @@ export interface PreviewSubLink {
 }
 
 export interface PreviewCallbacks {
+  /** Resolve unsaved workspace records before falling back to database previews. */
+  preferLocalSubLinks?: boolean;
   onSubLinkClick?: (link: PreviewSubLink) => void;
   engagement?: PreviewEngagement;
   versionHistoryHref?: string;

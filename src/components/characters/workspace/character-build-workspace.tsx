@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useRef, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Group, Panel, Separator } from "react-resizable-panels";
 import { ArrowLeft, ArrowRight, Check, ChevronRight, Dna, Eye, Hammer, Library, Plus, Redo2, Shield, Sparkles, Swords, Undo2, X } from "lucide-react";
@@ -11,8 +11,10 @@ import { CharacterFoundationEditor, type CharacterFoundationValues } from "./cha
 import { BuildLibrary } from "./build-library";
 import { WorkspaceSuggestions } from "./workspace-suggestions";
 import { EntityComposer } from "./entity-composer";
-import { WorkspaceEntityPreview, loadEntityPreview, previewKind } from "./workspace-entity-preview";
-import { EntityPreview } from "@/components/preview/entity-preview";
+import { WorkspaceEntityPreview, previewKind } from "./workspace-entity-preview";
+import { EntityPreview, FetchedEntityPreview } from "@/components/preview/entity-preview";
+import { useModalStack } from "@/components/ui/modal-stack";
+import { OPEN_PREVIEW_EVENT_NAME, type OpenPreviewEvent } from "@/lib/sandbox/slot-events";
 import { WorkspaceSurface } from "./workspace-surface";
 import { useDrawerSlot } from "@/components/layout/build-preview-drawer";
 import { useGlobalControls } from "@/components/layout/global-controls";
@@ -26,6 +28,10 @@ import { mirrorConsequence } from "@/lib/character/mirror-suggestions";
 import type { DiscoverySuggestion } from "@/lib/character/workspace/discovery/matching";
 import { characterFormRecoveryKey } from "@/lib/sandbox/character-form-recovery";
 import type { QuickRuleSeed } from "@/lib/character/workspace/discovery/quick-rules";
+import { draftReviewChangeCount } from "./draft-change-review-model";
+import { ProceduralRandomizer, type RandomizerHeritage } from "./procedural-randomizer";
+import type { GeneratedProposal } from "@/lib/character/workspace/discovery/procedural-generator";
+import { readJsonResponse } from "@/lib/http/read-json-response";
 import { Markdown } from "@/components/ui/markdown";
 
 const roots = [
@@ -36,6 +42,7 @@ const roots = [
   { key: "ITEM", name: "Items", subtitle: "What they carry and wield", icon: Hammer },
 ] as const;
 const names: Record<EntityKind, string> = { primitive: "Rule or trait", capability: "Capability", effect: "Reusable effect", heritage: "Heritage bundle", item: "Item" };
+type ComposerSession = { kind: EntityKind; node?: WorkspaceNode; selection?: EntityKey[];selectionEdges?:WorkspaceEdge[]; primitiveSeed?:QuickRuleSeed; generatedNodes?:WorkspaceNode[]; capabilitySeed?:{name:string;description:string;type:string;sourceType:string} } & {sessionId?:string;sourceOnly?:boolean;sourceGraph?:WorkspaceGraph};
 type Permission = "OWNER" | "EDITOR" | "SUGGESTER" | "VIEWER";
 interface CharacterInfo extends CharacterFoundationValues { name: string; level: number; startingBu: number; dmBonusBu: number; buSpent: number; notes: string | null; backstory?: unknown }
 const hash = (node: WorkspaceNode | undefined) => typeof node?.data["contentHash"] === "string" ? node.data["contentHash"] : null;
@@ -47,11 +54,20 @@ export function CharacterBuildWorkspace({ characterId, initialRoot = "ALL", perm
   const controller = useCharacterDraft(characterId);
   const [base, setBase] = useState<WorkspaceGraph | null>(null);
   const [character, setCharacter] = useState<CharacterInfo | null>(null);
+  const [randomizer,setRandomizer] = useState(false);
   const [root, setRoot] = useState<WorkspaceCategory>(initialRoot);
   const [path, setPath] = useState<string[]>([]);
   const [source, setSource] = useState<"library" | "owned" | "suggestions">("library");
   const [mobile, setMobile] = useState<"find" | "build" | "preview">("build");
-  const [composer, setComposer] = useState<{ kind: EntityKind; node?: WorkspaceNode; selection?: EntityKey[];selectionEdges?:WorkspaceEdge[]; primitiveSeed?:QuickRuleSeed } | null>(null);
+  const [composer, setComposer] = useState<ComposerSession | null>(null);
+  const [sendToModal,setSendToModal]=useState(false);
+  const [modalComposer,setModalComposer]=useState<ComposerSession|null>(null);
+  const [modalIncoming,setModalIncoming]=useState<{key:EntityKey;label:string;sequence:number}|null>(null);
+  const [modalPreview,setModalPreview]=useState<ReactNode>(null);
+  const [modalCategory,setModalCategory]=useState<Exclude<WorkspaceCategory,"ALL">>("MANIFEST");
+  const [modalPath,setModalPath]=useState<string[]>([]);
+  const [replaceModal,setReplaceModal]=useState<(()=>void)|null>(null);
+  const [libraryTarget,setLibraryTarget]=useState<"middle-add"|"middle-replace"|"modal-add"|"modal-replace">("middle-add");
   const [contextReady, setContextReady] = useState(false);
   const [previewCollapsed, setPreviewCollapsed] = useState(false);
   const [livePreview, setLivePreview] = useState<ReactNode>(null);
@@ -60,7 +76,7 @@ export function CharacterBuildWorkspace({ characterId, initialRoot = "ALL", perm
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [foundationDirty, setFoundationDirty] = useState(false);
   const [foundation, setFoundation] = useState<"concept"|"foundation"|"backstory"|null>(null);
-  const previewSequence = useRef(0);
+  const { push: pushPreview } = useModalStack();
   const [inspecting, setInspecting] = useState(false);
   const [inspect, setInspect] = useState<EntityKey | null>(null);
   const [external, setExternal] = useState<SandboxPreviewItem | null>(null);
@@ -74,7 +90,7 @@ export function CharacterBuildWorkspace({ characterId, initialRoot = "ALL", perm
   const { dark, openDrawer, closeDrawer } = useGlobalControls();
   const refresh = useCallback(async () => {
     const [graphResponse, characterResponse] = await Promise.all([fetch(`/api/characters/${characterId}/workspace`), fetch(`/api/characters/${characterId}`)]);
-    const graph = await graphResponse.json(), info = await characterResponse.json();
+    const graph = await readJsonResponse(graphResponse), info = await readJsonResponse(characterResponse);
     if (!graphResponse.ok || !characterResponse.ok) throw new Error(graph.error ?? info.error ?? "Unable to open character.");
     setBase(graph); setCharacter(info.character);
   }, [characterId]);
@@ -84,23 +100,55 @@ export function CharacterBuildWorkspace({ characterId, initialRoot = "ALL", perm
   // Restore this character’s saved guidance preference.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setHelp(localStorage.getItem(`sw:build-help:${characterId}`) !== "hidden"); }, [characterId]);
-  const graph = controller.preview?.graph ?? base;
+  const graph = useMemo(() => {
+    const value=controller.preview?.graph ?? base;if(!value)return value;
+    const sources=[composer?.sourceGraph,modalComposer?.sourceGraph].filter((v):v is WorkspaceGraph=>!!v);
+    const extra=[...(composer?.generatedNodes ?? []),...(modalComposer?.generatedNodes ?? []),...sources.flatMap(g=>g.nodes)];
+    const nodes=[...value.nodes,...extra.filter((n,index)=>!value.nodes.some(old=>old.key===n.key) && extra.findIndex(other=>other.key===n.key)===index)];
+    const edges=[...value.edges,...sources.flatMap(g=>g.edges).filter((edge,index,all)=>edge.parent && !value.nodes.some(n=>n.key===edge.parent) && all.findIndex(e=>e.id===edge.id)===index)];
+    return {...value,nodes,edges};
+  },[controller.preview?.graph,base,composer,modalComposer]);
+  const showPreview = useCallback((key: EntityKey, label?: string) => {
+    const node = graph?.nodes.find((entry) => entry.key === key);
+    const [kind, id] = key.split(":") as [EntityKind, string];
+    pushPreview({
+      key: `workspace-preview:${key}`,
+      label: node?.name ?? label ?? "Piece preview",
+      category: kind,
+      content: node && graph
+        ? <WorkspaceEntityPreview node={node} graph={graph} onOpen={showPreview}/>
+        : <FetchedEntityPreview targetType={kind.toUpperCase()} targetId={id}/>,
+    });
+  }, [graph, pushPreview]);
+  useEffect(() => {
+    const open = (event: Event) => {
+      const {targetType, targetId, label} = (event as CustomEvent<OpenPreviewEvent>).detail;
+      showPreview(`${previewKind(targetType)}:${targetId}`, label);
+    };
+    window.addEventListener(OPEN_PREVIEW_EVENT_NAME, open);
+    return () => window.removeEventListener(OPEN_PREVIEW_EVENT_NAME, open);
+  }, [showPreview]);
   const draftCharacter = useMemo(() => (controller.draft?.operations ?? []).reduce<CharacterFoundationValues>((value,operation) => operation.type === "character" ? {...value,...operation.payload} : value,character ?? {}),[character,controller.draft]);
   // Resume the exact authoring destination only after its server draft has resolved.
   useEffect(() => {
     if (contextReady || !graph || !controller.ready) return;
     try {
       const saved = JSON.parse(localStorage.getItem(`sw:workshop-context:${characterId}`) ?? "null");
+      if(saved?.modalComposer && Object.hasOwn(names,saved.modalComposer.kind)) {
+        // Restore the independent editor once after browser context is loaded.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setModalComposer(saved.modalComposer);setModalPath(saved.modalPath ?? []);
+        if(["LINEAGE","UPBRINGING","MANIFEST","ITEM"].includes(saved.modalCategory))setModalCategory(saved.modalCategory);
+      }
       if (saved && !initialIntent) {
         // Browser recovery is hydrated once after server data becomes available.
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         if (roots.some(entry => entry.key === saved.root)) setRoot(saved.root);
         const validPath = Array.isArray(saved.path) && saved.path.every((id: unknown) => typeof id === "string" && graph.edges.some(edge => edge.id === id));
         if (validPath) setPath(saved.path);
         if (["library","owned","suggestions"].includes(saved.source)) setSource(saved.source);
         if (saved.composer && validPath && Object.hasOwn(names,saved.composer.kind)) {
-          const node = graph.nodes.find(entry => entry.key === saved.composer.nodeKey);
-          if (!saved.composer.nodeKey || node) setComposer({kind:saved.composer.kind,...(node ? {node} : {}),selection:saved.composer.selection,selectionEdges:saved.composer.selectionEdges,...(saved.composer.primitiveSeed ? {primitiveSeed:saved.composer.primitiveSeed} : {})});
+          const node = graph.nodes.find(entry => entry.key === saved.composer.nodeKey) ?? saved.composer.sourceGraph?.nodes.find((entry:WorkspaceNode)=>entry.key===saved.composer.nodeKey);
+          if (!saved.composer.nodeKey || node) setComposer({kind:saved.composer.kind,...(node ? {node} : {}),selection:saved.composer.selection,selectionEdges:saved.composer.selectionEdges,generatedNodes:saved.composer.generatedNodes,capabilitySeed:saved.composer.capabilitySeed,sourceOnly:saved.composer.sourceOnly,sourceGraph:saved.composer.sourceGraph,sessionId:saved.composer.sessionId,...(saved.composer.primitiveSeed ? {primitiveSeed:saved.composer.primitiveSeed} : {})});
         }
       }
     } catch { /* Recovery is optional if browser storage is unavailable. */ }
@@ -110,12 +158,12 @@ export function CharacterBuildWorkspace({ characterId, initialRoot = "ALL", perm
   }, [graph,controller.ready,contextReady]);
   useEffect(() => {
     if (!contextReady) return;
-    try { localStorage.setItem(`sw:workshop-context:${characterId}`, JSON.stringify({root,path,source,composer:composer ? {kind:composer.kind,nodeKey:composer.node?.key,selection:composer.selection,selectionEdges:composer.selectionEdges,primitiveSeed:composer.primitiveSeed} : null})); }
+    try { localStorage.setItem(`sw:workshop-context:${characterId}`, JSON.stringify({root,path,source,modalComposer,modalCategory,modalPath,composer:composer ? {kind:composer.kind,sessionId:composer.sessionId,sourceOnly:composer.sourceOnly,sourceGraph:composer.sourceGraph,nodeKey:composer.node?.key,selection:composer.selection,selectionEdges:composer.selectionEdges,primitiveSeed:composer.primitiveSeed,generatedNodes:composer.generatedNodes,capabilitySeed:composer.capabilitySeed} : null})); }
     catch { /* Server-backed draft remains available. */ }
-  },[characterId,contextReady,root,path,source,composer]);
+  },[characterId,contextReady,root,path,source,composer,modalComposer,modalCategory,modalPath]);
   function discardUnfinished() {
     if (composer) {
-      const session = `${composer.kind}:${composer.node?.key ?? composer.primitiveSeed?.key ?? "new"}:${path.join("/")}`;
+      const session = `middle:${composer.sessionId ?? composer.kind}:${composer.node?.key ?? composer.primitiveSeed?.key ?? "new"}:${path.join("/")}`;
       try { localStorage.removeItem(characterFormRecoveryKey(`character:${characterId}:${session}`,composer.kind)); } catch { /* Optional local recovery. */ }
     }
     try {
@@ -130,12 +178,13 @@ export function CharacterBuildWorkspace({ characterId, initialRoot = "ALL", perm
   const destination = composer ? composer.node?.name ?? `new ${composer.kind}` : selected?.name ?? rootLabel;
   const category: Exclude<WorkspaceCategory, "ALL"> = root === "ALL" ? "MANIFEST" : root;
   const destinationChosen = root !== "ALL";
-  const kinds = useMemo<EntityKind[]>(() => composer
+  const kinds = useMemo<EntityKind[]>(() => libraryTarget.endsWith("replace") ? ["primitive","effect","capability","heritage","item"] : libraryTarget.startsWith("modal") ? modalComposer ? (["primitive","effect","capability","heritage","item"] as EntityKind[]).filter(kind=>canContain(modalComposer.kind,kind)) : ["primitive","effect","capability","heritage","item"] : composer
     ? (["primitive", "capability", "effect", "heritage", "item"] as EntityKind[]).filter((kind) => canContain(composer.kind, kind))
     : selected
     ? (["primitive", "capability", "effect", "heritage", "item"] as EntityKind[]).filter((kind) => canContain(selected.kind, kind))
-    : root === "ITEM" ? ["item"] : ["primitive", "capability", "effect", "heritage"], [selected, root, composer]);
+    : root === "ITEM" ? ["item"] : ["primitive", "capability", "effect", "heritage"], [selected, root, composer,libraryTarget,modalComposer]);
   const operations = controller.draft?.operations ?? [];
+  const changeCount = useMemo(()=>controller.preview ? draftReviewChangeCount(controller.preview) ?? 0 : 0,[controller.preview]);
   const sheet = controller.preview?.sheet ?? controller.baseSheet;
   const pool = sheet?.buBalance.progressionPool ?? (character ? computeProgressionPool(character.startingBu, character.level, character.dmBonusBu) : 0);
   const spent = sheet?.buLedger.positiveSpent ?? character?.buSpent ?? 0;
@@ -143,31 +192,30 @@ export function CharacterBuildWorkspace({ characterId, initialRoot = "ALL", perm
   const debtMax = sheet?.volatility.ceiling ?? getVolatilityCeiling(character?.level ?? 1).maxNegativeBu;
   const remaining = sheet ? pool - sheet.buLedger.netSpent : pool - spent;
   const busy = controller.busy || controller.phase !== "idle";
-  const compositionBlocked = busy || !!controller.error || !!controller.pendingRecovery;
-  const draftStatus = controller.phase === "saving" ? "Saving draft…" : controller.phase === "checking" ? "Draft saved · checking numbers…" : controller.phase === "applying" ? "Applying reviewed changes…" : busy ? "Updating draft…" : controller.pendingRecovery ? "Local change needs recovery" : controller.error ? "Draft needs attention" : operations.length ? "Draft saved to your account" : "No pending changes";
+  const compositionBlocked = busy || !!controller.pendingRecovery;
+  const draftStatus = controller.phase === "saving" ? "Saving draft…" : controller.phase === "checking" ? "Draft saved · checking numbers…" : controller.phase === "applying" ? "Applying reviewed changes…" : busy ? "Updating draft…" : controller.pendingRecovery ? "Local change needs recovery" : controller.error ? "Draft needs attention" : operations.length ? controller.preview?.local ? "Draft saved in this browser" : "Draft checked · account copy saved" : "No pending changes";
   function attempt(action: () => Promise<unknown>) { setError(""); void action().catch((cause) => setError(cause instanceof Error ? cause.message : "Unable to make this change.")); }
   function navigate(run:()=>void) { if (composer || foundationDirty) setLeaveEditor({run}); else run(); }
   useEffect(() => {
-    if (!composer && !foundationDirty) return;
+    if (!composer && !modalComposer && !foundationDirty) return;
     function preventLoss(event: BeforeUnloadEvent) { event.preventDefault(); }
     window.addEventListener("beforeunload", preventLoss);
     return () => window.removeEventListener("beforeunload", preventLoss);
-  }, [composer,foundationDirty]);
+  }, [composer,modalComposer,foundationDirty]);
   useEffect(() => {
     // A scoped editor event can change the requested surface while mounted.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (initialIntent === "items") setRoot("ITEM");
     else if (initialIntent && initialIntent !== "overview") setFoundation(initialIntent);
   }, [initialIntent]);
-  function changeRoot(value: WorkspaceCategory) { navigate(() => { setRoot(value); setPath([]); setComposer(null); setInspect(null); setExternal(null); setSelectedRows([]); setShowCreate(false); setMobile("build"); }); }
+  function changeRoot(value: WorkspaceCategory) { navigate(() => { setRandomizer(false); setRoot(value); setPath([]); setComposer(null); setInspect(null); setExternal(null); setSelectedRows([]); setShowCreate(false); setMobile("build"); }); }
   function openPiece(edge: WorkspaceEdge, parentPath = path) {
     navigate(() => { setPath([...parentPath, edge.id]); setComposer(null); setInspect(edge.child); setExternal(null); setSelectedRows([]); setShowCreate(false); setMobile("build"); });
   }
   async function stage(operation: DraftOperation) {
     if (!base) throw new Error("Character is still loading.");
-    if (controller.error) throw new Error("Undo the last change or discard this draft before making more changes.");
     const result = await controller.stage(operation, base.revision);
-    setNotice("Saved to draft. Your live character is unchanged.");
+    setNotice("Saved in this browser. Review when you’re ready to apply the changes.");
     return result;
   }
   async function add(key: EntityKey, name: string, mirrored = false, focused = false) {
@@ -189,15 +237,37 @@ export function CharacterBuildWorkspace({ characterId, initialRoot = "ALL", perm
     }
   }
 
-  async function showPreview(key: EntityKey) {
-    const request = ++previewSequence.current;
-    setInspecting(true); setInspect(key); setExternal(null); setMobile("preview");
-    if (!graph?.nodes.some((node) => node.key === key)) {
-      const [kind, id] = key.split(":") as [EntityKind, string];
-      const result = await loadEntityPreview(kind, id);
-      if (previewSequence.current === request) setExternal(result);
-    }
+  function openGenerated(proposal:GeneratedProposal, destination:RandomizerHeritage, target:"middle"|"modal"="middle") {
+    const run=()=>{attempt(async()=>{
+      let sourceGraph:WorkspaceGraph|undefined=graph??undefined;
+      const references=(proposal.libraryPieces??[]).map(p=>p.key).filter(key=>!graph?.nodes.some(n=>n.key===key));
+      if(references.length){
+        const query=new URLSearchParams();references.forEach(key=>query.append("piece",key));
+        const response=await fetch(`/api/characters/${characterId}/workspace?${query}`,{cache:"no-store"});
+        const loaded=await readJsonResponse<WorkspaceGraph & {error?:string}>(response);
+        if(!response.ok)throw new Error(loaded.error??"Unable to load the generated composition.");
+        sourceGraph=graph ? {...loaded,nodes:[...graph.nodes,...loaded.nodes.filter(n=>!graph.nodes.some(old=>old.key===n.key))],edges:[...graph.edges,...loaded.edges.filter(e=>!graph.edges.some(old=>old.id===e.id))]} : loaded;
+      }
+      const install=(session:ComposerSession)=>target==="modal"?setModalComposer(session):setComposer(session);
+      if(target==="modal"){setModalCategory(proposal.kind==="item"?"ITEM":destination);setModalPath([]);setModalIncoming(null);setModalPreview(null);openDrawer("build");}
+      else {
+      setRandomizer(false);setRoot(proposal.kind==="item"?"ITEM":destination);setPath([]);setInspecting(false);setLivePreview(null);setIncomingPiece(null);setMobile("build");}
+      if(proposal.kind==="primitive") {install({kind:"primitive",sessionId:crypto.randomUUID(),primitiveSeed:proposal.pieces[0]!.seed});return;}
+      const generatedNodes:WorkspaceNode[]=[];
+      const selection=proposal.pieces.map(piece=>{
+        if(piece.ownedKey)return piece.ownedKey;
+        const id=String(-parseInt(crypto.randomUUID().replaceAll("-","").slice(0,12),16));
+        const key:EntityKey=`primitive:${id}`;
+        const data={...piece.seed,id:Number(id),isPublic:false,isMirrorable:false,mirrorVector:"STANDARD_ONLY",mirrorBuCredit:0,mirrorEligibilityNotes:"",sourceOrigin:null,tags:[],iconSource:null,iconKey:null,iconUrl:null,iconColor:"#d4af37"};
+        generatedNodes.push({key,id,kind:"primitive",name:piece.seed.name,bu:piece.seed.buCost,description:piece.seed.narrativeRule,versionId:null,latestVersionId:null,userId:null,data});return key;
+      });
+      selection.push(...(proposal.libraryPieces??[]).map(p=>p.key));
+      install({kind:proposal.kind,...(sourceGraph?{sourceGraph}:{}),sessionId:crypto.randomUUID(),selection,generatedNodes,capabilitySeed:{name:proposal.name,description:proposal.description,type:proposal.capabilityType??"ACTIVE",sourceType:proposal.sourceType??"MAGICAL"}});
+    });};
+    if(target==="modal"){if(modalComposer){setReplaceModal(()=>run);openDrawer("build");}else run();}else navigate(run);
   }
+  function openReview(){setReview(true);}
+  function closeReview(){controller.cancelReview();setReview(false);}
   async function mutate(edge: WorkspaceEdge, edgePath: string[], operation: "remove" | "mirror") {
     if (!graph) return;
     const node = graph.nodes.find((n) => n.key === edge.child)!;
@@ -209,7 +279,6 @@ export function CharacterBuildWorkspace({ characterId, initialRoot = "ALL", perm
   }
   async function addSet(items: DiscoverySuggestion[]) {
     if (!base || !destinationChosen || composer) return;
-    if (controller.error) throw new Error("Undo the last change or discard this draft before making more changes.");
     await controller.stageMany(items.map((item): DraftOperation => ({ id: crypto.randomUUID(), type: "create", label: `Add ${item.name} to ${destination}`, payload: {
       kind:item.kind, category, existingId:item.key.slice(item.key.indexOf(":")+1),draft:{},mirrored:item.mirrored,
       ...(selected ? {target:selected.key,path,expectedHash:hash(selected)} : {}),
@@ -218,7 +287,6 @@ export function CharacterBuildWorkspace({ characterId, initialRoot = "ALL", perm
   }
   async function replace(item: DiscoverySuggestion) {
     if (!base || !graph || !currentEdge || !selected) return;
-    if (controller.error) throw new Error("Undo the last change or discard this draft before making more changes.");
     const parent = graph.nodes.find((node) => node.key === currentEdge.parent);
     const operations: DraftOperation[] = [
       {id:crypto.randomUUID(),type:"create",label:`Replace ${selected.name} with ${item.name}`,payload:{kind:item.kind,category,existingId:item.key.slice(item.key.indexOf(":")+1),draft:{},mirrored:item.mirrored,...(parent?{target:parent.key,path:path.slice(0,-1),expectedHash:hash(parent)}:{})}},
@@ -227,51 +295,114 @@ export function CharacterBuildWorkspace({ characterId, initialRoot = "ALL", perm
     await controller.stageMany(operations,base.revision);
     setPath(path.slice(0,-1)); setNotice("Replacement saved in your draft. Review its final cost and effects.");
   }
-  const saveRequest: typeof fetch = async (_url, init) => {
+  const makeSaveRequest = (active:ComposerSession|null, activePath:string[], activeCategory:Exclude<WorkspaceCategory,"ALL">, inModal=false):typeof fetch => async (_url, init) => {
+    const composer=active, path=activePath, category=activeCategory;
+    const selected=graph?.nodes.find(node=>node.key===graph.edges.find(edge=>edge.id===path.at(-1))?.child);
     if (!composer || !graph) return Response.json({ error: "Select what to build first." }, { status: 400 });
     try {
       const form = { ...JSON.parse(String(init?.body ?? "{}")), isPublic: false };
       const id = crypto.randomUUID();
-      const result = await stage(composer.node
+      const operation: DraftOperation = composer.node && !composer.sourceOnly
         ? { id, type: "command", label: `Edit ${composer.node.name}`, payload: { operation: "edit", target: composer.node.key, path, expectedHash: hash(composer.node), draft: form } }
-        : { id, type: "create", label: `Create ${form.name || names[composer.kind]} in ${destination}`, payload: { kind: composer.kind, category: composer.kind === "heritage" ? form.kind : category, draft: form, ...(selected ? { target: selected.key, path, expectedHash: hash(selected) } : {}) } });
+        : { id, type: "create", label: `Create ${form.name || names[composer.kind]} in ${destination}`, payload: { kind: composer.kind, category: composer.kind === "heritage" ? form.kind : category, draft: form, ...(selected ? { target: selected.key, path, expectedHash: hash(selected) } : {}) } };
+      let result;
+      if (composer.generatedNodes?.length && base) {
+        const usedIds=new Set([...(form.primitiveSlots ?? []).map((slot:{primitiveId:number})=>Number(slot.primitiveId)),...(form.primitiveIds ?? []).map(Number)]);
+        const pieces=composer.generatedNodes.filter(node=>usedIds.has(Number(node.id)));
+        const entries=pieces.map(node=>({node,instanceId:crypto.randomUUID()}));
+        const generated:DraftOperation[]=entries.map(({node,instanceId})=>({id:crypto.randomUUID(),type:"create",label:`Create ${node.name}`,payload:{kind:"primitive",category,draft:node.data},localBindings:{nodes:[{key:node.key}],instances:[{id:instanceId,child:node.key,category,isMirrored:false}]}}));
+        const removals:DraftOperation[]=entries.map(({node,instanceId})=>({id:crypto.randomUUID(),type:"command",label:`Place ${node.name} inside the composition`,payload:{operation:"detach",target:node.key,path:[instanceId],expectedHash:null}}));
+        result=await controller.stageMany([...generated,operation,...removals],base.revision);
+      } else result=await stage(operation);
       const saved = result.results.find((entry) => entry.operationId === id)?.result ?? {};
+      if(!inModal && sendToModal && modalComposer && canContain(modalComposer.kind,composer.kind)) {
+        const handoff=resolveComposerHandoff({before:graph,after:result.graph,result:saved,parentPath:selected?path:[],category,mirrored:false});
+        if(handoff)setModalIncoming({key:handoff.node.key,label:handoff.node.name,sequence:Date.now()});
+      }
       const response = (saved["entityResponse"] ?? saved) as Record<string, unknown>;
       return Response.json(response);
     } catch (cause) { return Response.json({ error: cause instanceof Error ? cause.message : "Unable to add to draft." }, { status: 400 }); }
   };
-  function startBuild(kind: EntityKind) { if (!destinationChosen) return; setInspecting(false); setIncomingPiece(null); setLivePreview(null); setComposer({ kind }); setShowCreate(false); setMobile("build"); }
+  const saveRequest=makeSaveRequest(composer,path,category);
+  function selectModal(kind:EntityKind,key?:EntityKey) {
+    const run=()=>{const node=graph?.nodes.find(n=>n.key===key);const route=node && graph?supplyPaths(graph,node.key)[0]:undefined;
+      setModalComposer({kind,...(node?{node}:{}),sessionId:crypto.randomUUID()});setModalIncoming(null);setModalPreview(null);
+      setModalPath(route?.edges.map(e=>e.id) ?? []);if(route?.edges[0]?.category && route.edges[0].category!=="ALL")setModalCategory(route.edges[0].category);else setModalCategory(kind==="item"?"ITEM":"MANIFEST");
+    };
+    if(modalComposer)setReplaceModal(()=>run);else run();
+  }
+  async function routeLibrary(key:EntityKey,name:string) {
+    const modal=libraryTarget.startsWith("modal"), replace=libraryTarget.endsWith("replace");
+    const current=modal?modalComposer:composer;
+    if(!replace && current){
+      const kind=key.split(":")[0] as EntityKind;
+      if(!canContain(current.kind,kind))throw new Error(`A ${current.kind} cannot contain a ${kind}. Choose Replace to open it instead.`);
+      const piece={key,label:name,sequence:Date.now()};if(modal)setModalIncoming(piece);else setIncomingPiece(piece);
+      setNotice(`Added ${name} to the ${modal?"modal":"middle"} build.`);return;
+    }
+    if(!modal && !replace){await add(key,name);return;}
+    const run=()=>{attempt(async()=>{
+      const query=new URLSearchParams({piece:key});
+      const response=await fetch(`/api/characters/${characterId}/workspace?${query}`,{cache:"no-store"});
+      const loaded=await readJsonResponse<WorkspaceGraph & {error?:string}>(response);
+      if(!response.ok)throw new Error(loaded.error ?? "Unable to open this piece.");
+      const node=graph?.nodes.find(n=>n.key===key) ?? loaded.nodes.find(n=>n.key===key);
+      if(!node)throw new Error("Piece unavailable.");
+      const next:ComposerSession={kind:node.kind,node,sourceOnly:true,sourceGraph:loaded,sessionId:crypto.randomUUID()};
+      if(modal){setModalCategory(node.kind==="item"?"ITEM":modalCategory==="ITEM"?"MANIFEST":modalCategory);setModalComposer(next);setModalPath([]);setModalIncoming(null);setModalPreview(null);openDrawer("build");}
+      else{if(node.kind==="item")setRoot("ITEM");else if(root==="ITEM" || root==="ALL")setRoot("MANIFEST");setComposer(next);setPath([]);setRandomizer(false);setIncomingPiece(null);setLivePreview(null);}
+
+    });};
+    if(current){if(modal){setReplaceModal(()=>run);openDrawer("build");}else navigate(run);}else run();
+  }
+  function chooseAnotherEntity(kind:EntityKind,key?:EntityKey) {
+    navigate(()=>{
+      const node=key ? graph?.nodes.find(item=>item.key===key) : undefined;
+      const route=node && graph ? supplyPaths(graph,node.key)[0] : undefined;
+      const nextRoot=route?.edges[0]?.category;
+      if(nextRoot) setRoot(nextRoot);
+      else if(kind==="item")setRoot("ITEM");
+      else if(root==="ITEM" || root==="ALL")setRoot("MANIFEST");
+      setPath(route?.edges.map(edge=>edge.id) ?? []);setIncomingPiece(null);setLivePreview(null);setInspecting(false);setRandomizer(false);setShowCreate(false);
+      setComposer({kind,...(node?{node}:{}),sessionId:crypto.randomUUID()});setMobile("build");
+    });
+  }
+  function startBuild(kind: EntityKind) { if (!destinationChosen) return; setRandomizer(false); setInspecting(false); setIncomingPiece(null); setLivePreview(null); setComposer({ kind,sessionId:crypto.randomUUID() }); setShowCreate(false); setMobile("build"); }
   function row(edge: WorkspaceEdge, parentPath: string[] = path) {
     const node = graph?.nodes.find((entry) => entry.key === edge.child);
     if (!node) return null;
     const rowPath = [...parentPath, edge.id];
     const selectedRow = selectedRows.includes(edge.id);
     return <article key={edge.id} className={`sheet-piece ${selectedRow ? "is-selected" : ""}`}>
-      <div className="sheet-piece-heading"><input type="checkbox" aria-label={`Select ${node.name}`} checked={selectedRow} onChange={() => setSelectedRows((old) => selectedRow ? old.filter((id) => id !== edge.id) : [...old, edge.id])}/><button type="button" onClick={() => openPiece(edge, parentPath)}><strong>{node.name}</strong><span>{names[node.kind]}{edge.isMirrored ? " · Mirrored" : ""}</span></button><span className="sheet-bu">{edge.isMirrored ? "−" : ""}{bundleBu(graph!, node.key)} BU</span></div>
+      <div className="sheet-piece-heading"><input type="checkbox" aria-label={`Select ${node.name}`} checked={selectedRow} onChange={() => setSelectedRows((old) => selectedRow ? old.filter((id) => id !== edge.id) : [...old, edge.id])}/><button type="button" onClick={() => showPreview(node.key)}><strong>{node.name}</strong><span>{names[node.kind]}{edge.isMirrored ? " · Mirrored" : ""}</span></button><span className="sheet-bu">{edge.isMirrored ? "−" : ""}{bundleBu(graph!, node.key)} BU</span></div>
       <p className="sheet-rule" data-copy-role="mechanical">{edge.isMirrored && node.kind === "primitive" ? mirrorConsequence({id:Number(node.id),buCost:node.bu,...node.data}) : String(node.data["mechanicalOutputText"] || node.description || "Open to explore the rules inside.")}</p>
-      <div className="sheet-row-actions"><button type="button" onClick={() => attempt(() => showPreview(node.key))}><Eye size={14}/> Preview</button><button type="button" onClick={() => navigate(() => { setInspecting(false); setIncomingPiece(null); setLivePreview(null); setPath(rowPath); setComposer({ kind: node.kind, node }); setMobile("build"); })}>Edit</button><button type="button" disabled={busy} onClick={() => setMove({ edge, path: rowPath, reuse: false })}>Move</button><button type="button" disabled={busy} onClick={() => setMove({ edge, path: rowPath, reuse: true })}>Use in…</button>{node.kind === "primitive" && Boolean(node.data["isMirrorable"]) && <button type="button" disabled={busy} onClick={() => attempt(() => mutate(edge, rowPath, "mirror"))}>{edge.isMirrored ? "Restore benefit" : "Mirror"}</button>}<button type="button" disabled={busy} onClick={() => attempt(() => mutate(edge, rowPath, "remove"))}>Remove</button></div>
+      <div className="sheet-row-actions"><button type="button" onClick={() => showPreview(node.key)}><Eye size={14}/> Preview</button>{node.kind !== "primitive" && <button type="button" onClick={() => openPiece(edge, parentPath)}>Open composition</button>}<button type="button" onClick={() => navigate(() => { setInspecting(false); setIncomingPiece(null); setLivePreview(null); setPath(rowPath); setComposer({ kind: node.kind, node }); setMobile("build"); })}>Edit</button><button type="button" disabled={busy} onClick={() => setMove({ edge, path: rowPath, reuse: false })}>Move</button><button type="button" disabled={busy} onClick={() => setMove({ edge, path: rowPath, reuse: true })}>Use in…</button>{node.kind === "primitive" && Boolean(node.data["isMirrorable"]) && <button type="button" disabled={busy} onClick={() => attempt(() => mutate(edge, rowPath, "mirror"))}>{edge.isMirrored ? "Undo mirror" : "Mirror"}</button>}<button type="button" disabled={busy} onClick={() => attempt(() => mutate(edge, rowPath, "remove"))}>Remove</button></div>
     </article>;
   }
   const inspection = graph?.nodes.find((node) => node.key === inspect) ?? selected;
   const preview = <div className="sheet-result"><details className="sheet-result-section" open><summary>Piece preview</summary><header><span className="sheet-kicker">See the result</span><h3>{composer && !inspecting ? "Current build" : external?.row.name ?? inspection?.name ?? "Your character"}</h3>{composer && inspecting && <button className="sheet-button" type="button" onClick={() => setInspecting(false)}>Back to current build</button>}</header>
-    {composer && livePreview && !inspecting ? livePreview : external ? <EntityPreview item={external}/> : inspection && graph ? <WorkspaceEntityPreview node={inspection} graph={graph} onOpen={(key) => attempt(() => showPreview(key))}/> : <p>Select a piece to read its rule and explore what it contains.</p>}
-    </details><details className="sheet-result-section" open><summary>Character numbers <span>{remaining} BU available</span></summary><div className="sheet-ledger"><h4>Build Units</h4><dl><div><dt>Character budget</dt><dd>{pool}</dd></div><div><dt>Allocated</dt><dd>{spent}</dd></div><div><dt>Drawback credit</dt><dd>{credit} / {debtMax}</dd></div><div><dt>Available to spend</dt><dd>{remaining}</dd></div></dl><p>You can leave points unspent and add more later.</p></div>
-    {sheet && controller.preview && <div className="sheet-ledger"><h4>Build preview</h4><p>Play toggles and current vitality are kept separately.</p><dl><div><dt>Max Vitality</dt><dd>{controller.preview.beforeSheet.vitality.max} → {sheet.vitality.max}</dd></div><div><dt>Carry capacity</dt><dd>{controller.preview.beforeSheet.carryCapacity} → {sheet.carryCapacity}</dd></div>{sheet.defensiveDCs.map((entry) => <div key={entry.attribute}><dt>{entry.attribute} defense</dt><dd>{controller.preview!.beforeSheet.defensiveDCs.find((old) => old.attribute === entry.attribute)?.dc} → {entry.dc}</dd></div>)}</dl></div>}
+    {composer && livePreview && !inspecting ? livePreview : external ? <EntityPreview item={external}/> : inspection && graph ? <WorkspaceEntityPreview node={inspection} graph={graph} onOpen={(key) => showPreview(key)}/> : <p>Select a piece to read its rule and explore what it contains.</p>}
+    </details><details className="sheet-result-section" open><summary>Character numbers <span>{remaining} BU available</span></summary><div className="sheet-ledger"><h4>Build Units</h4><dl><div><dt>Character budget</dt><dd>{pool}</dd></div><div><dt>Allocated</dt><dd>{spent}</dd></div><div><dt>Drawback credit</dt><dd>{credit} / {debtMax}</dd></div><div><dt>Available to spend</dt><dd>{remaining}</dd></div></dl><p>{controller.preview?.local ? "Budget estimate. Check the draft in Review for complete character numbers." : "You can leave points unspent and add more later."}</p></div>
+    {sheet && controller.preview && !controller.preview.local && <div className="sheet-ledger"><h4>Build preview</h4><p>Play toggles and current vitality are kept separately.</p><dl><div><dt>Max Vitality</dt><dd>{controller.preview.beforeSheet.vitality.max} → {sheet.vitality.max}</dd></div><div><dt>Carry capacity</dt><dd>{controller.preview.beforeSheet.carryCapacity} → {sheet.carryCapacity}</dd></div>{sheet.defensiveDCs.map((entry) => <div key={entry.attribute}><dt>{entry.attribute} defense</dt><dd>{controller.preview!.beforeSheet.defensiveDCs.find((old) => old.attribute === entry.attribute)?.dc} → {entry.dc}</dd></div>)}</dl></div>}
   </details></div>;
-  // The composer owns the drawer while authoring. Otherwise offer contextual actions.
-  const drawerOverview = { build: <div className="sheet-drawer-overview"><h3>Build on your character</h3><p>Choose where the next piece belongs. Your draft stays with this character.</p>{roots.filter((entry) => entry.key !== "ALL").map((entry) => <button className="sheet-button" key={entry.key} onClick={() => { changeRoot(entry.key); closeDrawer(); }}><entry.icon size={18}/>{entry.name}<small>{entry.subtitle}</small></button>)}<button className="sheet-button" onClick={() => { setReview(true); closeDrawer(); }}>Review draft · {operations.length} changes</button></div>, preview };
-  useDrawerSlot(composer ? {} : drawerOverview);
-  if (!base || !character || !controller.ready) return <section className="sheet-build"><p role="status">Opening character workspace…</p>{(error || controller.error) && <p role="alert">{error || controller.error}</p>}</section>;
+  const modalBuild=<section className="sheet-modal-workbench"><header><h3>Modal workbench</h3><p>This build is independent of the middle column. Close this panel to keep working there.</p><label>Add finished piece to<select value={modalCategory} disabled={!!modalComposer?.node && !modalComposer.sourceOnly} onChange={e=>setModalCategory(e.target.value as Exclude<WorkspaceCategory,"ALL">)}>{roots.filter(r=>r.key!=="ALL" && (modalComposer?.kind==="item"?r.key==="ITEM":r.key!=="ITEM")).map(r=><option key={r.key} value={r.key}>{r.name}</option>)}</select></label><button className="sheet-button" onClick={closeDrawer}>Return to middle builder</button></header>
+    {replaceModal && <div className="sheet-guidance" role="alertdialog" aria-label="Replace modal build?" tabIndex={-1} ref={element=>element?.focus()}><h3>Replace modal build?</h3><p>Replace the unfinished modal form? Pieces already saved in your draft will remain.</p><button className="sheet-button" onClick={()=>setReplaceModal(null)}>Keep working</button><button className="sheet-button is-gold" onClick={()=>{replaceModal();setReplaceModal(null);}}>Discard unfinished form & replace</button></div>}
+    {graph && modalComposer ? <EntityComposer key={modalComposer.sessionId ?? modalComposer.node?.key ?? modalComposer.kind} graph={graph} kind={modalComposer.kind} node={modalComposer.node} {...(modalComposer.primitiveSeed?{primitiveSeed:modalComposer.primitiveSeed}:{})} {...(modalComposer.capabilitySeed?{capabilitySeed:modalComposer.capabilitySeed}:{})} selection={modalComposer.selection ?? []} selectionEdges={modalComposer.selectionEdges ?? []} category={modalCategory==="ITEM"?"MANIFEST":modalCategory} sessionKey={`modal:${modalComposer.sessionId ?? modalComposer.kind}`} incomingPiece={modalIncoming} onPreviewChange={setModalPreview} onChooseEntity={selectModal} integratedSources saveRequest={makeSaveRequest(modalComposer,modalPath,modalCategory,true)} onSaved={()=>{setModalComposer(null);setModalPreview(null);setNotice("Modal build saved to your draft.");}}/> : <div className="sheet-create-menu">{(["primitive","effect","capability","heritage","item"] as EntityKind[]).map(kind=><button className="sheet-button" key={kind} onClick={()=>selectModal(kind)}>New {kind}</button>)}</div>}
+
+  </section>;
+  useDrawerSlot({build:modalBuild,preview:modalPreview ?? <p className="sheet-empty">Start a piece in the modal workbench to preview it here.</p>});
+  if (!base || !character || !controller.ready) return <section className="sheet-build sheet-workspace-loading" aria-busy="true"><header><span className="sheet-kicker">Character workshop</span><h2>Preparing your workspace</h2><p role="status">{!base || !character ? "Loading your character and its pieces…" : "Restoring your editing draft…"}</p></header>{(error || controller.error) ? <div role="alert"><p>{error || controller.error}</p><button className="sheet-button" onClick={()=>{void refresh().catch(c=>setError(c.message));void controller.reload();}}>Retry loading</button></div> : <div className="sheet-loading-columns" aria-hidden="true">{[0,1,2].map(n=><div key={n}>{[0,1,2,3].map(i=><span key={i}/>)}</div>)}</div>}<button className="sheet-button" onClick={onPlay}>Back to character</button></section>;
   const children = graph!.edges.filter((edge) => selected ? edge.parent === selected.key : edge.parent === null && (root === "ALL" || edge.category === root)).sort((a,b) => a.order-b.order);
   const chooser = <div className="sheet-create-menu"><h3>What are you making?</h3><p>Start with the idea. The preview will show its rule and cost.</p>{kinds.map((kind) => <button type="button" className="sheet-create-choice" key={kind} onClick={() => startBuild(kind)}><Plus size={18}/><span><strong>{names[kind]}</strong><small>{kind === "primitive" ? "A single rule, bonus, subject, or drawback" : kind === "capability" ? "An ability made from the rules you choose" : kind === "heritage" ? "Group traits under a part of your story" : kind === "item" ? "Equipment and the abilities it supplies" : "A group of rules to reuse in abilities"}</small></span><ChevronRight size={16}/></button>)}</div>;
-  const find = <aside className="sheet-find"><header><span className="sheet-kicker">Discover & compose</span><h3>Find something</h3></header><nav className="sheet-source-tabs" aria-label="Find sources">{([["library", "Library"], ["owned", "On character"], ["suggestions", "Ideas"]] as const).map(([value,label]) => <button type="button" key={value} aria-pressed={source === value} onClick={() => setSource(value)}>{label}</button>)}</nav><div className="sheet-destination"><small>Adding to</small><strong>{destinationChosen ? destination : "Choose a heritage or Items"}</strong></div>
-    {!destinationChosen && <p className="sheet-empty">Choose a destination in the center to start. Nothing is added until you choose it.</p>}<div hidden={!destinationChosen}>
-    {!kinds.length && <div className="sheet-empty"><h3>One rule at a time</h3><p>A primitive describes a single rule. Use the form to refine it; return to the composition to combine it with other pieces.</p><button className="sheet-button" onClick={() => navigate(() => {if (composer) setComposer(null); else setPath(path.slice(0,-1));})}>Return to composition</button></div>}<div hidden={source !== "library" || !kinds.length}>{!kinds.length ? <p className="sheet-empty">This is a single rule. Return to its parent to add another piece.</p> : <BuildLibrary heritageCategory={category} kinds={kinds} destination={destination} disabled={compositionBlocked} onAdd={(key,name) => attempt(() => add(key,name))} onAddFocused={(key,name) => attempt(() => add(key,name,false,true))} onPreview={(item) => attempt(() => showPreview(`${previewKind(item.targetType)}:${item.targetId}`))}/>}</div>
-    <div hidden={source !== "owned" || !kinds.length}><p>Reuse a rule you already have. Its conditions and source still apply.</p>{graph!.nodes.filter((node) => kinds.includes(node.kind)).map((node) => <article className="sheet-catalogue-row" key={node.key}><strong>{node.name}</strong><p className="sheet-rule" data-copy-role="mechanical">{String(node.data["mechanicalOutputText"] || node.description)}</p><div className="sheet-row-actions"><button type="button" onClick={() => attempt(() => showPreview(node.key))}>Preview</button><button type="button" disabled={busy} onClick={() => attempt(() => add(node.key,node.name))}>Use in {destination}</button></div></article>)}</div>
-    <div hidden={source !== "suggestions" || !kinds.length}><WorkspaceSuggestions heritageCategory={category} characterId={characterId} destinationLabel={destination} kinds={kinds} graph={graph!} destinationIsItem={root === "ITEM"} budget={Math.max(0, remaining)} debtAvailable={Math.max(0,debtMax-credit)} excludedKeys={graph!.nodes.map((node) => node.key)} onAdd={(item) => add(item.key,item.name,item.mirrored)} {...(!composer ? {onAddSet:addSet} : {})} {...(selected && !composer ? {replaceTarget:{key:selected.key,name:selected.name,availableBudget:Math.max(0,remaining + bundleBu(graph!,selected.key))},onReplace:replace} : {})} onPreview={(key) => attempt(() => showPreview(key))} onBuildRule={(seed) => navigate(() => {setInspecting(false);setIncomingPiece(null);setLivePreview(null);setComposer({kind:"primitive",primitiveSeed:seed});setShowCreate(false);setMobile("build");})} onBuildOwn={() => { setShowCreate(true); setMobile("build"); }}/></div></div>
+  const find = <aside className="sheet-find"><header><span className="sheet-kicker">Discover & compose</span><h3>Find something</h3></header><nav className="sheet-source-tabs" aria-label="Find sources">{([["library", "Library"], ["owned", "On character"], ["suggestions", "Ideas"]] as const).map(([value,label]) => <button type="button" key={value} aria-pressed={source === value} onClick={() => setSource(value)}>{label}</button>)}</nav><label className="sheet-destination">Library action<select value={libraryTarget} onChange={e=>setLibraryTarget(e.target.value as typeof libraryTarget)}><option value="middle-add">Add to middle build</option><option value="middle-replace">Replace middle build</option><option value="modal-add">Add to modal build</option><option value="modal-replace">Replace modal build</option></select></label><div className="sheet-destination"><small>Adding to</small><strong>{destinationChosen ? destination : "Choose a heritage or Items"}</strong></div>
+    {!destinationChosen && <p className="sheet-empty">Choose a destination in the center to start. Nothing is added until you choose it.</p>}<div hidden={!destinationChosen && !libraryTarget.startsWith("modal")}>
+    {!kinds.length && <div className="sheet-empty"><h3>One rule at a time</h3><p>A primitive describes a single rule. Use the form to refine it; return to the composition to combine it with other pieces.</p><button className="sheet-button" onClick={() => navigate(() => {if (composer) setComposer(null); else setPath(path.slice(0,-1));})}>Return to composition</button></div>}<div hidden={source !== "library" || !kinds.length}>{!kinds.length ? <p className="sheet-empty">This is a single rule. Return to its parent to add another piece.</p> : <BuildLibrary heritageCategory={category} kinds={kinds} destination={libraryTarget.replace("-"," · ")} disabled={compositionBlocked} onAdd={(key,name) => attempt(() => routeLibrary(key,name))} onPreview={(item) => showPreview(`${previewKind(item.targetType)}:${item.targetId}`)}/>}</div>
+    <div className="sheet-owned-catalogue" hidden={source !== "owned" || !kinds.length}><p>Reuse a rule you already have. Its conditions and source still apply.</p>{graph!.nodes.filter((node) => kinds.includes(node.kind) && supplyPaths(graph!,node.key).length>0).map((node) => <article className="sheet-catalogue-row" key={node.key}><header><span className="sheet-kicker">{node.kind} · {node.bu} BU</span><strong>{node.name}</strong></header><p className="sheet-rule" data-copy-role="mechanical">{String(node.data["mechanicalOutputText"] || node.description)}</p><div className="sheet-row-actions"><button type="button" onClick={() => showPreview(node.key)}>Preview</button><button type="button" disabled={busy} onClick={() => attempt(() => routeLibrary(node.key,node.name))}>Use in {destination}</button></div></article>)}</div>
+    <div hidden={source !== "suggestions" || !kinds.length}><WorkspaceSuggestions heritageCategory={category} characterId={characterId} destinationLabel={destination} kinds={kinds} graph={graph!} destinationIsItem={root === "ITEM"} budget={Math.max(0, remaining)} debtAvailable={Math.max(0,debtMax-credit)} excludedKeys={graph!.nodes.map((node) => node.key)} onAdd={(item) => add(item.key,item.name,item.mirrored)} {...(!composer ? {onAddSet:addSet} : {})} {...(selected && !composer ? {replaceTarget:{key:selected.key,name:selected.name,availableBudget:Math.max(0,remaining + bundleBu(graph!,selected.key))},onReplace:replace} : {})} onPreview={(key) => showPreview(key)} onBuildRule={(seed) => navigate(() => {setRandomizer(false);setInspecting(false);setIncomingPiece(null);setLivePreview(null);setComposer({kind:"primitive",primitiveSeed:seed});setShowCreate(false);setMobile("build");})} onBuildOwn={() => { setRandomizer(false); setShowCreate(true); setMobile("build"); }}/></div></div>
   </aside>;
   const center = <main className="sheet-composition"><header className="sheet-composition-heading"><div><span className="sheet-kicker">{rootLabel}</span><nav aria-label="Composition path"><button type="button" onClick={() => { navigate(() => { setPath([]); setComposer(null); }); }}>{rootLabel}</button>{path.map((id,index) => { const edge = graph!.edges.find((entry) => entry.id === id); const node = graph!.nodes.find((entry) => entry.key === edge?.child); return node ? <span key={id}><ChevronRight size={13}/><button type="button" onClick={() => { navigate(() => { setPath(path.slice(0,index+1)); setComposer(null); }); }}>{node.name}</button></span> : null; })}</nav></div>{composer && <button type="button" className="sheet-button" onClick={() => navigate(() => setComposer(null))}><ArrowLeft size={14}/> Composition</button>}</header>
-    {composer ? <EntityComposer key={`${composer.kind}:${composer.node?.key ?? composer.primitiveSeed?.key ?? "new"}`} graph={graph!} kind={composer.kind} {...(composer.node ? { node: composer.node } : {})} category={category === "ITEM" ? "MANIFEST" : category} sessionKey={`${composer.kind}:${composer.node?.key ?? composer.primitiveSeed?.key ?? "new"}:${path.join("/")}`} incomingPiece={incomingPiece} onPreviewChange={setLivePreview} {...(composer.primitiveSeed ? {primitiveSeed:composer.primitiveSeed} : {})} integratedSources selection={composer.selection ?? []} selectionEdges={composer.selectionEdges ?? []} saveRequest={saveRequest} onSaved={() => { setComposer(null); closeDrawer(); setSelectedRows([]); }}/>
+    {composer && modalComposer && canContain(modalComposer.kind,composer.kind) && <label className="sheet-guidance"><input type="checkbox" checked={sendToModal} onChange={e=>setSendToModal(e.target.checked)}/> Also add this finished piece to the modal {modalComposer.kind} when I save it to draft</label>}
+    {randomizer ? <ProceduralRandomizer graph={graph!} budget={Math.max(0,remaining)} category={category === "ITEM" ? "MANIFEST" : category} onChoose={openGenerated}/> : composer ? <EntityComposer key={composer.sessionId ?? `${composer.kind}:${composer.node?.key ?? composer.primitiveSeed?.key ?? "new"}`} graph={graph!} kind={composer.kind} {...(composer.capabilitySeed?{capabilitySeed:composer.capabilitySeed}:{})} {...(composer.node ? { node: composer.node } : {})} category={category === "ITEM" ? "MANIFEST" : category} sessionKey={`middle:${composer.sessionId ?? composer.kind}:${composer.node?.key ?? composer.primitiveSeed?.key ?? "new"}:${path.join("/")}`} incomingPiece={incomingPiece} onPreviewChange={setLivePreview} {...(composer.primitiveSeed ? {primitiveSeed:composer.primitiveSeed} : {})} onChooseEntity={chooseAnotherEntity} integratedSources selection={composer.selection ?? []} selectionEdges={composer.selectionEdges ?? []} saveRequest={saveRequest} onSaved={() => { setComposer(null); setSelectedRows([]); }}/>
     : root === "ALL" ? <div className="sheet-overview"><h2>Make {draftCharacter.name} yours.</h2><p>Build from their story. Add a trait, shape an ability, or give them something to wield. You do not need to fill every heritage or spend every point.</p>{draftCharacter.notes && <details className="sheet-concept"><summary>Your character concept</summary><Markdown>{String(draftCharacter.notes)}</Markdown></details>}<div className="sheet-composition-actions"><button className="sheet-button is-gold" onClick={() => setFoundation("concept")}>Edit concept & roots</button><button className="sheet-button" onClick={() => setFoundation("foundation")}>Body & strengths</button><button className="sheet-button" onClick={() => setFoundation("backstory")}>Backstory</button></div><div className="sheet-roots-grid">{roots.filter((entry) => entry.key !== "ALL").map((entry) => { const count = graph!.edges.filter((edge) => edge.parent === null && edge.category === entry.key).length; return <button type="button" className="sheet-root-card" key={entry.key} onClick={() => changeRoot(entry.key)}><span className="sheet-medallion"><entry.icon size={24}/></span><span><strong>{entry.name}</strong><p>{entry.subtitle}</p><small>{count} direct {count === 1 ? "piece" : "pieces"}</small></span><ArrowRight size={18}/></button>; })}</div><details className="sheet-explainer"><summary>How the pieces fit together</summary><p>A primitive is a rule you purchase. A capability is an ability built with those rules. Heritages explain where your traits and abilities come from; items keep their own effects.</p><p>Range and effect dice require their access rules. At the table, describe targets, shape, scale, duration, and casting time; larger or faster effects may raise Strain. You and the DM agree on the cost before rolling.</p></details></div>
     : <><div className="sheet-section-intro"><h2>{selected?.name ?? roots.find((entry) => entry.key === root)?.subtitle}</h2><p>{selected ? selected.description : root === "LINEAGE" ? "Inherited, built, or transformed: add what belongs to their nature." : root === "UPBRINGING" ? "Their upbringing, background, and training. What did experience teach them?" : root === "MANIFEST" ? "Their developing powers, disciplines, and role. Who are they becoming?" : "Equipment has its own rules and availability. Its BU stays separate."}</p></div>
       {help && <div className="sheet-guidance"><span>Use Library or Ideas to find a piece, or build your own. Every change stays in your draft until you apply it.</span><button type="button" aria-label="Dismiss editing guidance" onClick={() => { setHelp(false); localStorage.setItem(`sw:build-help:${characterId}`,"hidden"); }}><X size={15}/></button></div>}
@@ -282,19 +413,19 @@ export function CharacterBuildWorkspace({ characterId, initialRoot = "ALL", perm
   </main>;
   return <section className="sheet-build" data-mobile-view={mobile} data-preview-collapsed={previewCollapsed}>
     <header className="sheet-build-top"><div><span className="sheet-kicker">Character workshop</span><h2>{draftCharacter.name}<span>{permission === "SUGGESTER" ? "Proposed changes" : "Build"}</span></h2></div><div className="sheet-top-actions"><span role="status">{draftStatus}</span><button type="button" className="sheet-button sheet-preview-toggle" aria-pressed={!previewCollapsed} onClick={() => setPreviewCollapsed(value => !value)}>{previewCollapsed ? "Show preview" : "Hide preview"}</button><button type="button" className="sheet-button" onClick={() => openDrawer("build")}><FabThemeIcon iconKey="lorc/anvil-impact" dark={dark}/> Build & Preview</button><button type="button" className="sheet-button" onClick={() => navigate(onPlay)}>Back to play</button></div></header>
-    <nav className="sheet-root-nav" aria-label="Character roots">{roots.map((entry) => <button type="button" key={entry.key} aria-pressed={root === entry.key} onClick={() => changeRoot(entry.key)}><entry.icon size={16}/>{entry.name}</button>)}</nav>
+    <nav className="sheet-root-nav" aria-label="Character roots">{roots.map((entry) => <button type="button" key={entry.key} aria-pressed={!randomizer && root === entry.key} onClick={() => changeRoot(entry.key)}><entry.icon size={16}/>{entry.name}</button>)}<button type="button" aria-pressed={randomizer} onClick={()=>navigate(()=>{setRandomizer(true);setComposer(null);setPath([]);setMobile("build");})}><Sparkles size={16}/>Randomizer</button></nav>
     <div className="sheet-build-budget"><span><b>{remaining}</b> BU available</span><span>{spent} allocated · {pool} budget</span><span>Drawbacks {credit}/{debtMax}</span><span className="sheet-budget-note">Leaving BU unspent is fine.</span></div>
     {controller.pendingRecovery && <section className="sheet-recovery" role="alert"><div><strong>An interrupted change is saved in this browser</strong><p>{controller.recoveryConflict || "Recover it to continue your draft. Nothing has been applied to the live character."}</p><details><summary>See saved changes</summary><ul>{controller.pendingRecovery.request.operations.map(operation => <li key={operation.id}>{operation.label ?? operation.type}</li>)}</ul></details></div><div className="sheet-row-actions"><button className="sheet-button is-gold" disabled={busy || !!controller.recoveryConflict} onClick={() => attempt(async () => {const recovered = await controller.recoverPending();if(recovered){discardUnfinished();setFoundation(null);setNotice("Recovered and checked your draft. Review it before applying.");}})}>Recover local change</button><button className="sheet-button" disabled={busy} onClick={() => attempt(async () => {controller.dismissPending();await controller.reload();})}>Discard local copy</button></div></section>}
     {controller.persistenceWarning && <p className="sheet-guidance" role="status">{controller.persistenceWarning}</p>}
-    {remaining < 0 && <p className="sheet-error" role="alert">This build is {Math.abs(remaining)} BU over budget. Review it with your group before applying.</p>}{(error || controller.error) && <p className="sheet-error" role="alert">{error || controller.error}{controller.error && <button className="sheet-button" onClick={() => setReview(true)}>Review or discard draft</button>}</p>}{notice && <div className="sheet-notice" role="status">{notice}{controller.canUndoApplied && <button className="sheet-button" disabled={busy || operations.length > 0} onClick={() => attempt(async () => {const result=await controller.undoApplied();if(result){setBase(result.graph);await refresh();router.refresh();setNotice("Restored the previous build. Play state was kept.");}})}>Undo applied build</button>}<button type="button" aria-label="Dismiss message" onClick={() => setNotice("")}><X size={13}/></button></div>}
+    {remaining < 0 && <p className="sheet-error" role="alert">This build is {Math.abs(remaining)} BU over budget. Review it with your group before applying.</p>}{(error || controller.error) && <p className="sheet-error" role="alert">{error || controller.error}{controller.error && <button className="sheet-button" onClick={openReview}>Review or discard draft</button>}</p>}{notice && <div className="sheet-notice" role="status">{notice}{controller.canUndoApplied && <button className="sheet-button" disabled={busy || operations.length > 0} onClick={() => attempt(async () => {const result=await controller.undoApplied();if(result){setBase(result.graph);await refresh();router.refresh();setNotice("Restored the previous build. Play state was kept.");}})}>Undo applied build</button>}<button type="button" aria-label="Dismiss message" onClick={() => setNotice("")}><X size={13}/></button></div>}
     <nav className="sheet-mobile-nav" aria-label="Workshop views">{(["find","build","preview"] as const).map((view) => <button type="button" key={view} aria-pressed={mobile === view} onClick={() => {setMobile(view);if(view === "preview") setPreviewCollapsed(false);}}>{view}</button>)}</nav>
     <Group orientation="horizontal" className="sheet-build-panels" id={`sheet-build-${characterId}`}>
       <Panel id="find" defaultSize="27%" minSize="19%" className="sheet-panel-find">{find}</Panel><Separator className="sheet-panel-separator"/>
       <Panel id="build" defaultSize="48%" minSize="32%" className="sheet-panel-build">{center}</Panel>{!previewCollapsed && <><Separator className="sheet-panel-separator"/>
       <Panel id="preview" defaultSize="25%" minSize="19%" className="sheet-panel-preview">{preview}</Panel></>}
     </Group>
-    <footer className="sheet-draft-footer"><div><button type="button" className="sheet-button" disabled={busy || !!controller.pendingRecovery || !operations.length} onClick={() => attempt(controller.undo)} aria-label="Undo draft change"><Undo2 size={16}/> Undo</button><button type="button" className="sheet-button" disabled={busy || !!controller.pendingRecovery || !controller.canRedo} onClick={() => attempt(controller.redo)} aria-label="Redo draft change"><Redo2 size={16}/> Redo</button></div><span>{operations.length ? `${operations.length} pending changes` : "Your live character is unchanged"}</span><button type="button" className="sheet-button is-gold" onClick={() => setReview(true)}>Review {operations.length > 0 ? `changes (${operations.length})` : "& collaborate"}<ArrowRight size={15}/></button></footer>
-    {review && <WorkspaceSurface modal title="Review character changes" kicker="Your draft" onClose={() => setReview(false)}><div className="sheet-review"><p>Check the rules, placement, and budget before updating your character. Current vitality and other play state stay separate.</p>{operations.length ? <ol>{operations.map((operation,index) => <li key={operation.id}><span>{String(index+1).padStart(2,"0")}</span>{operation.label ?? operation.type}</li>)}</ol> : <p>No pending build changes.</p>}{controller.preview?.warnings?.map(warning => <p className="sheet-guidance" key={warning}>{warning}</p>)}{controller.preview && <DraftChangeReview preview={controller.preview}/>}<div className="sheet-review-commit">{operations.length > 0 && <button className="sheet-button" disabled={busy} onClick={() => setConfirmDiscard(true)}>Discard draft</button>}<button className="sheet-button" type="button" onClick={() => setReview(false)}>Keep editing</button>{permission !== "SUGGESTER" && <button className="sheet-button is-gold" type="button" disabled={!operations.length || !controller.canReview} onClick={() => attempt(async () => { const result = await controller.apply(); if (result) { setBase(result.graph); setPath([]); setReview(false); setNotice("Changes applied to your character."); await refresh(); router.refresh(); } })}><Check size={16}/> Apply changes</button>}</div><DraftCollaborationPanel characterId={characterId} permission={permission} draft={controller.canReview ? controller.draft : null} onApplied={() => { void refresh(); void controller.reload(); router.refresh(); }}/></div></WorkspaceSurface>}
+    <footer className="sheet-draft-footer"><div><button type="button" className="sheet-button" disabled={busy || !!controller.pendingRecovery || !operations.length} onClick={() => attempt(controller.undo)} aria-label="Undo draft change"><Undo2 size={16}/> Undo</button><button type="button" className="sheet-button" disabled={busy || !!controller.pendingRecovery || !controller.canRedo} onClick={() => attempt(controller.redo)} aria-label="Redo draft change"><Redo2 size={16}/> Redo</button></div><span>{operations.length ? `${changeCount} pending changes` : "Your live character is unchanged"}</span><button type="button" className="sheet-button is-gold" onClick={openReview}>Review {operations.length > 0 ? `changes (${changeCount})` : "& collaborate"}<ArrowRight size={15}/></button></footer>
+    {review && <WorkspaceSurface modal title="Review character changes" kicker="Your draft" onClose={closeReview}><div className="sheet-review">{(error || controller.error) && <p className="sheet-error" role="alert">{error || controller.error}</p>}<p>Check the rules, placement, and budget before updating your character. Current vitality and other play state stay separate.</p>{!changeCount && <p>No net build changes.</p>}{controller.preview?.local && operations.length>0 && <div className="sheet-guidance"><p>{busy ? "Checking your complete draft and calculating character numbers…" : "Your edits are saved in this browser. Check the complete draft to verify its numbers and save a copy to your account."}</p><button className="sheet-button is-gold" disabled={busy} onClick={()=>attempt(controller.checkReview)}>{busy ? "Checking draft…" : "Check draft & numbers"}</button></div>}{controller.preview?.warnings?.map(warning => <p className="sheet-guidance" key={warning}>{warning}</p>)}{controller.preview && <DraftChangeReview preview={controller.preview}/>}<div className="sheet-review-commit">{operations.length > 0 && <button className="sheet-button" disabled={busy} onClick={() => setConfirmDiscard(true)}>Discard draft</button>}<button className="sheet-button" type="button" onClick={closeReview}>Keep editing</button>{permission !== "SUGGESTER" && <button className="sheet-button is-gold" type="button" disabled={!changeCount || busy || !!controller.pendingRecovery} onClick={() => attempt(async () => { const result = await controller.apply(); if (result) { setBase(result.graph); setPath([]); setReview(false); setNotice("Changes applied to your character."); discardUnfinished(); router.refresh(); onPlay(); } })}><Check size={16}/> {controller.phase === "applying" ? "Saving character…" : busy ? "Checking draft…" : "Save & return to play"}</button>}</div><DraftCollaborationPanel characterId={characterId} permission={permission} draft={controller.canReview ? controller.draft : null} onApplied={() => { void refresh(); void controller.reload(); router.refresh(); }}/></div></WorkspaceSurface>}
     {foundation && <WorkspaceSurface modal title="Character foundation" kicker="Your character draft" onClose={() => navigate(() => {setFoundationDirty(false);setFoundation(null);})}><CharacterFoundationEditor characterId={characterId} character={character} operations={operations} initialSection={foundation} busy={busy} onDirtyChange={setFoundationDirty} onClose={() => {setFoundationDirty(false);setFoundation(null);}} onSave={async payload => {await stage({id:crypto.randomUUID(),type:"character",label:"Update character foundation",payload});setFoundationDirty(false);setFoundation(null);}}/></WorkspaceSurface>}
     {confirmDiscard && <WorkspaceSurface modal title="Discard this draft?" kicker="Live character stays unchanged" onClose={() => setConfirmDiscard(false)}><div className="sheet-review"><p>This removes the pending changes in this draft. It does not undo an applied build.</p><div className="sheet-row-actions"><button className="sheet-button" onClick={() => setConfirmDiscard(false)}>Keep draft</button><button className="sheet-button" disabled={busy} onClick={() => attempt(async () => {await controller.discard();await refresh();setConfirmDiscard(false);setReview(false);setPath([]);setNotice("Draft discarded. Your live character is unchanged.");})}>Discard pending changes</button></div></div></WorkspaceSurface>}
     {leaveEditor && <WorkspaceSurface modal title="Unfinished changes" kicker="Keep your work" onClose={() => setLeaveEditor(null)}><div className="sheet-review"><p>These fields have not been added to your draft yet. Finish editing before leaving, or discard this unfinished form. Your saved draft is kept.</p><div className="sheet-row-actions"><button className="sheet-button is-gold" onClick={() => setLeaveEditor(null)}>Keep working</button><button className="sheet-button" onClick={() => {discardUnfinished();leaveEditor.run();setLeaveEditor(null);}}>Discard unfinished form</button></div></div></WorkspaceSurface>}

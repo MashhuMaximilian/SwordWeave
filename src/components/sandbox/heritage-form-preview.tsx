@@ -53,7 +53,7 @@ export function HeritageFormPreview({form, primitives, capabilities}: {
   const directSlots = primitives.map(primitive => ({primitiveId:Number(primitive.id), ...(primitive.isMirrored !== undefined ? {isMirrored:primitive.isMirrored}:{}), primitive:{...primitive,id:Number(primitive.id)}}));
   const allSlots = [...directSlots, ...capabilities.flatMap(capability => [...(capability.primitiveLinks ?? []), ...(capability.effects ?? []).flatMap(effect => effect.primitiveLinks ?? [])])];
   const completeCost = capabilities.every(capability => capability.primitiveLinks !== undefined && capability.effects !== undefined && capability.effects.every(effect => effect.primitiveLinks !== undefined));
-  const {transitiveBu} = computeTransitiveBu({primitiveLinks: allSlots});
+  const {transitiveBu} = computeTransitiveBu({primitiveLinks: allSlots}, {allowTemporaryIds:true});
   return <LiveRecipeCard name={form.name} kind={kindLabel(form.kind)} icon={form} description={form.description} sourceOrigin={form.sourceOrigin} tags={form.tags} badges={<>
     <span data-tone="violet">{kindLabel(form.kind)}</span><span data-tone="teal">{form.isPublic ? "Public" : "Private draft"}</span><span>{transitiveBu} BU{completeCost ? "" : " · loaded rules"}</span>
   </>}>

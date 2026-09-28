@@ -1,3 +1,4 @@
+import {compactDraftReplay} from "./compact-draft";
 import { canonicalJsonStringify } from "@/lib/publishing/hash-content";
 import { pinnedOperationIssue } from "./pinned-versions";
 import { relocateWorkspacePiece } from "./relocate";
@@ -11,7 +12,7 @@ import { readWorkspace } from "./read";
 import { executeWorkspaceCommand, WorkspaceConflict } from "./commands";
 import { executeWorkspaceCreate } from "./create";
 import { withDraftExecution } from "./draft-scope";
-import { mapDraftIdentities, registerDraftIdentities } from "./draft-aliases";
+import { mapDraftIdentities, registerDraftIdentities, registerLocalBindings } from "./draft-aliases";
 import { readDraftSheet } from "./draft-sheet";
 import type { DraftOperation, WorkspaceDraft, WorkspaceDraftPreview } from "./draft-types";
 import type { WorkspaceGraph } from "./model";
@@ -29,15 +30,19 @@ const characterDraftSchema = z.object({
   upbringingName: z.string().max(200).nullable().optional(), upbringingDescription: z.string().max(50000).nullable().optional(),
   manifestName: z.string().max(200).nullable().optional(),
 }).strict();
+const localBindingsSchema = z.object({
+  nodes: z.array(z.object({key:z.string().regex(/^(primitive|effect|capability|heritage|item):.+$/),source:z.string().regex(/^(primitive|effect|capability|heritage|item):.+$/).optional()})).max(40),
+  instances:z.array(z.object({id:z.string().uuid(),child:z.string().regex(/^(primitive|effect|capability|heritage|item):.+$/),category:z.string(),isMirrored:z.boolean()})).max(100),
+}).optional();
 export const draftOperationsSchema = z.array(z.discriminatedUnion("type", [
-  z.object({ id: z.string().uuid(), groupId: z.string().uuid().optional(), type: z.literal("relocate"), label: z.string().max(200).optional(), path: z.array(z.string()).min(1).max(20), destinationPath: z.array(z.string()).max(20).optional(), category: z.enum(["LINEAGE", "UPBRINGING", "MANIFEST", "ITEM"]) }),
-  z.object({ id: z.string().uuid(), groupId: z.string().uuid().optional(), type: z.literal("character"), label: z.string().max(200).optional(), payload: characterDraftSchema }),
-  z.object({ id: z.string().uuid(), groupId: z.string().uuid().optional(), type: z.literal("create"), label: z.string().max(200).optional(), payload: z.object({
+  z.object({ id: z.string().uuid(), groupId: z.string().uuid().optional(), localBindings: localBindingsSchema, type: z.literal("relocate"), label: z.string().max(200).optional(), path: z.array(z.string()).min(1).max(20), destinationPath: z.array(z.string()).max(20).optional(), category: z.enum(["LINEAGE", "UPBRINGING", "MANIFEST", "ITEM"]) }),
+  z.object({ id: z.string().uuid(), groupId: z.string().uuid().optional(), localBindings: localBindingsSchema, type: z.literal("character"), label: z.string().max(200).optional(), payload: characterDraftSchema }),
+  z.object({ id: z.string().uuid(), groupId: z.string().uuid().optional(), localBindings: localBindingsSchema, type: z.literal("create"), label: z.string().max(200).optional(), payload: z.object({
     kind: z.enum(["primitive", "effect", "capability", "heritage", "item"]), category: z.enum(["LINEAGE", "UPBRINGING", "MANIFEST", "ITEM"]),
     draft: z.record(z.string(), z.unknown()), mirrored: z.boolean().optional(), existingId: z.string().optional(), target: z.string().optional(), path: z.array(z.string()).optional(), expectedHash: z.string().nullable().optional(),
   }) }),
-  z.object({ id: z.string().uuid(), groupId: z.string().uuid().optional(), type: z.literal("command"), label: z.string().max(200).optional(), payload: z.record(z.string(), z.unknown()) }),
-  z.object({ id: z.string().uuid(), groupId: z.string().uuid().optional(), type: z.literal("move-root"), label: z.string().max(200).optional(), target: z.string().regex(/^(primitive|effect|capability|heritage|item):.+$/), path: z.array(z.string()).length(1), category: z.enum(["LINEAGE", "UPBRINGING", "MANIFEST", "ITEM"]) }),
+  z.object({ id: z.string().uuid(), groupId: z.string().uuid().optional(), localBindings: localBindingsSchema, type: z.literal("command"), label: z.string().max(200).optional(), payload: z.record(z.string(), z.unknown()) }),
+  z.object({ id: z.string().uuid(), groupId: z.string().uuid().optional(), localBindings: localBindingsSchema, type: z.literal("move-root"), label: z.string().max(200).optional(), target: z.string().regex(/^(primitive|effect|capability|heritage|item):.+$/), path: z.array(z.string()).length(1), category: z.enum(["LINEAGE", "UPBRINGING", "MANIFEST", "ITEM"]) }),
 ])).max(100).superRefine((ops, ctx) => {
   if (new Set(ops.map(op => op.id)).size !== ops.length) ctx.addIssue({ code: "custom", message: "Each draft action needs a unique ID." });
 });
@@ -76,7 +81,7 @@ export async function getWorkspaceDraft(characterId: string, userId: string): Pr
   return rows.map(row => row.result as unknown as StoredDraft).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0] ?? null;
 }
 export async function saveWorkspaceDraft(characterId: string, userId: string, raw: unknown): Promise<WorkspaceDraft> {
-  const body = z.object({ draftId: z.string().uuid().optional(), expectedVersion: z.number().int().nonnegative(), baseRevision: z.number().int().nonnegative(), operations: draftOperationsSchema }).parse(raw);
+  const body = z.object({ draftId: z.string().uuid().optional(), expectedVersion: z.number().int().nonnegative(), baseRevision: z.number().int().nonnegative(), baseHash:z.string().regex(/^[a-f0-9]{64}$/).optional(), operations: draftOperationsSchema }).parse(raw);
   await access(characterId, userId);
   return withDatabaseTransaction(async () => {
     const character = await lockCharacter(characterId);
@@ -90,6 +95,8 @@ export async function saveWorkspaceDraft(characterId: string, userId: string, ra
     const graph = existing ? null : await readWorkspace(characterId);
     if (graph && graph.revision !== body.baseRevision)
       throw new WorkspaceConflict("The character changed. Reload it before starting a draft.");
+    if(graph && body.baseHash && body.baseHash!==workspaceBuildFingerprint(graph,character))
+      throw new WorkspaceConflict("The character changed while you were editing locally. Your browser draft is preserved; reload the current character before applying it.");
     const draft: StoredDraft = {
       id: existing?.id ?? randomUUID(), authorId: userId, version: (existing?.version ?? 0) + 1,
       baseRevision: existing?.baseRevision ?? body.baseRevision, baseHash: existing?.baseHash ?? workspaceBuildFingerprint(graph!, character),
@@ -140,7 +147,7 @@ export async function executeDraftOperations(characterId: string, userId: string
     const changedKeys = new Set<string>();
     let latest = initial;
     let latestCharacter = initialCharacter;
-    for (const operation of operations) {
+    for (const operation of compactDraftReplay(operations,initial)) {
       const current = latest;
       const op = mapDraftIdentities(operation, aliases);
       const pinIssue = pinnedOperationIssue(current, op, true);
@@ -182,10 +189,12 @@ export async function executeDraftOperations(characterId: string, userId: string
       }
       for (const replacement of Object.values((result["replacements"] ?? {}) as Record<string, string>)) createdIds.add(replacement.split(":").slice(1).join(":"));
       registerDraftIdentities(current, after, operation.id, aliases, createdIds);
+      registerLocalBindings(operation.localBindings, current, after, result, aliases);
       for (const node of after.nodes) {
         const before = current.nodes.find(n => n.key === node.key);
         if (!before || before.data["contentHash"] !== node.data["contentHash"]) changedKeys.add(node.key);
       }
+      result["localAuthoredKeys"] = after.nodes.filter(node=>createdIds.has(node.id)&&!current.nodes.some(old=>old.key===node.key)).map(node=>node.key);
       results.push({ operationId: operation.id, result });
     }
     const graph = latest;

@@ -1,4 +1,5 @@
 "use client";
+import { EditableNumberInput } from "@/components/ui/editable-number-input";
 
 /**
  * ItemCard — Phase 8.2 batch 4
@@ -656,7 +657,7 @@ export function ItemCard({
   const quantityControl = editingQty ? (
     <span className="v12-item-quantity is-editing" title="Type a positive integer, then confirm.">
       <span aria-hidden="true">×</span>
-      <input
+      <EditableNumberInput
         type="number"
         min={1}
         value={qtyInput}

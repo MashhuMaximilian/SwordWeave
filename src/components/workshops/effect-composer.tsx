@@ -1,4 +1,5 @@
 "use client";
+import { EditableNumberInput } from "@/components/ui/editable-number-input";
 
 import { useMemo, useState, useTransition } from "react";
 import { ToastViewport, useToasts } from "@/components/ui/toast";
@@ -420,7 +421,7 @@ export function EffectComposer({
                         />
                         Mirrored
                       </label>
-                      <input
+                      <EditableNumberInput
                         className="h-9 rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
                         min={1}
                         onChange={(event) =>

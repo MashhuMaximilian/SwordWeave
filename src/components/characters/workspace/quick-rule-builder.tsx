@@ -1,4 +1,5 @@
 "use client";
+import { readJsonResponse } from "@/lib/http/read-json-response";
 
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Shuffle } from "lucide-react";
@@ -22,7 +23,7 @@ export function QuickRuleBuilder({ characterId, budget, onBuild, onBuildOwn, onE
     const controller = new AbortController();
     void fetch(`/api/characters/${characterId}/workspace/suggestions`, { method: "POST", signal: controller.signal,
       headers: { "Content-Type": "application/json" }, body: JSON.stringify({ catalogOnly: true, budget: 0, kinds: ["primitive"] }) })
-      .then(async response => { const data = await response.json(); if (!response.ok) throw new Error(data.error || "Library suggestions unavailable."); return data.catalog as DiscoveryCandidate[]; })
+      .then(async response => { const data = await readJsonResponse(response); if (!response.ok) throw new Error(data.error || "Library suggestions unavailable."); return data.catalog as DiscoveryCandidate[]; })
       .then(catalog => { if (!controller.signal.aborted) setLibrary(catalog.flatMap(item => item.ruleSeed ? [item.ruleSeed] : [])); })
       .catch(cause => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Library suggestions unavailable."); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });

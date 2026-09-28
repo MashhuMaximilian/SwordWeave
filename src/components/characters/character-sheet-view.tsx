@@ -1,4 +1,5 @@
 "use client";
+import { EditableNumberInput } from "@/components/ui/editable-number-input";
 
 import { useState, useMemo, useTransition, useEffect, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
@@ -1358,6 +1359,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
             id={props.id}
             permission={permission}
             initial={props.backstory}
+            heritages={[{label:"Lineage",name:props.lineageName,description:props.lineageDescription},{label:"Upbringing",name:props.upbringingName,description:props.upbringingDescription},{label:"Manifest",name:props.manifestName,description:props.backstory.manifestDescription ?? null},...props.heritageLinks.map(link=>({label:link.heritage.kind.toLowerCase(),name:link.heritage.name,description:link.heritage.description}))].filter((root,index,all)=>all.findIndex(other=>other.name===root.name && other.description===root.description)===index)}
             portraitUrl={props.portraitUrl}
             characterName={props.name}
             showToast={showToast}
@@ -2157,7 +2159,7 @@ function NumField({
       <span className="mb-1 block text-xs font-semibold uppercase text-muted-foreground">
         {label}
       </span>
-      <input
+      <EditableNumberInput
         type="number"
         min={0}
         value={value}
@@ -4108,9 +4110,10 @@ function formatRelative(d: Date): string {
 // is read-only with an "Edit in modal" button that opens the
 // edit modal. Saves go through POST /api/characters/[id]/backstory.
 
-function BackstoryTab({ id, initial, permission, portraitUrl, characterName }: {
+function BackstoryTab({ id, initial, permission, portraitUrl, characterName, heritages }: {
   id: string;
   initial: CharacterBackstory;
+  heritages: {label:string;name:string|null;description:string|null}[];
   portraitUrl: string | null;
   characterName: string;
   permission: CharacterPermission;
@@ -4140,6 +4143,7 @@ function BackstoryTab({ id, initial, permission, portraitUrl, characterName }: {
       </figure>}
     {empty ? <div className="rounded-md border border-dashed border-border bg-card p-8 text-center"><BookOpen className="mx-auto size-8 text-muted-foreground"/><p className="mt-2 text-sm font-medium">No backstory yet.</p><p className="mt-1 text-xs text-muted-foreground">Describe their appearance, personality, history, goals, ties, and flaws to bring the character to life.</p></div> : <div className="v12-backstory-grid">{BACKSTORY_FIELDS.map(field => <BackstoryFieldCard key={field.key} label={field.label} description={field.description} iconKey={field.iconKey} value={initial[field.key]}/>)}</div>}
     </div>
+    <div className="v12-backstory-grid">{heritages.filter(root=>root.name || root.description).map(root=><BackstoryFieldCard key={`${root.label}:${root.name}`} label={`${root.label}${root.name ? ` · ${root.name}` : ""}`} description="A root of their character" iconKey="scroll" value={root.description || "No description yet."}/>)}</div>
   </div>;
 }
 
@@ -4202,6 +4206,7 @@ function BackstoryEditModal({
 }: {
   open: boolean;
   initial: CharacterBackstory;
+  heritages: {label:string;name:string|null;description:string|null}[];
   onClose: () => void;
   onSave: (next: CharacterBackstory) => void;
   saving: boolean;

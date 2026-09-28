@@ -1,4 +1,8 @@
 "use client";
+import { readFlavorReference, writeFlavorReference } from "@/lib/capabilities/flavor-reference";
+import { RollResolutionEditor } from "./roll-resolution-editor";
+import { EMPTY_RESOLUTION, readRollResolution, writeRollResolution, type RollResolution } from "@/lib/capabilities/roll-resolution";
+import { readJsonResponse } from "@/lib/http/read-json-response";
 import { RecipePrimitiveIdentity } from "./recipe-primitive-identity";
 import { RecipeComposition, RecipeEntityIdentity, primitiveLinksBu } from "./recipe-composition";
 import { AuthorChapters, AuthorChapter } from "./author-chapters";
@@ -107,24 +111,12 @@ function defaultRoleForCategory(category: string): string {
 const DEDICATED_ROLES = ["VERB", "DOMAIN", "RANGE", "OUTPUT"] as const;
 type DedicatedRole = (typeof DEDICATED_ROLES)[number];
 
-const TABLE_AXIS_OPTIONS = {
-  target: { label: "Targets", values: ["Single", "Multiple", "Area"] },
-  shape: { label: "Shape", values: ["Direct", "Cone", "Line", "Sphere", "Zone", "Beam"] },
-  size: { label: "Size", values: ["One target", "5 ft", "10 ft", "20 ft", "Custom"] },
-  placement: { label: "Placement", values: ["Self", "Target", "Point", "Directional"] },
-  duration: { label: "Effect duration", values: ["Instant", "Short", "Medium", "Long", "Scene", "Persistent", "Permanent"] },
-  casting: { label: "Casting time", values: ["Action", "Instant", "Short", "Medium", "Long", "Scene"] },
-} as const;
-type TableAxisKey = keyof typeof TABLE_AXIS_OPTIONS;
-type TableDraft = { [K in TableAxisKey]: (typeof TABLE_AXIS_OPTIONS)[K]["values"][number] } & {
-  range: string;
-  output: string;
-};
-const TABLE_AXIS_NOTE_PREFIX = "atelier-table-axis:";
+import { TABLE_AXES, TABLE_HELP, readTableGuidance, writeTableGuidance, type TableAxis, type TableGuidance } from "@/lib/capabilities/table-guidance";
 
-function tableAxisNote(axis: TableAxisKey, value: string) {
-  return `${TABLE_AXIS_NOTE_PREFIX}${axis}:${value}`;
-}
+const TABLE_AXIS_OPTIONS = TABLE_AXES;
+type TableAxisKey = TableAxis;
+type TableDraft = TableGuidance;
+const TABLE_AXIS_NOTE_PREFIX = "atelier-table-axis:";
 
 function parseTableAxisNote(notes?: string) {
   if (!notes?.startsWith(TABLE_AXIS_NOTE_PREFIX)) return null;
@@ -226,6 +218,9 @@ export function CapabilityForm({
     return touch ? [{ primitiveId: touch.id, primitive: touch, quantity: 1, isMirrored: false, role: "RANGE", sortOrder: 0, slotLabel: touch.name }] : [];
   });
   const [effectIds, setEffectIds] = useState<string[]>(initialEffectIds);
+  const [resolution,setResolution] = useState<RollResolution>({...EMPTY_RESOLUTION});
+  const [includeTable, setIncludeTable] = useState(false);
+  const [customAxes, setCustomAxes] = useState<Partial<Record<TableAxisKey,boolean>>>({});
   const [tableDraft, setTableDraft] = useState<TableDraft>({
     target: "Single", shape: "Direct", size: "One target", placement: "Target",
     range: "Touch", output: "None", duration: "Instant", casting: "Action",
@@ -234,8 +229,8 @@ export function CapabilityForm({
   const [isPending, startTransition] = useTransition();
   const [isDirty, setIsDirty] = useState(false);
   const router = useRouter();
-  const recovery = useCharacterFormRecovery("capability", { catalog: { primitives: availablePrimitives.filter((entry) => slots.some((slot) => slot.primitiveId === entry.id)), effects: availableEffects.filter((entry) => effectIds.includes(entry.id)) }, form, slots, effectIds, tableDraft, orderChanged }, isDirty, (saved) => {
-    setRecoveredCatalog(saved.catalog); setForm(saved.form); setSlots(saved.slots); setEffectIds(saved.effectIds); setTableDraft(saved.tableDraft); setOrderChanged(saved.orderChanged);
+  const recovery = useCharacterFormRecovery("capability", { catalog: { primitives: availablePrimitives.filter((entry) => slots.some((slot) => slot.primitiveId === entry.id)), effects: availableEffects.filter((entry) => effectIds.includes(entry.id)) }, form, slots, effectIds, tableDraft, includeTable, resolution, orderChanged }, isDirty, (saved) => {
+    setRecoveredCatalog(saved.catalog); setForm(saved.form); setSlots(saved.slots); setEffectIds(saved.effectIds); setTableDraft(saved.tableDraft); setIncludeTable(saved.includeTable ?? false); setResolution(saved.resolution ?? {...EMPTY_RESOLUTION}); setOrderChanged(saved.orderChanged);
     setIsDirty(true); setMessage("Restored your unfinished character piece.");
   });
 
@@ -256,11 +251,18 @@ export function CapabilityForm({
     // restore the slots/effects from it instead of the initial data.
     const draftKey = makeDraftKey("capability", id, characterAuthoring?.namespace);
     const draft = loadDraft(draftKey);
+    const guidance = readTableGuidance(initialCapability.verboseDescription);
+    setIncludeTable(!!guidance.table);
+    // Loading another capability must rehydrate its optional declaration alongside its form.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (guidance.table) setTableDraft(guidance.table);
+    const resolved = readRollResolution(guidance.description);
+    setResolution(resolved.resolution);
     setForm({
       name: initialCapability.name,
       type: initialCapability.type,
       sourceType: initialCapability.sourceType,
-      verboseDescription: initialCapability.verboseDescription,
+      verboseDescription: resolved.description,
       sourceOrigin: initialCapability.sourceOrigin ?? "",
       tags: (initialCapability.tags ?? []).join(", "),
       isPublic: initialCapability.isPublic,
@@ -347,8 +349,8 @@ export function CapabilityForm({
   }, [slots, effectIds, initialCapability?.id]);
 
   useEffect(() => {
-    onStateChange?.({ form, slots, effectIds, isDirty });
-  }, [form, slots, effectIds, onStateChange, isDirty]);
+    onStateChange?.({ form:{...form,verboseDescription:writeTableGuidance(writeRollResolution(form.verboseDescription,resolution),includeTable ? tableDraft : null)}, slots, effectIds, isDirty });
+  }, [form, slots, effectIds, onStateChange, isDirty, includeTable, tableDraft, resolution]);
 
   // External reset trigger from the speed-dial FAB / pinned Save/Reset footer.
   useEffect(() => {
@@ -469,6 +471,8 @@ export function CapabilityForm({
     const touch = availablePrimitives.find((primitive) => primitive.category === "RANGE" && primitive.name.toLowerCase() === "touch range");
     setSlots(touch ? [{ primitiveId: touch.id, primitive: touch, role: "RANGE", quantity: 1, isMirrored: false, sortOrder: 0, slotLabel: touch.name }] : []);
     setEffectIds([]);
+    setResolution({...EMPTY_RESOLUTION});
+    setIncludeTable(false); setCustomAxes({});
     setTableDraft({ target: "Single", shape: "Direct", size: "One target", placement: "Target", range: "Touch", output: "None", duration: "Instant", casting: "Action" });
     setIsDirty(false); // pristine after reset
     setMessage("Started a fresh capability.");
@@ -494,7 +498,7 @@ export function CapabilityForm({
       name: form.name.trim(),
       type: form.type,
       sourceType: form.sourceType,
-      verboseDescription: form.verboseDescription.trim(),
+      verboseDescription: writeTableGuidance(writeRollResolution(form.verboseDescription,resolution), includeTable ? tableDraft : null),
       sourceOrigin: form.sourceOrigin.trim() || null,
       tags: form.tags
         .split(",")
@@ -530,12 +534,13 @@ export function CapabilityForm({
     const method = initialCapability ? "PATCH" : "POST";
 
     startTransition(async () => {
+      try {
       const response = await saveRequest(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const payload: unknown = await response.json();
+      const payload: unknown = await readJsonResponse(response);
 
       if (!response.ok) {
         const error =
@@ -576,6 +581,7 @@ export function CapabilityForm({
       resetEditor();
       if (!characterAuthoring) router.refresh();
       setMessage(characterAuthoring ? "Saved to the character draft. Review changes before applying." : `Capability "${capability?.name ?? "(unnamed)"}" saved.`);
+      } catch (cause) { setMessage(cause instanceof Error ? cause.message : "Unable to save. Your edits are still here; please retry."); }
     });
   }
 
@@ -596,8 +602,8 @@ export function CapabilityForm({
     .filter(({ slot }) => !DEDICATED_ROLES.includes(resolvedSlotRole(slot) as DedicatedRole));
   const rangeSlot = slots.find((slot) => resolvedSlotRole(slot) === "RANGE");
   const outputSlot = slots.find((slot) => resolvedSlotRole(slot) === "OUTPUT");
-  const selectedRange = rangeSlot?.primitive.name.replace(/\s+Range$/i, "") || tableDraft.range;
-  const selectedOutput = outputSlot?.primitive.name.match(/d(?:4|6|8|10|12|20)/i)?.[0].toLowerCase() || tableDraft.output;
+  const selectedRange = rangeSlot?.primitive.name.replace(/\s+Range$/i, "") || "Touch";
+  const selectedOutput = (outputSlot ? `${outputSlot.primitive.name} ${outputSlot.primitive.mechanicalOutputText ?? ""}` : "").match(/d(?:4|6|8|10|12|20)\b/i)?.[0].toLowerCase() || "None";
 
   const primitiveSearchText = (primitive: (typeof availablePrimitives)[number]) =>
     `${primitive.name} ${primitive.mechanicalOutputText ?? ""}`.toLowerCase();
@@ -613,9 +619,6 @@ export function CapabilityForm({
     (primitive.category === "INTENSITY_DICE" || primitive.category === "OUTPUT") &&
     primitiveSearchText(primitive).includes(die.toLowerCase()),
   );
-  const primitiveNamed = (...names: string[]) => availablePrimitives.find((primitive) =>
-    names.some((name) => primitive.name.toLowerCase() === name.toLowerCase()),
-  );
   const tableAxisSlot = (axis: TableAxisKey) => slots
     .map((slot, index) => ({ slot, index, meta: parseTableAxisNote(slot.notes) }))
     .find(({ slot, meta }) =>
@@ -623,68 +626,11 @@ export function CapabilityForm({
       (axis === "duration" && !meta && slot.primitive.category === "DURATION") ||
       (axis === "casting" && !meta && slot.primitive.category === "SPEED_QUICKENING"),
     );
-  const tableAxisValue = (axis: TableAxisKey) => tableAxisSlot(axis)?.meta?.value ?? tableDraft[axis];
-  const tablePrimitiveFor = (axis: TableAxisKey, value: string) => {
-    switch (axis) {
-      case "target":
-        if (value === "Multiple") return { primitive: primitiveNamed("Vector Split"), role: "OTHER", quantity: 1 };
-        if (value === "Area") return { primitive: primitiveNamed("Volume Scaling I"), role: "OTHER", quantity: 1 };
-        return null;
-      case "shape":
-        if (value === "Cone" || value === "Line") return { primitive: primitiveNamed("Linear / Conical Vector"), role: "SIZING", quantity: 1 };
-        if (value === "Sphere") return { primitive: primitiveNamed("Kinetic Sphere"), role: "SIZING", quantity: 1 };
-        if (value === "Zone") return { primitive: primitiveNamed("Stationary Zone"), role: "SIZING", quantity: 1 };
-        if (value === "Beam") return { primitive: primitiveNamed("Structural Wall"), role: "SIZING", quantity: 1 };
-        return null;
-      case "size": {
-        const quantity = value === "5 ft" ? 1 : value === "10 ft" ? 2 : value === "20 ft" ? 3 : 0;
-        return quantity ? { primitive: primitiveNamed("Volume Scaling I"), role: "SIZING", quantity } : null;
-      }
-      case "placement":
-        if (value === "Self") return { primitive: primitiveNamed("Mobile Aura"), role: "AUGMENT", quantity: 1 };
-        if (value === "Point") return { primitive: primitiveNamed("Stationary Zone"), role: "AUGMENT", quantity: 1 };
-        if (value === "Directional") return { primitive: primitiveNamed("Linear / Conical Vector"), role: "AUGMENT", quantity: 1 };
-        return null;
-      case "duration": {
-        const durationName = value === "Scene" ? "Persistent Duration" : `${value} Duration`;
-        return { primitive: primitiveNamed(durationName), role: "DURATION", quantity: 1 };
-      }
-      case "casting":
-        if (value === "Action") return { primitive: primitiveNamed("Standard Execution"), role: "AUGMENT", quantity: 1 };
-        if (value === "Instant") return { primitive: primitiveNamed("Instant Execution"), role: "AUGMENT", quantity: 1 };
-        if (value === "Short") return { primitive: primitiveNamed("Fast Execution"), role: "AUGMENT", quantity: 1 };
-        return null;
-    }
-  };
+  const tableAxisValue = (axis: TableAxisKey) => tableDraft[axis];
   const replaceTableAxisPrimitive = (axis: TableAxisKey, value: string) => {
-    const candidate = tablePrimitiveFor(axis, value);
     setIsDirty(true);
-    setTableDraft((current) => ({ ...current, [axis]: value }));
-    setSlots((current) => {
-      const retained = current.filter((slot) => {
-        const markedAxis = parseTableAxisNote(slot.notes)?.axis;
-        if (markedAxis === axis) return false;
-        if (!markedAxis && axis === "duration" && slot.primitive.category === "DURATION") return false;
-        if (!markedAxis && axis === "casting" && slot.primitive.category === "SPEED_QUICKENING") return false;
-        return true;
-      });
-      if (!candidate?.primitive) return retained.map((slot, index) => ({ ...slot, sortOrder: index }));
-      return [...retained, {
-        primitiveId: candidate.primitive.id,
-        primitive: candidate.primitive,
-        role: candidate.role,
-        quantity: candidate.quantity,
-        isMirrored: false,
-        sortOrder: retained.length,
-        slotLabel: candidate.primitive.name,
-        notes: tableAxisNote(axis, value),
-      }];
-    });
-    if (candidate?.primitive) {
-      setMessage(`${candidate.primitive.name} pinned from ${TABLE_AXIS_OPTIONS[axis].label}. You can remove the primitive below and keep “${value}” in the spoken intent.`);
-    } else {
-      setMessage(`${value} remains in the spoken intent. This choice does not require a matching purchased primitive.`);
-    }
+    setCustomAxes(current=>({...current,[axis]:value === "Custom"}));
+    setTableDraft(current=>({...current,[axis]:value === "Custom" ? "" : value}));
   };
   const removeTableAxisPrimitive = (axis: TableAxisKey) => {
     const selected = tableAxisSlot(axis);
@@ -694,6 +640,7 @@ export function CapabilityForm({
     setMessage(`${TABLE_AXIS_OPTIONS[axis].label} stays “${tableDraft[axis]}” in the spoken intent; its primitive was removed from Pieces.`);
   };
   const chooseTableRange = (label: string) => {
+    if (label === "Touch") { chooseRulePrimitive("RANGE", null); setTableDraft(current=>({...current,range:"Touch"})); return; }
     const primitive = rangePrimitive(label);
     if (primitive) {
       setTableDraft((current) => ({ ...current, range: label }));
@@ -702,7 +649,7 @@ export function CapabilityForm({
         const retained = current.filter((slot) => resolvedSlotRole(slot) !== "RANGE");
         return [...retained, { primitiveId: primitive.id, primitive, role: "RANGE", quantity: 1, isMirrored: false, sortOrder: retained.length, slotLabel: primitive.name }];
       });
-      setMessage(`${primitive.name} pinned from Range. You can remove the primitive below and keep “${label}” in the spoken intent.`);
+      setMessage(`${primitive.name} included in Pieces. Range beyond touch requires this purchased access.`);
     } else {
       setMessage(`No ${label} range primitive is available in this library.`);
     }
@@ -722,7 +669,7 @@ export function CapabilityForm({
         const retained = current.filter((slot) => resolvedSlotRole(slot) !== "OUTPUT");
         return [...retained, { primitiveId: primitive.id, primitive, role: "OUTPUT", quantity: 1, isMirrored: false, sortOrder: retained.length, slotLabel: primitive.name }];
       });
-      setMessage(`${primitive.name} pinned from Output die. Remove it in Pieces to keep “${die}” as spoken intent only.`);
+      setMessage(`${primitive.name} included in Pieces. An output die requires this purchased access.`);
     } else {
       setMessage(`No ${die} output primitive is available in this library.`);
     }
@@ -737,12 +684,14 @@ export function CapabilityForm({
       .map((slot, index) => ({ slot, index }))
       .find(({ slot }) => resolvedSlotRole(slot) === role);
     const selectedPrimitive = selectedEntry?.slot.primitive;
+    const flavorLabel=role === "DOMAIN" ? "domain" : role === "VERB" ? "verb" : null;
+    const flavor=flavorLabel ? readFlavorReference(form.verboseDescription,flavorLabel) : "";
     return <article className="group min-w-0 rounded-md border border-border bg-background/80 px-2.5 py-2 transition-colors hover:border-[#b88a39]" data-dedicated-role={role}>
       <div className="flex min-w-0 items-center gap-2">
         <p className="shrink-0 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
         <details className="relative min-w-0 flex-1">
           <summary className="flex min-w-0 cursor-pointer list-none items-center gap-1.5 rounded px-1 py-0.5 text-left text-xs hover:bg-accent/60">
-            <span className={selectedPrimitive ? "min-w-0 flex-1 truncate font-medium text-foreground" : "min-w-0 flex-1 truncate text-muted-foreground"}>{selectedPrimitive?.name ?? `Choose ${label.toLowerCase()}`}</span>
+            <span className={selectedPrimitive ? "min-w-0 flex-1 truncate font-medium text-foreground" : "min-w-0 flex-1 truncate text-muted-foreground"}>{selectedPrimitive?.name ?? (flavor ? `${flavor} · flavor only` : `Choose ${label.toLowerCase()}`)}</span>
             {selectedPrimitive ? <span className="shrink-0 font-mono text-xs text-muted-foreground">{selectedPrimitive.buCost} BU</span> : null}
             <span className="shrink-0 text-xs text-primary">{selectedPrimitive ? "edit" : "add"}</span>
           </summary>
@@ -760,6 +709,7 @@ export function CapabilityForm({
         </details>
         {selectedPrimitive && selectedEntry ? <button type="button" onClick={() => removeSlot(selectedEntry.index)} aria-label={`Remove ${selectedPrimitive.name}`} className="inline-flex size-6 shrink-0 items-center justify-center rounded border border-border bg-background text-muted-foreground hover:bg-accent"><Trash2 className="size-3.5" /></button> : null}
       </div>
+      {flavorLabel && <label className="v12-flavor-reference">{flavorLabel === "domain" ? "Domain flavor" : "Verb flavor"} <small>Optional narrative reference; no purchased access</small><input aria-label={`${flavorLabel} flavor`} value={flavor} maxLength={120} placeholder={flavorLabel === "domain" ? "Fire, ice, memory…" : "Strike, reveal, reshape…"} onChange={event=>{updateForm("verboseDescription",writeFlavorReference(form.verboseDescription,flavorLabel,event.target.value));}}/></label>}
       {role === "VERB" && selectedEntry ? <label className="v12-verb-note mt-1.5 block text-xs"><span className="sr-only">Verbs used</span><input aria-label="Verbs used (optional)" value={selectedEntry.slot.notes ?? ""} onChange={(event) => { const notes = event.target.value; setSlots((current) => current.map((item, index) => index === selectedEntry.index ? {...item, notes} : item)); setIsDirty(true); }} placeholder="Verbs used: move, strike, reshape…" /></label> : null}
     </article>;
   };
@@ -768,18 +718,21 @@ export function CapabilityForm({
     const config = TABLE_AXIS_OPTIONS[axis];
     const selectedValue = tableAxisValue(axis);
     const pinned = tableAxisSlot(axis);
+    const custom = customAxes[axis] || !(config.values as readonly string[]).includes(selectedValue);
     return <section key={axis} className="v12-table-axis">
       <h3>{config.label}</h3>
       <div>{config.values.map((value) => <button
         type="button"
         key={value}
-        aria-pressed={selectedValue === value}
+        aria-pressed={value === "Custom" ? custom : selectedValue === value}
         onClick={() => replaceTableAxisPrimitive(axis, value)}
-      >{value}</button>)}</div>
+      title={TABLE_HELP[axis]?.[value]}>{value}</button>)}</div>
+      {custom && <label>Custom {config.label.toLowerCase()}<input aria-label={`Custom ${config.label.toLowerCase()}`} value={selectedValue} maxLength={240} onChange={event=>{setTableDraft(current=>({...current,[axis]:event.target.value}));setIsDirty(true);}} placeholder={axis === "shape" ? "A star, crescent, branching arc…" : "Describe your intent…"}/></label>}
+      {TABLE_HELP[axis] && <p>{TABLE_HELP[axis]?.[selectedValue] ?? TABLE_HELP[axis]?.["Custom"]}</p>}
       {pinned ? <div className="v12-table-pin" role="status">
         <span><b>{pinned.slot.primitive.name}</b>{pinned.slot.quantity > 1 ? ` ×${pinned.slot.quantity}` : ""} is also included in Pieces as a Primitive.</span>
         <button type="button" onClick={() => removeTableAxisPrimitive(axis)}>Keep declaration only</button>
-      </div> : <small>Selection stays in the spoken intent. A matching purchased primitive is pinned when one applies.</small>}
+      </div> : <small>Optional spoken intent. This choice does not purchase a primitive; negotiate its scale and Strain in play.</small>}
     </section>;
   };
 
@@ -1079,10 +1032,13 @@ export function CapabilityForm({
 
         </AuthorChapter>
         <AuthorChapter id="table" title="At the table">
-      <div className="v12-table-builder grid gap-2 md:grid-cols-2">
+      <RollResolutionEditor value={resolution} onChange={value=>{setResolution(value);setIsDirty(true);}}/>
+      <label className="v12-table-optional"><input type="checkbox" checked={includeTable} onChange={event=>{setIncludeTable(event.target.checked);setIsDirty(true);}}/> Add scaling options</label>
+      <p>Optional examples, not the capability’s core rules. Shape, targets, size, placement, duration, and timing need no extra primitive. Range and output dice use purchased pieces. Negotiate greater intent and its Strain before rolling.</p>
+      <div hidden={!includeTable} className="v12-table-builder grid gap-2 md:grid-cols-2">
         {(Object.keys(TABLE_AXIS_OPTIONS) as TableAxisKey[]).map(renderTableAxis)}
-        <section className="v12-table-axis"><h3>Range</h3><div>{["Touch", "Close", "Near", "Far", "Very Far", "Extreme"].map(value=><button type="button" key={value} aria-pressed={selectedRange===value} onClick={()=>chooseTableRange(value)}>{value}</button>)}</div>{rangeSlot ? <div className="v12-table-pin" role="status"><span><b>{rangeSlot.primitive.name}</b> is also included in Pieces as a Primitive.</span><button type="button" onClick={() => removeSlot(slots.indexOf(rangeSlot))}>Keep declaration only</button></div> : <small>Touch is the default declaration. Choosing another range pins or replaces its primitive in Pieces.</small>}</section>
-        <section className="v12-table-axis"><h3>Output die</h3><div>{["None", "d4", "d6", "d8", "d10", "d12", "d20"].map(value=><button type="button" key={value} aria-pressed={selectedOutput===value} onClick={()=>chooseTableOutput(value)}>{value}</button>)}</div>{outputSlot ? <div className="v12-table-pin" role="status"><span><b>{outputSlot.primitive.name}</b> is also included in Pieces as a Primitive.</span><button type="button" onClick={() => removeSlot(slots.indexOf(outputSlot))}>Keep declaration only</button></div> : <small>Choosing a die pins or replaces its primitive in Pieces.</small>}</section>
+        <section className="v12-table-axis"><h3>Range</h3><div>{["Touch", "Close", "Near", "Far", "Very Far", "Extreme"].map(value=><button type="button" key={value} aria-pressed={selectedRange===value} title={TABLE_HELP["range"]?.[value]} onClick={()=>chooseTableRange(value)}>{value}</button>)}</div><p>{TABLE_HELP["range"]?.[selectedRange]}</p>{rangeSlot ? <div className="v12-table-pin" role="status"><span><b>{rangeSlot.primitive.name}</b> is also included in Pieces as a Primitive.</span><button type="button" onClick={() => chooseTableRange("Touch")}>Remove range access</button></div> : <small>Touch is the default declaration. Choosing another range pins or replaces its primitive in Pieces.</small>}</section>
+        <section className="v12-table-axis"><h3>Output die</h3><div>{["None", "d4", "d6", "d8", "d10", "d12", "d20"].map(value=><button type="button" key={value} aria-pressed={selectedOutput===value} onClick={()=>chooseTableOutput(value)}>{value}</button>)}</div>{outputSlot ? <div className="v12-table-pin" role="status"><span><b>{outputSlot.primitive.name}</b> is also included in Pieces as a Primitive.</span><button type="button" onClick={() => chooseTableOutput("None")}>Remove output die</button></div> : <small>Choosing a die pins or replaces its primitive in Pieces.</small>}</section>
         <div className="v12-table-readout">
           <div className="v12-table-intent"><p className="v12-kicker">Spoken intent</p><h3>{form.name || "Untitled capability"}</h3><p>{tableAxisValue("casting")} · {tableAxisValue("target")} · {tableAxisValue("shape")} · {tableAxisValue("size")} · {tableAxisValue("placement")} · {selectedRange} · {selectedOutput} · {tableAxisValue("duration")}</p></div>
           <dl className="v12-table-metrics"><div><dt>Base BU</dt><dd>{previewBu}</dd></div><div><dt>Scaled CV</dt><dd>{previewBu}</dd></div><div><dt>Strain</dt><dd>DM</dd></div></dl>

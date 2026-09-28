@@ -42,3 +42,25 @@ export function registerDraftIdentities(before: WorkspaceGraph, after: Workspace
       aliases.set(virtualIdentity(operationId, `instance:${index}`), edge.instanceId!);
   });
 }
+
+/** Resolve browser placeholders exclusively from this operation's validated result. */
+export function registerLocalBindings(bindings: import('./local-draft').LocalBindings | undefined, before: WorkspaceGraph, after: WorkspaceGraph, result: Record<string,unknown>, aliases: Map<string,string>) {
+  if (!bindings) return;
+  const replacements=(result['replacements']??{}) as Record<string,string>;
+  const bind=(local:string,actual:string)=>{ if(local===actual)return; if(before.nodes.some(n=>n.id===local)||before.edges.some(e=>e.instanceId===local))throw new Error('Invalid browser draft identity.'); aliases.set(local,actual); };
+  for(const ref of bindings.nodes) {
+    const source=ref.source ? mapDraftIdentities(ref.source,aliases) : undefined;
+    const actualKey=source ? replacements[source]??source : result['savedKey'];
+    const node=after.nodes.find(n=>n.key===actualKey);
+    if(!node || node.kind!==ref.key.split(':')[0]) throw new Error('Could not reconcile this local piece. Keep the browser draft and retry review.');
+    bind(ref.key.slice(ref.key.indexOf(':')+1),node.id);
+  }
+  const used=new Set<string>();
+  for(const ref of bindings.instances) {
+    const child=mapDraftIdentities(ref.child,aliases);
+    const candidates=after.edges.filter(e=>!e.parent&&e.child===child&&e.category===ref.category&&e.isMirrored===ref.isMirrored&&e.instanceId&&!used.has(e.instanceId));
+    const edge=candidates.find(e=>!before.edges.some(old=>old.instanceId===e.instanceId))??candidates[0];
+    if(!edge?.instanceId)throw new Error('Could not reconcile this local placement. Keep the browser draft and retry review.');
+    bind(ref.id,edge.instanceId);used.add(edge.instanceId);
+  }
+}

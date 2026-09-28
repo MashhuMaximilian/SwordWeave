@@ -1,4 +1,5 @@
 "use client";
+import { readJsonResponse } from "@/lib/http/read-json-response";
 
 import { useEffect, useState } from "react";
 import { ChevronDown, Plus } from "lucide-react";
@@ -59,7 +60,7 @@ export function BuildLibrary({ kinds, destination, heritageCategory, onAdd, onAd
       try {
         const params = new URLSearchParams({ targetType: effectiveType, q: query, origin, tier, category: effectiveCategory, limit: "30", offset: String(offset), sort });
         const response = await fetch(`/api/library?${params}`, { signal: controller.signal });
-        const value = await response.json();
+        const value = await readJsonResponse(response);
         if (!response.ok) throw new Error(value.error ?? "Library unavailable.");
         if (controller.signal.aborted) return;
         setResult((previous) => {
@@ -103,7 +104,7 @@ export function BuildLibrary({ kinds, destination, heritageCategory, onAdd, onAd
       <div className="v12-source-results-head"><p className="v12-kicker">Exact entries</p><span>{result.key === filterKey ? result.total : "…"}</span></div>
       {error && <p role="alert">{error}</p>}
       <div aria-busy={pending}>
-        {rows.length > 0 && <LibraryTable surface="atelier" items={rows} view="LIST" engagement={EMPTY_ENGAGEMENT} currentUserInternalId={null} selectedKey={selectedKey} onSelect={(item) => { setSelectedKey(item.id); onPreview(item); }} renderActions={(item) => <>
+        {rows.length > 0 && <LibraryTable compact surface="atelier" items={rows} view="LIST" engagement={EMPTY_ENGAGEMENT} currentUserInternalId={null} selectedKey={selectedKey} onSelect={(item) => { setSelectedKey(item.id); onPreview(item); }} renderActions={(item) => <>
           <button type="button" className="v12-metal-button" disabled={disabled || pending} onClick={() => onAdd(`${previewKind(item.targetType)}:${item.targetId}`, item.name)} title={`Add to ${destination}`} aria-label={`Add ${item.name} to ${destination}`}><Plus size={14}/> Add</button>
           {onAddFocused && <button type="button" className="v12-metal-button" disabled={disabled || pending} onClick={() => onAddFocused(`${previewKind(item.targetType)}:${item.targetId}`, item.name)} title="Add and open Build & Preview" aria-label={`Add ${item.name} in Build & Preview`}><FabThemeIcon iconKey="lorc/anvil-impact" dark={dark}/> Add in Build & Preview</button>}
         </>} />}

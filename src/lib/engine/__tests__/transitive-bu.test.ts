@@ -216,3 +216,8 @@ describe("computeTransitiveBu — heritage worked example", () => {
     expect(out.transitiveCount).toBe(16);
   });
 });
+it("includes unique local primitive identities only when requested by an authoring preview",()=>{
+ const input={primitiveLinks:[{primitiveId:-1,primitive:{id:-1,buCost:4}},{primitiveId:-2,primitive:{id:-2,buCost:8}},{primitiveId:-1,primitive:{id:-1,buCost:4}}]};
+ expect(computeTransitiveBu(input).transitiveBu).toBe(0);
+ expect(computeTransitiveBu(input,{allowTemporaryIds:true})).toEqual({transitiveBu:12,transitiveCount:2,primitiveIds:[-1,-2]});
+});

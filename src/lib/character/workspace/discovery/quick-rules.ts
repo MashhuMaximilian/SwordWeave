@@ -1,3 +1,5 @@
+import { conditionToBadges } from "@/lib/primitives/condition";
+import type { ModifierCondition } from "@/types/condition";
 import { CANONICAL_EXPRESSIONS, MARKET_TEMPLATES } from "@/lib/primitives/canonical-market";
 import { CONDITION_PRESETS, type ConditionPresetKey } from "@/types/condition";
 import type { HardModifier } from "@/types/swordweave";
@@ -119,4 +121,12 @@ export function drawQuickRule(options: QuickRuleSeed[], seen: string[], currentK
   const family = families[Math.min(families.length - 1, Math.floor(random() * families.length))];
   const familyPool = pool.filter(option => option.familyKey === family);
   return familyPool[Math.min(familyPool.length - 1, Math.floor(random() * familyPool.length))];
+}
+
+/** Apply the same authored condition format as the shared mechanical-rule builder. */
+export function withAuthoredRuleCondition(seed:QuickRuleSeed,condition:ModifierCondition|null):QuickRuleSeed {
+ if(!condition || !seed.hardModifiers.length || seed.hardModifiers.some(modifier=>modifier["condition"]))return seed;
+ const label=conditionToBadges(condition).map(badge=>badge.label).join(" ");
+ const hardModifiers=seed.hardModifiers.map(modifier=>({...structuredClone(modifier),condition:structuredClone(condition)}));
+ return {...seed,key:`${seed.key}:when:${JSON.stringify(condition)}`,hardModifiers,mechanicalOutputText:mechanicalDescriptionFromModifiers(hardModifiers as unknown as HardModifier[]),narrativeRule:`${seed.narrativeRule}\n\nApplies when ${label}. Resolve this condition at the table; its authored BU price is unchanged.`};
 }

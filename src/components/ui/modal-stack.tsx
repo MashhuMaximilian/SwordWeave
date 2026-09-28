@@ -44,6 +44,8 @@ export interface ModalEntry<T = unknown> {
   content: ReactNode;
   /** Payload — passed to `content` via a stable render prop. */
   payload?: T;
+  /** Previews opened above a drawer must escape a page-local preview scope. */
+  global?: boolean;
 }
 
 interface ModalStackState {
@@ -118,6 +120,7 @@ export function ModalStackHost({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   const push = useCallback(<T,>(entry: ModalEntry<T>): boolean => {
+    entry = { ...entry, global: entry.global || Boolean(document.querySelector('.v12-build-preview-modal[aria-modal="true"]')) };
     let pushed = false;
     setStack((current) => {
       // A click can be observed by both a compact composition card and its
@@ -185,12 +188,35 @@ export function ModalStackScope() {
 }
 
 function ModalStackRenderer() {
-  const { stack, pop, scopeHost } = useModalStack();
+  const { stack, pop, scopeHost: registeredScope } = useModalStack();
+  const scopeHost = stack.some(entry => entry.global) ? null : registeredScope;
   const isDesktop = useSyncExternalStore(
     subscribeDesktopViewport,
     desktopViewportSnapshot,
     desktopViewportServerSnapshot,
   );
+
+  useEffect(() => {
+    if (!stack.length) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const top = document.querySelector<HTMLElement>('[data-modal-stack-top="true"]');
+    top?.querySelector<HTMLElement>('button')?.focus();
+    const keyboard = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        pop();
+      }
+      if (event.key !== "Tab") return;
+      const controls = Array.from(top?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]') ?? []).filter(el => el.getClientRects().length);
+      const first = controls[0], last = controls.at(-1);
+      if (!first) { event.preventDefault(); return; }
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener("keydown", keyboard, true);
+    return () => { document.removeEventListener("keydown", keyboard, true); previous?.focus(); };
+  }, [stack.length, pop]);
 
   if (stack.length === 0) return null;
 
@@ -208,7 +234,7 @@ function ModalStackRenderer() {
     <>
       {stack.map((entry, idx) => {
         const isTop = idx === stack.length - 1;
-        const z = 160 + idx;
+        const z = 200 + idx;
 
         if (isDesktop) {
           return (

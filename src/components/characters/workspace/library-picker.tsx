@@ -1,4 +1,5 @@
 "use client";
+import { readJsonResponse } from "@/lib/http/read-json-response";
 import { useEffect, useState } from "react";
 import { EntityPreview } from "@/components/preview/entity-preview";
 import { LibraryTable } from "@/components/library/library-table";
@@ -64,7 +65,7 @@ export function WorkspaceLibraryPicker({
         signal: abort.signal,
       })
         .then(async (response) => {
-          const value = await response.json();
+          const value = await readJsonResponse(response);
           if (!response.ok)
             throw new Error(value.error ?? "Library unavailable.");
           setItems(value.items ?? []);

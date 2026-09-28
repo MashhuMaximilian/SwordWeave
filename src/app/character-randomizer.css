@@ -1,0 +1,55 @@
+.procedural-randomizer { display:grid; gap:1rem; min-width:0; }
+.procedural-randomizer header h2 { margin:.35rem 0; color:var(--text-primary,#eee9df); }
+.procedural-randomizer p { margin:.4rem 0; color:var(--text-secondary,#bcbab3); }
+.procedural-randomizer-controls { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; padding:1rem; border:1px solid transparent; border-radius:10px; background:linear-gradient(120deg,#20272d,#080d12) padding-box,linear-gradient(125deg,#69512e,#f6dfa1 15%,#9b762c 30%,#a8b2b7 56%,#543b17 79%,#e7c778) border-box; }
+.procedural-randomizer-controls fieldset { grid-column:1/-1; border:0; padding:0; margin:0; }
+.procedural-randomizer-controls label { display:grid; align-content:start; gap:.4rem; font-weight:600; }
+.procedural-randomizer-controls input:not([type=checkbox]),.procedural-randomizer-controls select { width:100%; min-width:0; padding:.6rem .75rem; color:#eee9df; background:#080d12; border:1px solid #939b9e; border-radius:5px; }
+.procedural-randomizer small { display:block; font-size:.8rem; font-weight:400; color:#afaaa0; }
+.procedural-randomizer-controls .procedural-reuse { display:flex; align-items:flex-start; gap:.6rem; }
+.procedural-reuse input { accent-color:#d7b969; margin-top:.3rem; }
+.procedural-generate { justify-self:start; display:flex; align-items:center; gap:.5rem; }
+.procedural-results { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.75rem; }
+.procedural-results article { min-width:0; padding:1rem; }
+.procedural-result-heading { display:flex; align-items:flex-start; gap:.6rem; }
+.procedural-result-heading svg { color:#e5c77e; flex:none; }
+.procedural-result-heading h3 { margin:0; flex:1; }
+.procedural-result-heading strong { color:#edce83; white-space:nowrap; }
+.procedural-results ul { margin:.75rem 0; padding:0; list-style:none; }
+.procedural-results li { padding:.45rem 0; border-bottom:1px solid #d3b96c33; }
+.procedural-results [data-copy=mechanical] { color:#eeb184; font-weight:400; }
+.procedural-results button { display:flex; align-items:center; gap:.5rem; margin-top:.8rem; }
+.procedural-cost-note,.procedural-footnote { font-size:.85rem; }
+@media(max-width:760px) { .procedural-randomizer-controls,.procedural-results { grid-template-columns:1fr; } }
+/* The generator lives in a resizable workshop column, not a viewport-sized page. */
+.procedural-randomizer { container:procedural / inline-size; width:100%; padding:20px; box-sizing:border-box; overflow-wrap:anywhere; }
+.procedural-randomizer .discovery-kind-options { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+.procedural-randomizer .discovery-kind-options button,
+.procedural-randomizer .v12-metal-button { padding:9px 12px; min-height:38px; border-radius:5px; font:600 12px/1.4 var(--font-system); }
+.procedural-randomizer .discovery-kind-options button { border:1px solid transparent; color:var(--foreground); background:linear-gradient(135deg,var(--card),var(--secondary)) padding-box,var(--v12-silver-edge) border-box; }
+.procedural-randomizer .discovery-kind-options button[aria-pressed=true] { color:#14251f; background:linear-gradient(115deg,#ad762c,#ffe8a0 35%,#bf954b 64%,#f5d994) padding-box,var(--v12-brass-edge) border-box; box-shadow:inset 0 1px #fff2ca; }
+.procedural-randomizer-controls legend,.procedural-randomizer-controls label { font:600 12px/1.5 var(--font-system); }
+.procedural-results h3 { font:500 18px/1.3 var(--font-subtitle); }
+.procedural-results [data-copy=mechanical] { font:400 16px/1.4 var(--font-body); }
+.procedural-randomizer button:focus-visible,.procedural-randomizer input:focus-visible,.procedural-randomizer select:focus-visible { outline:2px solid #64c7c1; outline-offset:3px; }
+@container procedural (max-width:560px) { .procedural-randomizer-controls,.procedural-results { grid-template-columns:minmax(0,1fr); } }
+.procedural-options {border:1px solid #88703c;border-radius:8px;padding:12px;background:linear-gradient(120deg,#20282d,#0a1015)}
+.procedural-options summary {cursor:pointer;color:#efd395;font-weight:600;padding:6px}
+.procedural-options[open] summary {margin-bottom:12px}
+.procedural-card-actions {display:flex;flex-wrap:wrap;gap:8px}
+.procedural-card-actions button {border:1px solid #79898c;padding:6px 9px;border-radius:5px;color:#e8d193;background:#10181d}
+.procedural-card-actions button[aria-pressed=true] {background:linear-gradient(115deg,#215f60,#9cdbcb,#286665);color:#071914}
+.v12-table-builder[hidden] {display:none}
+.v12-table-optional {display:flex;align-items:center;gap:10px;padding:12px;color:#ebce89}
+.v12-table-axis input {width:100%;box-sizing:border-box;padding:10px;margin-top:8px;background:#0a1016;color:#eee;border:1px solid #b49c60;border-radius:5px}
+.generated-idea-preview h4{font-size:.8rem;color:#e7c985;margin:.7rem 0 .3rem}.generated-idea-preview p{font-size:.85rem;line-height:1.4;margin:.25rem 0}.generated-scaling{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.3rem;margin:0}.generated-scaling>div{padding:.35rem .5rem;border:1px solid #5e777c;border-radius:6px;background:#0b171d}.generated-scaling dt{font-size:.65rem;color:#b3c0c3}.generated-scaling dd{margin:0;font-size:.85rem}.procedural-results .generated-mechanics{padding:0;margin:0;list-style:none}.procedural-results .generated-mechanics li{display:flex;align-items:start;gap:.5rem;justify-content:space-between;padding:.45rem 0;font-size:.88rem;line-height:1.3}.generated-mechanics small{white-space:nowrap;font-size:.7rem}.procedural-edit-actions{display:grid;grid-template-columns:1fr 1fr;gap:.4rem}.procedural-card-actions{gap:.3rem!important}.procedural-card-actions button{padding:.35rem .45rem!important;font-size:.75rem!important}.generated-resolution{padding:.45rem .65rem;border-left:2px solid #70c9c2;background:#25454533}
+
+/* A rule description can be much longer than its card's available width. */
+.procedural-results > article,.generated-idea-preview,.generated-mechanics li,.generated-mechanics li > span { min-width:0; max-width:100%; }
+.procedural-results .generated-mechanics li { display:grid; grid-template-columns:minmax(0,1fr) auto; }
+.procedural-results .generated-mechanics li > span { overflow-wrap:anywhere; }
+.procedural-results .generated-mechanics li > span small { display:block; white-space:normal; overflow-wrap:anywhere; }
+.procedural-results .generated-mechanics li > small { white-space:normal; text-align:right; max-width:7rem; }
+.procedural-result-heading h3,.generated-reference-slot strong,.generated-scaling dd { min-width:0; overflow-wrap:anywhere; }
+
+.generated-mechanics .generated-piece-kind { color: var(--v12-accent, #e6ca83); font-weight: 700; }

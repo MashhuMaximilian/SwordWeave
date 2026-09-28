@@ -67,7 +67,7 @@ export function ItemFormPreview({form, primitiveSlots, capabilitySlots, effectSl
 }) {
   const allSlots = [...primitiveSlots, ...effectSlots.flatMap(effect=>effect.primitiveLinks ?? []), ...capabilitySlots.flatMap(capability=>[...(capability.primitiveLinks ?? []), ...(capability.effects ?? []).flatMap(effect=>effect.primitiveLinks ?? [])])];
   const completeCost = effectSlots.every(effect=>effect.primitiveLinks !== undefined) && capabilitySlots.every(capability=>capability.primitiveLinks !== undefined && capability.effects !== undefined && capability.effects.every(effect=>effect.primitiveLinks !== undefined));
-  const {transitiveBu} = computeTransitiveBu({primitiveLinks:allSlots});
+  const {transitiveBu} = computeTransitiveBu({primitiveLinks:allSlots}, {allowTemporaryIds:true});
   const extraBu = Math.max(0,Number(form.buCost)||0);
   const quantity = Math.max(1,Number(form.quantity)||1);
   const size = (Object.hasOwn(SIZE_LOAD,form.size) ? form.size : "SMALL") as CharacterSize;

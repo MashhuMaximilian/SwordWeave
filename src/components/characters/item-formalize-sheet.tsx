@@ -1,4 +1,5 @@
 "use client";
+import { EditableNumberInput } from "@/components/ui/editable-number-input";
 
 /**
  * Phase 9.1 (Mashu 2026-09-06): item formalize sheet.
@@ -369,7 +370,7 @@ function NumberField({
       <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </span>
-      <input
+      <EditableNumberInput
         type="number"
         min={min}
         max={max}

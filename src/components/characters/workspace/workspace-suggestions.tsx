@@ -1,7 +1,8 @@
 "use client";
+import { readJsonResponse } from "@/lib/http/read-json-response";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { BookmarkPlus, Check, Eye, Shuffle, X, WandSparkles } from "lucide-react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { ArrowDown, ArrowUp, BookmarkPlus, Check, Eye, Shuffle, X, WandSparkles } from "lucide-react";
 import { DISCOVERY_INTENTS, rankDiscoveryCandidates, type DiscoveryCandidate, drawDiscoverySuggestions, incrementalDiscoveryCost, discoverySetCost, type DiscoveryIntent, type DiscoverySuggestion } from "@/lib/character/workspace/discovery/matching";
 import { supplyPaths, type EntityKey, type EntityKind, type WorkspaceGraph } from "@/lib/character/workspace/model";
 
@@ -40,6 +41,13 @@ interface WorkspaceSuggestionsProps {
 }
 
 export function WorkspaceSuggestions({ characterId, destinationLabel, heritageCategory, kinds = ["primitive"], budget, debtAvailable = 0, excludedKeys = [], graph, destinationIsItem = false, replaceTarget, onReplace, onAddSet, onAdd, onPreview, onBuildOwn, onBuildRule }: WorkspaceSuggestionsProps) {
+  const comparisonId = useId();
+  const comparisonRef = useRef<HTMLElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+  function jumpTo(element: HTMLElement | null) {
+    element?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" });
+    element?.focus({ preventScroll: true });
+  }
   const [mode, setMode] = useState<"library" | "rule">("library");
   const [typeFilter, setTypeFilter] = useState("all");
   const [origin, setOrigin] = useState<"all" | "system" | "community">("all");
@@ -105,7 +113,7 @@ export function WorkspaceSuggestions({ characterId, destinationLabel, heritageCa
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ catalogOnly: true, budget: 0, kinds: kindsKey.split(",") }),
         }).then(async response => {
-          const result = await response.json();
+          const result = await readJsonResponse(response);
           if (!response.ok) throw new Error(result.error || "Could not load suggestions.");
           return result.catalog as DiscoveryCandidate[];
         }).catch(cause => { catalogCache.current.delete(catalogKey); throw cause; });
@@ -143,7 +151,7 @@ export function WorkspaceSuggestions({ characterId, destinationLabel, heritageCa
     const replacement = drawDiscoverySuggestions(pool, [...nextKept.map((candidate) => candidate.key), ...excludedSet, ...suggestions.filter((candidate) => candidate.key !== item.key).map((candidate) => candidate.key)], seen, suggestions.map((candidate) => candidate.key), Math.random, 1)[0];
     setSuggestions((current) => current.flatMap((candidate) => candidate.key !== item.key ? [candidate] : replacement ? [replacement] : []));
     if (replacement) setSeen((current) => [...new Set([...current, replacement.key])]);
-    setAnnouncement(`${item.name} kept for comparison. Nothing added to the character.`);
+    setAnnouncement(`${item.name} saved below. Use View saved comparisons to find it. Nothing added to the character.`);
   }
   async function add(item: DiscoverySuggestion) {
     setAdding(item.key); setError("");
@@ -212,15 +220,15 @@ export function WorkspaceSuggestions({ characterId, destinationLabel, heritageCa
     <p className="discovery-budget-summary">Searching up to <strong>{limit} BU</strong> · {cap} BU {intent === "weakness" ? "drawback allowance" : "available"}{allowanceNumber > cap ? ` (your ${allowanceNumber} BU request is above this allowance)` : ""}.</p>
     {cap === 0 && intent !== "weakness" && <p className="discovery-replacement-note">No unspent BU remains. Results can still include free rules and rules your character already owns. Remove a draft choice or increase the character’s agreed budget to explore paid options.</p>}
     <p className="text-xs text-muted-foreground">Search in your own words, such as “hard to hurt with spells.” Results use related words across names, descriptions, tags, and rules. Check each rule before adding it; similar wording does not guarantee the same effect. Tiers are not locked by level.</p>
-    <span className="sr-only" role="status" aria-live="polite">{announcement}</span>
+    <div className="discovery-comparison-bar"><span role="status" aria-live="polite">{announcement || "Save options to compare before adding them."}</span><button type="button" disabled={!kept.length} aria-controls={comparisonId} onClick={() => jumpTo(comparisonRef.current)}><BookmarkPlus size={14}/> View saved comparisons ({kept.length}) <ArrowDown size={14}/></button></div>
     {error && <div role="alert" className="text-sm text-red-300">{error} <button type="button" className="underline" onClick={() => setRetry((current) => current + 1)}>Retry</button></div>}
     {isLoading ? <p role="status" className="text-sm">Searching the complete compatible Library…</p> : <>
       <p className="text-xs text-muted-foreground">{pool.length} matching options · {catalogCount} Library entries checked</p>
-      <div className="grid gap-3">{visibleSuggestions.map((item) => card(item, false))}</div>
+      <div ref={suggestionsRef} tabIndex={-1} className="discovery-explore-list grid gap-3" aria-label="Current suggestions">{visibleSuggestions.map((item) => card(item, false))}</div>
       {!visibleSuggestions.length && <div className="rounded border border-border p-3 text-sm"><p>{pool.length ? "All matching choices are kept below. Remove one to explore it again, or change your search." : "No matching option fits this allowance. Try a broader idea, adjust the allowance, or build your own."}</p>{onBuildOwn && <button type="button" className="mt-2 text-amber-100 underline" onClick={onBuildOwn}>Build my own</button>}</div>}
       {visibleSuggestions.length > 0 && visibleSuggestions.length < 3 && <p className="text-xs text-muted-foreground">Only {visibleSuggestions.length} unkept matching {visibleSuggestions.length === 1 ? "option remains" : "options remain"}. Kept choices are never repeated here.</p>}
     </>}
-    {!!kept.length && <section className="space-y-2 border-t border-amber-200/30 pt-3" aria-label="Considered suggestions"><h4 className="text-sm font-semibold text-amber-100">Saved for comparison · {kept.length}/4</h4><p className="text-xs text-muted-foreground">Saved comparisons do not spend BU or change your character. Use Add to draft when you decide.</p><div className="grid gap-3">{kept.map((item) => card(item, true))}</div>{onAddSet && !replacing && selectedSet.length > 0 && <div className="discovery-set-summary"><span>{selectedSet.length} selected · estimated {setCost.cost} BU{setCost.credit > 0 ? ` · +${setCost.credit} drawback credit` : ""}</span>{!setFits && <p>This set exceeds your remaining budget or drawback allowance.</p>}<button type="button" disabled={selectedSet.length < 2 || !setFits || adding !== null} onClick={() => void addSet()}>{adding === "set" ? "Checking set…" : "Add selected together"}</button><small>Reviewed as one change. Shared rules are counted in the estimate; the full draft validates cost and compatibility.</small></div>}</section>}
+    {!!kept.length && <section ref={comparisonRef} id={comparisonId} tabIndex={-1} className="discovery-comparisons space-y-2 border-t border-amber-200/30 pt-3" aria-label="Considered suggestions"><header><h4 className="text-sm font-semibold text-amber-100">Saved for comparison · {kept.length}/4</h4><button type="button" onClick={() => jumpTo(suggestionsRef.current)}><ArrowUp size={14}/> Back to suggestions</button></header><p className="text-xs text-muted-foreground">Saved comparisons do not spend BU or change your character. Use Add to draft when you decide.</p><div className="grid gap-3">{kept.map((item) => card(item, true))}</div>{onAddSet && !replacing && selectedSet.length > 0 && <div className="discovery-set-summary"><span>{selectedSet.length} selected · estimated {setCost.cost} BU{setCost.credit > 0 ? ` · +${setCost.credit} drawback credit` : ""}</span>{!setFits && <p>This set exceeds your remaining budget or drawback allowance.</p>}<button type="button" disabled={selectedSet.length < 2 || !setFits || adding !== null} onClick={() => void addSet()}>{adding === "set" ? "Checking set…" : "Add selected together"}</button><small>Reviewed as one change. Shared rules are counted in the estimate; the full draft validates cost and compatibility.</small></div>}</section>}
     </>}
   </section>;
 }

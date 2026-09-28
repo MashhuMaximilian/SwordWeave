@@ -1,0 +1,13 @@
+"use client";
+import {useId} from "react";
+import {PRACTICE_ATTRIBUTE_MAP} from "@/lib/engine/practices";
+import type {RollMode,RollResolution} from "@/lib/capabilities/roll-resolution";
+export function RollResolutionEditor({value,onChange}:{value:RollResolution;onChange:(value:RollResolution)=>void}){
+ const id=useId();const update=(key:keyof RollResolution,text:string)=>onChange({...value,[key]:text});
+ const options=value.mode==="save"?["Physical save","Mental save","Magical save"]:value.mode==="practice"?Object.values(PRACTICE_ATTRIBUTE_MAP).flat():["Attack roll","Physical action roll","Mental action roll","Magical action roll","Initiative"];
+ return <section className="v12-roll-resolution"><h3>Who rolls?</h3><p>Describe how this capability or effect is resolved. This instruction does not buy a bonus, proficiency, or extra action.</p>
+ <label>Resolution<select value={value.mode} onChange={event=>onChange({...value,mode:event.target.value as RollMode,check:"",dc:""})}><option value="unspecified">Not specified yet</option><option value="action">I make an action roll</option><option value="save">Target makes a saving throw vs DC</option><option value="practice">Target makes a practice check vs DC</option><option value="opposed">We make opposed checks</option><option value="automatic">No roll · resolves as described</option></select></label>
+ {!["unspecified","automatic"].includes(value.mode) && <><label>{value.mode==="action"?"My roll":value.mode==="opposed"?"Our checks":"Target’s check"}<input aria-label="Resolution check" list={`${id}-checks`} value={value.check} maxLength={240} placeholder={value.mode==="opposed"?"My Influence vs their Insight":"Choose an example or type your own"} onChange={event=>update("check",event.target.value)}/><datalist id={`${id}-checks`}>{options.map(option=><option value={option} key={option}/>)}</datalist></label><label>{value.mode==="opposed"?"Opposition / tie rule":"Against which DC?"}<input aria-label="Resolution DC" list={`${id}-dc`} value={value.dc} maxLength={240} placeholder="My Mental DC, target’s defense, or an agreed DC…" onChange={event=>update("dc",event.target.value)}/><datalist id={`${id}-dc`}>{["My Physical DC","My Mental DC","My Magical DC","Target’s defense","DM sets the DC"].map(option=><option value={option} key={option}/>)}</datalist></label></>}
+ {value.mode!=="unspecified" && <label>What happens on success or failure?<textarea value={value.outcome} maxLength={2000} rows={3} onChange={event=>update("outcome",event.target.value)} placeholder="On a failed Mental save, the target… On success…"/></label>}
+ </section>;
+}

@@ -120,14 +120,14 @@ Use both the Atelier-like workspace and the existing **Build & Preview** modal, 
 | --- | --- |
 | Select an existing piece | Inspect it in the right preview; an explicit Edit action opens authoring in the center |
 | Build your own / Customize | Open the shared Atelier controls in the selected destination, with a visible Focus button |
-| FAB → Build & Preview while editing | Open the same selected piece, current form, draft values, and Build/Preview state in the existing modal |
+| FAB → Build & Preview while editing | Open the independent modal workbench; preserve the middle-column editor |
 | FAB → Build & Preview from Play | Resume this character's draft/last editing context; if none exists, show the character overview and an explicit Add action |
 | Close the modal | Return to the same selection, destination, search results, and scroll position; keep draft edits |
 | Inspect a nested rule | Follow a preview breadcrumb inside the current surface, with Back; do not pile up modals |
 
 On mobile, the same modal can expand to the available screen and provide Build / Find / Preview views. Picking a Library result returns to the invoking field or composition. Keep a visible destination and draft status; do not make the player navigate through three simultaneous narrow columns.
 
-Store form values, selected version/path, validation, and operation history above the inline/modal presentation. Only one authoring surface is active at a time; switching presentations must not reset uncontrolled form state or trigger duplicate effects/saves. Closing the modal is not Apply. Its main action is **Add to draft** or **Update draft**; **Apply changes** belongs to the character-wide review. For a collaborator, that final action is **Send proposed changes**.
+Store form values, selected version/path, validation, and operation history above the inline/modal presentation. The middle and modal workbenches have independent authoring sessions; opening or closing the modal must not reset either form or trigger duplicate effects/saves. Closing the modal is not Apply. Its main action is **Add to draft** or **Update draft**; **Apply changes** belongs to the character-wide review. For a collaborator, that final action is **Send proposed changes**.
 
 Existing integration is a starting point, not the desired contract: `global-controls.tsx` currently clicks DOM-selected bridge buttons or dispatches `sw-character-open-atelier`; that event can reset the workspace path and start a new primitive. Replace this with an explicit character-workspace controller carrying draft, selection, and destination. Reuse `build-preview-drawer.tsx` / `useDrawerSlot` as the presentation shell, with clear ownership of the active character's content. Do not retain the reset-to-new-primitive behavior or navigate to `/atelier` from the sheet.
 
@@ -383,3 +383,82 @@ Add an Info action opening a searchable, sectioned rules modal. This is a future
 Validation for this pass: 140 focused tests passed (the opt-in database integration suite was skipped; separate rollback-only database smokes covered add/apply/idempotent retry/undo). Bartholomew was verified in the roster and opened in the workshop. Tessy3's existing pending draft and bundles were preserved. Desktop composer width and 390px mobile layout were checked.
 
 Latency probe on Tessy3: three foundation operations in a rollback preview went from about 21.2s to 1.7–2.6s after graph reuse/batching. A structural addition over its 47-node graph still took roughly 9–10s against the remote database. Do not describe the workshop as fully offline or all edits as instant: the local journal protects interrupted saves, but composing authoritative graphs still requires server validation. A future dedicated client projection engine could provide immediate structural previews; it must preserve pinned versions, identity aliases, shared memberships, budget semantics and conflict handling.
+
+## 2026-09-28 — local working copy and procedural inspiration
+
+- Routine edits now project into a browser working copy. It is scoped to the signed-in author and character; storage-stamp checks prevent silently overwriting another tab. No definition or live character is saved by Add/Remove/Edit. Loading an uncached Library definition is a read-only request.
+- Review compares net supplied pieces and foundation fields, not the operation journal. A piece's rule, placement, and supply facets share one card. Canceled changes disappear. Private fork identities are paired with their original piece where it was replaced.
+- Opening Review checks a changed local draft automatically; **Check draft & numbers** also lets the user retry. This saves an account draft and runs the existing authoritative transactional preview. **Apply changes** is available only after that check and commits the live character. Local BU is an estimate; combat statistics wait for review. Existing permissions, pinned-version checks, concurrent-revision checks and debt limits remain server-enforced.
+- Local identities are bound only to entities and instances produced by validated server operations. Browser snapshots never directly overwrite the database. A stale browser copy remains recoverable rather than silently replacing a newer account draft.
+- Undo/redo uses local snapshots. After reloading, older local actions are replayed in the browser when possible; drafts authored by the earlier server-only implementation retain the legacy checked undo path.
+- Randomizer is a separate workshop tab. It creates priced mechanical recipes and active/passive capabilities, optionally reusing exact, unmirrored, non-item rules already supplied by the character. It uses no AI or Library search. Generated proposals remain unsaved until the builder is finished. New constituent rules and the capability are one undoable draft action.
+- Saved Library comparisons are a named section with a counted jump and return link. They spend no BU and do not enter the build until explicitly added.
+
+### September 28 — story cards and procedural composition
+
+Backstory review compares each changed field beside its own previous value; unchanged fields no longer produce walls of repeated text. Manifest description is a string in the existing backstory JSON, preserved by the shared parser/sanitizer and draft snapshots. The story tab also presents Lineage, Upbringing, Manifest, and slotted heritage descriptions. On-character entries use bordered cards with type/cost and explicit reuse actions.
+
+Randomizer now makes primitives, effects, capabilities, and heritage bundles. Additional controls and behaviors: (1) minimum new BU, (2) maximum new BU, (3) optional available-budget restriction for future planning, (4) minimum pieces, (5) maximum pieces, (6) active/passive/mixed capability intent, (7) physical/magical source, (8) domain absent/flavor/purchased, (9) verb absent/flavor/purchased, (10) optional range primitive, (11) optional output primitive, (12) optional play declarations, (13) custom shape inspiration, (14) theme/motif, (15) fixed or random situations, (16) one/three/five/eight results, (17) repeatable seeds, (18) individual rerolls, (19) keep-result locks, (20) saved ideas, (21) recent roll history, and (22) exact owned-rule reuse across compound kinds. Saved ideas/history are session-local to the open Randomizer; opening a result in the builder moves it into existing recoverable form editing. Generated compound pieces enter the character as one undo group when saved from the builder. This is bounded recipe composition, not arbitrary numeric pricing or AI semantic interpretation of a theme.
+
+Shared capability At the table: every non-range/non-output axis accepts custom text. Casting includes Reaction. Duration, timing, and range presets have explanations. Timing labels without canonical numeric units explicitly require table agreement rather than inventing a time rule. Play declarations never automatically attach paid primitives. Range/output selections retain their explicit purchased-piece behavior. Optional guidance is stored as a readable, round-trippable Markdown section in the existing capability narrative. Existing explicitly purchased duration/shape pieces are retained until deliberately removed.
+
+Validation: TypeScript passes. Relevant suites total 183 passing tests; 15 existing isolated-database tests remain skipped. Browser fixture exercised generated heritage handoff, result locks, saved ideas, mobile effect cards, and the actual shared CapabilityForm custom-shape/Reaction save-and-reload path. The latter retained exactly the original one primitive while restoring both declarations. These fixture checks do not substitute for signed-in database apply testing; no live character was modified. Localhost dev server remains running.
+
+### September 28 — generation range and authoring bug fixes
+
+Randomizer collects valid candidates before selecting ideas across their attainable cost range, instead of stopping at the first cheap matches. Prices still come from canonical recipes. Explicitly requested domain, verb, range, and output references must all fit the budget and piece limit; passive capabilities no longer silently omit requested references. Flavor domain/verb references appear in the dedicated slots and can be edited without buying access. Custom situations use the shared structured condition editor; access grants remain unconditional.
+
+The shared capability and effect forms now have a Who rolls? editor for actor action rolls, target saves, target practice checks, opposed checks, or no roll, with an editable DC and success/failure instructions. These round-trip through readable narrative sections and do not grant bonuses. Build & Preview includes a chooser for new pieces or existing character pieces, using the existing unfinished-form guard.
+
+Numeric fields in character editing, shared authoring, and the older workshop composers retain an empty typing buffer so a final digit can be deleted and replaced. Malformed/HTML API responses produce readable retry/session errors; compound forms retain unfinished data on save failure. The original reported malformed response was not reproduced, so its specific failing request remains unidentified.
+
+Validation: 177 relevant workspace, capabilities, and HTTP tests pass; 15 existing database-dependent tests remain skipped. TypeScript passes; focused lint has no errors (two existing effect dependency warnings). Browser fixtures exercise numeric deletion/replacement, custom condition access, capability and effect roll-resolution save/reopen, and the capability form's simulated HTML-error recovery path. No live character was changed during these checks.
+
+
+### September 28 — independent middle and modal workbenches
+
+Build & Preview now owns a second composer, with a separate recovery namespace, selection, incoming-piece channel, preview, and destination. The middle editor stays mounted. Library routing offers Add to middle, Replace middle, Add to modal, and Replace modal; replace operations ask before abandoning an unfinished form. Opening a library definition uses the read-only workspace resolver and does not add it to the draft until the form is saved. Adding into an open composite uses its scoped slot event channel. A middle piece can be saved to the draft and sent into a compatible modal composition in the same action. The modal can save new pieces into Lineage, Upbringing, Manifest, or Items as appropriate. Both contexts recover separately on refresh.
+
+Each generated proposal gets a fresh form recovery identity, preventing an older capability's slots from replacing the newly generated selection. Reference cards distinguish purchased/reused access from flavor. Randomizer includes the shared roll-resolution editor. Effects now preserve and edit the optional target, shape, size, placement, duration, and casting declarations as well as resolution. Local negative primitive identities contribute to authoring preview totals through an explicit preview-only option; persisted-entity BU calculations keep their existing validation.
+
+Validation: browser fixtures exercised two simultaneous forms, middle-to-modal primitive delivery, modal save into Lineage, and a four-piece generated capability with table declarations and a target Mental save against My Magical DC. All four primitives appeared and saved; the available budget fell by the expected 8 BU. Routine editing made no draft write request. These checks used mocked transport with actual components, not live character mutations.
+
+The drawer footer queries only its own mounted form for Save/Reset and never broadcasts a save to another editor. Browser checks saved an effect with a custom Star shape, Reaction timing, and an Awareness check using the modal footer while the middle form retained its unsaved name. Relevant workspace suites: 178 passing / 15 existing skips; the follow-up pricing/generator/guidance subset adds coverage for temporary-ID preview totals (32 passing tests). TypeScript and focused lint pass with existing warnings only.
+
+
+### September 28 — scaling correction and compact inspiration
+
+The previous full-table editor for effects is superseded: effects offer optional Who rolls? resolution only. Capability scaling remains optional, with a prominent gold/teal checkbox shared by Atelier and the sheet. Existing effect narrative guidance is preserved when loading/saving, but no scaling control is offered and new effect generation does not add scaling declarations.
+
+Capability generation counts only additional primitives against its min/max piece limits; the four separately selected reference slots still consume BU but are outside that count. Zero additional rules is allowed for a capability made only of references. Generated previews use a fixed two-column slot grid, compact scaling and resolution summaries, and list additional rules without repeating references. Resolution can be omitted, explicitly chosen, or randomized. Generated ideas can open in the middle or modal workbench independently.
+
+Modal replacement now focuses a prominent sticky discard confirmation. Browser fixture checks preserve the old primitive until confirmation, replace it with a capability after confirmation, and open a generated capability in the modal while the middle stays on Randomizer. Workspace loading uses a themed skeleton with loading/restoration text, retry on failure, and a return action. No live character data was edited during validation.
+
+
+### Randomizer composition and budget follow-up (2026-09-28)
+
+Composite generation loads the complete authorized discovery catalog once, then rolls locally. Additional primitive source follows the reuse checkbox: supplied non-item, non-mirrored character primitives when enabled, full Library otherwise. Effects/capabilities can be included according to containment rules; items are now supported. Each direct child counts once toward additional-piece limits, excluding capability reference slots. Impossible exact sampled counts are rejected rather than silently truncated. Budget sums unique primitive leaves across all children and reference slots, excludes owned leaves for non-item composites, and displays definition cost separately from budget used. Nested entities retain their existing rules/conditions. Opening either editor hydrates every selected child and nested graph link; generated item defaults to a common small trinket. Scaling checkbox is now “Add scaling options”; Library Add sits under price.
+
+Validation: generator regressions cover complete catalog entries without rule seeds, exact piece counts, nested deduplication, owned costs, allowed containment and items. Browser fixture exercised item → modal with nested capability; no live character writes.
+
+
+### Review responsiveness and nested preview follow-up (2026-09-28)
+
+Opening Review no longer silently starts a long server calculation. Check is explicit, and Save & return to play checks an unchecked draft before applying. Keep editing/close cancels the pending check, preventing it from holding editing controls disabled or installing a late preview. Review errors render inside the modal. Successful apply uses its returned graph and sheet immediately instead of awaiting redundant reloads, then switches to play. Validation remains server-side.
+
+Nested editor catalogs and entity previews reconstruct full graph links; item live previews include effects inside capabilities, and heritage state callbacks retain capability contents instead of emitting name-only slots. Generated sessions retain their source graph independently of the other workbench. Long generated descriptions wrap inside card columns. Browser fixture checks: cancel delayed validation, immediately stage another edit, apply once; long nested descriptions fit a 440px card.
+
+
+### Manual imports and long draft replay (2026-09-28)
+
+Manual composer additions now fetch the authorized workspace subtree and retain its nodes and edges before delivering the slot event. The prior single-row fetch omitted graph edges, causing nested capability/effect contents to disappear when catalogs were reconstructed. Browser QA manually added a capability → effect → primitive to a heritage and verified both Pieces and preview show all levels and 4 BU.
+
+The reported description-only review had 36 historical operations. Read-only graph/sheet timings were under one second; rollback-only full replay took 79.2 seconds. Conservative replay compaction skips isolated root primitive or capability add/remove pairs, never pre-existing memberships, mismatched instances, duplicate unresolved additions, or dependencies crossing a container edit. The saved journal remains intact. Final replay executed 8 operations in 13.5 seconds and retained the original final memberships; both diagnostics rolled back. Client review deadline now allows 180 seconds with cancellation, rather than aborting valid replay at 30 seconds.
+
+### 2026-09-28 — preview navigation finishing pass
+
+- Character workspace entity titles and Preview actions open the shared preview stack; Open composition remains a separate middle-column navigation action.
+- Composition-card preview events now resolve against the current workspace graph (including generated drafts), falling back to a fetched record. Local nested previews preserve graph data instead of fetching unsaved IDs.
+- Shared previews sit above Build & Preview, escape Atelier's local scope when launched over that drawer, and handle Escape/focus without closing the underlying builder or workspace surface.
+- Renamed Restore benefit to Undo mirror; highlighted randomizer additional-piece entity kinds with bold gold text.
+- Checked real components in a mocked browser fixture: capability → primitive stacked previews, one-layer Escape, and drawer preservation. Typecheck and focused lint passed (existing image lint warning); composition/handoff regression tests run separately. No live character save or deployment performed.

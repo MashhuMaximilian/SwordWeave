@@ -636,7 +636,7 @@ function ModifierCards({
   });
 
   if (cards.length === 0) {
-    const vectorLabel = row.mirrorVector.replaceAll("_", " ").toLowerCase();
+    const vectorLabel = (row.mirrorVector ?? "NONE").replaceAll("_", " ").toLowerCase();
     return (
       <Section heading="Behavior">
         <div className="v12-behavior-empty">
@@ -774,6 +774,10 @@ export function EntityPreview({
     // the current preview mounted beneath the child in Character, Library and
     // the scoped Atelier panel. The callback remains the fallback for surfaces
     // rendered outside ModalStackHost.
+    if (resolvedCallbacks.preferLocalSubLinks && resolvedCallbacks.onSubLinkClick) {
+      resolvedCallbacks.onSubLinkClick(link);
+      return;
+    }
     if (stack.canPush) {
       stack.push({
         key: `sublink:${link.targetType}:${link.targetId}`,
@@ -1633,7 +1637,7 @@ export function FetchedEntityPreview({ targetType, targetId, owner }: { targetTy
   const key = `${targetType}:${targetId}`;
   useEffect(() => {
     const controller = new AbortController();
-    const kind = targetType.endsWith("_TEMPLATE") || ["LINEAGE", "UPBRINGING", "MANIFEST"].includes(targetType) ? "heritage" : targetType.toLowerCase();
+    const kind = targetType.endsWith("_TEMPLATE") || targetType.startsWith("TEMPLATE_") || ["LINEAGE", "UPBRINGING", "MANIFEST"].includes(targetType) ? "heritage" : targetType.toLowerCase();
     const endpoint = ({ primitive: "primitives", effect: "effects", capability: "capabilities", heritage: "heritage", item: "items" } as Record<string, string>)[kind];
     if (!endpoint) return;
     Promise.all([

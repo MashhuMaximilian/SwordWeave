@@ -1,4 +1,7 @@
 "use client";
+import { readJsonResponse } from "@/lib/http/read-json-response";
+import { EditableNumberInput } from "@/components/ui/editable-number-input";
+import { MODIFIER_RULE_FORMATS, modifierRuleFormatPatch, identifyModifierRuleFormat } from "@/lib/primitives/rule-formats";
 import { describePrimitiveDraft } from "@/lib/primitives/describe-draft";
 
 // PrimitiveForm: controlled form-only composer.
@@ -1317,7 +1320,7 @@ export function PrimitiveForm({
             hardModifiers: activeHardModifiers,
           }),
         });
-        payload = await response.json();
+        payload = await readJsonResponse(response);
       } catch (err) {
         const m = err instanceof Error ? err.message : "Network error.";
         setMessage(m);
@@ -1576,7 +1579,7 @@ export function PrimitiveForm({
           </label>
           <label className="block text-xs font-medium">
             Cost (BU)
-            <input
+            <EditableNumberInput
               className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none ring-ring focus:ring-2"
               value={form.buCost}
               onChange={(event) => updateForm("buCost", event.target.value)}
@@ -1667,7 +1670,7 @@ export function PrimitiveForm({
 
       <label className="v12-field-market text-sm font-medium">
         Exact BU
-        <input
+        <EditableNumberInput
           className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
           value={form.buCost}
           onChange={(event) => updateForm("buCost", event.target.value)}
@@ -1722,46 +1725,22 @@ export function PrimitiveForm({
               defines a construction permission. Otherwise its verbose
               description is the complete player-facing explanation.
         </p>
-        <details className="v12-rule-starters" open={!ruleKind || undefined}>
-          <summary>Start with a common rule</summary>
-          <p>Choose an example, then change its subject, value, recipient, or condition. These examples set the mechanic; choose the appropriate BU cost when you finish.</p>
-          <div className="v12-rule-starter-grid">
-            {RULE_STARTERS.map((starter) => (
-              <button key={starter.id} type="button" onClick={() => {
-                setModifiers([{ ...blankModifier, ...ruleStarterPatch(starter), id: `modifier-${modifierCounter}` }]);
-                setModifierCounter((value) => value + 1);
-                setRuleKind("MODIFIER");
-                setIsDirty(true);
-              }}>
-                <b>{starter.label}</b><span>{starter.example}</span>
-              </button>
-            ))}
-          </div>
-        </details>
             <div
               className="v12-rule-kind-picker"
               aria-label="Mechanical rule kind"
             >
           <span className="v12-rule-kind-label">Rule format</span>
-              <button
-                type="button"
-                aria-pressed={ruleKind === "MODIFIER"}
-                onClick={() => {
-                  if (!modifiers[0])
-                    setModifiers([
-                      {
-                        ...blankModifier,
-                        id: `modifier-${modifierCounter}`,
-                        tokens: [...blankModifier.tokens],
-                        targetValues: [],
-                      },
-                    ]);
-                  setRuleKind("MODIFIER");
-                  setIsDirty(true);
-                }}
-              >
-                Value or runtime change
-              </button>
+              {MODIFIER_RULE_FORMATS.map((format) => (
+                <button key={format.key} type="button" title={format.help}
+                  aria-pressed={ruleKind === "MODIFIER" && identifyModifierRuleFormat(modifiers[0]) === format.key}
+                  onClick={() => {
+                    setModifiers([{ ...blankModifier, ...modifiers[0], ...modifierRuleFormatPatch(format.key), id: modifiers[0]?.id ?? `modifier-${modifierCounter}` }]);
+                    if (!modifiers[0]) setModifierCounter((value) => value + 1);
+                    setRuleKind("MODIFIER"); setIsDirty(true);
+                  }}>
+                  {format.label}
+                </button>
+              ))}
               {compositionOptions.map((option) => (
                 <button
                   key={option.value}
@@ -1783,6 +1762,22 @@ export function PrimitiveForm({
                 </button>
               ))}
         </div>
+        <details className="v12-rule-starters">
+          <summary>More examples</summary>
+          <p>Choose an example, then change its subject, value, recipient, or condition. These examples set the mechanic; choose the appropriate BU cost when you finish.</p>
+          <div className="v12-rule-starter-grid">
+            {RULE_STARTERS.map((starter) => (
+              <button key={starter.id} type="button" onClick={() => {
+                setModifiers([{ ...blankModifier, ...ruleStarterPatch(starter), id: `modifier-${modifierCounter}` }]);
+                setModifierCounter((value) => value + 1);
+                setRuleKind("MODIFIER");
+                setIsDirty(true);
+              }}>
+                <b>{starter.label}</b><span>{starter.example}</span>
+              </button>
+            ))}
+          </div>
+        </details>
         {ruleKind && ruleKind !== "MODIFIER" ? (
               <div className="v12-composition-author">
                 <div className="v12-composition-heading">

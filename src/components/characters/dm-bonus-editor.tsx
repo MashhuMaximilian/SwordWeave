@@ -1,4 +1,5 @@
 "use client";
+import { EditableNumberInput } from "@/components/ui/editable-number-input";
 
 /**
  * DmBonusEditor — Phase 8.2 batch 5
@@ -161,7 +162,7 @@ export function DmBonusEditor({
       // Click-away handler on the wrapper.
       onClick={(e) => e.stopPropagation()}
     >
-      <input
+      <EditableNumberInput
         ref={inputRef}
         type="number"
         min={0}

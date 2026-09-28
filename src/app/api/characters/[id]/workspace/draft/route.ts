@@ -3,7 +3,7 @@ import { readWorkspace } from "@/lib/character/workspace/read";
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getWorkspaceDraft, saveWorkspaceDraft, previewWorkspaceDraft, applyWorkspaceDraft, discardWorkspaceDraft, undoWorkspaceDraft } from "@/lib/character/workspace/drafts";
+import { workspaceBuildFingerprint, getWorkspaceDraft, saveWorkspaceDraft, previewWorkspaceDraft, applyWorkspaceDraft, discardWorkspaceDraft, undoWorkspaceDraft } from "@/lib/character/workspace/drafts";
 import { CharacterAccessDenied } from "@/lib/character/can-resolve-character";
 import { WorkspaceConflict } from "@/lib/character/workspace/commands";
 import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
@@ -19,7 +19,11 @@ export async function GET(_request: Request, { params }: Context) {
     const draft = await getWorkspaceDraft(id, userId);
     const graph = await readWorkspace(id);
     const sheet = await readDraftSheet(id, graph);
-    return NextResponse.json({ draft, sheet, graph, authorId: userId });
+    const { db } = await import("@/db/client");
+    const { characters } = await import("@/db/schema");
+    const { eq } = await import("drizzle-orm");
+    const [foundation] = await db.select().from(characters).where(eq(characters.id,id));
+    return NextResponse.json({ draft, sheet, graph, foundation, baseHash: workspaceBuildFingerprint(graph,foundation!), authorId: userId });
   } catch (error) { return failure(error); }
 }
 export async function PUT(request: Request, { params }: Context) {

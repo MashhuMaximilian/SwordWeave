@@ -1,4 +1,5 @@
 "use client";
+import { readJsonResponse } from "@/lib/http/read-json-response";
 import { RecipeComposition, RecipeEntityIdentity, recipeCompositionBu, type RecipePrimitiveLink, type RecipeEffectLink } from "./recipe-composition";
 import { RecipePrimitiveIdentity } from "./recipe-primitive-identity";
 import { AuthorChapters, AuthorChapter } from "./author-chapters";
@@ -346,7 +347,9 @@ export function HeritageForm({
         id: c.id,
         name: c.name,
         category: c.type,
-        buCost: 0,
+        buCost: recipeCompositionBu(c.primitiveLinks,c.effectLinks),
+        ...(c.primitiveLinks ? {primitiveLinks:c.primitiveLinks.map(link=>({...link,primitive:{...link.primitive,category:link.primitive.category??"OTHER"}}))} : {}),
+        effects:(c.effectLinks??[]).map(link=>({id:link.effectId,name:link.effect.name,...(link.effect.primitiveLinks?{primitiveLinks:link.effect.primitiveLinks.map(p=>({...p,primitive:{...p.primitive,category:p.primitive.category??"OTHER"}}))}:{})})),
       })),
       isDirty,
     });
@@ -491,12 +494,13 @@ export function HeritageForm({
     const method = initialTemplate ? "PATCH" : "POST";
 
     startTransition(async () => {
+      try {
       const response = await saveRequest(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const payload: unknown = await response.json();
+      const payload: unknown = await readJsonResponse(response);
 
       if (!response.ok) {
         const error =
@@ -536,6 +540,7 @@ export function HeritageForm({
       resetEditor();
       if (!characterAuthoring) router.refresh();
       setMessage(characterAuthoring ? "Saved to the character draft. Review changes before applying." : `Template "${template?.name ?? "(unnamed)"}" saved.`);
+      } catch (cause) { setMessage(cause instanceof Error ? cause.message : "Unable to save. Your edits are still here; please retry."); }
     });
   }
 

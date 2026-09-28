@@ -1,4 +1,5 @@
 "use client";
+import { EditableNumberInput } from "@/components/ui/editable-number-input";
 
 /**
  * VitalityTracker — Phase 8.2 batch 2
@@ -405,7 +406,7 @@ export function VitalityTracker({
             <form onSubmit={submitApply} className="mt-4 space-y-3">
               <label className="block text-sm">
                 <span className="text-muted-foreground">Amount</span>
-                <input
+                <EditableNumberInput
                   type="number"
                   min={1}
                   value={amount}

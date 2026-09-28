@@ -78,6 +78,8 @@ interface LibraryTableProps {
   surface?: "default" | "atelier";
   /** Optional adjacent actions for embedded pickers, outside the clickable row. */
   renderActions?: (item: LibraryItem) => React.ReactNode;
+  /** Short reading rows for narrow embedded pickers. */
+  compact?: boolean;
 }
 
 export function LibraryTable({
@@ -93,6 +95,7 @@ export function LibraryTable({
   emptyDescription,
   surface = "default",
   renderActions,
+  compact = false,
 }: LibraryTableProps) {
   if (items.length === 0) {
     return (
@@ -140,6 +143,7 @@ export function LibraryTable({
             onSelect={onSelect}
             selected={selectedKey === item.id}
             surface={surface}
+            compact={compact}
           />
           {renderActions ? <div className="v12-library-row-additions">{item.mechanicalDescription ? <p data-copy-role="mechanical">{item.mechanicalDescription}</p> : null}<div className="v12-library-row-buttons">{renderActions(item)}</div></div> : null}
           </div>
@@ -207,6 +211,7 @@ interface ListItemProps {
   onSelect?: ((item: LibraryItem) => void) | undefined;
   selected?: boolean | undefined;
   surface: "default" | "atelier";
+  compact: boolean;
 }
 
 function ListItem({
@@ -216,9 +221,26 @@ function ListItem({
   onSelect,
   selected,
   surface,
+  compact,
 }: ListItemProps) {
   const isAtelier = surface === "atelier";
-  const inner = (
+  const inner = compact ? (
+    <>
+      <span className="sheet-library-entry-icon" aria-hidden="true">
+        <IconDisplay iconSource={item.iconSource || "GAME_ICONS"} iconKey={item.iconKey || "lorc/cubes"} iconUrl={item.iconUrl} iconColor={item.iconColor} size={24} alt="" />
+      </span>
+      <div className="sheet-library-entry-copy">
+        <div className="sheet-library-entry-heading">
+          <h3>{item.name}</h3>
+          {item.buCost !== null && <span className="sheet-library-entry-cost">{item.buCost} BU</span>}
+        </div>
+        <span className="sheet-library-entry-meta">
+          {authorDisplayUsername(item) ? `by ${authorDisplayUsername(item)}` : "System"} · {item.targetType.replace(/_TEMPLATE$/, "").replaceAll("_", " ").toLowerCase()}
+        </span>
+        {!item.mechanicalDescription && item.description && <div className="sheet-library-entry-description"><Markdown>{item.description}</Markdown></div>}
+      </div>
+    </>
+  ) : (
     <>
       {/* Phase 8: entity icon to the left of the text. Falls back to a
           muted glyph when no icon is set, so the layout doesn't shift

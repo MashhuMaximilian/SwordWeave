@@ -1,4 +1,5 @@
 "use client";
+import { EditableNumberInput } from "@/components/ui/editable-number-input";
 
 import { useMemo, useState, useTransition } from "react";
 import { ToastViewport, useToasts } from "@/components/ui/toast";
@@ -464,7 +465,7 @@ export function BuildComposer({
               </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Level">
-                  <input
+                  <EditableNumberInput
                     type="number"
                     min={1}
                     value={form.level}
@@ -478,7 +479,7 @@ export function BuildComposer({
                   />
                 </Field>
                 <Field label="Starting BU">
-                  <input
+                  <EditableNumberInput
                     type="number"
                     min={0}
                     value={form.startingBu}

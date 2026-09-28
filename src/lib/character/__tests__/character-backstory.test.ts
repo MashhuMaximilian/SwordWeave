@@ -215,3 +215,10 @@ describe("extended story fields", () => {
     expect(parseBackstory({ origin: "Home", motivation: "Explore", ties: "Family", flaw: "Pride" })).toEqual({description: "", personality: "", origin: "Home", motivation: "Explore", ties: "Family", flaw: "Pride"});
   });
 });
+
+it("preserves the Manifest story through parsing and sanitizing",()=>{
+ const value=parseBackstory({origin:"Old history",manifestDescription:"  A chosen path  "});
+ expect(value.manifestDescription).toBe("  A chosen path  ");
+ expect(sanitizeBackstory(value).manifestDescription).toBe("A chosen path");
+ expect(sanitizeBackstory(value).origin).toBe("Old history");
+});

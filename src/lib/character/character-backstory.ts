@@ -20,6 +20,7 @@
 export type BackstoryKey = "description" | "personality" | "origin" | "motivation" | "ties" | "flaw";
 
 export interface CharacterBackstory {
+  manifestDescription?: string;
   description: string;
   personality: string;
   origin: string;
@@ -82,6 +83,7 @@ export function parseBackstory(value: unknown): CharacterBackstory {
   };
   if (!value || typeof value !== "object") return out;
   const obj = value as Record<string, unknown>;
+  if (typeof obj["manifestDescription"] === "string") out.manifestDescription = obj["manifestDescription"];
   for (const key of Object.keys(out) as BackstoryKey[]) {
     const v = obj[key];
     if (typeof v === "string") {
@@ -109,6 +111,7 @@ export function sanitizeBackstory(input: Partial<CharacterBackstory>): Character
     return t.length > 4000 ? t.slice(0, 4000) : t;
   };
   return {
+    ...(input.manifestDescription !== undefined ? { manifestDescription: cap(input.manifestDescription) } : {}),
     description: cap(input.description),
     personality: cap(input.personality),
     origin: cap(input.origin),

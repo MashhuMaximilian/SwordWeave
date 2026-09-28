@@ -1,4 +1,5 @@
 "use client";
+import { readJsonResponse } from "@/lib/http/read-json-response";
 import { useCallback, useEffect, useState } from "react";
 import { Check, MessageSquare, RefreshCw, Send, X } from "lucide-react";
 import { DraftChangeReview } from "./draft-change-review";
@@ -29,7 +30,7 @@ export function DraftCollaborationPanel({ characterId, permission, draft, onAppl
   const refresh = useCallback(async () => {
     try {
       const response = await fetch(url, { cache: "no-store" });
-      const data = await response.json();
+      const data = await readJsonResponse(response);
       if (!response.ok) throw new Error(data.error ?? "Could not load review activity.");
       setState(data as CharacterCollaborationState);
     } catch (error) { setError(error instanceof Error ? error.message : "Could not load reviews."); }
@@ -39,7 +40,7 @@ export function DraftCollaborationPanel({ characterId, permission, draft, onAppl
     setBusy(true); setError(null); setMessage(null);
     try {
       const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      const data = await response.json();
+      const data = await readJsonResponse(response);
       if (!response.ok) throw new Error(data.error ?? "The request could not be completed.");
       await refresh();
       return data as { preview?: ProposalPreview; proposal?: CharacterDraftProposal };

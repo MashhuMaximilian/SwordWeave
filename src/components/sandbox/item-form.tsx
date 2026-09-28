@@ -1,4 +1,6 @@
 "use client";
+import { readJsonResponse } from "@/lib/http/read-json-response";
+import { EditableNumberInput } from "@/components/ui/editable-number-input";
 import { AuthorChapters, AuthorChapter } from "./author-chapters";
 import { RecipePrimitiveIdentity } from "./recipe-primitive-identity";
 import { RecipeComposition, RecipeEntityIdentity, primitiveLinksBu, recipeCompositionBu, type RecipePrimitiveLink, type RecipeEffectLink } from "./recipe-composition";
@@ -519,12 +521,13 @@ export function ItemForm({
     const method = initialItem ? "PATCH" : "POST";
 
     startTransition(async () => {
+      try {
       const response = await saveRequest(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const payload: unknown = await response.json();
+      const payload: unknown = await readJsonResponse(response);
 
       if (!response.ok) {
         const error =
@@ -565,6 +568,7 @@ export function ItemForm({
       resetEditor();
       if (!characterAuthoring) router.refresh();
       setMessage(characterAuthoring ? "Saved to the character draft. Review changes before applying." : `Item "${item?.name ?? "(unnamed)"}" saved.`);
+      } catch (cause) { setMessage(cause instanceof Error ? cause.message : "Unable to save. Your edits are still here; please retry."); }
     });
   }
 
@@ -905,7 +909,7 @@ export function ItemForm({
               —
             </div>
           ) : (
-            <input
+            <EditableNumberInput
               type="number"
               min={form.isTwoHanded ? 2 : 1}
               max={100}
@@ -915,7 +919,7 @@ export function ItemForm({
                 // Allow any digit / empty string while typing.
                 // Clamp on blur so the user can clear the field,
                 // type freely, and only get nudged on commit.
-                updateForm("slotCost", String(Number(e.target.value) || 0));
+                updateForm("slotCost", e.target.value);
               }}
               onBlur={(e) => {
                 const minSlot = form.isTwoHanded ? 2 : 1;
@@ -963,7 +967,7 @@ export function ItemForm({
       <div className="grid grid-cols-2 gap-4">
         <label className="block text-sm font-medium">
           Quantity
-          <input
+          <EditableNumberInput
             type="number"
             min={1}
             placeholder="1"
@@ -978,7 +982,7 @@ export function ItemForm({
         </label>
         <label className="block text-sm font-medium">
           Extra BU cost
-          <input
+          <EditableNumberInput
             type="number"
             min={0}
             className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"

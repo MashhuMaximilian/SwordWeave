@@ -1,4 +1,5 @@
 "use client";
+import { EditableNumberInput } from "@/components/ui/editable-number-input";
 
 import { useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -2211,7 +2212,7 @@ function ConditionCard({
                           {pill.stat === "vitality" || pill.stat === "vitality_pct" ? (
                             <button type="button" className="v12-rule-percent-toggle" aria-pressed={vitalityUnit === "percent"} aria-label={vitalityUnit === "percent" ? "Use absolute Vitality" : "Use Vitality percentage"} onClick={() => switchVitalityUnit(vitalityUnit === "percent" ? "absolute" : "percent")}>%</button>
                           ) : null}
-                          <input type="number" step="any" inputMode="decimal" value={numericValue} onChange={(event) => storeNumber(event.target.value)} placeholder="Any whole or decimal number" />
+                          <EditableNumberInput type="number" step="any" inputMode="decimal" value={numericValue} onChange={(event) => storeNumber(event.target.value)} placeholder="Any whole or decimal number" />
                         </div>
                         <div className="v12-rule-chip-row">
                           {(pill.stat === "vitality_pct"
@@ -2351,7 +2352,7 @@ function ConditionCard({
               {pill.operator === "between" ? (
                 <label className="v12-rule-condition-custom">
                   <span>Upper value</span>
-                  <input
+                  <EditableNumberInput
                     type="number"
                     step="any"
                     inputMode="decimal"
