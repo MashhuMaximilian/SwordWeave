@@ -207,7 +207,7 @@ export default async function VersionHistoryPage({ params }: PageProps) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-5 py-8">
+    <div className="sw-version-page mx-auto w-full max-w-4xl px-5 py-8">
       <Link
         href={`/library/item/${parsed.type}:${parsed.id}`}
         className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"

@@ -130,7 +130,7 @@ export function IdentityTab({ state: controlled, onChange }: IdentityTabProps = 
           onChange={(e) => setField("name", e.target.value)}
           placeholder="e.g. Vex the Quick"
           className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
-          autoFocus
+          autoFocus={typeof window !== "undefined" && window.matchMedia("(min-width: 1280px)").matches}
         />
       </label>
 

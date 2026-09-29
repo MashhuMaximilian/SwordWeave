@@ -1,239 +1,72 @@
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { ArrowRight, ArrowUpRight, BookOpen, Hammer, UsersRound } from "lucide-react";
 import type { Metadata } from "next";
 import { PublicNav } from "@/components/home/public-nav";
 
-// =============================================================================
-// /about — the people and the project
-//
-// Short, low-page. The bio paragraph is the lead. Project facts sit below as a
-// footer-style citation block. No client JS. Same editorial language as the
-// homepage.
-// =============================================================================
-
 export const metadata: Metadata = {
   title: "About · SwordWeave",
-  description:
-    "SwordWeave is built by Marius Ion, one person, no publisher. CC-BY-4.0.",
+  description: "A TTRPG for your table. Why Marius Ion is building SwordWeave, an open game of character creation, shared imagination, and table rulings.",
 };
-
-// Project facts shown in the footer-style citation block.
-type ProjectFact = {
-  label: string;
-  value: string;
-  note: string;
-  href?: string | undefined;
-};
-
-const PROJECT_FACTS: readonly ProjectFact[] = [
-  {
-    label: "Builder",
-    value: "Marius Ion",
-    note: "one person, no team, no publisher",
-  },
-  {
-    label: "License",
-    value: "CC-BY-4.0",
-    note: "share, remix, build on it. credit me.",
-    href: "https://creativecommons.org/licenses/by/4.0/",
-  },
-  {
-    label: "Engine version",
-    value: "v.0.1.0",
-    note: "early build. expect sharp edges.",
-  },
-  {
-    label: "First published",
-    value: "MMXXVI",
-    note: "the year of the rewrite",
-  },
-];
-
-const ATTRIBUTIONS: readonly ProjectFact[] = [
-  {
-    label: "Icon set",
-    value: "game-icons.net",
-    note: "4,180 icons · 36 artists · CC BY 3.0 + CC0",
-    href: "https://game-icons.net/",
-  },
-  {
-    label: "Tech",
-    value: "Next.js · Drizzle · Neon Postgres · Clerk",
-    note: "open-source stack. no proprietary dependencies.",
-  },
-];
 
 export default function AboutPage() {
   return (
-    <div className="sw-home relative mx-auto w-full max-w-[1100px] px-4 pb-24 pt-16 sm:px-6 sm:pt-16 lg:px-10 lg:pt-16">
+    <div className="sw-home sw-public-site sw-public-site--arcane">
       <PublicNav />
-      {/* Top marginalia bar — same as homepage + /start */}
-      <div className="sw-marginalia sw-marginalia--top mb-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-border pb-3 text-xs uppercase tracking-[0.22em] text-muted-foreground sm:text-xs">
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
-          <Link href="/" className="font-display text-foreground hover:text-primary">
-            Sword<span className="text-primary">·</span>Weave
-          </Link>
-          <span>About</span>
-        </div>
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
-          <Link href="/start" className="hover:text-foreground">
-            Read the walkthrough
-          </Link>
-          <Link href="/codex" className="hover:text-foreground">
-            Open the codex
-          </Link>
-        </div>
+      <div id="main-content">
+        <header className="sw-public-hero sw-public-hero--compact">
+          <div>
+            <p className="sw-public-kicker"><Hammer aria-hidden="true" /> The person behind the forge</p>
+            <h1 className="sw-public-title">Made for the people<br />around <em>your table.</em></h1>
+            <p className="sw-public-deck">SwordWeave began with a wish: to play the character in your head, with friends who help decide what happens next.</p>
+            <div className="sw-public-actions">
+              <Link className="sw-cta-primary" href="/start">See how it plays <ArrowRight aria-hidden="true" /></Link>
+              <Link className="sw-cta-ghost" href="/library">Explore the Library <BookOpen aria-hidden="true" /></Link>
+            </div>
+          </div>
+        </header>
+
+        <section className="sw-public-section" aria-labelledby="why-title">
+          <header className="sw-public-section-head"><div><p className="sw-public-kicker">01 / A note from the creator</p><h2 id="why-title">The best part of a game<br /><em>is who you play it with.</em></h2></div></header>
+          <div className="sw-public-duet">
+            <article className="sw-public-panel" data-tone="gold">
+              <UsersRound aria-hidden="true" />
+              <p className="sw-public-kicker">The wish that started it</p>
+              <h3>A game friends would play.</h3>
+              <blockquote className="sw-public-quote">“I started because I wanted a natural game system without so many rules. A game friends would play. Where things are flexible and decided at a table, not rigid.”</blockquote>
+              <p>Marius Ion / creator of SwordWeave</p>
+            </article>
+            <article className="sw-public-panel" data-tone="teal">
+              <Hammer aria-hidden="true" />
+              <p className="sw-public-kicker">A foundation for imagination</p>
+              <h3>You bring the impossible idea.</h3>
+              <p>The people at your table decide what matters in the scene. SwordWeave gives that conversation a shared language: what you attempt, how far it reaches, and what it costs.</p>
+              <p>I’m Marius Ion. There is no publisher behind this project. I’m building the game and the tools together, and it is still an early build.</p>
+              <p>I want it open because I cannot gatekeep something I want people to make their own. Take the ideas to your table. Share what you make. Help the game become better through play.</p>
+            </article>
+          </div>
+        </section>
+
+        <section className="sw-public-section" aria-labelledby="principles-title">
+          <header className="sw-public-section-head"><div><p className="sw-public-kicker">02 / What stays at the heart</p><h2 id="principles-title">Your character. Your friends. Your call.</h2></div></header>
+          <div className="sw-public-grid">
+            <article className="sw-public-panel"><span className="sw-public-number">I</span><h3>Start with a person.</h3><p>A strange talent, an old debt, a way of seeing the world. Build rules that express the character you want to play.</p></article>
+            <article className="sw-public-panel"><span className="sw-public-number">II</span><h3>Leave room for the moment.</h3><p>The scene matters. Discuss conditions, scale, stakes, and consequences with your table before resolving an action.</p></article>
+            <article className="sw-public-panel"><span className="sw-public-number">III</span><h3>Keep the door open.</h3><p>Share and adapt the game under its open license. Give credit to the people whose work helped yours take shape.</p></article>
+          </div>
+        </section>
+
+        <section className="sw-public-section" aria-labelledby="project-title">
+          <header className="sw-public-section-head"><div><p className="sw-public-kicker">03 / Project record</p><h2 id="project-title">An open work in progress.</h2></div></header>
+          <dl className="sw-public-facts">
+            <div><dt>Created by</dt><dd>Marius Ion</dd><dd>Independent creator</dd></div>
+            <div><dt>Game license</dt><dd><a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0 <ArrowUpRight aria-hidden="true" /></a></dd><dd>Share and adapt with attribution</dd></div>
+            <div><dt>Stage</dt><dd>Early build</dd><dd>The game and tools are evolving</dd></div>
+            <div><dt>First published</dt><dd>2026</dd><dd>A new beginning for SwordWeave</dd></div>
+          </dl>
+          <p className="sw-public-deck">The software engine is MIT licensed; the game design uses CC BY 4.0. The site is built with Next.js, Drizzle, Neon Postgres, and Clerk. Its visual language also owes a great deal to the artists at game-icons.net.</p>
+          <div className="sw-public-actions"><a className="sw-cta-ghost" href="https://github.com/MashhuMaximilian/SwordWeave" target="_blank" rel="noopener noreferrer">Explore the source <ArrowUpRight aria-hidden="true" /></a><Link className="sw-public-link" href="/attributions">Meet the artists and read the credits <ArrowRight aria-hidden="true" /></Link></div>
+        </section>
       </div>
-
-      {/* Hero — small, the bio IS the hero */}
-      <section className="sw-hero relative grid gap-8 pb-12 sm:pb-16 lg:grid-cols-[64px_1fr] lg:gap-10 lg:pb-20">
-        <div aria-hidden className="sw-running-head hidden lg:block">
-          <span>SW · ABOUT · ONE PERSON</span>
-        </div>
-
-        <div className="min-w-0">
-          <div className="mb-3 inline-flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-primary lg:hidden">
-            <span className="size-1.5 rounded-full bg-primary" />
-            About
-          </div>
-
-          <h1 className="font-display text-[clamp(2.5rem,7vw,5rem)] font-bold uppercase leading-[0.92] tracking-tight">
-            <span className="block">A game for</span>
-            <span className="block">
-              <span className="sw-headline__weave">friends</span> who play
-            </span>
-            <span className="block text-muted-foreground">in their heads.</span>
-          </h1>
-
-          {/* Bio — your words */}
-          <div className="mt-8 max-w-2xl border-l-2 border-primary pl-5">
-            <p className="font-display text-xs uppercase tracking-[0.22em] text-primary">
-              Why I built this
-            </p>
-            <p className="mt-3 text-lg leading-8 text-foreground sm:text-xl sm:leading-9">
-              I started because I wanted a natural game system without so many
-              rules. A game friends would play. Where things are flexible and
-              decided at a table not rigid.
-            </p>
-            <p className="mt-3 text-lg leading-8 text-foreground sm:text-xl sm:leading-9">
-              I want it open source because that is the way. If I want an
-              impact I cannot gate keep it.
-            </p>
-            <p className="mt-5 text-sm text-muted-foreground sm:text-base">
-              Marius Ion · the only person on this project
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Project facts — citation block */}
-      <section className="sw-section border-t border-border pt-10 sm:pt-14">
-        <h2 className="font-display text-xs uppercase tracking-[0.28em] text-primary sm:text-xs">
-          Project facts
-        </h2>
-
-        <dl className="mt-5 grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2">
-          {PROJECT_FACTS.map((fact) => (
-            <div
-              key={fact.label}
-              className="flex flex-col gap-1 bg-card p-5 sm:p-6"
-            >
-              <dt className="font-display text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                {fact.label}
-              </dt>
-              <dd className="mt-1 font-display text-xl font-bold uppercase leading-none sm:text-2xl">
-                {fact.href ? (
-                  <Link
-                    href={fact.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 hover:text-primary"
-                  >
-                    {fact.value}
-                    <ArrowUpRight className="size-3.5" />
-                  </Link>
-                ) : (
-                  fact.value
-                )}
-              </dd>
-              <dd className="mt-1 text-xs text-muted-foreground sm:text-sm">
-                {fact.note}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </section>
-
-      {/* Attributions — citation block */}
-      <section className="sw-section border-t border-border pt-10 sm:pt-14">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-          <h2 className="font-display text-xs uppercase tracking-[0.28em] text-primary sm:text-xs">
-            Attributions
-          </h2>
-          <Link
-            href="/attributions"
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground sm:text-sm"
-          >
-            Full attributions list
-            <ArrowUpRight className="size-3" />
-          </Link>
-        </div>
-
-        <dl className="mt-5 grid gap-px overflow-hidden border border-border bg-border sm:grid-cols-2">
-          {ATTRIBUTIONS.map((att) => (
-            <div
-              key={att.label}
-              className="flex flex-col gap-1 bg-card p-5 sm:p-6"
-            >
-              <dt className="font-display text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                {att.label}
-              </dt>
-              <dd className="mt-1 font-display text-xl font-bold uppercase leading-none sm:text-2xl">
-                {att.href ? (
-                  <Link
-                    href={att.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 hover:text-primary"
-                  >
-                    {att.value}
-                    <ArrowUpRight className="size-3.5" />
-                  </Link>
-                ) : (
-                  att.value
-                )}
-              </dd>
-              <dd className="mt-1 text-xs text-muted-foreground sm:text-sm">
-                {att.note}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </section>
-
-      {/* Closing — keep it short */}
-      <section className="sw-section border-t border-border pt-10 sm:pt-14">
-        <p className="max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base sm:leading-8">
-          That is the project. One person, one open license, one rule of
-          cool. If you want to follow along, fork the repo, or publish your
-          own primitives and capabilities into the codex, the door is open.
-        </p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link
-            href="/start"
-            className="sw-cta-primary inline-flex h-11 items-center gap-2 bg-primary px-5 text-sm font-bold uppercase tracking-[0.12em] text-primary-foreground"
-          >
-            Read the walkthrough
-            <ArrowRight className="size-4" />
-          </Link>
-          <Link
-            href="/"
-            className="sw-cta-ghost inline-flex h-11 items-center gap-2 border border-border bg-card px-5 text-sm font-bold uppercase tracking-[0.12em] text-foreground hover:border-primary/60 hover:text-primary"
-          >
-            Back to homepage
-          </Link>
-        </div>
-      </section>
     </div>
   );
 }

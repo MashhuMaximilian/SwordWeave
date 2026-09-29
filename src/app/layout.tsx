@@ -7,7 +7,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AppShell } from "@/components/layout/app-shell";
-import { FullscreenInit } from "@/components/layout/fullscreen-init";
+import { MobileViewport } from "@/components/layout/mobile-viewport";
 import "./globals.css";
 import "./v12.css";
 import "./character-forge.css";
@@ -16,6 +16,14 @@ import "./character-foundation.css";
 import "./character-suggestions.css";
 import "./character-portraits.css";
 import "./entity-preview-responsive.css";
+import "./atelier-library-mobile.css";
+import "./public-site.css";
+import "./public-guide-refinements.css";
+import "./library-landing.css";
+import "./character-guide.css";
+import "./mobile-shell.css";
+import "./secondary-pages-mobile.css";
+import "./fab-metal.css";
 
 // Retain the previous typefaces behind the data-ui switch so setting
 // NEXT_PUBLIC_SW_UI_VERSION=legacy is a complete visual rollback.
@@ -84,7 +92,7 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = { themeColor: "#0b0a0f" };
+export const viewport: Viewport = { themeColor: "#0b0a0f", width: "device-width", initialScale: 1, viewportFit: "cover", interactiveWidget: "resizes-content" };
 
 export default function RootLayout({
   children,
@@ -204,7 +212,7 @@ try {
           signInFallbackRedirectUrl="/atelier"
           signUpFallbackRedirectUrl="/atelier"
         >
-          <FullscreenInit />
+          <MobileViewport />
           <AppShell><LibraryRefresh />{children}</AppShell>
           {/* Vercel Web Analytics — tracks pageviews, custom events,
               and visitors. Per

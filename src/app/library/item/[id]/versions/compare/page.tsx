@@ -73,7 +73,7 @@ export default async function VersionComparePage({
   const { fields, summary } = diffPayloads(left, right);
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-5 py-8">
+    <div className="sw-version-page sw-version-compare mx-auto w-full max-w-5xl px-5 py-8">
       <Link
         href={`/library/item/${parsed.type}:${parsed.id}/versions`}
         className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -122,7 +122,7 @@ export default async function VersionComparePage({
           </thead>
           <tbody className="divide-y divide-border">
             {fields.map((f) => (
-              <DiffRow key={f.key} field={f} />
+              <DiffRow key={f.key} field={f} beforeLabel={`v${leftVer.versionNumber}`} afterLabel={`v${rightVer.versionNumber}`} />
             ))}
           </tbody>
         </table>
@@ -169,7 +169,7 @@ function SummaryChip({
   );
 }
 
-function DiffRow({ field }: { field: FieldDiff }) {
+function DiffRow({ field, beforeLabel, afterLabel }: { field: FieldDiff; beforeLabel: string; afterLabel: string }) {
   const rowCls =
     field.status === "ADDED"
       ? "bg-emerald-500/5"
@@ -198,14 +198,14 @@ function DiffRow({ field }: { field: FieldDiff }) {
           {field.status}
         </p>
       </td>
-      <td className="px-3 py-2 align-top">
+      <td data-version-label={beforeLabel} className="px-3 py-2 align-top">
         {field.status === "ADDED" ? (
           <span className="text-xs text-muted-foreground">—</span>
         ) : (
           <ValueCell value={field.before} muted />
         )}
       </td>
-      <td className="px-3 py-2 align-top">
+      <td data-version-label={afterLabel} className="px-3 py-2 align-top">
         {field.status === "REMOVED" ? (
           <span className="text-xs text-muted-foreground">—</span>
         ) : (

@@ -239,7 +239,7 @@ export function LibraryBrowseClient({
   // When the user clicks a row, open the iframe detail modal.
   const onRowSelect = useCallback((item: LibraryItem) => {
     setSelectedItem(item);
-    if (typeof window !== "undefined" && window.innerWidth < 1050) {
+    if (typeof window !== "undefined" && window.innerWidth < 1280) {
       setDetailOpen(true);
     }
   }, []);

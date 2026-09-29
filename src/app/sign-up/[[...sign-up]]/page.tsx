@@ -8,7 +8,7 @@ import { SignUp } from "@clerk/nextjs";
  */
 export default function SignUpPage() {
   return (
-    <div className="mx-auto grid min-h-screen w-full max-w-5xl place-items-center px-4 py-10">
+    <div className="sw-auth-page mx-auto grid min-h-screen w-full max-w-5xl place-items-center px-4 py-10">
       <div className="grid w-full gap-6 rounded-md border border-border bg-card p-5 md:grid-cols-[1fr_420px] md:p-6">
         <section className="flex flex-col justify-between rounded-md border border-border bg-background p-5">
           <div>

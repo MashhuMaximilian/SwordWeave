@@ -38,6 +38,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { IconDisplay } from "@/components/icons/icon-display";
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { useIsDark } from "@/lib/hooks/use-is-dark";
 
 
@@ -152,6 +153,7 @@ export function FabSpeedDial({
     [buildStashCount, actionBadgeCounts],
   );
   const [open, setOpen] = useState(false);
+  const isMobile = useIsMobile();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const isDark = useIsDark();
   // FAB game-icons: white on dark, near-black (#011614) on light so they
@@ -196,12 +198,15 @@ export function FabSpeedDial({
         <div
           className="sw-fab__menu v12-instrument flex max-h-[80vh] w-[min(280px,calc(100vw-1.5rem))] flex-col items-stretch gap-0.5 overflow-y-auto rounded-xl border border-border bg-background/95 p-1.5 shadow-2xl backdrop-blur-md"
           data-fab-menu
+          style={{ maxHeight: `calc(var(--sw-visible-height, 100dvh) - ${bottomOffset + 82}px - env(safe-area-inset-bottom, 0px))` }}
           // Stop the close-on-outside-pointer from racing the click when the
           // user taps inside the dial. pointerdown bubbles up; without this
           // guard the dial closes before the click handler can fire (which
           // is why the user-menu "Account" row never opened).
           onPointerDown={(e) => e.stopPropagation()}
         >
+          <div className="sw-fab__heading"><span>SwordWeave</span><span>Quick access</span></div>
+          <div className="sw-fab__navigation">
           {items.map((item, index) => {
             // The "Functions" section in the dial is replaced by a
             // compact icon-grid card (rendered below). Hide the inline
@@ -230,7 +235,7 @@ export function FabSpeedDial({
               return (
                 <div
                   key={item.key}
-                  className="mt-1.5 border-t border-border/60 px-1.5 pb-0.5 pt-1.5 first:mt-0 first:border-t-0 first:pt-0"
+                  className="sw-fab__section mt-1.5 border-t border-border/60 px-1.5 pb-0.5 pt-1.5 first:mt-0 first:border-t-0 first:pt-0"
                 >
                   <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                     {item.label}
@@ -324,6 +329,7 @@ export function FabSpeedDial({
               </button>
             );
           })}
+          </div>
 
           {/* Utilities/profile stay together; Build and Character own a
               dedicated second row. Split is supplied only on mobile. */}
@@ -368,14 +374,14 @@ export function FabSpeedDial({
                 },
               ] as FabAction[]
               ).map((action) => (
-                <FabGridAction key={action.key} action={action} badgeCount={badgeCounts[action.key] ?? 0} />
+                <FabGridAction key={action.key} action={action} badgeCount={badgeCounts[action.key] ?? 0} onInvoke={() => { if (isMobile && (action.key === "build" || action.key === "character" || action.key === "split")) setOpen(false); }} />
               ))}
             </div>
             <div className="sw-fab__workspace-grid">
               {items.filter(
                 (i): i is FabAction => i.kind === "action" && (i.key === "build" || i.key === "character"),
               ).map((action) => (
-                <FabGridAction key={action.key} action={action} badgeCount={badgeCounts[action.key] ?? 0} />
+                <FabGridAction key={action.key} action={action} badgeCount={badgeCounts[action.key] ?? 0} onInvoke={() => { if (isMobile && (action.key === "build" || action.key === "character" || action.key === "split")) setOpen(false); }} />
               ))}
             </div>
           </div>
@@ -416,12 +422,12 @@ export function FabSpeedDial({
   );
 }
 
-function FabGridAction({ action, badgeCount }: { action: FabAction; badgeCount: number }) {
+function FabGridAction({ action, badgeCount, onInvoke }: { action: FabAction; badgeCount: number; onInvoke?: () => void }) {
   return (
     <button
       type="button"
       data-fab-action={action.key}
-      onClick={() => action.onClick()}
+      onClick={() => { action.onClick(); onInvoke?.(); }}
       disabled={action.disabled}
       aria-pressed={action.active}
       aria-label={action.label}
@@ -434,6 +440,7 @@ function FabGridAction({ action, badgeCount }: { action: FabAction; badgeCount: 
       )}
     >
       {action.icon}
+      <span className="sw-fab__action-label">{({split:"Split view",fullscreen:"Fullscreen",dark:"Theme",account:"Account",build:"Build & Preview",character:"Character"} as Record<string,string>)[action.key] ?? action.label}</span>
       {badgeCount > 0 ? (
         <span
           className="pointer-events-none absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground ring-2 ring-background"

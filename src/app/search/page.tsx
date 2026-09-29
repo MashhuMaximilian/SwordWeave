@@ -42,7 +42,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
     : { hits: [], total: 0, query: "" };
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-5 py-8">
+    <div className="sw-handheld-page mx-auto w-full max-w-3xl px-5 py-8">
       <header className="mb-6">
         <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
           Search

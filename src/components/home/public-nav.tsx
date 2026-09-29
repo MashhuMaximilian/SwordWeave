@@ -35,7 +35,6 @@ const NAV_ITEMS: readonly NavItem[] = [
   { href: "/character",label: "Create",     group: "core" },
   { href: "/combat",   label: "Combat",     group: "core" },
   { href: "/library/browse", label: "Library",    group: "content" },
-  { href: "/codex",    label: "Codex",      group: "content" },
   { href: "/creations",label: "Creations",  group: "content" },
   { href: "/about",    label: "About",      group: "project" },
   { href: "/attributions", label: "Credits",group: "project" },
@@ -44,8 +43,9 @@ const NAV_ITEMS: readonly NavItem[] = [
 export function PublicNav() {
   const pathname = usePathname() || "/";
   const [scrolled, setScrolled] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const lastYRef = useRef(0);
+  const [openPath, setOpenPath] = useState<string | null>(null);
+  const mobileOpen = openPath === pathname;
+  const toggleRef = useRef<HTMLButtonElement>(null);
   const tickingRef = useRef(false);
 
   useEffect(() => {
@@ -56,7 +56,6 @@ export function PublicNav() {
         const y = window.scrollY;
         // Threshold for "scrolled enough to gain backdrop"
         setScrolled(y > 40);
-        lastYRef.current = y;
         tickingRef.current = false;
       });
     };
@@ -65,10 +64,23 @@ export function PublicNav() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Close mobile menu on route change
   useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
+    if (!mobileOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpenPath(null);
+        toggleRef.current?.focus();
+      }
+    };
+    const media = window.matchMedia("(min-width: 1200px)");
+    const onWide = () => { if (media.matches) setOpenPath(null); };
+    window.addEventListener("keydown", onKey);
+    media.addEventListener("change", onWide);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      media.removeEventListener("change", onWide);
+    };
+  }, [mobileOpen]);
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
@@ -88,9 +100,10 @@ export function PublicNav() {
             className="sw-public-nav__logo"
             aria-label="SwordWeave home"
           >
-            <span className="font-display text-foreground">Sword</span>
+            <span className="sw-public-nav__brandmark" aria-hidden="true" />
+            <span className="sw-public-nav__wordmark"><span className="font-display text-foreground">Sword</span>
             <span className="text-primary">·</span>
-            <span className="font-display text-foreground">Weave</span>
+            <span className="font-display text-foreground">Weave</span></span>
           </Link>
 
           {/* Desktop links */}
@@ -117,11 +130,13 @@ export function PublicNav() {
               Start
             </Link>
             <button
+              ref={toggleRef}
               type="button"
+              aria-controls="public-navigation-menu"
               className="sw-public-nav__burger"
-              aria-label={mobileOpen ? "Close menu" : "Open menu"}
+              aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
               aria-expanded={mobileOpen}
-              onClick={() => setMobileOpen((v) => !v)}
+              onClick={() => setOpenPath(mobileOpen ? null : pathname)}
             >
               <span aria-hidden className={`sw-public-nav__burger-bar ${mobileOpen ? "is-open-1" : ""}`} />
               <span aria-hidden className={`sw-public-nav__burger-bar ${mobileOpen ? "is-open-2" : ""}`} />
@@ -133,12 +148,13 @@ export function PublicNav() {
 
       {/* Mobile menu drawer — only renders when open */}
       {mobileOpen && (
-        <div className="sw-public-nav__drawer" role="dialog" aria-label="Navigation menu">
+        <nav id="public-navigation-menu" className="sw-public-nav__drawer" aria-label="Navigation menu">
           <ul className="sw-public-nav__drawer-list" role="list">
             {NAV_ITEMS.map((item) => (
               <li key={item.href}>
                 <Link
                   href={item.href}
+                  onClick={() => setOpenPath(null)}
                   className={`sw-public-nav__drawer-link ${isActive(item.href) ? "is-active" : ""}`}
                   aria-current={isActive(item.href) ? "page" : undefined}
                 >
@@ -156,7 +172,7 @@ export function PublicNav() {
               Start
             </Link>
           </div>
-        </div>
+        </nav>
       )}
     </>
   );

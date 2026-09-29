@@ -40,6 +40,11 @@ export function CompositionDiagram() {
         className="pointer-events-none absolute bottom-[-1px] right-[-1px] h-3 w-3 border-b border-r border-primary"
       />
 
+      <ol className="sw-composition-mobile" aria-label="How the pieces fit together">
+        <li><span>01 · Buy with Build Units</span><h3>Primitives</h3><p>Verb tiers, domains, output dice, geometry, and stats. Your reusable mechanical pieces.</p></li>
+        <li><span>02 · Compose your rules</span><div><section><h3>Effects</h3><p>Primitives assembled into a reusable effect.</p></section><section><h3>Capabilities</h3><p>Primitives and effects assembled into an action or talent.</p></section></div></li>
+        <li><span>03 · Give them a home</span><div><section><h3>Heritages</h3><p>Primitives and capabilities in your Lineage, Upbringing, or Manifest.</p></section><section><h3>Items</h3><p>Primitives, capabilities, and effects carried by your equipment.</p></section></div></li>
+      </ol>
       <svg
         viewBox="0 0 880 460"
         role="img"

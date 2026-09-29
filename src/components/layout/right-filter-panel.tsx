@@ -1,4 +1,5 @@
 "use client";
+import { useMobileDialogFocus } from "@/lib/hooks/use-mobile-dialog-focus";
 
 // =============================================================================
 // RightFilterPanel — slide-in side panel for filters.
@@ -78,6 +79,7 @@ export function useFilterSlot(content: ReactNode) {
 export function RightFilterPanel() {
   const { filterPanelOpen, setFilterPanelOpen } = useGlobalControls();
   const [content, setContent] = useState<ReactNode>(() => _latestContent);
+  const panelRef = useMobileDialogFocus(filterPanelOpen);
 
   // Wire the slot setter once. Pages call _setter(content) via useFilterSlot
   // and we re-render with the new content.
@@ -119,11 +121,14 @@ export function RightFilterPanel() {
       />
       {/* Panel */}
       <aside
+        ref={panelRef}
         role="dialog"
-        aria-modal="true"
+        aria-modal={filterPanelOpen}
+        aria-hidden={!filterPanelOpen}
+        inert={!filterPanelOpen}
         aria-label="Filters"
         className={cn(
-          "v12-instrument fixed inset-y-0 right-0 z-50 flex w-[85vw] max-w-[420px] flex-col border-l border-border bg-card shadow-2xl transition-transform duration-300 ease-out",
+          "sw-filter-panel v12-instrument fixed inset-y-0 right-0 z-50 flex w-[85vw] max-w-[420px] flex-col border-l border-border bg-card shadow-2xl transition-transform duration-300 ease-out",
           filterPanelOpen ? "translate-x-0" : "translate-x-full",
         )}
       >

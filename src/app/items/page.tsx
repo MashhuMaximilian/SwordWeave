@@ -3,7 +3,7 @@ import { ArrowRight, Package, Sparkles } from "lucide-react";
 
 export default function ItemsPage() {
   return (
-    <div className="mx-auto w-full max-w-7xl px-5 py-8">
+    <div className="sw-secondary-page mx-auto w-full max-w-7xl px-5 py-8">
       <div className="max-w-3xl">
         <p className="text-xs font-semibold uppercase text-muted-foreground">
           Item Ledger

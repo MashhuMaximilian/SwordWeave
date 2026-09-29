@@ -1303,7 +1303,7 @@ export function TabbedCharacterForm() {
       <nav
         role="tablist"
         aria-label="Character creation tabs"
-        className="sticky top-0 z-10 -mx-4 flex items-center gap-1 overflow-x-auto border-b border-border bg-card px-4 py-2"
+        className="sw-character-modal-tabs sticky top-0 z-10 -mx-4 flex items-center gap-1 overflow-x-auto border-b border-border bg-card px-4 py-2"
       >
         {CHARACTER_TABS.map((tab) => {
           const isActive = tab === activeStep;
@@ -1404,7 +1404,7 @@ export function TabbedCharacterForm() {
             - mirror primitives earn debt (Y = their sum)
             - non-mirror overflow absorbs into that pool (X = min(overflow, Y))
             - any overflow past available stays in budget overflow (+N). */}
-      <div className="sticky bottom-0 z-10 -mx-4 flex items-center justify-between gap-2 border-t border-border bg-card px-4 py-2">
+      <div className="sw-character-modal-footer sticky bottom-0 z-10 -mx-4 flex items-center justify-between gap-2 border-t border-border bg-card px-4 py-2">
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <FooterStat label="Lvl" value={String(attributes.level)} />
           <FooterStat

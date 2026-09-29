@@ -42,7 +42,7 @@ export default async function SettingsProfilePage() {
         // reason (taken, reserved), show the error so the user can fix it.
         if (!result.ok && result.error !== "USERNAME_TAKEN") {
           return (
-            <div className="mx-auto w-full max-w-3xl px-5 py-8">
+            <div className="sw-handheld-page mx-auto w-full max-w-3xl px-5 py-8">
               <div className="rounded-2xl border border-sword-border bg-sword-surface p-6">
                 <h1 className="text-2xl font-semibold text-sword-fg">
                   Could not create your profile
@@ -61,7 +61,7 @@ export default async function SettingsProfilePage() {
   const profile = await loadCurrentProfile();
   if (!profile) {
     return (
-      <div className="mx-auto w-full max-w-3xl px-5 py-8">
+      <div className="sw-handheld-page mx-auto w-full max-w-3xl px-5 py-8">
         <div className="rounded-2xl border border-sword-border bg-sword-surface p-6">
           <h1 className="text-2xl font-semibold text-sword-fg">
             Profile not yet created
@@ -76,7 +76,7 @@ export default async function SettingsProfilePage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-5 py-8">
+    <div className="sw-handheld-page mx-auto w-full max-w-3xl px-5 py-8">
       <header className="mb-6">
         <h1 className="text-3xl font-semibold tracking-tight text-sword-fg">
           Profile settings

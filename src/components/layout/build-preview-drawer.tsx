@@ -1,4 +1,5 @@
 "use client";
+import { useMobileDialogFocus } from "@/lib/hooks/use-mobile-dialog-focus";
 
 // =============================================================================
 // BuildPreviewDrawer — slide-up overlay drawer (bottom sheet on mobile) that
@@ -308,6 +309,7 @@ function DrawerShell({
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  const panelRef = useMobileDialogFocus(isOpen);
   // Lock body scroll when open.
   useEffect(() => {
     if (!isOpen) return;
@@ -361,6 +363,7 @@ function DrawerShell({
             it because inert makes the panel unreachable.
       */}
       <aside
+        ref={panelRef}
         role="dialog"
         aria-modal={isOpen}
         aria-label="Build & Preview"

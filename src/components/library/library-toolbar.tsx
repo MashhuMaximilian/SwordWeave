@@ -277,7 +277,7 @@ export function LibraryToolbar({
     state.typeFilter === subKindParent;
 
   return (
-    <div className="space-y-3">
+    <div className="v12-library-toolbar space-y-3">
       {/* Search bar (when enabled) + mobile filter toggle. The toggle lives
           alongside the search bar but is independently rendered — when search
           is hidden (e.g. sandbox Library column) we still need the toggle. */}

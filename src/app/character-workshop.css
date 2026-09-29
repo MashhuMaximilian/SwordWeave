@@ -339,3 +339,198 @@ body[data-ui="v12"] .sheet-build-library .v12-library-row-additions { padding-ri
 body[data-ui="v12"] .sheet-build-library .sheet-library-entry-meta { padding-right:76px; }
 
 body[data-ui="v12"] .sheet-build-library .sheet-library-entry-heading h3 { padding-right:24px; }
+
+/* Touch workspace: preserve the desktop instrument, reveal one task at a time
+   on phones, and retain a source rail beside the workbench on tablets. */
+@media (min-width:768px) and (max-width:1100px) {
+ body[data-ui="v12"] .sheet-build-panels { display:grid!important;grid-template-columns:minmax(230px,.8fr) minmax(0,1.6fr); }
+ body[data-ui="v12"] .sheet-build .sheet-build-panels>[data-panel]:has(.sheet-panel-find) { display:block!important;grid-column:1;grid-row:1; }
+ body[data-ui="v12"] .sheet-build .sheet-build-panels>[data-panel]:has(.sheet-panel-build) { display:block!important;grid-column:2;grid-row:1; }
+ body[data-ui="v12"] .sheet-build[data-mobile-view=preview] .sheet-build-panels>[data-panel]:has(.sheet-panel-build) { display:none!important; }
+ body[data-ui="v12"] .sheet-build .sheet-build-panels>[data-panel]:has(.sheet-panel-preview) { grid-column:2;grid-row:1; }
+ body[data-ui="v12"] .sheet-build[data-mobile-view=preview] .sheet-build-panels>[data-panel]:has(.sheet-panel-preview) { display:block!important; }
+ body[data-ui="v12"] .sheet-mobile-nav button:first-child { display:none; }
+ body[data-ui="v12"] .sheet-build-top { padding:10px 14px; }
+ body[data-ui="v12"] .sheet-build-top h2 { font-size:20px; }
+ body[data-ui="v12"] .sheet-build .sheet-roots-grid { grid-template-columns:1fr; }
+}
+@media (max-width:1279px) {
+ body[data-ui="v12"] .sheet-build :is(.sheet-row-title,.sheet-piece-heading,.sheet-composition-heading) { overflow-wrap:anywhere; }
+ body[data-ui="v12"] .sheet-build .sheet-row-actions button { min-height:40px;padding:7px 4px; }
+ body[data-ui="v12"] :is(.sheet-build,.sheet-modal-workbench,.sheet-foundation-editor) :is(input:not([type=checkbox]):not([type=radio]),select,textarea) { font-size:16px; }
+ body[data-ui="v12"] :is(.sheet-build,.sheet-review,.sheet-move-options) .sheet-button { min-height:42px; }
+ body[data-ui="v12"] .sheet-build-library .v12-library-row-buttons button { min-height:40px; }
+ body[data-ui="v12"] .sheet-root-nav button,.sheet-source-tabs button { min-height:44px; }
+}
+@media (max-width:767px) {
+ body[data-ui="v12"] .v12-character-page { padding-inline:8px; }
+ body[data-ui="v12"] .v12-character-page:has(.sheet-build) { padding-inline:0;padding-bottom:0; }
+ body[data-ui="v12"] .sheet-build { border-radius:0;min-height:0;height:calc(100dvh - 64px); }
+ body[data-ui="v12"] .sheet-build-top { display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 8px;padding:8px 10px; }
+ body[data-ui="v12"] .sheet-build-top h2 { font-size:18px;gap:7px;overflow-wrap:anywhere; }
+ body[data-ui="v12"] .sheet-build-top .sheet-kicker { display:none; }
+ body[data-ui="v12"] .sheet-top-actions { justify-content:flex-end;gap:4px; }
+ body[data-ui="v12"] .sheet-top-actions>[role=status] { max-width:150px;font-size:10px;text-align:right; }
+ body[data-ui="v12"] .sheet-root-nav { padding:0 4px;scrollbar-width:none; }
+ body[data-ui="v12"] .sheet-root-nav button { padding:8px 10px;font-size:11px; }
+ body[data-ui="v12"] .sheet-build-budget { padding:7px 10px;gap:5px 12px;font-size:11px; }
+ body[data-ui="v12"] .sheet-mobile-nav button { min-height:44px;padding:9px; }
+ body[data-ui="v12"] .sheet-build-panels { min-height:0; }
+ body[data-ui="v12"] .sheet-build-panels>[data-panel]:has(.sheet-panel-find),
+ body[data-ui="v12"] .sheet-build-panels>[data-panel]:has(.sheet-panel-build),
+ body[data-ui="v12"] .sheet-build-panels>[data-panel]:has(.sheet-panel-preview) { height:100%; }
+ body[data-ui="v12"] .sheet-find>header { padding:10px 12px 6px; }
+ body[data-ui="v12"] .sheet-find>header .sheet-kicker { display:none; }
+ body[data-ui="v12"] .sheet-source-tabs { margin:0 8px 8px; }
+ body[data-ui="v12"] .sheet-destination { padding:8px 10px;margin-bottom:4px; }
+ body[data-ui="v12"] .sheet-notice { padding:7px 10px;font-size:11px; }
+ body[data-ui="v12"] .sheet-composition-heading { padding:10px;flex-wrap:wrap; }
+ body[data-ui="v12"] .sheet-overview,.sheet-section-intro { padding:14px 10px; }
+ body[data-ui="v12"] .sheet-composition-actions { padding:0 10px 10px;gap:6px; }
+ body[data-ui="v12"] .sheet-piece { padding:11px 9px; }
+ body[data-ui="v12"] .sheet-piece-heading strong { font-size:15px; }
+ body[data-ui="v12"] .sheet-piece-heading input { width:20px;height:20px;flex:none; }
+ body[data-ui="v12"] .sheet-piece>.sheet-row-actions { margin-left:0;gap:4px 12px; }
+ body[data-ui="v12"] .sheet-piece>.sheet-rule { margin-left:0;font-size:15px;line-height:1.45; }
+ body[data-ui="v12"] .sheet-draft-footer { padding:7px 8px calc(7px + env(safe-area-inset-bottom));gap:6px; }
+ body[data-ui="v12"] .sheet-draft-footer .sheet-button { font-size:11px;padding:8px; }
+ body[data-ui="v12"] .sheet-owned-catalogue { padding:10px; }
+ body[data-ui="v12"] .sheet-owned-catalogue .sheet-catalogue-row { padding:11px; }
+ body[data-ui="v12"] .sheet-modal-workbench { padding:8px; }
+ body[data-ui="v12"] .sheet-modal-workbench>header { padding:10px;margin-bottom:10px;gap:8px; }
+ body[data-ui="v12"] .sheet-modal-workbench>header h3 { font-size:18px; }
+ body[data-ui="v12"] .sheet-modal-workbench>header p { font-size:14px; }
+ body[data-ui="v12"] .sheet-modal-workbench label { min-width:0;flex:1 1 130px; }
+ body[data-ui="v12"] .sheet-review { padding:8px; }
+ body[data-ui="v12"] .sheet-review-commit { flex-wrap:wrap;gap:7px; }
+ body[data-ui="v12"] .sheet-review-commit>.sheet-button { flex:1 1 120px; }
+ body[data-ui="v12"] [aria-label="Draft change review"] article { padding:11px; }
+ body[data-ui="v12"] .sheet-workspace-loading { padding:18px;min-height:300px; }
+ body[data-ui="v12"] .v12-character-lenses>p { display:none; }
+ body[data-ui="v12"] .v12-character-lenses>div { flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none; }
+ body[data-ui="v12"] .v12-character-lenses button { min-height:44px;flex-shrink:0; }
+ body[data-ui="v12"] .v12-character-content { margin-top:12px; }
+ body[data-ui="v12"] .v12-character-section-title { padding:8px 4px; }
+ body[data-ui="v12"] .v12-backstory-grid { grid-template-columns:minmax(0,1fr);gap:10px; }
+ body[data-ui="v12"] .v12-backstory-toolbar,.v12-history-toolbar { flex-wrap:wrap;gap:8px; }
+ body[data-ui="v12"] .v12-character-page .v12-canonical-composite-heading { gap:8px;padding:10px; }
+ body[data-ui="v12"] .v12-character-page .v12-canonical-composite-title { min-width:0;overflow-wrap:anywhere; }
+ body[data-ui="v12"] .v12-character-page .v12-canonical-composite-meta { max-width:100%;flex-wrap:wrap; }
+ body[data-ui="v12"] .v12-character-page .v12-canonical-composite-meta>.v12-capability-actions-only>button { min-width:40px;min-height:40px; }
+ body[data-ui="v12"] .v12-character-page .v12-sheet-load-deck { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ body[data-ui="v12"] .v12-character-page .v12-inventory-tally { grid-column:1/-1; }
+}
+
+/* Resizable Panels renders a wrapper around the scroll container. Hide and
+   size that wrapper as well, so invisible panes never occupy a phone screen. */
+@media(max-width:1100px) {
+ body[data-ui="v12"] .sheet-build-panels>[data-panel] {min-height:0;width:100%!important;max-width:none!important;height:100%!important;}
+ body[data-ui="v12"] .sheet-build-panels>[data-panel]>div {height:100%;width:100%;}
+}
+@media(min-width:768px) and (max-width:1100px) {
+ body[data-ui="v12"] .sheet-build .sheet-panel-find {display:block!important;}
+ body[data-ui="v12"] .sheet-build:not([data-mobile-view=preview]) .sheet-panel-build {display:block!important;}
+ body[data-ui="v12"] .sheet-build:not([data-mobile-view=preview]) .sheet-build-panels>[data-panel]:has(.sheet-panel-preview) {display:none!important;}
+}
+@media(max-width:767px) {
+ body[data-ui="v12"] .sheet-build[data-mobile-view=find] .sheet-build-panels>[data-panel]:not(:has(.sheet-panel-find)),
+ body[data-ui="v12"] .sheet-build[data-mobile-view=build] .sheet-build-panels>[data-panel]:not(:has(.sheet-panel-build)),
+ body[data-ui="v12"] .sheet-build[data-mobile-view=preview] .sheet-build-panels>[data-panel]:not(:has(.sheet-panel-preview)) {display:none!important;}
+}
+@media(max-width:767px) {
+ body[data-ui="v12"] .sheet-build-top {grid-template-columns:minmax(0,1fr);}
+ body[data-ui="v12"] .sheet-build-top>div {min-width:0;}
+ body[data-ui="v12"] .sheet-build-top h2>span {white-space:nowrap;}
+ body[data-ui="v12"] .sheet-top-actions {justify-content:flex-start;flex-wrap:wrap;}
+ body[data-ui="v12"] .sheet-top-actions>[role=status] {flex:1 1 95px;text-align:left;max-width:none;}
+ body[data-ui="v12"] .sheet-top-actions .sheet-button {padding:7px;font-size:10px;min-height:40px;}
+}
+
+/* Play sheet and roster: compact information, generous controls. */
+@media(max-width:1279px) {
+ body[data-ui="v12"] .v12-sheet-identity-deck {max-height:calc(100dvh - 70px);overflow-y:auto;overscroll-behavior:contain;}
+ body[data-ui="v12"] .v12-identity-actions :is(button,a),body[data-ui="v12"] .v12-roster-tabs button {min-height:44px;}
+ body[data-ui="v12"] .v12-bottom-drawer-body {overscroll-behavior:contain;}
+ body[data-ui="v12"] .v12-character-page :is(input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea) {font-size:16px;}
+ body[data-ui="v12"] .v12-roster-card h3 {overflow-wrap:anywhere;}
+}
+@media(max-width:767px) {
+ body[data-ui="v12"] .v12-roster-page {padding-inline:8px;}
+ body[data-ui="v12"] .v12-roster-hero {padding:14px 12px;gap:10px;}
+ body[data-ui="v12"] .v12-roster-hero .v12-archive-emblem {width:42px;height:42px;}
+ body[data-ui="v12"] .v12-roster-hero .v12-archive-title-line {flex-wrap:wrap;gap:5px;}
+ body[data-ui="v12"] .v12-roster-hero h1 {font-size:28px;}
+ body[data-ui="v12"] .v12-roster-hero .v12-roster-deck {font-size:14px;line-height:1.45;}
+ body[data-ui="v12"] .v12-roster-tabs {scrollbar-width:none;}
+ body[data-ui="v12"] .v12-roster-tabs button {flex-shrink:0;padding:9px 11px;}
+ body[data-ui="v12"] .v12-roster-card {padding:12px;}
+ body[data-ui="v12"] .v12-roster-card-actions a {min-height:44px;display:inline-flex;align-items:center;}
+ body[data-ui="v12"] .v12-sheet-identity-summary {min-height:52px;padding:7px 10px!important;}
+ body[data-ui="v12"] .v12-sheet-identity-summary>div:nth-of-type(2) {min-width:0;}
+ body[data-ui="v12"] .v12-sheet-identity-deck {padding:10px!important;}
+ body[data-ui="v12"] .v12-identity-metrics {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;}
+ body[data-ui="v12"] .v12-identity-pool-card {min-width:0;min-height:40px;}
+ body[data-ui="v12"] .v12-identity-actions {gap:8px;}
+ body[data-ui="v12"] .v12-identity-action-group {min-width:0;flex-wrap:wrap;}
+ body[data-ui="v12"] .v12-bottom-drawer-toggle {min-height:48px;}
+ body[data-ui="v12"] .v12-bottom-drawer-body {max-height:72dvh;padding:8px 8px calc(12px + env(safe-area-inset-bottom))!important;gap:8px;}
+ body[data-ui="v12"] .v12-drawer-derived>button {min-height:52px;min-width:0;}
+ body[data-ui="v12"] .v12-drawer-practices .grid {grid-template-columns:minmax(0,1fr)!important;}
+ body[data-ui="v12"] .v12-drawer-practices .grid>div+div {border-left:0!important;border-top:1px solid #9c895544!important;}
+ body[data-ui="v12"] .v12-drawer-practices button {min-height:40px;}
+ body[data-ui="v12"] .v12-drawer-action-profile {grid-template-columns:minmax(0,1fr)!important;}
+ body[data-ui="v12"] .v12-drawer-access article {min-width:0;overflow-wrap:anywhere;}
+ body[data-ui="v12"] .v12-sheet-notes .v12-notes-console {padding:12px;}
+ body[data-ui="v12"] .v12-notes-console-head {flex-wrap:wrap;gap:8px;}
+ body[data-ui="v12"] .v12-notes-editor {min-height:220px;}
+ body[data-ui="v12"] .v12-history-timeline {padding-inline:8px;}
+ body[data-ui="v12"] .v12-history-entry {min-width:0;overflow-wrap:anywhere;}
+ body[data-ui="v12"] .v12-history-filter {min-height:40px;padding:7px 10px;}
+}
+@media(max-width:767px) {
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-character-workspace .v12-projection-tabs {padding:6px;gap:6px;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-projection-tab-list {display:flex;min-width:0;overflow-x:auto;scrollbar-width:none;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-projection-tab-list button {min-height:42px;flex:1 0 auto;padding:8px;font-size:11px;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-projection-actions {display:flex;flex-wrap:wrap;gap:5px;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-projection-actions>button {min-height:40px;min-width:40px;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-character-workspace .v12-character-section-title {padding:12px 4px;gap:8px;align-items:center;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-character-workspace .v12-character-section-title h2 {font-size:20px;line-height:1.2;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-character-workspace .v12-character-section-title .v12-kicker {font-size:9px;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-heritage-sections {gap:10px;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-heritage-kind>summary {display:grid;grid-template-columns:32px minmax(0,1fr) auto;padding:10px;gap:8px;min-height:64px;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-heritage-kind-glyph {width:32px;height:32px;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-heritage-kind>summary .v12-kicker {display:none;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-heritage-kind>summary h3 {font-size:19px;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-heritage-kind>summary>.v12-tag {grid-column:2;font-size:10px;justify-self:start;margin:0;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-heritage-kind-body {padding:8px;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-direct-heritage {padding:8px;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-direct-heritage-title {gap:6px;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-direct-heritage-title .v12-kicker {font-size:10px;letter-spacing:.1em;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-heritage-empty {padding:10px;font-size:13px;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-mastery-family-head {padding:10px;gap:8px;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-mastery-family-head h3 {font-size:18px;overflow-wrap:anywhere;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-mastery-family-grid {grid-template-columns:minmax(0,1fr);}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-mastery-title {min-width:0;overflow-wrap:anywhere;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-mastery-title>b {font-size:16px;line-height:1.3;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-mastery-paths {flex-wrap:wrap;overflow-wrap:anywhere;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-character-workspace .v12-workspace-entry-name {font-size:16px;line-height:1.3;overflow-wrap:anywhere;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-character-workspace .v12-source-head {padding:10px;gap:8px;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-character-workspace .v12-source-medallion {width:36px;height:36px;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-character-workspace .v12-source-identity {min-width:0;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-character-workspace .v12-rule-text {font-size:15px;line-height:1.45;padding-inline:10px;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-character-workspace .v12-row-collapse {min-width:40px;min-height:40px;}
+}
+@media(max-width:767px) {
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-backstory-card {min-height:0;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-backstory-card-body {padding:12px;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-backstory-card-body>div:last-child {font-size:15px;line-height:1.5;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-backstory-toolbar .v12-metal-button {min-height:44px;}
+ body[data-ui="v12"] .v12-bottom-drawer-body .v12-vitality-deck button {min-height:40px;padding:8px;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-notes-console-head {padding:12px;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-sheet-item-grid {grid-template-columns:minmax(0,1fr);}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] .v12-inventory-command {padding:12px;min-height:0!important;}
+}
+@media(max-width:767px) {
+ body[data-ui="v12"] .v12-character-page .v12-notes-savebar {margin-inline:0;max-width:100%;padding:9px 10px;bottom:96px;flex-wrap:wrap;}
+ body[data-ui="v12"] .v12-notes-savebar button {min-height:44px;}
+}

@@ -75,7 +75,7 @@ const HIDDEN_PX = 0;
 const STORAGE_PREFIX = "sandbox:layout:";
 const LAYOUT_REVISION = 2;
 const MOBILE_BREAKPOINT_PX = 768; // <768 = mobile (tabs)
-const TABLET_BREAKPOINT_PX = 1024; // 768-1023 = tablet (2 cols + toggle preview)
+const TABLET_BREAKPOINT_PX = 1280; // tablet: two usable columns + companion toggle
 
 type ColumnKey = "library" | "builder" | "preview";
 
@@ -667,6 +667,7 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
     setSandboxSplit,
     sandboxBottomTab,
     setSandboxBottomTab,
+    openDrawer,
   } = useGlobalControls();
 
   // Hydration guard — wait for first client render so SSR HTML matches the
@@ -816,7 +817,16 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
   }
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col">
+    <div className="v12-mobile-atelier relative flex h-full min-h-0 flex-col">
+      <nav className="v12-mobile-workbench-actions" aria-label="Atelier workspace">
+        <button type="button" onClick={() => {
+          if (sandboxSplit) setSandboxBottomTab("build"); else openDrawer("build");
+        }}><IconDisplay iconSource="GAME_ICONS" iconKey="lorc/anvil-impact" iconColor={BUILD_ICON_COLOR} size={18} alt="" /> Build</button>
+        <button type="button" onClick={() => {
+          if (sandboxSplit) setSandboxBottomTab("preview"); else openDrawer("preview");
+        }}><Eye size={18} /> Preview</button>
+        <button type="button" aria-pressed={sandboxSplit} aria-label={sandboxSplit ? "Use one panel" : "Split library and build"} onClick={() => setSandboxSplit(!sandboxSplit)}><Columns2 size={18} /><span>{sandboxSplit ? "One panel" : "Split"}</span></button>
+      </nav>
       {!hydrated || !sandboxSplit ? (
         // Default mode: Library fills the viewport, Build is a drawer.
         // Add bottom padding to keep content above the fixed bottom tab bar.
@@ -858,6 +868,13 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
             aria-valuemin={SPLIT_MIN_LIBRARY_PCT}
             aria-valuemax={SPLIT_MAX_LIBRARY_PCT}
             tabIndex={0}
+            onKeyDown={(event) => {
+              if (!["ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
+              event.preventDefault();
+              const next = event.key === "Home" ? SPLIT_MIN_LIBRARY_PCT : event.key === "End" ? SPLIT_MAX_LIBRARY_PCT : Math.max(SPLIT_MIN_LIBRARY_PCT, Math.min(SPLIT_MAX_LIBRARY_PCT, splitPct + (event.key === "ArrowDown" ? 5 : -5)));
+              setSplitPct(next);
+              persistSplit(next);
+            }}
             onPointerDown={onSplitPointerDown}
             onPointerMove={onSplitPointerMove}
             onPointerUp={onSplitPointerUp}

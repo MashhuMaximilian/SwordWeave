@@ -116,7 +116,7 @@ export default async function ProfilePage({
   const creationCount = filteredItems.length - forkCount;
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-5 py-8">
+    <div className="sw-handheld-page mx-auto w-full max-w-4xl px-5 py-8">
       <Link
         href="/"
         className="mb-4 inline-flex items-center gap-1 text-sm text-sword-muted hover:text-sword-fg"

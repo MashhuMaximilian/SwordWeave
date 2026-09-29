@@ -1,4 +1,4 @@
-import { asc, desc, eq, isNull, or } from "drizzle-orm";
+import { asc, desc } from "drizzle-orm";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -50,19 +50,6 @@ export default async function LibraryHubPage() {
       }),
     ]);
 
-  // BU total helper for capabilities
-  const capabilityBuMap = new Map<string, number>();
-  for (const cap of capabilityRows) {
-    let total = 0;
-    for (const link of cap.primitiveLinks) {
-      const prim = primitiveRows.find((p) => p.id === link.primitiveId);
-      if (prim) {
-        total += prim.buCost * link.quantity;
-      }
-    }
-    capabilityBuMap.set(cap.id, total);
-  }
-
   // Category breakdown for primitives
   const categoryCount = new Map<string, number>();
   for (const p of primitiveRows) {
@@ -84,229 +71,33 @@ export default async function LibraryHubPage() {
     sort: "RECENT",
     limit: 12,
   });
-  const characterCount = characterLibrary.items.length;
+  const characterCount = characterLibrary.total;
 
+  const collections = [
+    { name: "Primitives", type: "PRIMITIVE", icon: CircuitBoard, tone: "gold", count: primitiveRows.length, caption: "Individual rules", description: "The foundation: access, bonuses, movement, and the rules your character owns." },
+    { name: "Effects", type: "EFFECT", icon: Sparkles, tone: "copper", count: effectRows.length, caption: "Reusable combinations", description: "Keep related primitives together, ready to use inside capabilities and items." },
+    { name: "Capabilities", type: "CAPABILITY", icon: Library, tone: "teal", count: capabilityRows.length, caption: "Actions & talents", description: "Discover what a character can do, with the mechanical pieces that support it." },
+  ];
+  const shelves = [
+    { name: "Lineages", type: "LINEAGE_TEMPLATE", icon: Shield, count: templateCount.get("LINEAGE") ?? 0, description: "Where a character comes from." },
+    { name: "Upbringings", type: "UPBRINGING_TEMPLATE", icon: ScrollText, count: templateCount.get("UPBRINGING") ?? 0, description: "The life that shaped them." },
+    { name: "Manifests", type: "MANIFEST_TEMPLATE", icon: Wand2, count: templateCount.get("MANIFEST") ?? 0, description: "The path they are choosing." },
+    { name: "Builds", type: "BUILD_TEMPLATE", icon: Crown, count: null, description: "Foundations shared by the community." },
+    { name: "Characters", type: "CHARACTER", icon: Swords, count: characterCount, description: "Meet a character. Make your own version." },
+  ];
   return (
-    <div className="v12-library-hub mx-auto w-full max-w-[1480px] px-5 py-8">
-      <div className="v12-library-hub-title max-w-3xl">
-        <p className="v12-kicker">
-          Canonical records · community expressions
-        </p>
-        <h1>The SwordWeave Library</h1>
-        <p className="mt-4 text-base leading-7 text-muted-foreground">
-          Browse, filter, and clone public primitives, effects, capabilities,
-          races, backgrounds, and archetypes contributed by the SwordWeave
-          community.
-        </p>
-      </div>
-
-      <div className="v12-library-hub-grid mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Link
-          className="v12-library-hub-card v12-instrument group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
-          href="/library/browse?type=PRIMITIVE"
-        >
-          <CircuitBoard className="size-5 text-primary" />
-          <h2 className="mt-5 text-lg font-semibold">Primitives</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {primitiveRows.length} public primitives across {categoryCount.size}{" "}
-            categories
-          </p>
-          <div className="mt-4 flex flex-wrap gap-1">
-            {Array.from(categoryCount.entries())
-              .sort((a, b) => b[1] - a[1])
-              .slice(0, 5)
-              .map(([cat, count]) => (
-                <span
-                  key={cat}
-                  className="rounded-full bg-secondary px-2 py-0.5 text-xs"
-                >
-                  {cat.replace(/_/g, " ")} ({count})
-                </span>
-              ))}
-          </div>
-          <span className="mt-4 flex items-center gap-2 pt-3 text-sm font-medium text-primary">
-            Browse primitives
-            <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
-          </span>
-        </Link>
-
-        <Link
-          className="v12-library-hub-card v12-instrument group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
-          href="/library/browse?type=EFFECT"
-        >
-          <Sparkles className="size-5 text-primary" />
-          <h2 className="mt-5 text-lg font-semibold">Effects</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {effectRows.length} public effects (conditions, statuses, modifiers)
-          </p>
-          <span className="mt-4 flex items-center gap-2 pt-3 text-sm font-medium text-primary">
-            Browse effects
-            <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
-          </span>
-        </Link>
-
-        <Link
-          className="v12-library-hub-card v12-instrument group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
-          href="/library/browse?type=CAPABILITY"
-        >
-          <Library className="size-5 text-primary" />
-          <h2 className="mt-5 text-lg font-semibold">Capabilities</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {capabilityRows.length} public capabilities compiled from primitives
-          </p>
-          <span className="mt-4 flex items-center gap-2 pt-3 text-sm font-medium text-primary">
-            Browse capabilities
-            <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
-          </span>
-        </Link>
-
-        <Link
-          className="v12-library-hub-card v12-instrument group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
-          href="/library/browse?type=LINEAGE_TEMPLATE"
-        >
-          <Shield className="size-5 text-primary" />
-          <h2 className="mt-5 text-lg font-semibold">Races</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {templateCount.get("LINEAGE") ?? 0} public races
-          </p>
-          <span className="mt-4 flex items-center gap-2 pt-3 text-sm font-medium text-primary">
-            Browse races
-            <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
-          </span>
-        </Link>
-
-        <Link
-          className="v12-library-hub-card v12-instrument group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
-          href="/library/browse?type=UPBRINGING_TEMPLATE"
-        >
-          <ScrollText className="size-5 text-primary" />
-          <h2 className="mt-5 text-lg font-semibold">Backgrounds</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {templateCount.get("UPBRINGING") ?? 0} public backgrounds
-          </p>
-          <span className="mt-4 flex items-center gap-2 pt-3 text-sm font-medium text-primary">
-            Browse backgrounds
-            <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
-          </span>
-        </Link>
-
-        <Link
-          className="v12-library-hub-card v12-instrument group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
-          href="/library/browse?type=MANIFEST_TEMPLATE"
-        >
-          <Wand2 className="size-5 text-primary" />
-          <h2 className="mt-5 text-lg font-semibold">Archetypes</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {templateCount.get("MANIFEST") ?? 0} public archetypes
-          </p>
-          <span className="mt-4 flex items-center gap-2 pt-3 text-sm font-medium text-primary">
-            Browse archetypes
-            <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
-          </span>
-        </Link>
-
-        {/* Mashu 2026-07-09: public builds card. Until today, builds were
-            only visible on the owner's Creations page. This card links
-            to the same /library/browse browser the other entity cards
-            use, filtered by type=BUILD_TEMPLATE. */}
-        <Link
-          className="v12-library-hub-card v12-instrument group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
-          href="/library/browse?type=BUILD_TEMPLATE"
-        >
-          <Crown className="size-5 text-primary" />
-          <h2 className="mt-5 text-lg font-semibold">Builds</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Public character builds + archetype heritage from the community.
-          </p>
-          <span className="mt-4 flex items-center gap-2 pt-3 text-sm font-medium text-primary">
-            Browse builds
-            <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
-          </span>
-        </Link>
-
-        {/* PLAN Eilxina (Mashu 2026-09-09): CHARACTER tile. The codex
-            surface for published characters (Part A wired the query
-            layer; this tile makes it discoverable from the hub).
-            Same skeleton as the other entity tiles — count + link
-            to /library/browse?type=CHARACTER. */}
-        <Link
-          className="v12-library-hub-card v12-instrument group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
-          href="/library/browse?type=CHARACTER"
-        >
-          <Swords className="size-5 text-primary" />
-          <h2 className="mt-5 text-lg font-semibold">Characters</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {characterCount} public character{characterCount === 1 ? "" : "s"}{" "}
-            shared by the community — fork one to make it your own.
-          </p>
-          <span className="mt-4 flex items-center gap-2 pt-3 text-sm font-medium text-primary">
-            Browse characters
-            <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
-          </span>
-        </Link>
-      </div>
-
-      <div className="v12-library-hub-callout v12-instrument mt-8 rounded-md border border-primary/20 bg-primary/5 p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="flex items-center gap-2 text-lg font-semibold">
-              <Crown className="size-5 text-primary" />
-              Browse the corpus.
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Full sort + filter view across all public entries. Find by name,
-              category, or engagement.
-            </p>
-          </div>
-          <Link
-            href="/library/browse"
-            className="shrink-0 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            Open browser
-            <ArrowRight className="ml-2 inline size-4" />
-          </Link>
-        </div>
-      </div>
-
-      {/* Recent capabilities preview */}
-      <section className="mt-10">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Recent Capabilities</h2>
-          <Link
-            href="/library/browse?type=CAPABILITY"
-            className="text-sm text-primary hover:underline"
-          >
-            View all
-          </Link>
-        </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {capabilityRows.slice(0, 12).map((cap) => {
-            const bu = capabilityBuMap.get(cap.id) ?? 0;
-            return (
-              <article
-                key={cap.id}
-                className="v12-library-reference-row rounded-md border border-border bg-card p-4"
-              >
-                <header className="flex items-start justify-between gap-2">
-                  <h3 className="font-semibold">{cap.name}</h3>
-                  <span className="shrink-0 rounded-full bg-primary/10 px-2 py-1 font-mono text-xs font-semibold text-primary">
-                    {bu} BU
-                  </span>
-                </header>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {cap.type} - {cap.sourceType}
-                </p>
-                <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">
-                  {cap.verboseDescription}
-                </p>
-                <p className="mt-3 text-xs text-muted-foreground">
-                  {cap.primitiveLinks.length} primitives
-                </p>
-              </article>
-            );
-          })}
-        </div>
+    <div className="sw-library-landing">
+      <header className="sw-library-intro">
+        <div><p className="sw-library-eyebrow"><Library aria-hidden="true" /> The shared collection</p><h1>Find your<br /><em>next possibility.</em></h1><p>Welcome to the SwordWeave Library. Explore the rules, combinations, and characters that other tables have made their own.</p><Link className="sw-library-primary" href="/library/browse">Explore the full Library <ArrowRight aria-hidden="true" /></Link></div>
+        <aside className="sw-library-index" aria-label="Library at a glance"><span className="sw-library-index__seal"><Library aria-hidden="true" /></span><p className="sw-library-eyebrow">Rules with something to build on</p><dl><div><dt>Primitives</dt><dd>{primitiveRows.length}</dd></div><div><dt>Rule categories</dt><dd>{categoryCount.size}</dd></div><div><dt>Capabilities</dt><dd>{capabilityRows.length}</dd></div></dl><p>Start with one rule, explore a finished idea, or bring a composition into your own build.</p></aside>
+      </header>
+      <section aria-labelledby="mechanics-title" className="sw-library-section"><div className="sw-library-section-head"><div><p className="sw-library-eyebrow">01 / The mechanical pieces</p><h2 id="mechanics-title">Start small. Put it together.</h2></div><Link href="/atelier">Compose in the Atelier <ArrowRight aria-hidden="true" /></Link></div>
+        <div className="sw-library-collections">{collections.map(entry=><Link key={entry.type} href={`/library/browse?type=${entry.type}`} className="sw-library-collection" data-tone={entry.tone}><header><span className="sw-library-medallion"><entry.icon aria-hidden="true" /></span><span className="sw-library-count">{entry.count}<small>public entries</small></span></header><p className="sw-library-eyebrow">{entry.caption}</p><h3>{entry.name}</h3><p>{entry.description}</p><span className="sw-library-collection__action">Browse {entry.name.toLowerCase()} <ArrowRight aria-hidden="true" /></span></Link>)}</div>
+        <div className="sw-library-categories"><span>Inside primitives</span>{Array.from(categoryCount.entries()).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([name,count])=><span key={name}>{name.replace(/_/g," ").toLowerCase()} <strong>{count}</strong></span>)}</div>
       </section>
+      <section aria-labelledby="stories-title" className="sw-library-section"><div className="sw-library-section-head"><div><p className="sw-library-eyebrow">02 / Give the rules a life</p><h2 id="stories-title">Heritages, builds, and people.</h2></div></div><div className="sw-library-shelves">{shelves.map(entry=><Link className="sw-library-shelf" key={entry.type} href={`/library/browse?type=${entry.type}`}><entry.icon aria-hidden="true" /><div><h3>{entry.name}</h3><p>{entry.description}</p></div><span>{entry.count !== null && <strong>{entry.count}</strong>}<ArrowRight aria-hidden="true" /></span></Link>)}</div></section>
+      {capabilityRows.length > 0 && <section className="sw-library-section" aria-labelledby="recent-title"><div className="sw-library-section-head"><div><p className="sw-library-eyebrow">03 / Recently added</p><h2 id="recent-title">A few ideas to follow.</h2></div><Link href="/library/browse?type=CAPABILITY">All capabilities <ArrowRight aria-hidden="true" /></Link></div><div className="sw-library-recent">{capabilityRows.slice(0,6).map(cap=><article key={cap.id}><header><h3>{cap.name}</h3><Link href={`/library/browse?type=CAPABILITY&q=${encodeURIComponent(cap.name)}`} aria-label={`Find ${cap.name} in the Library`}><ArrowRight aria-hidden="true" /></Link></header><p className="sw-library-recent__meta">{cap.type.toLowerCase()} · {cap.sourceType.toLowerCase()}</p><p>{cap.verboseDescription}</p><span>{cap.primitiveLinks.length} linked primitives</span></article>)}</div></section>}
+      <footer className="sw-library-footer"><div><h2>Make something worth sharing.</h2><p>Use the Atelier to put your own rules and combinations into words.</p></div><Link className="sw-library-primary" href="/atelier">Open the Atelier <ArrowRight aria-hidden="true" /></Link></footer>
     </div>
   );
 }

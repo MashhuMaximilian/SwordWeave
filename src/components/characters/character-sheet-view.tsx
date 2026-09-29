@@ -4042,7 +4042,7 @@ function NotesTab({
 
       {/* ---- Sticky save bar ---- */}
       <div
-        className={`sticky bottom-20 z-20 -mx-4 flex items-center justify-between gap-2 border-t border-border bg-background/95 px-4 py-2 backdrop-blur md:bottom-4 md:mx-0 md:rounded-md md:border md:px-4 md:shadow-sm ${
+        className={`v12-notes-savebar sticky bottom-20 z-20 -mx-4 flex items-center justify-between gap-2 border-t border-border bg-background/95 px-4 py-2 backdrop-blur md:bottom-4 md:mx-0 md:rounded-md md:border md:px-4 md:shadow-sm ${
           dirty ? "border-amber-500/30" : ""
         }`}
       >

@@ -1,4 +1,10 @@
 import type { NextConfig } from "next";
+import { hostname, networkInterfaces } from "node:os";
+
+// Allow the phone preview to load development assets over the current LAN.
+const localPreviewHosts = Object.values(networkInterfaces()).flatMap(addresses =>
+  (addresses ?? []).filter(address => !address.internal && address.family === "IPv4").map(address => address.address),
+);
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -6,7 +12,7 @@ const nextConfig: NextConfig = {
   // Next's dev-origin guard otherwise serves the SSR shell at 127.0.0.1
   // but blocks the client bootstrap, leaving Clerk and every client control
   // (including the FAB) visually present but inert.
-  allowedDevOrigins: ["localhost", "127.0.0.1"],
+  allowedDevOrigins: ["localhost", "127.0.0.1", hostname(), ...localPreviewHosts],
   images: {
     remotePatterns: [
       // Clerk user avatars (private bucket URLs)

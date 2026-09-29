@@ -188,7 +188,7 @@ export function ModalStackScope() {
 }
 
 function ModalStackRenderer() {
-  const { stack, pop, scopeHost: registeredScope } = useModalStack();
+  const { stack, pop, popTo, scopeHost: registeredScope } = useModalStack();
   const scopeHost = stack.some(entry => entry.global) ? null : registeredScope;
   const isDesktop = useSyncExternalStore(
     subscribeDesktopViewport,
@@ -219,6 +219,8 @@ function ModalStackRenderer() {
   }, [stack.length, pop]);
 
   if (stack.length === 0) return null;
+  const portalHost = isDesktop ? scopeHost : null;
+  const trail = stack.length > 1 ? <nav className="sw-mobile-preview-trail" aria-label="Preview trail">{stack.map((entry,index) => <button key={entry.key} type="button" aria-current={index === stack.length - 1 ? "page" : undefined} onClick={() => popTo(index)}>{index > 0 && <span aria-hidden="true">› </span>}{entry.label}</button>)}</nav> : null;
 
   // Phase 9: portal to document.body so the modal stack is detached from
   // the AppShell DOM hierarchy. Previously the modal renderer was a
@@ -249,7 +251,7 @@ function ModalStackRenderer() {
               data-modal-stack-top={isTop ? "true" : "false"}
               className={cn(
                 "v12-modal-backdrop inset-0 flex items-center justify-center",
-                scopeHost ? "absolute p-0" : "fixed p-4 xl:p-6",
+                portalHost ? "absolute p-0" : "fixed p-4 xl:p-6",
                 isTop ? "pointer-events-auto" : "pointer-events-none",
               )}
               style={{ zIndex: z }}
@@ -260,14 +262,14 @@ function ModalStackRenderer() {
                 kicker={entry.category ?? "Archive preview"}
                 onClose={pop}
                 className={cn(
-                  scopeHost
+                  portalHost
                     ? "h-auto max-h-[calc(100%-8px)] w-[calc(100%-8px)] max-w-full"
                     : "h-auto max-h-[calc(100dvh-32px)] w-[min(calc(100vw-40px),1180px)] max-w-none xl:max-h-[calc(100dvh-48px)]",
                   !isTop && "opacity-90",
                 )}
-                bodyClassName={isScopedBodyClass(Boolean(scopeHost))}
+                bodyClassName={isScopedBodyClass(Boolean(portalHost))}
               >
-                {entry.content}
+                {isTop && trail}{entry.content}
               </InstrumentDialogFrame>
             </div>
           );
@@ -294,7 +296,7 @@ function ModalStackRenderer() {
             data-modal-stack-top={isTop ? "true" : "false"}
             className={cn(
               "v12-modal-backdrop inset-0 z-50 flex justify-center bg-black/80 sm:items-center sm:p-4",
-              scopeHost ? "absolute" : "fixed",
+              portalHost ? "absolute" : "fixed",
               isTop ? "pointer-events-auto" : "pointer-events-none",
             )}
             style={{ zIndex: z }}
@@ -308,15 +310,15 @@ function ModalStackRenderer() {
                 "w-[calc(100%-8px)] max-w-[1180px] max-h-[calc(100dvh-8px)] sm:max-h-[90dvh]",
                 !isTop && "max-w-md",
               )}
-              bodyClassName={isScopedBodyClass(Boolean(scopeHost))}
+              bodyClassName={isScopedBodyClass(Boolean(portalHost))}
             >
-              {entry.content}
+              {isTop && trail}{entry.content}
             </InstrumentDialogFrame>
           </div>
         );
       })}
     </>,
-    scopeHost ?? document.body
+    portalHost ?? document.body
   );
 }
 

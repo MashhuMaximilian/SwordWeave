@@ -53,3 +53,31 @@
 .procedural-result-heading h3,.generated-reference-slot strong,.generated-scaling dd { min-width:0; overflow-wrap:anywhere; }
 
 .generated-mechanics .generated-piece-kind { color: var(--v12-accent, #e6ca83); font-weight: 700; }
+
+@media(max-width:1279px) {
+ .procedural-randomizer-controls :is(input:not([type=checkbox]),select) {font-size:16px;min-height:44px;}
+ .procedural-randomizer .discovery-kind-options button,.procedural-randomizer .v12-metal-button,.procedural-card-actions button {min-height:44px;}
+ .procedural-reuse {min-height:44px;align-items:center!important;}
+ .procedural-reuse input {width:20px;height:20px;flex:none;}
+}
+@media(max-width:767px) {
+ .procedural-randomizer {padding:12px 10px;gap:12px;}
+ .procedural-randomizer-controls {padding:12px;gap:12px;}
+ .procedural-randomizer .discovery-kind-options {gap:5px;}
+ .procedural-randomizer .discovery-kind-options button {padding:8px 10px;}
+ .procedural-results article {padding:12px;}
+ .procedural-result-heading {gap:7px;flex-wrap:wrap;}
+ .procedural-result-heading h3 {font-size:18px;flex-basis:calc(100% - 40px);}
+ .procedural-result-heading>strong {margin-left:30px;display:flex;align-items:baseline;gap:8px;}
+ .procedural-card-actions {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));}
+ .procedural-card-actions button {justify-content:center;margin-top:5px;}
+ .procedural-edit-actions .v12-metal-button {padding:8px 6px;font-size:11px;justify-content:center;}
+ .procedural-edit-actions svg {width:15px;flex:none;}
+ .procedural-results .generated-mechanics li {gap:6px;}
+ .procedural-results .generated-mechanics li>small {max-width:4.5rem;font-size:11px;}
+ .generated-scaling>div {padding:7px 8px;}
+ .generated-scaling dt {font-size:11px;}
+ .generated-scaling dd {font-size:14px;}
+ .procedural-options {padding:9px;}
+ .procedural-options summary {min-height:44px;display:flex;align-items:center;}
+}

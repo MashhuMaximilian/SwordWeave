@@ -376,3 +376,43 @@ body[data-ui="v12"] .sw-character-forge :is(button,input,select,textarea):focus-
   body[data-ui="v12"] .sw-character-forge__footer-actions { display:flex;width:100%;min-width:0;margin:0; }
   body[data-ui="v12"] .sw-character-forge__footer-actions > button { flex:1 1 0;min-width:0;padding:8px 7px;font-size:10px;white-space:nowrap; }
 }
+
+/* Creation remains an instrument on tablets; phones get a compact step rail. */
+@media (min-width:768px) and (max-width:1279px) {
+ body[data-ui="v12"] .sw-character-forge {display:grid;grid-template-columns:155px minmax(0,1fr);min-height:0;}
+ body[data-ui="v12"] .sw-character-forge__rail {position:static;padding:14px 8px;}
+ body[data-ui="v12"] .sw-character-forge__rail nav {display:grid;grid-template-columns:1fr;gap:5px;}
+ body[data-ui="v12"] .sw-character-forge__rail nav button {display:grid;grid-template-columns:28px minmax(0,1fr);gap:7px;text-align:left;padding:8px 5px;min-height:52px;}
+ body[data-ui="v12"] .sw-character-forge__rail nav strong {font-size:12px;}
+ body[data-ui="v12"] .sw-character-forge__step-number {width:26px;height:26px;}
+ body[data-ui="v12"] .sw-character-forge__header {padding:16px;gap:12px;}
+ body[data-ui="v12"] .sw-character-forge__header h2 {font-size:27px;}
+ body[data-ui="v12"] .sw-character-forge__content {padding:15px;}
+ body[data-ui="v12"] .sw-character-forge__rail-title {padding:0 6px 14px;}
+ body[data-ui="v12"] .sw-character-forge__rail-title strong {font-size:20px;}
+}
+@media (max-width:1279px) {
+ body[data-ui="v12"] .sw-character-forge :is(input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea) {font-size:16px;}
+ body[data-ui="v12"] .sw-character-forge__footer-actions>button {min-height:44px;}
+}
+@media (max-width:767px) {
+ body[data-ui="v12"] .sw-forge-page__masthead {padding:12px;}
+ body[data-ui="v12"] .sw-forge-page__masthead h1 {font-size:28px;}
+ body[data-ui="v12"] .sw-character-forge__rail {padding:4px;top:0;}
+ body[data-ui="v12"] .sw-character-forge__rail-title,body[data-ui="v12"] .sw-character-forge__rail nav small {display:none;}
+ body[data-ui="v12"] .sw-character-forge__rail nav {margin-top:0;}
+ body[data-ui="v12"] .sw-character-forge__rail nav button {min-height:54px;gap:4px;}
+ body[data-ui="v12"] .sw-character-forge__step-number {width:24px;height:24px;}
+ body[data-ui="v12"] .sw-character-forge__reading {display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;padding:6px;margin-top:5px;}
+ body[data-ui="v12"] .sw-character-forge__reading :is(strong,small) {margin-top:0;font-size:12px;}
+ body[data-ui="v12"] .sw-character-forge__reading>span {font-size:9px;}
+ body[data-ui="v12"] .sw-character-forge__reading>.sw-forge-reset {margin-left:auto;min-height:36px;}
+ body[data-ui="v12"] .sw-character-forge__header {padding:12px;gap:8px;}
+ body[data-ui="v12"] .sw-character-forge__header h2 {font-size:25px;}
+ body[data-ui="v12"] .sw-character-forge__content {padding:12px 9px 18px;}
+ body[data-ui="v12"] .sw-forge-panel,body[data-ui="v12"] .sw-forge-heritages,body[data-ui="v12"] .sw-forge-story-section {padding:12px;}
+ body[data-ui="v12"] .sw-forge-guidance {padding:10px;}
+ body[data-ui="v12"] .sw-forge-guidance p {font-size:14px;}
+ body[data-ui="v12"] .sw-access-presets>div>button:not(.sw-access-presets__custom),body[data-ui="v12"] .sw-access-presets>div>button.sw-access-presets__custom {min-height:0;padding:13px;}
+ body[data-ui="v12"] .sw-character-forge__footer-actions>button {font-size:11px;white-space:normal;}
+}

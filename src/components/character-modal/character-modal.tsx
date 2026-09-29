@@ -1,4 +1,5 @@
 "use client";
+import { useMobileDialogFocus } from "@/lib/hooks/use-mobile-dialog-focus";
 
 // =============================================================================
 // CharacterModal — the persistent overlay layer for character creation
@@ -69,6 +70,7 @@ export function CharacterModal({ children }: CharacterModalProps) {
   const {
     isOpen,
     close,
+    open,
     isDirty,
     editCharacterId,
     editCharacterName,
@@ -76,6 +78,7 @@ export function CharacterModal({ children }: CharacterModalProps) {
     pendingEditId,
     isSeedingEdit,
   } = useCharacterModal();
+  const panelRef = useMobileDialogFocus<HTMLDivElement>(isOpen);
   const [isDesktop, setIsDesktop] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [pendingNav, setPendingNav] = useState<string | null>(null);
@@ -93,12 +96,19 @@ export function CharacterModal({ children }: CharacterModalProps) {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
+  useEffect(() => {
+    if (!isOpen || !window.matchMedia("(max-width: 1279px)").matches) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previous; };
+  }, [isOpen]);
+
   // ESC key closes the modal. Standard dialog UX. No confirm — see
   // architectural decision #5 above.
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
+      if (e.key === "Escape" && !document.querySelector('[data-modal-stack-top="true"], .v12-build-preview-modal[aria-modal="true"]')) close();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -223,6 +233,7 @@ export function CharacterModal({ children }: CharacterModalProps) {
       aria-modal="true"
       aria-label={editCharacterId ? "Edit character" : "Character creation"}
       data-character-modal="true"
+      ref={panelRef}
       className={cn(
         "fixed inset-0 z-[70] flex justify-center bg-black/60 sm:items-center sm:p-4",
       )}
@@ -243,7 +254,7 @@ export function CharacterModal({ children }: CharacterModalProps) {
       >
         {/* Scroll container — header is INSIDE so it sticks when content
             scrolls (Phase 9 round-2 lesson). */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto text-sm">
+        <div className="sw-character-modal-scroll flex min-h-0 flex-1 flex-col overflow-y-auto text-sm">
           <header className="v12-section-head sticky top-0 z-20 flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-4">
             <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {titleText}
@@ -305,7 +316,7 @@ export function CharacterModal({ children }: CharacterModalProps) {
             </button>
           </header>
 
-          <div className="p-4">
+          <div className="sw-character-modal-content p-4">
             {children ?? <TabbedCharacterForm />}
           </div>
         </div>
