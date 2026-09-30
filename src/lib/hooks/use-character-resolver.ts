@@ -126,6 +126,11 @@ export function useCharacterResolver(
   input: UseCharacterResolverInput,
 ): UseCharacterResolverResult {
   const graph = useCharacterSupplyGraph(input.characterId);
+  // Supply ancestry is structural: toggling an ability or changing HP does not
+  // change these paths. Avoid walking the graph for every live stat update.
+  const pathsByLink = useMemo(() => graph
+    ? input.primitiveLinks.map(link => instanceSupplyPaths(graph, link))
+    : null, [graph, input.primitiveLinks]);
   return useMemo(() => {
     const restrictions = activeRestrictions(input.runtimeConditions ?? []);
     const offCap = input.offCapabilityIds ?? new Set<string>();
@@ -148,7 +153,7 @@ export function useCharacterResolver(
         isToggledOff: false,
       }));
 
-    const slots: ResolvedPrimitiveSlot[] = input.primitiveLinks.map((link) => {
+    const slots: ResolvedPrimitiveSlot[] = input.primitiveLinks.map((link, index) => {
       // Phase 8.L round 38: derive live toggle state from the
       // localStorage-fed sets. A primitive is OFF when:
       //   - its parent capability is OFF, OR
@@ -162,7 +167,7 @@ export function useCharacterResolver(
       const fromEffOff =
         link.originEffectId !== null &&
         offEff.has(link.originEffectId);
-      const paths = graph ? instanceSupplyPaths(graph, link) : [];
+      const paths = pathsByLink?.[index] ?? [];
       const toggledOff = graph
         ? !effectiveAvailability(`primitive:${link.primitiveId}`, paths, restrictions, offCap, offEff).available
         : fromCapOff || fromEffOff || restrictions.some(r => r.kind === "primitive" && r.entityId === String(link.primitiveId));
@@ -194,7 +199,11 @@ export function useCharacterResolver(
       level: input.level,
       pb: input.pb,
       proficientAttribute: input.proficientAttribute,
-      attributes: input.attributes,
+      attributes: {
+        physical: input.attributes.physical,
+        mental: input.attributes.mental,
+        magical: input.attributes.magical,
+      },
       slots: allSlots,
       conditionContext: input.conditionContext ?? null,
     };
@@ -210,11 +219,14 @@ export function useCharacterResolver(
     };
   }, [
     graph,
+    pathsByLink,
     input.characterId,
     input.level,
     input.pb,
     input.proficientAttribute,
-    input.attributes,
+    input.attributes.physical,
+    input.attributes.mental,
+    input.attributes.magical,
     input.primitiveLinks,
     input.sourceNames,
     input.offCapabilityIds,

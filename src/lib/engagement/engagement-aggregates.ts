@@ -51,7 +51,8 @@ export async function resolveEngagementMap(
 
   // Reactions: one row per (target_type, target_id, version_id). We sum across
   // all versions to get the lifetime engagement for the de-duplicated item.
-  const reactionRows = await db
+  const [reactionRows, forkRows] = await Promise.all([
+    db
     .select({
       targetType: reactionAggregates.targetType,
       targetId: reactionAggregates.targetId,
@@ -60,10 +61,10 @@ export async function resolveEngagementMap(
     })
     .from(reactionAggregates)
     .where(inArray(reactionAggregates.targetId, uniqueIds))
-    .groupBy(reactionAggregates.targetType, reactionAggregates.targetId);
+    .groupBy(reactionAggregates.targetType, reactionAggregates.targetId),
 
   // Forks: keyed by (source_target_type, source_target_id, source_version_id).
-  const forkRows = await db
+    db
     .select({
       sourceTargetType: forkAggregates.sourceTargetType,
       sourceTargetId: forkAggregates.sourceTargetId,
@@ -71,7 +72,8 @@ export async function resolveEngagementMap(
     })
     .from(forkAggregates)
     .where(inArray(forkAggregates.sourceTargetId, uniqueIds))
-    .groupBy(forkAggregates.sourceTargetType, forkAggregates.sourceTargetId);
+    .groupBy(forkAggregates.sourceTargetType, forkAggregates.sourceTargetId),
+  ]);
 
   // Build per-(type,id) intermediate maps
   const reactionByTypeId = new Map<

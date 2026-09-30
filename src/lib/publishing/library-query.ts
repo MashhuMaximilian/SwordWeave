@@ -323,15 +323,8 @@ async function queryLibraryResult(q: LibraryQuery, complete: boolean): Promise<L
   const offset = q.offset ?? 0;
   const sort = q.sort ?? "LIKES";
 
-  // Fetch each target type in parallel (instead of sequentially awaiting
-  // each branch). The previous serial pattern was the root cause of
-  // "library filters feel slow" — every filter change was triggering
-  // ~15-20 sequential Neon HTTP round-trips (1 main fetch + 1 author
-  // lookup + 2 engagement lookups per type × 5 types = ~20). With
-  // Promise.all the 5 type branches run concurrently, and each branch
-  // internally awaits its own author/engagement lookups (4 round-trips
-  // per branch in the worst case), so the wall clock is dominated by
-  // the slowest branch — typically 300-500ms instead of 2-3s.
+  // Read authorized entity branches in parallel, then batch shared author and
+  // engagement enrichment across the union below.
   const wantAll = !q.targetType;
   const fetchJobs: Promise<LibraryItem[]>[] = [];
   if (wantAll || q.targetType === "PRIMITIVE") {
@@ -367,6 +360,27 @@ async function queryLibraryResult(q: LibraryQuery, complete: boolean): Promise<L
   }
   const branches = await Promise.all(fetchJobs);
   const items: LibraryItem[] = branches.flat();
+
+  // Enrich the authorized union once, rather than re-reading the same authors
+  // and aggregate tables for every entity type. Keep this request-scoped:
+  // private/follower visibility and changing reactions must never leak through
+  // a shared viewer-independent cache. Enrichment precedes sort/origin filters.
+  const [authorMap, engagementMap] = await Promise.all([
+    resolveAuthorMap(items.map((item) => item.authorId)),
+    resolveEngagementMap(items.map((item) => item.id)),
+  ]);
+  for (const item of items) {
+    const author = item.authorId ? authorMap.get(item.authorId) : null;
+    const engagement = engagementMap.get(item.id);
+    item.authorUsername = author?.username ?? null;
+    item.authorDisplayName = author?.displayName ?? null;
+    item.authorAvatarUrl = author?.avatarUrl ?? null;
+    item.authorIsAdmin = author?.isAdmin ?? false;
+    item.likesCount = engagement?.likes ?? 0;
+    item.dislikesCount = engagement?.dislikes ?? 0;
+    item.forkCount = engagement?.forks ?? 0;
+  }
+
 
   // Sort the merged list (since each fetch already applies some ordering)
   sortItems(items, sort);
@@ -815,18 +829,8 @@ async function fetchPrimitives(q: LibraryFetchQuery): Promise<LibraryItem[]> {
     for (const count of countRows) lineageCounts.set(count.root_id, { direct: Number(count.direct_count), descendants: Number(count.descendant_count) });
   }
 
-  const authorMap = await resolveAuthorMap(rows.map((r) => r.userId));
-  const engagementMap = await resolveEngagementMap(
-    rows.map((r) => `PRIMITIVE:${r.id}`),
-  );
 
   return rows.map((r) => {
-    const author = r.userId ? authorMap.get(r.userId) : null;
-    const eng = engagementMap.get(`PRIMITIVE:${r.id}`) ?? {
-      likes: 0,
-      dislikes: 0,
-      forks: 0,
-    };
     const icon = resolveIcon(r);
     const isDescriptiveOnly = (r.mechanicalRule as { family?: string } | null)?.family === "DESCRIPTIVE";
     const mechanicalDescription = isDescriptiveOnly
@@ -854,17 +858,17 @@ async function fetchPrimitives(q: LibraryFetchQuery): Promise<LibraryItem[]> {
       category: r.category,
       buCost: r.buCost,
       authorId: r.userId ?? null,
-      authorUsername: author?.username ?? null,
-      authorDisplayName: author?.displayName ?? null,
-      authorAvatarUrl: author?.avatarUrl ?? null,
+      authorUsername: null,
+      authorDisplayName: null,
+      authorAvatarUrl: null,
       // Phase 9 follow-up: hoist isAdmin so the OwnerBar + source page
       // can render "by System" instead of "@xeun" for admin-authored
       // rows (personal forks from an admin still attribute to system).
-      authorIsAdmin: author?.isAdmin ?? false,
+      authorIsAdmin: false,
       publishedAt: r.createdAt,
-      likesCount: eng.likes,
-      dislikesCount: eng.dislikes,
-      forkCount: eng.forks,
+      likesCount: 0,
+      dislikesCount: 0,
+      forkCount: 0,
       tags: r.tags ?? [],
       sourceOrigin: r.sourceOrigin ?? null,
       // Phase 8: per-entity iconography. resolveIcon picks the live
@@ -1004,19 +1008,9 @@ async function fetchCapabilities(q: LibraryFetchQuery): Promise<LibraryItem[]> {
     }
   }
 
-  const authorMap = await resolveAuthorMap(rows.map((r) => r.userId));
   const compositionPaths = await loadCompositionPaths("CAPABILITY", capabilityIds);
-  const engagementMap = await resolveEngagementMap(
-    rows.map((r) => `CAPABILITY:${r.id}`),
-  );
 
   return rows.map((r) => {
-    const author = r.userId ? authorMap.get(r.userId) : null;
-    const eng = engagementMap.get(`CAPABILITY:${r.id}`) ?? {
-      likes: 0,
-      dislikes: 0,
-      forks: 0,
-    };
     const icon = resolveIcon(r);
     return {
       id: `CAPABILITY:${r.id}`,
@@ -1030,17 +1024,17 @@ async function fetchCapabilities(q: LibraryFetchQuery): Promise<LibraryItem[]> {
       category: r.type,
       buCost: buMap.get(r.id) ?? 0,
       authorId: r.userId ?? null,
-      authorUsername: author?.username ?? null,
-      authorDisplayName: author?.displayName ?? null,
-      authorAvatarUrl: author?.avatarUrl ?? null,
+      authorUsername: null,
+      authorDisplayName: null,
+      authorAvatarUrl: null,
       // Phase 9 follow-up: hoist isAdmin so the OwnerBar + source page
       // can render "by System" instead of "@xeun" for admin-authored
       // rows (personal forks from an admin still attribute to system).
-      authorIsAdmin: author?.isAdmin ?? false,
+      authorIsAdmin: false,
       publishedAt: r.createdAt,
-      likesCount: eng.likes,
-      dislikesCount: eng.dislikes,
-      forkCount: eng.forks,
+      likesCount: 0,
+      dislikesCount: 0,
+      forkCount: 0,
       tags: r.tags,
       sourceOrigin: r.sourceOrigin ?? null,
       // Phase 8: per-entity iconography (resolved — live or proposed)
@@ -1121,18 +1115,8 @@ async function fetchCharacters(q: LibraryFetchQuery): Promise<LibraryItem[]> {
     .where(and(...conditions));
   const rows = await (q.complete ? entityQuery : entityQuery.limit(500));
 
-  const authorMap = await resolveAuthorMap(rows.map((r) => r.userId));
-  const engagementMap = await resolveEngagementMap(
-    rows.map((r) => `CHARACTER:${r.id}`),
-  );
 
   return rows.map((r) => {
-    const author = r.userId ? authorMap.get(r.userId) : null;
-    const eng = engagementMap.get(`CHARACTER:${r.id}`) ?? {
-      likes: 0,
-      dislikes: 0,
-      forks: 0,
-    };
     // Phase 9.5-style description: level + size + attributes. Same
     // shape as the sandbox character mapper so the cards render
     // identically. No verboseDescription field on characters — we
@@ -1149,14 +1133,14 @@ async function fetchCharacters(q: LibraryFetchQuery): Promise<LibraryItem[]> {
       category: r.size,
       buCost: null, // characters don't carry a single BU number
       authorId: r.userId ?? null,
-      authorUsername: author?.username ?? null,
-      authorDisplayName: author?.displayName ?? null,
-      authorAvatarUrl: author?.avatarUrl ?? null,
-      authorIsAdmin: author?.isAdmin ?? false,
+      authorUsername: null,
+      authorDisplayName: null,
+      authorAvatarUrl: null,
+      authorIsAdmin: false,
       publishedAt: r.createdAt,
-      likesCount: eng.likes,
-      dislikesCount: eng.dislikes,
-      forkCount: eng.forks,
+      likesCount: 0,
+      dislikesCount: 0,
+      forkCount: 0,
       tags: [],
       sourceOrigin: r.sourceOrigin ?? null,
       // Characters don't carry icon columns. portraitUrl would be the
@@ -1239,10 +1223,6 @@ async function fetchEffects(q: LibraryFetchQuery): Promise<LibraryItem[]> {
     .where(and(...conditions));
   const rows = await (q.complete ? entityQuery : entityQuery.limit(500));
 
-  const authorMap = await resolveAuthorMap(rows.map((r) => r.userId));
-  const engagementMap = await resolveEngagementMap(
-    rows.map((r) => `EFFECT:${r.id}`),
-  );
 
   // Compute BU total via primitive_links (uses buCost × quantity)
   const effectIds = rows.map((r) => r.id);
@@ -1271,12 +1251,6 @@ async function fetchEffects(q: LibraryFetchQuery): Promise<LibraryItem[]> {
   const compositionPaths = await loadCompositionPaths("EFFECT", effectIds);
 
   return rows.map((r) => {
-    const author = r.userId ? authorMap.get(r.userId) : null;
-    const eng = engagementMap.get(`EFFECT:${r.id}`) ?? {
-      likes: 0,
-      dislikes: 0,
-      forks: 0,
-    };
     const icon = resolveIcon(r);
     return {
       id: `EFFECT:${r.id}`,
@@ -1290,17 +1264,17 @@ async function fetchEffects(q: LibraryFetchQuery): Promise<LibraryItem[]> {
       category: null,
       buCost: buMap.get(r.id) ?? 0,
       authorId: r.userId ?? null,
-      authorUsername: author?.username ?? null,
-      authorDisplayName: author?.displayName ?? null,
-      authorAvatarUrl: author?.avatarUrl ?? null,
+      authorUsername: null,
+      authorDisplayName: null,
+      authorAvatarUrl: null,
       // Phase 9 follow-up: hoist isAdmin so the OwnerBar + source page
       // can render "by System" instead of "@xeun" for admin-authored
       // rows (personal forks from an admin still attribute to system).
-      authorIsAdmin: author?.isAdmin ?? false,
+      authorIsAdmin: false,
       publishedAt: r.createdAt,
-      likesCount: eng.likes,
-      dislikesCount: eng.dislikes,
-      forkCount: eng.forks,
+      likesCount: 0,
+      dislikesCount: 0,
+      forkCount: 0,
       tags: r.tags ?? [],
       sourceOrigin: r.sourceOrigin ?? null,
       // Phase 8: per-entity iconography (resolved — live or proposed)
@@ -1458,18 +1432,8 @@ async function fetchItems(q: LibraryFetchQuery): Promise<LibraryItem[]> {
   }
   const compositionPaths = await loadCompositionPaths("ITEM", itemIds);
 
-  const authorMap = await resolveAuthorMap(rows.map((r) => r.userId));
-  const engagementMap = await resolveEngagementMap(
-    rows.map((r) => `ITEM:${r.id}`),
-  );
 
   return rows.map((r) => {
-    const author = r.userId ? authorMap.get(r.userId) : null;
-    const eng = engagementMap.get(`ITEM:${r.id}`) ?? {
-      likes: 0,
-      dislikes: 0,
-      forks: 0,
-    };
     const icon = resolveIcon(r);
     return {
       id: `ITEM:${r.id}`,
@@ -1483,17 +1447,17 @@ async function fetchItems(q: LibraryFetchQuery): Promise<LibraryItem[]> {
       category: r.itemType,
       buCost: r.buCost,
       authorId: r.userId ?? null,
-      authorUsername: author?.username ?? null,
-      authorDisplayName: author?.displayName ?? null,
-      authorAvatarUrl: author?.avatarUrl ?? null,
+      authorUsername: null,
+      authorDisplayName: null,
+      authorAvatarUrl: null,
       // Phase 9 follow-up: hoist isAdmin so the OwnerBar + source page
       // can render "by System" instead of "@xeun" for admin-authored
       // rows (personal forks from an admin still attribute to system).
-      authorIsAdmin: author?.isAdmin ?? false,
+      authorIsAdmin: false,
       publishedAt: r.createdAt,
-      likesCount: eng.likes,
-      dislikesCount: eng.dislikes,
-      forkCount: eng.forks,
+      likesCount: 0,
+      dislikesCount: 0,
+      forkCount: 0,
       tags: r.tags ?? [],
       sourceOrigin: r.sourceOrigin ?? null,
       // Phase 8: per-entity iconography (resolved — live or proposed)
@@ -1640,22 +1604,8 @@ async function fetchTemplates(q: LibraryFetchQuery): Promise<LibraryItem[]> {
   }
   const compositionPaths = await loadCompositionPaths("HERITAGE", templateIds);
 
-  const authorMap = await resolveAuthorMap(rows.map((r) => r.userId));
-
-  // Map template kinds → composite IDs for engagement lookup.
-  // (Post-heritage-rename: keys must match the new LINEAGE/UPBRINGING/MANIFEST
-  // enum values, not the old RACE/BACKGROUND/ARCHETYPE.)
-  const targetTypeByKind: Record<string, LibraryTargetType> = {
-    LINEAGE: "LINEAGE_TEMPLATE",
-    UPBRINGING: "UPBRINGING_TEMPLATE",
-    MANIFEST: "MANIFEST_TEMPLATE",
-  };
-  const engagementMap = await resolveEngagementMap(
-    rows.map((r) => `${targetTypeByKind[r.kind] ?? "LINEAGE_TEMPLATE"}:${r.id}`),
-  );
 
   return rows.map((r) => {
-    const author = r.userId ? authorMap.get(r.userId) : null;
     const targetType = (() => {
       switch (r.kind) {
         case "LINEAGE":
@@ -1669,11 +1619,6 @@ async function fetchTemplates(q: LibraryFetchQuery): Promise<LibraryItem[]> {
       }
     })();
     const compositeId = `${targetType}:${r.id}`;
-    const eng = engagementMap.get(compositeId) ?? {
-      likes: 0,
-      dislikes: 0,
-      forks: 0,
-    };
     const icon = resolveIcon(r);
     return {
       id: compositeId,
@@ -1687,17 +1632,17 @@ async function fetchTemplates(q: LibraryFetchQuery): Promise<LibraryItem[]> {
       category: r.kind,
       buCost: uniquePrimitiveBu(compositionPaths.get(r.id) ?? []),
       authorId: r.userId ?? null,
-      authorUsername: author?.username ?? null,
-      authorDisplayName: author?.displayName ?? null,
-      authorAvatarUrl: author?.avatarUrl ?? null,
+      authorUsername: null,
+      authorDisplayName: null,
+      authorAvatarUrl: null,
       // Phase 9 follow-up: hoist isAdmin so the OwnerBar + source page
       // can render "by System" instead of "@xeun" for admin-authored
       // rows (personal forks from an admin still attribute to system).
-      authorIsAdmin: author?.isAdmin ?? false,
+      authorIsAdmin: false,
       publishedAt: r.createdAt,
-      likesCount: eng.likes,
-      dislikesCount: eng.dislikes,
-      forkCount: eng.forks,
+      likesCount: 0,
+      dislikesCount: 0,
+      forkCount: 0,
       // Phase 8 rev 10: heritage parity — was hardcoded to []. Now
       // surfaces the real tags from the DB (added in migration 0038).
       // Same pattern as the items/capabilities/effects fetchers above.
@@ -1799,18 +1744,8 @@ async function fetchBuilds(q: LibraryFetchQuery): Promise<LibraryItem[]> {
     .where(and(...conditions));
   const rows = await (q.complete ? entityQuery : entityQuery.limit(500));
 
-  const authorMap = await resolveAuthorMap(rows.map((r) => r.userId));
-  const engagementMap = await resolveEngagementMap(
-    rows.map((r) => `BUILD_TEMPLATE:${r.id}`),
-  );
 
   return rows.map((r) => {
-    const author = r.userId ? authorMap.get(r.userId) : null;
-    const eng = engagementMap.get(`BUILD_TEMPLATE:${r.id}`) ?? {
-      likes: 0,
-      dislikes: 0,
-      forks: 0,
-    };
     // Phase 8: builds now have the same icon columns as the other
     // entity tables. resolveIcon picks live (icon_*) if set, otherwise
     // falls back to the backfill proposal (icon_proposed_*), otherwise
@@ -1829,17 +1764,17 @@ async function fetchBuilds(q: LibraryFetchQuery): Promise<LibraryItem[]> {
       category: r.isManifestTemplate ? "Archetype" : `Level ${r.level}`,
       buCost: r.startingBu,
       authorId: r.userId ?? null,
-      authorUsername: author?.username ?? null,
-      authorDisplayName: author?.displayName ?? null,
-      authorAvatarUrl: author?.avatarUrl ?? null,
+      authorUsername: null,
+      authorDisplayName: null,
+      authorAvatarUrl: null,
       // Phase 9 follow-up: hoist isAdmin so the OwnerBar + source page
       // can render "by System" instead of "@xeun" for admin-authored
       // rows (personal forks from an admin still attribute to system).
-      authorIsAdmin: author?.isAdmin ?? false,
+      authorIsAdmin: false,
       publishedAt: r.createdAt,
-      likesCount: eng.likes,
-      dislikesCount: eng.dislikes,
-      forkCount: eng.forks,
+      likesCount: 0,
+      dislikesCount: 0,
+      forkCount: 0,
       tags: [],
       sourceOrigin: r.sourceOrigin ?? null,
       iconSource: icon.iconSource,

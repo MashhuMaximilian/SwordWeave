@@ -9,7 +9,7 @@
 // ?intent=<fork|load> (Phase 1) records HOW the user entered the sandbox.
 // ?version=N deep-links a specific published version for pre-fill.
 
-import { asc, eq, inArray } from "drizzle-orm";
+import { asc, eq, inArray, isNull, or } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 
 import {
@@ -153,9 +153,13 @@ export default async function AtelierSandboxPage({
   const visFilter = (r: { isPublic: boolean; userId: string | null }) =>
     r.isPublic || !r.userId || r.userId === sandboxViewerClerkId;
 
+  // Load independent catalogs concurrently; preserve each catalog’s link dependencies.
+  await Promise.all([
+    (async () => {
   // PRIMITIVES
   try {
     const rows = await db.query.primitives.findMany({
+      where: or(eq(primitives.isPublic, true), isNull(primitives.userId), ...(sandboxViewerClerkId ? [eq(primitives.userId, sandboxViewerClerkId)] : [])),
       orderBy: [asc(primitives.category), asc(primitives.name)],
     });
     const classifications = await db.select({ primitiveId: primitiveMarketClassifications.primitiveId, familyKey: primitiveMarketClassifications.familyKey }).from(primitiveMarketClassifications);
@@ -166,9 +170,12 @@ export default async function AtelierSandboxPage({
     console.error("[atelier sandbox] primitives query failed:", err);
   }
 
+    })(),
+    (async () => {
   // EFFECTS
   try {
     const rows = await db.query.effects.findMany({
+      where: or(eq(effects.isPublic, true), isNull(effects.userId), ...(sandboxViewerClerkId ? [eq(effects.userId, sandboxViewerClerkId)] : [])),
       orderBy: [asc(effects.name)],
       with: { primitiveLinks: { with: { primitive: true } } },
     });
@@ -178,9 +185,12 @@ export default async function AtelierSandboxPage({
     console.error("[atelier sandbox] effects query failed:", err);
   }
 
+    })(),
+    (async () => {
   // CAPABILITIES
   try {
     const rows = await db.query.capabilities.findMany({
+      where: or(eq(capabilities.isPublic, true), isNull(capabilities.userId), ...(sandboxViewerClerkId ? [eq(capabilities.userId, sandboxViewerClerkId)] : [])),
       orderBy: [asc(capabilities.name)],
       with: {
         primitiveLinks: { with: { primitive: true } },
@@ -244,9 +254,12 @@ export default async function AtelierSandboxPage({
     console.error("[atelier sandbox] capability effect→primitives attach failed:", err);
   }
 
+    })(),
+    (async () => {
   // HERITAGE
   try {
     const rows = await db.query.heritage.findMany({
+      where: or(eq(heritage.isPublic, true), isNull(heritage.userId), ...(sandboxViewerClerkId ? [eq(heritage.userId, sandboxViewerClerkId)] : [])),
       orderBy: [asc(heritage.kind), asc(heritage.name)],
       with: {
         primitiveLinks: { with: { primitive: true } },
@@ -428,9 +441,12 @@ export default async function AtelierSandboxPage({
     console.error("[atelier sandbox] heritage effect-prim attach failed:", err);
   }
 
+    })(),
+    (async () => {
   // ITEMS
   try {
     const rows = await db.query.items.findMany({
+      where: or(eq(items.isPublic, true), isNull(items.userId), ...(sandboxViewerClerkId ? [eq(items.userId, sandboxViewerClerkId)] : [])),
       orderBy: [asc(items.name)],
       with: {
         primitiveLinks: { with: { primitive: true } },
@@ -646,6 +662,9 @@ export default async function AtelierSandboxPage({
     dataLoadFailed = true;
     console.error("[atelier sandbox] item effect-prim attach failed:", err);
   }
+
+    })()
+  ]);
 
   // Resolve ?edit=<id> into initial editing row (across all kinds).
   let initialEditing:

@@ -100,6 +100,7 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
     itemTags,
     result,
     familyTiers,
+    currentUserInternalId,
   ] = await Promise.all([
     listPrimitiveCategories(),
     listItemTags(),
@@ -124,16 +125,10 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
       offset,
     }),
     category ? listPrimitiveFamilyTiers(category) : Promise.resolve([]),
+    viewerClerkId ? resolveUserIdByClerkId(viewerClerkId) : Promise.resolve(null),
   ]);
 
-  // Resolve current user (Clerk auth) and per-item engagement state.
-  // Both can run in parallel with the rest of the page load — the
-  // engagement map is keyed off the result set we just fetched, so
-  // it's not blocked on any earlier await.
-  const clerkUserId = viewerClerkId;
-  const currentUserInternalId = clerkUserId
-    ? await resolveUserIdByClerkId(clerkUserId)
-    : null;
+  // Engagement depends on both the resolved viewer and the visible result set.
   const engagement = await loadLibraryEngagement(
     currentUserInternalId,
     result.items.map((it) => ({

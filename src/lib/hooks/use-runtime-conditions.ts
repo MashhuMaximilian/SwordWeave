@@ -104,7 +104,10 @@ export function useRuntimeConditions(
       setHydrated(true);
       return;
     }
-    setConditions(readAllConditions(characterId));
+    const next = readAllConditions(characterId);
+    // Sync acknowledgements and polling often contain identical data. Preserve
+    // the reference so the entire stat resolver does not rerun for a no-op.
+    setConditions(previous => JSON.stringify(previous) === JSON.stringify(next) ? previous : next);
     setSyncError(consequenceSyncError(characterId));
     // The sheet scanner must wait for saved overrides before creating defaults.
     setHydrated(consequenceSyncReady(characterId));
