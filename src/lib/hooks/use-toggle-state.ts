@@ -35,7 +35,8 @@
  *     safely pipe primitives through without explicit gating.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useSyncExternalStore, useCallback } from "react";
+import { createToggleStateStore, emptyToggleSnapshot } from "./toggle-state-store";
 
 /**
  * Capability eff-key (storage) — separate from capabilityId.
@@ -127,41 +128,28 @@ export interface UseToggleStateResult extends ToggleState {
  *      similar) writes to localStorage in the SAME tab. Dispatch
  *      with `window.dispatchEvent(new CustomEvent('sw:toggle-changed'))`.
  */
-export function useToggleState(characterId: string | null): UseToggleStateResult {
-  const [state, setState] = useState<ToggleState>({
-    offCapabilityIds: new Set(),
-    offEffectIds: new Set(),
-    hydrated: false,
-  });
-
-  const refresh = useCallback(() => {
-    if (!characterId) {
-      setState({
-        offCapabilityIds: new Set(),
-        offEffectIds: new Set(),
-        hydrated: true,
-      });
-      return;
+const toggleStore = createToggleStateStore(readAllOffKeys, (id, refresh) => {
+  const onChange = (event: Event) => {
+    if (event.type === "storage") {
+      const key = (event as StorageEvent).key;
+      if (key && !key.startsWith(`sw:cap:${id}:`) && !key.startsWith(`sw:eff:${id}:`)) return;
     }
-    const { offCapabilityIds, offEffectIds } = readAllOffKeys(characterId);
-    setState({ offCapabilityIds, offEffectIds, hydrated: true });
-  }, [characterId]);
-
-  useEffect(() => {
-    if (!characterId) return;
     refresh();
-
-    function onChange() {
-      refresh();
-    }
-    window.addEventListener("storage", onChange);
-    window.addEventListener("sw:toggle-changed", onChange);
-    return () => {
-      window.removeEventListener("storage", onChange);
-      window.removeEventListener("sw:toggle-changed", onChange);
-    };
-  }, [characterId, refresh]);
-
+  };
+  window.addEventListener("storage", onChange);
+  window.addEventListener("sw:toggle-changed", onChange);
+  return () => {
+    window.removeEventListener("storage", onChange);
+    window.removeEventListener("sw:toggle-changed", onChange);
+  };
+});
+const serverSnapshot = () => emptyToggleSnapshot;
+export function useToggleState(characterId: string | null): UseToggleStateResult {
+  const id = characterId ?? "";
+  const subscribe = useCallback((listener: () => void) => toggleStore.subscribe(id, listener), [id]);
+  const snapshot = useCallback(() => toggleStore.getSnapshot(id), [id]);
+  const refresh = useCallback(() => toggleStore.refresh(id), [id]);
+  const state = useSyncExternalStore(subscribe, snapshot, serverSnapshot);
   return { ...state, refresh };
 }
 

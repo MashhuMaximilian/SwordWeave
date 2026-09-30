@@ -97,12 +97,13 @@ export function useCharacterDraft(characterId: string) {
     try{
       let next=original.preview;
       const created=new Set(operations.flatMap(op=>op.type==='create'&&!op.payload.existingId ? op.localBindings?.nodes.filter(n=>!n.source).map(n=>n.key)??[] : []));
-      const missing=[...new Set(operations.flatMap(draftReferenceKeys))].filter(key=>!created.has(key)&&!next.graph.nodes.some(n=>n.key===key));
+      const knownKeys=new Set(next.graph.nodes.map(n=>n.key));
+      const missing=[...new Set(operations.flatMap(draftReferenceKeys))].filter(key=>!created.has(key)&&!knownKeys.has(key));
       if(missing.length){
         setPhase('loading');
         const query=new URLSearchParams();missing.forEach(key=>query.append('piece',key));
         const loaded=await json<WorkspaceGraph>(await fetch(`/api/characters/${characterId}/workspace?${query}`,{cache:'no-store'}));
-        const newKeys=new Set(loaded.nodes.filter(n=>!next.graph.nodes.some(old=>old.key===n.key)).map(n=>n.key));
+        const newKeys=new Set(loaded.nodes.filter(n=>!knownKeys.has(n.key)).map(n=>n.key));
         next={...next,graph:{...next.graph,nodes:[...next.graph.nodes,...loaded.nodes.filter(n=>newKeys.has(n.key))],edges:[...next.graph.edges,...loaded.edges.filter(e=>e.parent&&newKeys.has(e.parent))]}};
       }
       const groupId=operations.length>1?browserUuid():undefined;
@@ -125,16 +126,16 @@ export function useCharacterDraft(characterId: string) {
     const timeout=setTimeout(()=>abort.abort(new Error('The server has not finished checking the draft. Your edits are saved; keep editing or retry.')),180000);
     try{
       persist(value);
-      const saved=await json<{draft:WorkspaceDraft}>(await fetch(endpoint,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({...(server.current?{draftId:server.current.id}:{}),expectedVersion:server.current?.version??0,baseRevision:value.draft.baseRevision,baseHash:baseHash.current,operations:value.draft.operations})}));
+      const saved=await json<{draft:WorkspaceDraft;preview?:WorkspaceDraftPreview;previewError?:string}>(await fetch(endpoint,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({review:true,...(server.current?{draftId:server.current.id}:{}),expectedVersion:server.current?.version??0,baseRevision:value.draft.baseRevision,baseHash:baseHash.current,operations:value.draft.operations})}));
       server.current=saved.draft;
       const pending={draft:saved.draft,preview:{...value.preview,local:true}};install(pending);persist(pending);
       if(abort.signal.aborted)return null;
-      setPhase('checking');const result=await verify(saved.draft,abort.signal);
-      if(abort.signal.aborted)return null;
+      if(saved.previewError || !saved.preview)throw new Error(saved.previewError ?? 'Unable to check draft.');
+      const result=saved.preview;
       const checked={draft:saved.draft,preview:result};install(checked);persist(checked);return result;
     }catch(cause){if(abort.signal.aborted && !(abort.signal.reason instanceof Error && abort.signal.reason.name!=='AbortError'))return null;const failure=abort.signal.aborted?abort.signal.reason:cause;setError(failure instanceof Error?failure.message:'Unable to check draft.');throw failure;}
     finally{clearTimeout(timeout);if(reviewAbort.current===abort)reviewAbort.current=null;locked.current=false;setPhase('idle');}
-  },[endpoint,install,pendingRecovery,persist,verify]);
+  },[endpoint,install,pendingRecovery,persist]);
   const undo=useCallback(async()=>{
     if(locked.current||!frame.current?.draft)return;
     const previous=history.current.pop();

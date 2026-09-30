@@ -18,17 +18,29 @@ export async function GET(_request: Request, { params }: Context) {
   try {
     const draft = await getWorkspaceDraft(id, userId);
     const graph = await readWorkspace(id);
-    const sheet = await readDraftSheet(id, graph);
+
     const { db } = await import("@/db/client");
     const { characters } = await import("@/db/schema");
     const { eq } = await import("drizzle-orm");
-    const [foundation] = await db.select().from(characters).where(eq(characters.id,id));
+    const [sheet, [foundation]] = await Promise.all([readDraftSheet(id, graph), db.select().from(characters).where(eq(characters.id,id))]);
     return NextResponse.json({ draft, sheet, graph, foundation, baseHash: workspaceBuildFingerprint(graph,foundation!), authorId: userId });
   } catch (error) { return failure(error); }
 }
 export async function PUT(request: Request, { params }: Context) {
   const { userId } = await auth.protect(); const { id } = await params;
-  try { return NextResponse.json({ draft: await saveWorkspaceDraft(id, userId, await request.json()) }); } catch (error) { return failure(error); }
+  try {
+    const body = await request.json();
+    const draft = await saveWorkspaceDraft(id, userId, body);
+    if (body.review !== true) return NextResponse.json({ draft });
+    // Saving commits first: a failed preview must retain the saved draft and its
+    // version so the client can retry without a false concurrent-edit conflict.
+    try {
+      const preview = await previewWorkspaceDraft(id, userId, draft.id, draft.version);
+      return NextResponse.json({ draft, preview });
+    } catch (error) {
+      return NextResponse.json({ draft, previewError: error instanceof Error ? error.message : "Unable to check draft." });
+    }
+  } catch (error) { return failure(error); }
 }
 export async function POST(request: Request, { params }: Context) {
   const { userId } = await auth.protect(); const { id } = await params;

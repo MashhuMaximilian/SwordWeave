@@ -59,7 +59,10 @@ import { UnversionedSlotsIndicator } from "@/components/characters/unversioned-s
 import { UpdateAllModal } from "@/components/characters/update-all-modal";
 import { PrimitivePreviewCard } from "@/components/characters/primitive-preview-card";
 import { BottomStickyBar } from "@/components/characters/bottom-sticky-bar";
-import { CharacterWorkspace } from "@/components/characters/workspace/character-workspace";
+import dynamic from "next/dynamic";
+const CharacterWorkspace = dynamic(() => import("@/components/characters/workspace/character-workspace").then(module => module.CharacterWorkspace), {
+  loading: () => <div role="status" className="p-3 text-sm text-muted-foreground">Loading editor…</div>,
+});
 import { BuildModeBanner } from "@/components/characters/build-mode-banner";
 import { ConditionsDrawer } from "@/components/characters/conditions-drawer";
 import { AccordionFooterActions } from "@/components/characters/accordion-footer-actions";
@@ -78,7 +81,7 @@ import {
 import { useCharacterDnd } from "@/components/characters/workspace/use-character-dnd";
 import { SheetIdentityHeader } from "@/components/characters/sheet-identity-header";
 import { CoreStatsCard } from "@/components/characters/core-stats-card";
-import { onCharacterLogAdded } from "@/lib/character/character-events";
+import { onCharacterLogAdded, onVitalityChanged } from "@/lib/character/character-events";
 import { TabErrorBoundary } from "@/components/characters/tab-error-boundary";
 import { HeritageBundleView } from "@/components/characters/heritage-bundle-view";
 import { proficiencyBonus } from "@/lib/engine/practices";
@@ -764,7 +767,23 @@ function buildAccessRules(links: ReadonlyArray<SheetPrimitiveLink>): ReadonlyArr
   return rules;
 }
 
-export function CharacterSheetView(props: CharacterSheetProps) {
+import type { VitalityRuntimeUpdate } from "@/lib/character/vitality-update";
+
+export function CharacterSheetView(initialProps: CharacterSheetProps) {
+  const [vitalityConfirmation, setVitalityConfirmation] = useState<{
+    characterId: string; baseCurrent: number | null; baseContext: CharacterSheetProps["conditionContext"];
+    value: { current: number; max: number; runtime: VitalityRuntimeUpdate };
+  } | null>(null);
+  const confirmedVitality = vitalityConfirmation?.characterId === initialProps.id
+    && vitalityConfirmation.baseCurrent === initialProps.currentVitality
+    && vitalityConfirmation.baseContext === initialProps.conditionContext ? vitalityConfirmation.value : null;
+  const props = confirmedVitality ? { ...initialProps, ...confirmedVitality.runtime } : initialProps;
+  useEffect(() => onVitalityChanged(initialProps.id, value => setVitalityConfirmation({
+    characterId: initialProps.id, baseCurrent: initialProps.currentVitality, baseContext: initialProps.conditionContext, value,
+  })), [initialProps.id, initialProps.currentVitality, initialProps.conditionContext]);
+  const liveConditionContext = useMemo(() => props.conditionContext && confirmedVitality
+    ? { ...props.conditionContext, character: { ...props.conditionContext.character, vitality: confirmedVitality.current } }
+    : props.conditionContext ?? null, [props.conditionContext, confirmedVitality]);
   const [tab, setTab] = useState<Tab>("capabilities");
   const permission = props.viewerPermission ?? "VIEWER";
   const canDraft = permission !== "VIEWER";
@@ -984,7 +1003,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
   // the user can engage/inhibit them manually.
   const { sheetConditionIds, autoEvaluated } = useSheetConditions({
     characterId: props.id,
-    conditionContext: props.conditionContext ?? null,
+    conditionContext: liveConditionContext,
     primitiveLinks: props.primitiveLinks.map((l) => ({
       primitiveId: l.primitiveId,
       primitive: {
@@ -1007,6 +1026,25 @@ export function CharacterSheetView(props: CharacterSheetProps) {
   // once per render. The result drives the BottomStickyBar's
   // attribute modifiers and (in S5) the VitalityCard + provenance
   // modal. Memoized on the primitiveLinks ref + attribute values.
+  const resolverPrimitiveLinks = useMemo(() => props.primitiveLinks.map((l) => ({
+      primitiveId: l.primitiveId,
+      instanceId: l.instanceId,
+      directSource: l.directSource ?? null,
+      originItemId: l.originItemId ?? null,
+      isMirrored: l.isMirrored,
+      originHeritageId: l.originHeritageId,
+      originCapabilityId: l.originCapabilityId,
+      originEffectId: l.originEffectId,
+      isToggledOff: l.isToggledOff ?? false,
+      primitive: {
+        id: l.primitive.id,
+        name: l.primitive.name,
+        category: l.primitive.category,
+        isMirrorable: l.primitive.isMirrorable,
+        mirrorVector: l.primitive.mirrorVector,
+        hardModifiers: l.primitive.hardModifiers,
+      },
+    })), [props.primitiveLinks]);
   const resolver = useCharacterResolver({
     characterId: props.id,
     level: props.level,
@@ -1026,26 +1064,8 @@ export function CharacterSheetView(props: CharacterSheetProps) {
       mental: props.attrMental,
       magical: props.attrMagical,
     },
-    primitiveLinks: props.primitiveLinks.map((l) => ({
-      primitiveId: l.primitiveId,
-      instanceId: l.instanceId,
-      directSource: l.directSource ?? null,
-      originItemId: l.originItemId ?? null,
-      isMirrored: l.isMirrored,
-      originHeritageId: l.originHeritageId,
-      originCapabilityId: l.originCapabilityId,
-      originEffectId: l.originEffectId,
-      isToggledOff: l.isToggledOff ?? false,
-      primitive: {
-        id: l.primitive.id,
-        name: l.primitive.name,
-        category: l.primitive.category,
-        isMirrorable: l.primitive.isMirrorable,
-        mirrorVector: l.primitive.mirrorVector,
-        hardModifiers: l.primitive.hardModifiers,
-      },
-    })),
-    conditionContext: props.conditionContext ?? null,
+    primitiveLinks: resolverPrimitiveLinks,
+    conditionContext: liveConditionContext,
     sourceNames,
     offCapabilityIds: toggleState.offCapabilityIds,
     offEffectIds: toggleState.offEffectIds,
@@ -1550,7 +1570,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         onOpenConsequences={() => setConditionsOpen(true)}
         characterId={props.id}
         level={props.level}
-        currentVitality={props.currentVitality}
+        currentVitality={confirmedVitality?.current ?? props.currentVitality}
         maxVitality={resolver.maxVitality ?? props.vitality.max}
         physical={props.attrPhysical}
         mental={props.attrMental}

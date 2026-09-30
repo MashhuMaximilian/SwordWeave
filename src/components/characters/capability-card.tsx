@@ -40,7 +40,7 @@ import { ConsequencePackageAction, type ConsequencePackagePreview } from "./cons
  * clearing one character doesn't affect another.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Zap, Power, CheckCircle2, ExternalLink, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { emitCharacterLogAdded } from "@/lib/character/character-events";
@@ -217,7 +217,6 @@ function writeToggle(
   active: boolean,
 ) {
   if (typeof window === "undefined") return;
-    notifyToggleChanged();
   try {
     // Phase 8.L round 44 (Mashu 2026-08-13): flipped convention.
     // Previously: active=true stored '1', active=false removed.
@@ -557,8 +556,11 @@ export function CapabilityCard({
     };
   }, [capability.id, showPrimitives]);
 
+  const toggleInFlight = useRef(false);
+  const triggerInFlight = useRef(false);
   const handleToggle = useCallback(async () => {
-    if (toggling) return;
+    if (toggleInFlight.current) return;
+    toggleInFlight.current = true;
     const next = !active;
 
     // Optimistic UI update — feels instant.
@@ -619,12 +621,14 @@ export function CapabilityCard({
         "error",
       );
     } finally {
+      toggleInFlight.current = false;
       setToggling(false);
     }
   }, [active, capability.id, capability.name, characterId, showToast, toggling]);
 
   const handleTrigger = useCallback(async () => {
-    if (triggerPending) return;
+    if (triggerInFlight.current) return;
+    triggerInFlight.current = true;
     setTriggerPending(true);
 
     // Visual flash: show active for ~1.2s regardless of stored state.
@@ -632,21 +636,23 @@ export function CapabilityCard({
     window.setTimeout(() => setTriggerFlash(false), 1200);
 
     try {
-      const previewResponse = await fetch(`/api/characters/${characterId}/consequences/apply?key=capability:${capability.id}`,{cache:'no-store'});
-      const preview = await previewResponse.json();
-      if (!previewResponse.ok) throw new Error(preview.error ?? 'This action is unavailable.');
-      if (preview.pieces.length) { setConsequencePreview(preview); setTriggerFlash(false); return; }
       const res = await fetch(
         `/api/characters/${characterId}/capabilities/${capability.id}/trigger`,
         {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({}),
+          body: JSON.stringify({ previewIfRequired: true }),
         },
       );
 
+      const response = await res.json();
+      if (res.ok && response.preview) {
+        setConsequencePreview(response.preview);
+        setTriggerFlash(false);
+        return;
+      }
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
+        const body = response;
         const msg =
           (body as { error?: string }).error ?? "Failed to trigger capability.";
         showToast(msg, "error");
@@ -654,7 +660,7 @@ export function CapabilityCard({
         return;
       }
 
-      const data = (await res.json()) as TriggerResponse;
+      const data = response as TriggerResponse;
       showToast(`Triggered "${data.capability.name}"`, "success");
       // Mashu 2026-07-28: same rationale as the toggle
       // handler — notify the History tab via the event
@@ -673,6 +679,7 @@ export function CapabilityCard({
       );
       setTriggerFlash(false);
     } finally {
+      triggerInFlight.current = false;
       setTriggerPending(false);
     }
   }, [capability.id, capability.name, characterId, showToast, triggerPending]);

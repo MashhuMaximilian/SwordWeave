@@ -39,6 +39,7 @@ import {
 import { readWorkspace } from '@/lib/character/workspace/read';
 import { effectiveAvailability, supplyPaths } from '@/lib/character/workspace/model';
 import { activeRestrictions } from '@/lib/character/consequences/types';
+import { loadCharacterMaxVitality, clampVitality } from '@/lib/character/character-vitality';
 import { consequencePackage } from '@/lib/character/consequences/package';
 import { withCharacterMutation } from '@/lib/character/mutation-transaction';
 
@@ -120,7 +121,15 @@ async function handlePOST(
     const paths = supplyPaths(graph,key).filter(path => !itemId || path.nodes.includes(`item:${itemId}`));
     const availability = effectiveAvailability(key,paths,activeRestrictions(records.map(record=>record.occurrence)));
     if (!availability.available) return NextResponse.json({error:availability.reasons.join('; ')||'This capability is unavailable.'},{status:409});
-    if (consequencePackage(graph,key).pieces.length) return NextResponse.json({error:'Preview and commit this capability’s consequence package before triggering it.'},{status:409});
+    const pkg = consequencePackage(graph, key);
+    if (pkg.pieces.length) {
+      if (body && typeof body === "object" && (body as Record<string, unknown>)["previewIfRequired"] === true) {
+        const { max } = await loadCharacterMaxVitality(id);
+        const previous = character.currentVitality ?? max;
+        return NextResponse.json({ preview: { ...pkg, currentVitality: character.currentVitality, previous, next: clampVitality(previous + pkg.vitalityDelta, max), max } });
+      }
+      return NextResponse.json({error:'Preview and commit this capability’s consequence package before triggering it.'},{status:409});
+    }
 
     await appendCharacterLog(id, "capability_trigger", {
       capabilityId,

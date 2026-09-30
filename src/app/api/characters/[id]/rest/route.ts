@@ -1,3 +1,6 @@
+import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
+import { readDraftSheet } from "@/lib/character/workspace/draft-sheet";
+import { vitalityRuntimeUpdate } from "@/lib/character/vitality-update";
 import { withCharacterMutation } from "@/lib/character/mutation-transaction";
 /**
  * POST /api/characters/[id]/rest
@@ -64,7 +67,7 @@ async function handlePOST(
     // PLAN Eilxina Part C (Mashu 2026-09-09): permission gate.
     const { character: current } = await resolveCharacterAccess(userId, id, { require: "OWNER" });
 
-    const { max } = await loadCharacterMaxVitality(id);
+    const { max, graph } = await loadCharacterMaxVitality(id);
     // Phase 8.I i2.7f: null currentVitality = at full HP.
     const prev = clampVitality(current.currentVitality ?? max, max);
     let next: number;
@@ -103,6 +106,7 @@ async function handlePOST(
       source: restType === "long" ? "long_rest" : "short_rest",
     });
 
+    bustResolverCache(id);
     return NextResponse.json({
       character: {
         id,
@@ -110,6 +114,7 @@ async function handlePOST(
         level: current.level,
       },
       max,
+      runtime: vitalityRuntimeUpdate(await readDraftSheet(id, graph)),
       restType,
       vitalityRestored: next - prev,
     });

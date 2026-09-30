@@ -1,3 +1,4 @@
+import type { VitalityRuntimeUpdate } from "./vitality-update";
 /**
  * character-events.ts — global event bus for character-sheet events.
  *
@@ -53,4 +54,16 @@ export function onCharacterLogAdded(
     set?.delete(listener);
     if (set && set.size === 0) listeners.delete(characterId);
   };
+}
+/** Confirmed server values only; optimistic readouts remain local to the tracker. */
+export function emitVitalityChanged(characterId: string, current: number, max: number, runtime: VitalityRuntimeUpdate) {
+  window.dispatchEvent(new CustomEvent("sw:vitality-changed", { detail: { characterId, current, max, runtime } }));
+}
+export function onVitalityChanged(characterId: string, listener: (value: { current: number; max: number; runtime: VitalityRuntimeUpdate }) => void) {
+  const receive = (event: Event) => {
+    const value = (event as CustomEvent<{ characterId: string; current: number; max: number; runtime: VitalityRuntimeUpdate }>).detail;
+    if (value?.characterId === characterId && Number.isFinite(value.current) && Number.isFinite(value.max)) listener(value);
+  };
+  window.addEventListener("sw:vitality-changed", receive);
+  return () => window.removeEventListener("sw:vitality-changed", receive);
 }

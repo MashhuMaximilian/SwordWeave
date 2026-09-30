@@ -26,7 +26,7 @@ import { characters } from "@/db/schema";
  */
 export async function loadCharacterMaxVitality(
   characterId: string,
-): Promise<{ max: number; current: number }> {
+): Promise<{ max: number; current: number; graph: import("./workspace/model").WorkspaceGraph }> {
   const row = await db.query.characters.findFirst({
     where: eq(characters.id, characterId),
     with: {
@@ -55,7 +55,7 @@ export async function loadCharacterMaxVitality(
   const base=resolveMaxVitality({...input,slots:[]}).total;
   const practices=Object.fromEntries(computeAllPracticeModifiers(input.attributes,row.practiceSlices??{},row.attrProficient,row.level).map(p=>[p.practice,p.total])) as import('@/lib/engine/condition-evaluator').PracticeState;
   const max=Math.max(0,Math.ceil(resolveMaxVitality({...input,conditionContext:{character:{vitality:row.currentVitality??base,vitalityMax:base,attributes:input.attributes,practices,saveDc:5+input.pb+(input.proficientAttribute?input.attributes[input.proficientAttribute]:0),blockValue:0,proficiencies:new Set(input.proficientAttribute?[input.proficientAttribute]:[]),flags:new Set(),custom:{}}}}).total));
-  return {max,current:row.currentVitality??max};
+  return {max,current:row.currentVitality??max,graph};
 }
 
 /**

@@ -19,17 +19,17 @@ import { EditableNumberInput } from "@/components/ui/editable-number-input";
  *   - Dialog open: apply damage/heal input
  *   - Pending: spinner inline while POST in flight
  *
- * After a successful POST, calls router.refresh() so the rest of
- * the sheet (BU, encumbrance, anything derived from character state)
- * re-renders. The local state is updated optimistically first to
- * keep the UI snappy.
+ * Confirms vitality through a targeted event; the sheet recalculates its
+ * HP-dependent rules without refetching the route.
  */
 
-import { useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { emitCharacterLogAdded, emitVitalityChanged } from "@/lib/character/character-events";
 import { Heart, Minus, Plus, BedDouble, Coffee } from "lucide-react";
 import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+
+import type { VitalityRuntimeUpdate } from "@/lib/character/vitality-update";
 
 export interface VitalityTrackerProps {
   characterId: string;
@@ -66,6 +66,7 @@ export interface VitalityTrackerProps {
 interface ApplyResponse {
   character: { id: string; currentVitality: number; level: number };
   max: number;
+  runtime: VitalityRuntimeUpdate;
   delta: { prev: number; next: number; applied: number };
   note?: string;
 }
@@ -73,6 +74,7 @@ interface ApplyResponse {
 interface RestResponse {
   character: { id: string; currentVitality: number; level: number };
   max: number;
+  runtime: VitalityRuntimeUpdate;
   restType: "long" | "short";
   vitalityRestored: number;
 }
@@ -85,8 +87,7 @@ export function VitalityTracker({
   compact = false,
   attrBestTotals,
 }: VitalityTrackerProps) {
-  const router = useRouter();
-  const [, startTransition] = useTransition();
+  const mutationPending = useRef(false);
   const { showToast } = useToasts();
 
   // Local optimistic state so the UI feels instant. The server is
@@ -123,6 +124,7 @@ export function VitalityTracker({
 
   async function submitApply(e: React.FormEvent) {
     e.preventDefault();
+    if (mutationPending.current) return;
     const num = Number(amount);
     if (!Number.isFinite(num) || num <= 0) {
       showToast("Enter a positive number.", "error");
@@ -130,6 +132,7 @@ export function VitalityTracker({
     }
     const delta = dialogMode === "damage" ? -Math.floor(num) : Math.floor(num);
 
+    mutationPending.current = true;
     setPending(true);
     const clamped = Math.max(0, Math.min(max, (optimisticCurrent ?? 0) + delta));
     setOptimisticCurrent(clamped);
@@ -156,7 +159,8 @@ export function VitalityTracker({
       const data = (await res.json()) as ApplyResponse;
       setOptimisticCurrent(data.character.currentVitality);
       onCurrentChange?.(data.character.currentVitality);
-      startTransition(() => router.refresh());
+      emitVitalityChanged(characterId, data.character.currentVitality, data.max, data.runtime);
+      emitCharacterLogAdded(characterId);
 
       const verb = dialogMode === "damage" ? "Damage" : "Heal";
       const actualDelta = data.delta.applied;
@@ -173,11 +177,14 @@ export function VitalityTracker({
         "error",
       );
     } finally {
+      mutationPending.current = false;
       setPending(false);
     }
   }
 
   async function submitRest(restType: "long" | "short") {
+    if (mutationPending.current) return;
+    mutationPending.current = true;
     const optimisticRest = restType === "long"
       ? max
       : Math.min(max, optimisticCurrent + Math.ceil(max / 2));
@@ -204,7 +211,8 @@ export function VitalityTracker({
       const data = (await res.json()) as RestResponse;
       setOptimisticCurrent(data.character.currentVitality);
       onCurrentChange?.(data.character.currentVitality);
-      startTransition(() => router.refresh());
+      emitVitalityChanged(characterId, data.character.currentVitality, data.max, data.runtime);
+      emitCharacterLogAdded(characterId);
 
       const restored = data.vitalityRestored;
       const verb = restType === "long" ? "Long rest" : "Short rest";
@@ -248,6 +256,7 @@ export function VitalityTracker({
         "error",
       );
     } finally {
+      mutationPending.current = false;
       setRestPending(null);
     }
   }

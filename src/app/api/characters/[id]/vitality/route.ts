@@ -1,3 +1,5 @@
+import { readDraftSheet } from "@/lib/character/workspace/draft-sheet";
+import { vitalityRuntimeUpdate } from "@/lib/character/vitality-update";
 import { withCharacterMutation } from "@/lib/character/mutation-transaction";
 /**
  * POST /api/characters/[id]/vitality
@@ -82,7 +84,7 @@ async function handlePOST(
     );
 
     // Compute max vitality the same way the sheet does.
-    const { max } = await loadCharacterMaxVitality(id);
+    const { max, graph } = await loadCharacterMaxVitality(id);
     // Phase 8.I i2.7f (Mashu 2026-08-06): when currentVitality is
     // null (character at full HP, no init recorded), treat the
     // prev value as max so damage works. The UI shows the same
@@ -108,6 +110,7 @@ async function handlePOST(
           level: current.level,
         },
         max,
+        runtime: vitalityRuntimeUpdate(await readDraftSheet(id, graph)),
         delta: { prev, next, applied: 0 },
         note: "No change (already at boundary).",
       });
@@ -137,6 +140,7 @@ async function handlePOST(
     return NextResponse.json({
       character: updated,
       max,
+      runtime: vitalityRuntimeUpdate(await readDraftSheet(id, graph)),
       delta: { prev, next, applied: next - prev },
     });
   } catch (error) {

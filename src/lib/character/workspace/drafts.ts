@@ -149,6 +149,7 @@ export async function executeDraftOperations(characterId: string, userId: string
     let latestCharacter = initialCharacter;
     for (const operation of compactDraftReplay(operations,initial)) {
       const current = latest;
+      const currentNodes = new Map(current.nodes.map(node => [String(node.key), node]));
       const op = mapDraftIdentities(operation, aliases);
       const pinIssue = pinnedOperationIssue(current, op, true);
       if (pinIssue) throw new WorkspaceConflict(pinIssue);
@@ -168,7 +169,7 @@ export async function executeDraftOperations(characterId: string, userId: string
         // only for entities changed by this draft; untouched hashes still gate.
         for (const field of ["target", "destination"] as const) {
           if (typeof payload[field] === "string" && changedKeys.has(payload[field] as string)) {
-            const node = current.nodes.find(n => n.key === payload[field]);
+            const node = currentNodes.get(payload[field] as string);
             payload[field === "target" ? "expectedHash" : "destinationHash"] = node?.data["contentHash"] ?? null;
           }
         }
@@ -191,10 +192,10 @@ export async function executeDraftOperations(characterId: string, userId: string
       registerDraftIdentities(current, after, operation.id, aliases, createdIds);
       registerLocalBindings(operation.localBindings, current, after, result, aliases);
       for (const node of after.nodes) {
-        const before = current.nodes.find(n => n.key === node.key);
+        const before = currentNodes.get(node.key);
         if (!before || before.data["contentHash"] !== node.data["contentHash"]) changedKeys.add(node.key);
       }
-      result["localAuthoredKeys"] = after.nodes.filter(node=>createdIds.has(node.id)&&!current.nodes.some(old=>old.key===node.key)).map(node=>node.key);
+      result["localAuthoredKeys"] = after.nodes.filter(node=>createdIds.has(node.id)&&!currentNodes.has(node.key)).map(node=>node.key);
       results.push({ operationId: operation.id, result });
     }
     const graph = latest;
