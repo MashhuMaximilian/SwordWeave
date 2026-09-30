@@ -1,0 +1,25 @@
+/* Dense reading surfaces on phones. Inputs keep a 16px font to avoid focus zoom. */
+@media (max-width:767px) {
+ body[data-ui="v12"] .sw-phone-draft-title {margin:0 0 8px;padding:6px 2px;font:600 15px/1.3 var(--font-system);color:var(--v12-gold-hi);overflow-wrap:anywhere;}
+ body[data-ui="v12"] .v12-entity-preview {padding:4px!important;font-size:13px!important;line-height:1.4!important;}
+ body[data-ui="v12"] .v12-entity-preview-content {padding:0!important;}
+ body[data-ui="v12"] .v12-entity-preview :is(p,li) {font-size:13px!important;line-height:1.4!important;}
+ body[data-ui="v12"] .v12-entity-preview [data-preview-section] > h3 {font:600 11px/1.3 var(--font-system)!important;letter-spacing:.045em!important;margin:0 0 6px!important;}
+ body[data-ui="v12"] .v12-entity-preview :is(.v12-composition-node-name,.v12-composed-ledger-name,.sw-phone-composition-row strong) {font-size:13px!important;line-height:1.35!important;}
+ body[data-ui="v12"] .v12-entity-preview :is(.v12-behavior-rule,.v12-behavior-rule strong) {font-size:13px!important;line-height:1.4!important;}
+ body[data-ui="v12"] .v12-entity-preview :is(.v12-kicker,small) {font-size:10px!important;line-height:1.3!important;}
+ body[data-ui="v12"] .v12-instrument-dialog .v12-instrument-dialog-identity h2 {font-size:15px!important;line-height:1.3!important;}
+ body[data-ui="v12"] .v12-build-preview-modal > header h2 {font-size:14px!important;}
+ body[data-ui="v12"] :is(.phone-atelier-editor,.v12-secondary-build,.sw-build-dialog-scroll,.sw-character-modal-content) :is(h2,h3,h4) {font-size:14px!important;line-height:1.35!important;}
+ body[data-ui="v12"] :is(.phone-atelier-editor,.v12-secondary-build,.sw-build-dialog-scroll) :is(.v12-kicker,legend,label > span:first-child) {font-size:11px!important;line-height:1.35!important;}
+ body[data-ui="v12"] :is(.phone-atelier-editor,.v12-secondary-build,.sw-build-dialog-scroll) :is(p,summary) {font-size:13px!important;line-height:1.4!important;}
+ body[data-ui="v12"] :is(.phone-atelier-editor,.v12-secondary-build,.sw-build-dialog-scroll) :is(.v12-author-tabs,.v12-composer-tabs,.v12-table-tabs) button {font-size:12px!important;}
+ body[data-ui="v12"] .phone-library-record h3 {font-size:13px!important;line-height:1.35!important;}
+ body[data-ui="v12"] .sheet-build :is(.sheet-section-intro,.sheet-overview) h2 {font-size:16px!important;line-height:1.3!important;}
+ body[data-ui="v12"] .sw-character-forge__header h2 {font-size:17px!important;line-height:1.3!important;}
+ body[data-ui="v12"] .procedural-randomizer header h2 {font-size:16px!important;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] :is(.v12-rule-output,.v12-rule-description,.v12-rule-text) :is(p,li) {font-size:13px!important;line-height:1.4!important;}
+ body[data-ui="v12"] .v12-character-page[data-character-surface] :is(.v12-canonical-composite-title,.v12-canonical-primitive-heading) :is(button,strong) {font-size:14px!important;line-height:1.3!important;}
+ body[data-ui="v12"] .v12-character-page .v12-backstory-card-body {font-size:14px!important;}
+ body[data-ui="v12"] .v12-character-page:not([data-sheet-mode="BUILD"]) {padding-bottom:calc(136px + env(safe-area-inset-bottom,0px))!important;}
+}

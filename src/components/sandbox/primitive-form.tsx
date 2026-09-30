@@ -986,6 +986,7 @@ export function PrimitiveForm({
     );
   });
   const [ruleKind, setRuleKind] = useState<RuleKind>(() => contextualCompositionFamily);
+  const [phoneRuleFormatsOpen, setPhoneRuleFormatsOpen] = useState(false);
   const [composition, setComposition] =
     useState<CompositionDraft>(() => contextualCompositionFamily ? { ...blankComposition, family: contextualCompositionFamily } : blankComposition);
   const [modifierCounter, setModifierCounter] = useState(1);
@@ -1478,6 +1479,7 @@ export function PrimitiveForm({
             flow + the in-app discard prompt. Mashu: hide it. */}
           <button
             type="button"
+            data-drawer-reset
             onClick={resetEditor}
             className="v12-metal-button h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground"
           >
@@ -1725,8 +1727,18 @@ export function PrimitiveForm({
               defines a construction permission. Otherwise its verbose
               description is the complete player-facing explanation.
         </p>
+            <button
+              type="button"
+              className="phone-rule-format-toggle"
+              aria-expanded={phoneRuleFormatsOpen}
+              onClick={() => setPhoneRuleFormatsOpen((open) => !open)}
+            >
+              <span>Rule format</span>
+              <b>{ruleKind === "MODIFIER" ? MODIFIER_RULE_FORMATS.find((format) => format.key === identifyModifierRuleFormat(modifiers[0]))?.label : compositionOptions.find((option) => option.value === ruleKind)?.label ?? "Choose a format"}</b>
+              <span>{phoneRuleFormatsOpen ? "−" : ruleKind ? "Change" : "+"}</span>
+            </button>
             <div
-              className="v12-rule-kind-picker"
+              className={`v12-rule-kind-picker ${phoneRuleFormatsOpen ? "phone-formats-open" : ""}`}
               aria-label="Mechanical rule kind"
             >
           <span className="v12-rule-kind-label">Rule format</span>
@@ -1736,7 +1748,7 @@ export function PrimitiveForm({
                   onClick={() => {
                     setModifiers([{ ...blankModifier, ...modifiers[0], ...modifierRuleFormatPatch(format.key), id: modifiers[0]?.id ?? `modifier-${modifierCounter}` }]);
                     if (!modifiers[0]) setModifierCounter((value) => value + 1);
-                    setRuleKind("MODIFIER"); setIsDirty(true);
+                    setRuleKind("MODIFIER"); setPhoneRuleFormatsOpen(false); setIsDirty(true);
                   }}>
                   {format.label}
                 </button>
@@ -1755,6 +1767,7 @@ export function PrimitiveForm({
                         current.family === option.value ? current.value : "",
                     }));
                     setRuleKind(option.value);
+                    setPhoneRuleFormatsOpen(false);
                     setIsDirty(true);
                   }}
                 >

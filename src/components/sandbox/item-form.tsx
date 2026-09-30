@@ -1,4 +1,6 @@
 "use client";
+import { PhonePiecePicker } from "./phone-piece-picker";
+import { PhonePieceDetails } from "./phone-piece-details";
 import { readJsonResponse } from "@/lib/http/read-json-response";
 import { EditableNumberInput } from "@/components/ui/editable-number-input";
 import { AuthorChapters, AuthorChapter } from "./author-chapters";
@@ -626,7 +628,8 @@ export function ItemForm({
         </div>
         <button
           type="button"
-          onClick={resetEditor}
+          data-drawer-reset
+            onClick={resetEditor}
           className="h-9 rounded-md border border-border bg-background px-3 text-sm font-bold text-foreground"
         >
           Reset
@@ -635,6 +638,7 @@ export function ItemForm({
 
       <AuthorChapters guideKind="item">
         <AuthorChapter id="pieces" title="Pieces">
+      <PhonePiecePicker entries={[...availablePrimitives.map(entry=>({id:entry.id,name:entry.name,kind:"primitive" as const,description:entry.mechanicalOutputText,buCost:entry.buCost})),...availableEffects.map(entry=>({id:entry.id,name:entry.name,kind:"effect" as const})),...availableCapabilities.map(entry=>({id:entry.id,name:entry.name,kind:"capability" as const}))]} onChoose={entry=>{if(entry.kind === "primitive") setPrimitiveIds(previous=>previous.includes(Number(entry.id))?previous:[...previous,Number(entry.id)]);if(entry.kind === "effect") setEffectIds(previous=>previous.includes(String(entry.id))?previous:[...previous,String(entry.id)]);if(entry.kind === "capability") setCapabilityIds(previous=>previous.includes(String(entry.id))?previous:[...previous,String(entry.id)]);setIsDirty(true);}}/>
       <section className="rounded-md border border-border bg-background p-4">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-bold">Item-augment Primitives</h3>
@@ -705,7 +709,7 @@ export function ItemForm({
                       <Trash2 className="size-3.5" />
                     </button>
                   </div>
-                  <div className="mt-2 border-t border-border/60 pt-1"><RecipeComposition id={id} {...(cap.primitiveLinks ? {primitiveLinks:cap.primitiveLinks} : {})} {...(cap.effectLinks ? {effectLinks:cap.effectLinks} : {})} /></div>
+                  <div className="mt-2 border-t border-border/60 pt-1"><PhonePieceDetails><RecipeComposition id={id} {...(cap.primitiveLinks ? {primitiveLinks:cap.primitiveLinks} : {})} {...(cap.effectLinks ? {effectLinks:cap.effectLinks} : {})} /></PhonePieceDetails></div>
                 </SortableMember>
               );
             })}
@@ -744,7 +748,7 @@ export function ItemForm({
                       <Trash2 className="size-3.5" />
                     </button>
                   </div>
-                  {eff.primitiveLinks?.length ? <div className="mt-2 border-t border-border/60 pt-1"><RecipeComposition id={id} effectLinks={[{effectId:id,effect:eff}]} /></div> : null}
+                  {eff.primitiveLinks?.length ? <div className="mt-2 border-t border-border/60 pt-1"><PhonePieceDetails><RecipeComposition id={id} effectLinks={[{effectId:id,effect:eff}]} /></PhonePieceDetails></div> : null}
                 </SortableMember>
               );
             })}

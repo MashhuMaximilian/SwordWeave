@@ -235,9 +235,10 @@ function ListItem({
           {item.buCost !== null && <span className="sheet-library-entry-cost">{item.buCost} BU</span>}
         </div>
         <span className="sheet-library-entry-meta">
-          {authorDisplayUsername(item) ? `by ${authorDisplayUsername(item)}` : "System"} · {item.targetType.replace(/_TEMPLATE$/, "").replaceAll("_", " ").toLowerCase()}
+          {!isAtelier ? `${authorDisplayUsername(item) ? `by ${authorDisplayUsername(item)}` : "System"} · ` : ""}{item.targetType.replace(/_TEMPLATE$/, "").replaceAll("_", " ").toLowerCase()}
         </span>
-        {!item.mechanicalDescription && item.description && <div className="sheet-library-entry-description"><Markdown>{item.description}</Markdown></div>}
+        {isAtelier && item.mechanicalDescription ? <p data-copy="mechanical" className="phone-library-rule">{item.mechanicalDescription}</p> : null}
+        {!item.mechanicalDescription && item.description && <div className="sheet-library-entry-description"><Markdown copyRole="narrative">{item.description}</Markdown></div>}
       </div>
     </>
   ) : (
@@ -285,7 +286,7 @@ function ListItem({
         </div>
         {item.description && (
           <div className="mt-0.5 line-clamp-1 text-[11px] leading-snug text-muted-foreground [&_p]:m-0 [&_strong]:font-semibold [&_em]:italic">
-            <Markdown>{item.description}</Markdown>
+            <Markdown copyRole="narrative">{item.description}</Markdown>
           </div>
         )}
         <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
@@ -306,6 +307,7 @@ function ListItem({
 
   const baseClass = cn(
     "flex items-start gap-2 border transition-colors md:gap-3",
+    compact && isAtelier && "phone-library-record",
     isAtelier
       ? "rounded-lg border-transparent border-b-border/80 bg-transparent px-2 py-2.5 hover:border-[#8f672e] hover:bg-black/15"
       : "rounded-md bg-card p-2 md:p-3",
@@ -427,7 +429,7 @@ function GridCard({
 
       {item.description && (
         <div className="mt-1.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground [&_p]:m-0 [&_strong]:font-semibold [&_em]:italic">
-          <Markdown>{item.description}</Markdown>
+          <Markdown copyRole="narrative">{item.description}</Markdown>
         </div>
       )}
 

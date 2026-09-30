@@ -1,4 +1,5 @@
 "use client";
+import { browserUuid } from "@/lib/browser-uuid";
 import { ConsequenceRestrictionsEditor } from "./consequence-restrictions-editor";
 import type { AccessRestriction } from "@/lib/character/consequences/types";
 
@@ -412,7 +413,7 @@ export function ConditionComposer({
     } else {
       const id =
         typeof crypto !== "undefined" && "randomUUID" in crypto
-          ? crypto.randomUUID()
+          ? browserUuid()
           : `c-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const newCond: RuntimeCondition = {
         id,

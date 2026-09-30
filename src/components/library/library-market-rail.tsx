@@ -75,30 +75,13 @@ export function LibraryMarketRail({
   return (
     <>
       <div className="v12-section-head border-b border-border px-3 py-2 md:hidden">
-        <div className="v12-mobile-family-tabs flex gap-2 overflow-x-auto pb-1" aria-label="Lexicon categories">
-          <button
-            type="button"
-            aria-pressed={!selected}
-            onClick={() => onSelect("")}
-            className="v12-metal-button shrink-0 rounded-md px-3 py-2 text-xs"
-          >
-            All families
-          </button>
-          {categories.map((category) => (
-            <button
-              key={category.value}
-              type="button"
-              aria-pressed={selected === category.value}
-              onClick={() => onSelect(category.value)}
-              className={cn(
-                "v12-metal-button shrink-0 rounded-md px-3 py-2 text-xs",
-                selected === category.value && "bg-primary text-primary-foreground",
-              )}
-            >
-              {libraryFamilyLabel(category)} · {category.count}
-            </button>
-          ))}
-        </div>
+        <label className="phone-library-family-picker">
+          <span className="sr-only">Rule family</span>
+          <select value={selected} onChange={event => onSelect(event.target.value)}>
+            <option value="">All rule families</option>
+            {categories.map(category => <option key={category.value} value={category.value}>{libraryFamilyLabel(category)} · {category.count}</option>)}
+          </select>
+        </label>
         {selected ? (
           <Link
             href={`/atelier?build=primitive&new=1&category=${encodeURIComponent(selected)}`}

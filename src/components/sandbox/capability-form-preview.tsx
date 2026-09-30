@@ -1,4 +1,6 @@
 "use client";
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
+import { PhoneDraftPreview, draftEffectLinks } from "./phone-draft-preview";
 import {readTableGuidance,TABLE_AXES,type TableAxis} from "@/lib/capabilities/table-guidance";
 import {readRollResolution} from "@/lib/capabilities/roll-resolution";
 import {readFlavorReference} from "@/lib/capabilities/flavor-reference";
@@ -50,6 +52,8 @@ export type CapabilityEffectRef = LiveEffect;
 export function CapabilityFormPreview({ form, slots, effects = [] }: {
   form: CapabilityFormState; slots: CapabilitySlot[]; effects?: CapabilityEffectRef[];
 }) {
+  const phone = useIsMobile();
+  if (phone) return <PhoneDraftPreview item={{kind:"capability",row:{...form,id:"live-draft-capability",tags:form.tags.split(",").map(tag=>tag.trim()).filter(Boolean),primitiveLinks:slots,effectLinks:draftEffectLinks(effects)}}}/>;
   const guidance=readTableGuidance(form.verboseDescription);
   const resolved=readRollResolution(guidance.description);
   const allSlots = [...slots, ...effects.flatMap(effect => effect.primitiveLinks ?? [])];

@@ -1,4 +1,5 @@
 "use client";
+import { PhonePiecePicker } from "./phone-piece-picker";
 import {readTableGuidance,writeTableGuidance,type TableGuidance} from "@/lib/capabilities/table-guidance";
 import { RollResolutionEditor } from "./roll-resolution-editor";
 import { EMPTY_RESOLUTION, readRollResolution, writeRollResolution, type RollResolution } from "@/lib/capabilities/roll-resolution";
@@ -432,7 +433,8 @@ export function EffectForm({
         </div>
         <button
           type="button"
-          onClick={resetEditor}
+          data-drawer-reset
+            onClick={resetEditor}
           className="h-9 rounded-md border border-border bg-background px-3 text-sm font-bold text-foreground"
         >
           Reset
@@ -441,6 +443,7 @@ export function EffectForm({
 
       <AuthorChapters defaultActive="identity" order={["identity", "pieces", "table", "publish"]} guideKind="effect">
         <AuthorChapter id="pieces" title="Pieces">
+      <PhonePiecePicker entries={[...availablePrimitives.map(entry=>({id:entry.id,name:entry.name,kind:"primitive" as const,description:entry.mechanicalOutputText,buCost:entry.buCost}))]} onChoose={entry=>{if(entry.kind === "primitive") addSlot(Number(entry.id),true);setIsDirty(true);}}/>
       <section className="rounded-md border border-border bg-background p-4">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-bold">Slotted Primitives</h3>

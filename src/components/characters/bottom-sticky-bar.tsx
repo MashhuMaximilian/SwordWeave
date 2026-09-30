@@ -1,4 +1,5 @@
 "use client";
+import { usePhoneCharacterSurface } from "@/components/characters/compact-hierarchy";
 import { grantedKeyword } from "@/lib/engine/practice-grants";
 
 // Phase 8.L round 26 (Mashu 2026-08-13): Build marker — force Turbopack
@@ -384,6 +385,7 @@ export interface EncumbranceForSticky {
 }
 
 export interface BottomStickyBarProps {
+  readonly onOpenConsequences?: () => void;
   readonly characterId: string;
   readonly level: number;
   readonly currentVitality: number | null;
@@ -462,6 +464,7 @@ type ComboKind =
   | null;
 
 export function BottomStickyBar({
+  onOpenConsequences,
   characterId,
   level,
   currentVitality,
@@ -500,6 +503,8 @@ export function BottomStickyBar({
   };
   const [hydrated, setHydrated] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const phone = usePhoneCharacterSurface();
+  const [phonePanel, setPhonePanel] = useState<"rolls" | "resources" | "rules">("rolls");
   const [combo, setCombo] = useState<ComboKind>(null);
   const [comboAttr, setComboAttr] = useState<"physical" | "mental" | "magical">("physical");
   const [comboBehaviorKey, setComboBehaviorKey] = useState<string>("");
@@ -765,7 +770,27 @@ export function BottomStickyBar({
           doubled (`pr-12`) again because the FAB was still
           covering PB/DC. PB/DC inner gap also doubled
           (`gap-6`) for more breathing room. */}
-      <button
+      {phone ? <div className="v12-phone-dock-launcher">
+        <button type="button" className="v12-phone-dock-vitality" onClick={() => { setPhonePanel("resources"); setExpanded(value => phonePanel === "resources" ? !value : true); }} aria-expanded={expanded && phonePanel === "resources"} aria-label={`Vitality ${effectiveCurrent} of ${maxVitality}; open resources`}>
+          <Heart aria-hidden="true" />
+          <strong>{effectiveCurrent}<span>/{maxVitality}</span></strong>
+        </button>
+        <button type="button" className="v12-phone-dock-numbers" onClick={() => { setPhonePanel("rolls"); setExpanded(value => phonePanel === "rolls" ? !value : true); }} aria-expanded={expanded && phonePanel === "rolls"} aria-label={expanded && phonePanel === "rolls" ? "Collapse character numbers" : "Expand character numbers and practices"}>
+          {([
+            { label: "PHY", name: "Physical", mod: physMod, save: physSave },
+            { label: "MEN", name: "Mental", mod: mentMod, save: mentSave },
+            { label: "MAG", name: "Magical", mod: magiMod, save: magiSave },
+          ] as const).map(({ label, name, mod, save }) => <span className="v12-phone-dock-stat" key={label} aria-label={`${name} modifier ${fmt(mod)}, save ${fmt(save)}`}>
+            <small>{label}</small><strong>{fmt(mod)}</strong><span className="v12-phone-dock-save">S {fmt(save)}</span>
+          </span>)}
+          {([
+            { label: "PB", name: "Proficiency bonus", value: fmt(pb) },
+            { label: "DC", name: "Save DC", value: primaryDc },
+            { label: "ATK", name: "Attack bonus", value: fmt(primaryAttackBonus) },
+          ] as const).map(({ label, name, value }) => <span className="v12-phone-dock-stat v12-phone-dock-derived" key={label} aria-label={`${name} ${value}`}><small>{label}</small><strong>{value}</strong></span>)}
+          {expanded ? <ChevronDown aria-hidden="true" /> : <ChevronUp aria-hidden="true" />}
+        </button>
+      </div> : <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
         className="v12-bottom-drawer-toggle flex w-full items-center justify-between gap-2 border-b border-border pl-3 pr-16 py-1.5 text-sm hover:bg-secondary/30"
@@ -836,7 +861,7 @@ export function BottomStickyBar({
         ) : (
           <ChevronUp className="size-4 shrink-0 text-muted-foreground" />
         )}
-      </button>
+      </button>}
 
       {/* Drawer content — only when expanded. Grows upward
           with max-h-[70dvh] so the user can see most of the
@@ -846,7 +871,10 @@ export function BottomStickyBar({
         <div
           className="v12-bottom-drawer-body px-2 pb-3 pt-1.5 max-h-[70dvh] overflow-y-auto"
           data-testid="bottom-sticky-bar-drawer"
+          data-phone-panel={phone ? phonePanel : undefined}
         >
+          {phone && <nav className="v12-phone-instrument-tabs" aria-label="Character instruments">{(["rolls", "resources", "rules"] as const).map(panel => <button type="button" key={panel} aria-pressed={phonePanel === panel} onClick={() => setPhonePanel(panel)}>{panel}</button>)}<button type="button" aria-label="Close character instruments" onClick={() => setExpanded(false)}>×</button></nav>}
+          {phone && onOpenConsequences && <button type="button" className="v12-phone-consequences-button" onClick={onOpenConsequences}>Consequences <span>Conditions, costs &amp; ongoing effects</span></button>}
           {/* 1. Vitality header + bar + buttons.
               The header + numbers + bar are all clickable
               to open the max-vitality provenance modal.
@@ -2559,7 +2587,7 @@ function PracticeDetailModal({
               Per Mashu: "the header is not part of scroll...
               Only the name has to be sticky not the
               description or the accordions." */}
-          <section className="v12-practice-about">
+          <PhonePracticeAbout>
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
               About this practice
             </p>
@@ -2606,7 +2634,7 @@ function PracticeDetailModal({
                 </div>
               );
             })()}
-          </section>
+          </PhonePracticeAbout>
           <section>
             <div className="mb-2 flex items-baseline justify-between gap-2">
               <span className="text-xs font-semibold uppercase text-muted-foreground">
@@ -2673,7 +2701,7 @@ function PracticeDetailModal({
             })()}
           </section>
 
-          <section>
+          <section data-phone-empty={contributions.length === 0 || undefined}>
             <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Attribute primitives (affect practice base)
             </p>
@@ -2702,7 +2730,7 @@ function PracticeDetailModal({
             )}
           </section>
 
-          <section>
+          <section data-phone-empty={practiceContributions.length === 0 || undefined}>
             <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Practice primitives
             </p>
@@ -3019,4 +3047,9 @@ function EncumbranceFormulaModal({
     </div>,
     document.body,
   );
+}
+
+function PhonePracticeAbout({children}: {children: ReactNode}) {
+  const phone = usePhoneCharacterSurface();
+  return phone ? <details className="v12-practice-about v12-phone-practice-reference"><summary>About this practice</summary><div>{children}</div></details> : <section className="v12-practice-about">{children}</section>;
 }

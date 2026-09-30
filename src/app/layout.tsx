@@ -24,6 +24,15 @@ import "./character-guide.css";
 import "./mobile-shell.css";
 import "./secondary-pages-mobile.css";
 import "./fab-metal.css";
+import "./mechanical-summary.css";
+import "./phone-shell.css";
+import "./phone-character.css";
+import "./phone-stats.css";
+import "./phone-atelier.css";
+import "./phone-workspace.css";
+import "./phone-reading.css";
+import "./phone-rule-builder.css";
+import "./phone-density.css";
 
 // Retain the previous typefaces behind the data-ui switch so setting
 // NEXT_PUBLIC_SW_UI_VERSION=legacy is a complete visual rollback.

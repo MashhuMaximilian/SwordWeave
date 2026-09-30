@@ -1,4 +1,6 @@
 "use client";
+import { PhonePiecePicker } from "./phone-piece-picker";
+import { PhonePieceDetails } from "./phone-piece-details";
 import { readJsonResponse } from "@/lib/http/read-json-response";
 import { RecipeComposition, RecipeEntityIdentity, recipeCompositionBu, type RecipePrimitiveLink, type RecipeEffectLink } from "./recipe-composition";
 import { RecipePrimitiveIdentity } from "./recipe-primitive-identity";
@@ -609,6 +611,7 @@ export function HeritageForm({
           ) : null}
           <button
             type="button"
+            data-drawer-reset
             onClick={resetEditor}
             className="h-9 rounded-md border border-border bg-background px-3 text-sm font-bold text-foreground"
           >
@@ -619,6 +622,7 @@ export function HeritageForm({
 
       <AuthorChapters defaultActive="identity" order={["identity", "pieces", "publish"]} guideKind={form.kind === "LINEAGE" ? "lineage" : form.kind === "UPBRINGING" ? "upbringing" : "manifest"}>
         <AuthorChapter id="pieces" title="Pieces">
+      <PhonePiecePicker entries={[...availablePrimitives.map(entry=>({id:entry.id,name:entry.name,kind:"primitive" as const,description:entry.mechanicalOutputText,buCost:entry.buCost})),...availableCapabilities.map(entry=>({id:entry.id,name:entry.name,kind:"capability" as const}))]} onChoose={entry=>{if(entry.kind === "primitive") setPrimitiveIds(previous=>previous.includes(Number(entry.id))?previous:[...previous,Number(entry.id)]);if(entry.kind === "capability") setCapabilityIds(previous=>previous.includes(String(entry.id))?previous:[...previous,String(entry.id)]);setIsDirty(true);}}/>
       <section className="rounded-md border border-border bg-background p-4">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-bold">
@@ -693,7 +697,7 @@ export function HeritageForm({
                     <Trash2 className="size-3.5" />
                   </button>
                 </div>
-                <div className="mt-2 border-t border-border/60 pt-1"><RecipeComposition id={c.id} {...(c.primitiveLinks ? { primitiveLinks: c.primitiveLinks } : {})} {...(c.effectLinks ? { effectLinks: c.effectLinks } : {})} /></div>
+                <div className="mt-2 border-t border-border/60 pt-1"><PhonePieceDetails><RecipeComposition id={c.id} {...(c.primitiveLinks ? { primitiveLinks: c.primitiveLinks } : {})} {...(c.effectLinks ? { effectLinks: c.effectLinks } : {})} /></PhonePieceDetails></div>
               </SortableMember>
             ))}
           </SortableBundleList>

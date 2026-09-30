@@ -1,4 +1,5 @@
 "use client";
+import { browserUuid } from "@/lib/browser-uuid";
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { formatEquationValue } from "@/lib/engine/equation-formatter";
@@ -38,7 +39,7 @@ export function ConsequencePackageAction({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const applicationId = useRef<string | null>(
-    initialPreview ? crypto.randomUUID() : null,
+    initialPreview ? browserUuid() : null,
   );
   const router = useRouter();
   async function load() {
@@ -51,7 +52,7 @@ export function ConsequencePackageAction({
       const result = await response.json();
       if (!response.ok) throw new Error(result.error);
       setPreview(result);
-      applicationId.current = crypto.randomUUID();
+      applicationId.current = browserUuid();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to preview.");
     } finally {

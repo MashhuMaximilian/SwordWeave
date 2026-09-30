@@ -1,4 +1,8 @@
 "use client";
+import { PhonePiecePicker } from "./phone-piece-picker";
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
+import { DetailModal } from "@/components/ui/detail-modal";
+import { PhonePieceDetails } from "./phone-piece-details";
 import { readFlavorReference, writeFlavorReference } from "@/lib/capabilities/flavor-reference";
 import { RollResolutionEditor } from "./roll-resolution-editor";
 import { EMPTY_RESOLUTION, readRollResolution, writeRollResolution, type RollResolution } from "@/lib/capabilities/roll-resolution";
@@ -200,6 +204,8 @@ export function CapabilityForm({
   onSaved?: (capability: CapabilityRow) => void;
   onReset?: () => void;
 }) {
+  const phone = useIsMobile();
+  const [phoneSlot, setPhoneSlot] = useState<DedicatedRole | null>(null);
   const characterAuthoring = useCharacterAuthoring();
   const [recoveredCatalog, setRecoveredCatalog] = useState<{ primitives: typeof sourcePrimitives; effects: typeof sourceEffects } | null>(null);
   const availablePrimitives = useMemo(() => [...sourcePrimitives, ...(recoveredCatalog?.primitives ?? []).filter((entry) => !sourcePrimitives.some((current) => current.id === entry.id))], [sourcePrimitives, recoveredCatalog]);
@@ -686,6 +692,7 @@ export function CapabilityForm({
     const selectedPrimitive = selectedEntry?.slot.primitive;
     const flavorLabel=role === "DOMAIN" ? "domain" : role === "VERB" ? "verb" : null;
     const flavor=flavorLabel ? readFlavorReference(form.verboseDescription,flavorLabel) : "";
+    if (phone) return <button type="button" className="phone-reference-slot" data-dedicated-role={role} onClick={()=>setPhoneSlot(role)}><span>{label}</span><strong>{selectedPrimitive?.name ?? (flavor ? `${flavor} · flavor` : "Not set")}</strong><small>{selectedPrimitive ? `${selectedPrimitive.buCost} BU · Edit` : flavorLabel ? "Choose or add flavor" : "Choose rule"}</small></button>;
     return <article className="group min-w-0 rounded-md border border-border bg-background/80 px-2.5 py-2 transition-colors hover:border-[#b88a39]" data-dedicated-role={role}>
       <div className="flex min-w-0 items-center gap-2">
         <p className="shrink-0 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
@@ -719,6 +726,7 @@ export function CapabilityForm({
     const selectedValue = tableAxisValue(axis);
     const pinned = tableAxisSlot(axis);
     const custom = customAxes[axis] || !(config.values as readonly string[]).includes(selectedValue);
+    if (phone) return <details key={axis} className="phone-table-axis"><summary><span>{config.label}</span><strong>{selectedValue}</strong></summary><label><span className="sr-only">{config.label}</span><select value={custom ? "Custom" : selectedValue} onChange={event=>replaceTableAxisPrimitive(axis,event.target.value)}>{config.values.map(value=><option key={value} value={value}>{value}</option>)}</select></label>{custom ? <input aria-label={`Custom ${config.label.toLowerCase()}`} value={selectedValue} maxLength={240} onChange={event=>{setTableDraft(current=>({...current,[axis]:event.target.value}));setIsDirty(true);}}/> : null}{TABLE_HELP[axis] ? <p>{TABLE_HELP[axis]?.[selectedValue] ?? TABLE_HELP[axis]?.["Custom"]}</p> : null}{pinned ? <p>{pinned.slot.primitive.name} included in Pieces.</p> : null}</details>;
     return <section key={axis} className="v12-table-axis">
       <h3>{config.label}</h3>
       <div>{config.values.map((value) => <button
@@ -775,7 +783,8 @@ export function CapabilityForm({
         </div>
         <button
           type="button"
-          onClick={resetEditor}
+          data-drawer-reset
+            onClick={resetEditor}
           className="h-9 rounded-md border border-border bg-background px-3 text-sm font-bold text-foreground"
         >
           Reset
@@ -784,6 +793,7 @@ export function CapabilityForm({
 
       <AuthorChapters defaultActive="identity" order={["identity", "pieces", "table", "publish"]} guideKind="capability">
         <AuthorChapter id="pieces" title="Pieces">
+      <PhonePiecePicker entries={[...availablePrimitives.map(entry=>({id:entry.id,name:entry.name,kind:"primitive" as const,description:entry.mechanicalOutputText,buCost:entry.buCost})),...availableEffects.map(entry=>({id:entry.id,name:entry.name,kind:"effect" as const,description:entry.narrativeDescription}))]} onChoose={entry=>{if(entry.kind === "primitive") addSlot(Number(entry.id),true);if(entry.kind === "effect") setEffectIds(previous=>previous.includes(String(entry.id))?previous:[...previous,String(entry.id)]);setIsDirty(true);}}/>
       <section className="v12-foundation-pieces v12-dedicated-slots rounded-lg border border-border bg-background/60 p-2.5">
         <header className="mb-2 flex items-center justify-between gap-2">
           <div>
@@ -807,8 +817,7 @@ export function CapabilityForm({
 
         {regularSlots.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">
-            No additional primitives slotted yet. Pick a primitive from the Library
-            column and use its &ldquo;Add to active capability&rdquo; action.
+            {phone ? "No additional primitives yet. Use Add a piece above." : <>No additional primitives slotted yet. Pick a primitive from the Library column and use its &ldquo;Add to active capability&rdquo; action.</>}
           </p>
         ) : (
           <SortableBundleList className="mt-3 space-y-2" ids={regularSlots.map(({slot})=>`${slot.primitiveId}:${slot.role}`)} onOrder={()=>{}}>
@@ -847,8 +856,7 @@ export function CapabilityForm({
 
         {effectIds.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">
-            No effects bundled yet. Pick an effect from the Library column
-            and use its &ldquo;Add to active capability&rdquo; action.
+            {phone ? "No effects yet. Use Add a piece above." : <>No effects bundled yet. Pick an effect from the Library column and use its &ldquo;Add to active capability&rdquo; action.</>}
           </p>
         ) : (
           <SortableBundleList className="mt-3 space-y-2" ids={effectIds} onOrder={order=>{setEffectIds(order);setOrderChanged(true);setIsDirty(true);}}>
@@ -870,7 +878,7 @@ export function CapabilityForm({
                       <Trash2 className="size-3.5" />
                     </button>
                   </div>
-                  {effect?.primitiveLinks?.length ? <div className="mt-2 border-t border-border/60 pt-1"><RecipeComposition id={id} effectLinks={[{effectId:id,effect:{...effect,primitiveLinks:effect.primitiveLinks.map((link)=>({...link,primitive:{...link.primitive,id:link.primitiveId,category:link.primitive.category ?? availablePrimitives.find((primitive)=>primitive.id===link.primitiveId)?.category ?? "OTHER"}}))}}]} /></div> : null}
+                  {effect?.primitiveLinks?.length ? <div className="mt-2 border-t border-border/60 pt-1"><PhonePieceDetails><RecipeComposition id={id} effectLinks={[{effectId:id,effect:{...effect,primitiveLinks:effect.primitiveLinks.map((link)=>({...link,primitive:{...link.primitive,id:link.primitiveId,category:link.primitive.category ?? availablePrimitives.find((primitive)=>primitive.id===link.primitiveId)?.category ?? "OTHER"}}))}}]} /></PhonePieceDetails></div> : null}
                 </SortableMember>
               );
             })}
@@ -958,7 +966,7 @@ export function CapabilityForm({
       {/* Desktop layout — original full-width stack.
           Hidden on mobile (md:hidden on the mobile block
           above gates this), shown on md+. */}
-      <div className="hidden md:block">
+      <div className="capability-desktop-identity hidden md:block">
         <IconSlot
           appearance="medallion"
           iconSource={(form.iconSource as IconSource | null) ?? null}
@@ -980,7 +988,7 @@ export function CapabilityForm({
         />
       </div>
 
-      <label className="hidden text-sm font-medium md:block">
+      <label className="capability-desktop-identity hidden text-sm font-medium md:block">
         Capability Name
         <input
           className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
@@ -991,7 +999,7 @@ export function CapabilityForm({
         />
       </label>
 
-      <div className="hidden gap-4 md:grid md:grid-cols-2">
+      <div className="capability-desktop-identity hidden gap-4 md:grid md:grid-cols-2">
         <label className="block text-sm font-medium">
           Type
           <select
@@ -1062,6 +1070,20 @@ export function CapabilityForm({
 
         </AuthorChapter>
       </AuthorChapters>
+      {phone && phoneSlot ? <DetailModal isOpen onClose={()=>setPhoneSlot(null)} title={`Edit ${phoneSlot === "VERB" ? "verb tier" : phoneSlot === "DOMAIN" ? "domain" : phoneSlot === "RANGE" ? "range" : "output die"}`}>
+        <div className="phone-slot-editor">
+          <label>Purchased rule<select value={slots.find(slot=>resolvedSlotRole(slot)===phoneSlot)?.primitiveId ?? ""} onChange={event=>{
+            const id=event.target.value ? Number(event.target.value) : null;
+            chooseRulePrimitive(phoneSlot,id);
+            const primitive=availablePrimitives.find(entry=>entry.id===id);
+            if(phoneSlot === "RANGE" && primitive) setTableDraft(current=>({...current,range:primitive.name.replace(/\s+Range$/i,"")}));
+            if(phoneSlot === "OUTPUT" && primitive) {const die=`${primitive.name} ${primitive.mechanicalOutputText ?? ""}`.match(/d(?:4|6|8|10|12|20)/i)?.[0];if(die)setTableDraft(current=>({...current,output:die.toLowerCase()}));}
+          }}><option value="">Not set</option>{availablePrimitives.filter(primitive=>phoneSlot === "VERB" ? primitive.category === "VERB_TIER" : phoneSlot === "OUTPUT" ? ["INTENSITY_DICE","OUTPUT"].includes(primitive.category) : primitive.category === phoneSlot).map(primitive=><option key={primitive.id} value={primitive.id}>{primitive.name} · {primitive.buCost} BU</option>)}</select></label>
+          {phoneSlot === "VERB" || phoneSlot === "DOMAIN" ? <label>Optional flavor<input value={readFlavorReference(form.verboseDescription,phoneSlot === "VERB" ? "verb" : "domain")} onChange={event=>updateForm("verboseDescription",writeFlavorReference(form.verboseDescription,phoneSlot === "VERB" ? "verb" : "domain",event.target.value))}/><small>Flavor describes the idea; it grants no purchased access.</small></label> : null}
+          <button type="button" className="v12-metal-button" onClick={()=>setPhoneSlot(null)}>Done</button>
+        </div>
+      </DetailModal> : null}
+
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="submit"

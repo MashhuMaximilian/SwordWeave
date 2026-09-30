@@ -1,4 +1,5 @@
 "use client";
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { readJsonResponse } from "@/lib/http/read-json-response";
 
 import { useEffect, useState } from "react";
@@ -29,6 +30,7 @@ export function BuildLibrary({ kinds, destination, heritageCategory, onAdd, onAd
   onPreview: (item: LibraryItem) => void;
   disabled?: boolean;
 }) {
+  const phone = useIsMobile();
   const { dark } = useGlobalControls();
   const choices = TYPES.filter(([type]) => kinds.includes(previewKind(type)) && matchesDiscoveryDestination(previewKind(type), type.replace("_TEMPLATE", ""), heritageCategory));
   const [type, setType] = useState<LibraryTargetType>("PRIMITIVE");
@@ -99,8 +101,8 @@ export function BuildLibrary({ kinds, destination, heritageCategory, onAdd, onAd
       </div>}
     </section>}
     <section className="v12-source-entries" aria-label="Library entries">
-      <div className="v12-tier-tabs" aria-label="Source tiers">{TIERS.map((value) => <button type="button" key={value} aria-pressed={tier === value} onClick={() => setTier(value)}>{value ? `Tier ${ROMAN_TIERS[Number(value)]}` : "All tiers"}</button>)}</div>
-      <div className="v12-origin-tabs" aria-label="Source origin">{["all", "system", "community"].map((value) => <button type="button" key={value} aria-pressed={origin === value} onClick={() => setOrigin(value)}>{value === "all" ? "All origins" : value === "system" ? "System" : "Community"}</button>)}</div>
+      {(!phone || filtersOpen) && <div className="v12-tier-tabs" aria-label="Source tiers">{TIERS.map((value) => <button type="button" key={value} aria-pressed={tier === value} onClick={() => setTier(value)}>{value ? `Tier ${ROMAN_TIERS[Number(value)]}` : "All tiers"}</button>)}</div>}
+      {(!phone || filtersOpen) && <div className="v12-origin-tabs" aria-label="Source origin">{["all", "system", "community"].map((value) => <button type="button" key={value} aria-pressed={origin === value} onClick={() => setOrigin(value)}>{value === "all" ? "All origins" : value === "system" ? "System" : "Community"}</button>)}</div>}
       <div className="v12-source-results-head"><p className="v12-kicker">Exact entries</p><span>{result.key === filterKey ? result.total : "…"}</span></div>
       {error && <p role="alert">{error}</p>}
       <div aria-busy={pending}>

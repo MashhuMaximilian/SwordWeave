@@ -1,4 +1,5 @@
 "use client";
+import { browserUuid } from "@/lib/browser-uuid";
 import { consequenceJson } from "./json";
 import type { ConsequenceOccurrence } from "./types";
 
@@ -93,7 +94,7 @@ async function sync(id: string, session: Session) {
       let backup = localStorage.getItem(backupKey);
       if (!backup) {
         backup = JSON.stringify({
-          commandId: crypto.randomUUID(),
+          commandId: browserUuid(),
           occurrences: [...snapshot.values()],
         });
         localStorage.setItem(backupKey, backup);
@@ -123,7 +124,7 @@ async function sync(id: string, session: Session) {
         }));
       if (!session.pending && changes.length)
         session.pending = {
-          body: { operation: "save", commandId: crypto.randomUUID(), changes },
+          body: { operation: "save", commandId: browserUuid(), changes },
           snapshot,
         };
       const pending = session.pending;

@@ -12,7 +12,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { verifyWebhook } from "@clerk/nextjs/webhooks";
 import {
-  anonymizeUser,
   createProfileFromClerk,
   renameUsername,
   softDeleteUser,
@@ -175,6 +174,3 @@ export async function GET(): Promise<Response> {
   // Health check
   return NextResponse.json({ ok: true, endpoint: "clerk-webhook" });
 }
-
-// Allow the anonymize helper to be re-exported for cron use
-export { anonymizeUser };

@@ -1,4 +1,6 @@
 "use client";
+import { PhoneSection } from "./workspace/phone-section";
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { EditableNumberInput } from "@/components/ui/editable-number-input";
 import { parseBackstory, type CharacterBackstory } from "@/lib/character/character-backstory";
 
@@ -104,6 +106,8 @@ function clamp(value: number, min: number, max: number) {
 
 export function NewCharacterForm() {
   const router = useRouter();
+  const phone = useIsMobile();
+  const [stepsOpen,setStepsOpen] = useState(false);
   const [step, setStep] = useState<StepId>("identity");
   const [state, setState] = useState<FormState>(INITIAL_STATE);
   const [selectedPrimitiveIds, setSelectedPrimitiveIds] = useState<number[]>([]);
@@ -380,25 +384,26 @@ export function NewCharacterForm() {
   return (
     <div className="sw-character-forge">
       <aside className="sw-character-forge__rail" aria-label="Character creation progress">
+        {phone && <button className="sw-phone-step-picker" type="button" aria-expanded={stepsOpen} onClick={()=>setStepsOpen(value=>!value)}>Step {currentIndex + 1} of {STEPS.length} · {STEPS[currentIndex]!.label}<ChevronDown size={16}/></button>}
         <div className="sw-character-forge__rail-title"><span>Character instrument</span><strong>First adventure</strong></div>
-        <nav>
+        <nav hidden={phone && !stepsOpen}>
           {STEPS.map((item, index) => (
-            <button key={item.id} type="button" aria-current={step === item.id ? "step" : undefined} className={step === item.id ? "is-active" : completedSteps[item.id] ? "is-complete" : ""} onClick={() => { if (index > 0 && (!state.name.trim() || !state.concept.trim())) { setStep("identity"); setError("Name and describe your character before choosing rules."); return; } if (index > 1 && attrSum !== 10) { setStep("foundation"); setError("Your three attributes must add up to 10 first."); return; } if (index > 2 && !mirrorsValid) { setStep("mirroring"); setError("Your selected weaknesses no longer fit this level’s debt limit."); return; } if (index > 3 && (!packageComplete || packageCost > budget + mirrorCredit)) { setStep("packages"); setError("Choose a complete starting set within your point budget first."); return; } setError(null); setStep(item.id); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
+            <button key={item.id} type="button" aria-current={step === item.id ? "step" : undefined} className={step === item.id ? "is-active" : completedSteps[item.id] ? "is-complete" : ""} onClick={() => { if (index > 0 && (!state.name.trim() || !state.concept.trim())) { setStep("identity"); setError("Name and describe your character before choosing rules."); return; } if (index > 1 && attrSum !== 10) { setStep("foundation"); setError("Your three attributes must add up to 10 first."); return; } if (index > 2 && !mirrorsValid) { setStep("mirroring"); setError("Your selected weaknesses no longer fit this level’s debt limit."); return; } if (index > 3 && (!packageComplete || packageCost > budget + mirrorCredit)) { setStep("packages"); setError("Choose a complete starting set within your point budget first."); return; } setError(null); setStep(item.id); setStepsOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
               <span className="sw-character-forge__step-number">{completedSteps[item.id] ? <Check aria-hidden /> : item.eyebrow}</span>
               <span><strong>{item.label}</strong><small>{item.hint}</small></span>
             </button>
           ))}
         </nav>
-        <div className="sw-character-forge__reading">{step === "foundation" || step === "mirroring" ? <><span>For starting choices</span><strong>{budget + mirrorCredit} BU</strong><small>{budget} base · {mirrorCredit} weakness credit</small></> : step !== "identity" ? <><span>Build points left</span><strong>{budget + mirrorCredit - packageCost} BU</strong><small>{packageCost} spent · {mirrorCredit} bonus</small></> : null}<small>Draft saves on this device</small><button type="button" className="sw-forge-reset" onClick={startOver}>Start over</button></div>
+        <div className="sw-character-forge__reading" hidden={phone && !stepsOpen}>{step === "foundation" || step === "mirroring" ? <><span>For starting choices</span><strong>{budget + mirrorCredit} BU</strong><small>{budget} base · {mirrorCredit} weakness credit</small></> : step !== "identity" ? <><span>Build points left</span><strong>{budget + mirrorCredit - packageCost} BU</strong><small>{packageCost} spent · {mirrorCredit} bonus</small></> : null}<small>Draft saves on this device</small><button type="button" className="sw-forge-reset" onClick={startOver}>Start over</button></div>
       </aside>
 
       <div className="sw-character-forge__workbench">
-        <header className="sw-character-forge__header">
+        <header className="sw-character-forge__header" hidden={phone}>
           <div><span>Step {currentIndex + 1} of {STEPS.length}</span><h2 ref={stepHeading} tabIndex={-1}>{STEPS[currentIndex]!.label}</h2></div>
         </header>
 
         <div className="sw-character-forge__content">
-          <div className="sw-forge-guidance"><span aria-hidden>✦</span><div><strong>{STEP_GUIDANCE[step].title}</strong><p>{STEP_GUIDANCE[step].description}</p></div></div>
+          <details className="sw-forge-step-help" open={!phone}><summary>Help with this step</summary><div className="sw-forge-guidance"><span aria-hidden>✦</span><div><strong>{STEP_GUIDANCE[step].title}</strong><p>{STEP_GUIDANCE[step].description}</p></div></div></details>
           {error ? <p className="sw-forge-error" role="alert">{error}</p> : null}
           {step === "packages" ? <StartingAccessStep options={options} selectedIds={selectedPrimitiveIds} mirrorCredit={mirrorCredit} loading={catalogLoading} togglePrimitive={togglePrimitive} onClearSelection={() => setSelectedPrimitiveIds([])} packageCost={packageCost} budget={budget} effectiveLevel={effectiveLevel} shuffleBudget={Math.min(packageShuffleBudget ?? 25, budget + mirrorCredit)} onShuffleBudgetChange={setPackageShuffleBudget} suggestions={packageSuggestions} savedPackages={savedPackages} onChoosePackage={keepPackage} onRemovePackage={removePackage} onShuffle={shufflePackages} /> : null}
           {step === "identity" ? <IdentityStep state={state} setField={setField} setState={setState} /> : null}
@@ -408,7 +413,7 @@ export function NewCharacterForm() {
         </div>
 
         <footer className="sw-character-forge__footer">
-          <div className="sw-character-forge__footer-reading"><span>{state.name.trim() || "Your character"}</span>{step === "identity" ? <><strong>Start with their story</strong><small>Rules come next</small></> : step === "foundation" || step === "mirroring" ? <><strong>{budget + mirrorCredit} BU for choices</strong><small>{mirrorCredit ? `${mirrorCredit} BU from weakness` : `${budget} BU at level ${effectiveLevel}`}</small></> : <><strong>{budget + mirrorCredit - packageCost} BU left</strong><small>{packageCost} used of {budget + mirrorCredit}</small></>}</div>
+          <div className="sw-character-forge__footer-reading" hidden={phone && step === "identity"}><span>{state.name.trim() || "Your character"}</span>{step === "identity" ? <><strong>Start with their story</strong><small>Rules come next</small></> : step === "foundation" || step === "mirroring" ? <><strong>{budget + mirrorCredit} BU for choices</strong><small>{mirrorCredit ? `${mirrorCredit} BU from weakness` : `${budget} BU at level ${effectiveLevel}`}</small></> : <><strong>{budget + mirrorCredit - packageCost} BU left</strong><small>{packageCost} used of {budget + mirrorCredit}</small></>}</div>
           <div className="sw-character-forge__footer-actions">
             {currentIndex > 0 ? <button type="button" className="sw-metal-button sw-metal-button--secondary" onClick={() => { setStep(STEPS[currentIndex - 1]!.id); window.scrollTo({ top: 0, behavior: "smooth" }); }}><ArrowLeft aria-hidden /> Previous</button> : null}
             {currentIndex < STEPS.length - 1 ? <button type="button" className="sw-metal-button sw-metal-button--primary" onClick={goNext}>{step === "identity" ? "Set foundation" : step === "foundation" ? "Consider a weakness" : step === "mirroring" ? "Choose starting access" : "Review character"} <ArrowRight aria-hidden /></button> : <button type="button" className="sw-metal-button sw-metal-button--primary" onClick={submit} disabled={isPending}>{isPending ? <Loader2 className="animate-spin" aria-hidden /> : <Check aria-hidden />}{isPending ? "Creating…" : "Create character"}</button>}
@@ -421,18 +426,20 @@ export function NewCharacterForm() {
 }
 
 function IdentityStep({ state, setField, setState }: { state: FormState; setField: <K extends keyof FormState>(key: K, value: FormState[K]) => void; setState: React.Dispatch<React.SetStateAction<FormState>> }) {
+  const nameInput = useRef<HTMLInputElement>(null);
+  useEffect(()=>{if(window.matchMedia("(min-width:768px)").matches) nameInput.current?.focus();},[]);
   return <div className="sw-forge-stack sw-forge-identity">
     <section className="sw-forge-panel sw-forge-panel--brass sw-forge-identity__main">
       <PanelTitle number="01" title="Bring your character to life" subtitle="Start with the idea, not the numbers. A sentence is enough to begin." />
-      <ForgeField label="Character name" required><input value={state.name} onChange={(event) => setField("name", event.target.value)} placeholder="e.g. Vex the Quick" autoFocus /></ForgeField>
+      <ForgeField label="Character name" required><input value={state.name} onChange={(event) => setField("name", event.target.value)} placeholder="e.g. Vex the Quick" ref={nameInput} /></ForgeField>
       <ForgeField label="Your character in one sentence" hint="What are they, and what is special about them? You can change this later." required><textarea rows={2} value={state.concept} onChange={(event) => setField("concept", event.target.value)} placeholder="A bear-like warrior bred for combat who learned to resist magic…" /></ForgeField>
     </section>
-    <section className="sw-forge-story-section"><header><span>THE STORY SO FAR</span><h3>Give them a past and a purpose</h3><p>These prompts are optional, but answering one or two will help you choose rules that fit the character. A story flaw does not have to become a mechanical weakness later.</p></header><BackstoryStep state={state} setState={setState} /></section>
+    <PhoneSection title="Backstory" summary="Optional · personality, history, ties and goals" className="sw-forge-story-section"><header><span>THE STORY SO FAR</span><h3>Give them a past and a purpose</h3><p>These prompts are optional, but answering one or two will help you choose rules that fit the character. A story flaw does not have to become a mechanical weakness later.</p></header><BackstoryStep state={state} setState={setState} /></PhoneSection>
     <details className="sw-forge-disclosure"><summary><span><b>Add a portrait</b><small>Optional · upload an image or use a link</small></span><ChevronDown aria-hidden /></summary><div className="sw-forge-disclosure__body"><PortraitInput value={state.portraitUrl} onChange={(value) => setField("portraitUrl", value)} frame={state.portraitFrame} onFrameChange={(value) => setField("portraitFrame", value)} characterName={state.name} /></div></details>
-    <section className="sw-forge-heritages" aria-labelledby="sw-forge-heritages-title">
+    <PhoneSection title="Understanding heritages" summary="Lineage, Upbringing and Manifest" className="sw-forge-heritages">
       <header><span>THE THREE ROOTS OF A CHARACTER</span><h3 id="sw-forge-heritages-title">Where do their abilities come from?</h3><p>Heritages explain the story behind your character’s abilities. Describe these ideas in ordinary words now. On the character sheet, you can turn them into Lineage, Upbringing, and Manifest bundles with actual rules.</p></header>
       <div className="sw-forge-heritages__grid"><article><span>01 · WHAT THEY ARE</span><h4>Lineage</h4><p>Their inherited or created nature: body, ancestry, senses, and innate traits. A constructed or transformed person has a Lineage too.</p><small>Example: a bear-like being with powerful senses.</small></article><article><span>02 · WHAT SHAPED THEM</span><h4>Upbringing</h4><p>The people, place, work, and training that formed them before adventuring.</p><small>Example: raised and trained for combat.</small></article><article><span>03 · WHO THEY ARE BECOMING</span><h4>Manifest</h4><p>The role or discipline they pursue now. This is similar to a class, but it can grow and change with their story.</p><small>Example: an anti-magic hunter.</small></article></div>
-    </section>
+    </PhoneSection>
   </div>;
 }
 
@@ -476,7 +483,7 @@ function AttributesStep({ state, setField, setState, attrSum }: { state: FormSta
 
 function BackstoryStep({ state, setState, hideMotivation = false }: { state: FormState; setState: React.Dispatch<React.SetStateAction<FormState>>; hideMotivation?: boolean }) {
   const fields: Array<[keyof FormState["backstory"], string, string, string]> = [["description", "Full description", "What makes them recognizable", "Appearance, voice, movement, clothing, and distinguishing details…"], ["personality", "Personality", "How they think and act", "Temperament, habits, values, and contradictions…"], ["origin", "Origin & history", "Where from, what happened", "Family, birthplace, culture, and defining events…"], ["motivation", "Motivation & goals", "What drives them now", "What do they want, and why can’t they let it go?"], ["ties", "Ties & allies", "Who matters", "Friends, rivals, family, patrons, promises…"], ["flaw", "Flaw & conflict", "What gets in their way", "A fear, contradiction, obligation, or recurring mistake…"]];
-  return <div className="sw-forge-story-grid">{fields.filter(([key]) => !hideMotivation || key !== "motivation").map(([key, label, hint, placeholder], index) => <section key={key} className={`sw-forge-panel ${index % 2 ? "sw-forge-panel--teal" : "sw-forge-panel--brass"}`}><PanelTitle number={String.fromCharCode(65 + index)} title={label} subtitle={hint} /><MarkdownEditor className="sw-forge-markdown" rows={3} ariaLabel={label} value={state.backstory[key] ?? ""} onChange={(value) => setState((current) => ({ ...current, backstory: { ...current.backstory, [key]: value } }))} placeholder={placeholder} /></section>)}</div>;
+  return <div className="sw-forge-story-grid">{fields.filter(([key]) => !hideMotivation || key !== "motivation").map(([key, label, hint, placeholder], index) => <PhoneSection key={key} title={label} summary={state.backstory[key]?.trim() ? "Has story · tap to edit" : "Optional · tap to write"} className={`sw-forge-panel ${index % 2 ? "sw-forge-panel--teal" : "sw-forge-panel--brass"}`}><PanelTitle number={String.fromCharCode(65 + index)} title={label} subtitle={hint} /><MarkdownEditor className="sw-forge-markdown" rows={3} ariaLabel={label} value={state.backstory[key] ?? ""} onChange={(value) => setState((current) => ({ ...current, backstory: { ...current.backstory, [key]: value } }))} placeholder={placeholder} /></PhoneSection>)}</div>;
 }
 
 interface FinishingProps {
@@ -755,7 +762,7 @@ function PrimitiveSelectCard({ item, selected, onToggle }: { item: PrimitiveOpti
   return <button type="button" className={`sw-access-entry${selected ? " is-selected" : ""}`} onClick={onToggle} aria-pressed={selected}><span className="sw-access-entry__icon">{item.iconSource ? <IconDisplay iconSource={item.iconSource} iconKey={item.iconKey ?? null} iconUrl={item.iconUrl ?? null} iconColor={item.iconColor ?? null} size={30} alt="" /> : "◇"}</span><span className="sw-access-entry__copy"><span><strong>{item.name}</strong>{selected ? <em><Check aria-hidden /> Selected</em> : null}</span><small>{item.costTier || item.category.replaceAll("_", " ")} · {originOf(item) === "community" ? "Community" : "System"}{item.version ? ` · v${item.version}` : ""}</small>{item.mechanicalOutputText ? <span data-copy="mechanical">{item.mechanicalOutputText}</span> : null}{item.narrativeRule ? <span data-copy="narrative">{item.narrativeRule}</span> : null}</span><span className="sw-access-entry__cost">{item.buCost}<small>BU</small></span></button>;
 }
 
-function PanelTitle({ number, title, subtitle }: { number: string; title: string; subtitle: string }) { return <header className="sw-forge-panel__title"><span>{number}</span><div><h3>{title}</h3><p>{subtitle}</p></div></header>; }
+function PanelTitle({ number, title, subtitle }: { number: string; title: string; subtitle: string }) { const phone = useIsMobile(); return <header className="sw-forge-panel__title"><span>{number}</span><div><h3>{title}</h3>{phone ? <details className="sw-forge-title-help"><summary>Guidance</summary><p>{subtitle}</p></details> : <p>{subtitle}</p>}</div></header>; }
 function ForgeField({ label, hint, required, children }: { label: string; hint?: string; required?: boolean; children: React.ReactNode }) { return <label className="sw-forge-field"><span>{label}{required ? <b>Required</b> : null}</span>{hint ? <small>{hint}</small> : null}{children}</label>; }
 
 /** Keep the input text separate from the valid build value so it can be cleared. */

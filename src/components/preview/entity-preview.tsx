@@ -20,6 +20,8 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { Markdown } from "@/components/ui/markdown";
+import { MechanicalSummary } from "./mechanical-summary";
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { IconDisplay } from "@/components/icons/icon-display";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
 import { PreviewFlagSummary } from "@/components/engagement/flags-section";
@@ -252,6 +254,7 @@ function ComposedList({
     entityKind?: "primitive" | "effect" | "capability" | "item";
     subText?: ReactNode;
     note?: string | null;
+    noteRole?: "mechanical" | "narrative";
     // Phase 8.1 batch 13.2 follow-up: per-item targetType so the
     // preview modal knows whether to fetch a primitive, capability,
     // effect, or item when the user clicks the row. Previously the
@@ -315,7 +318,7 @@ function ComposedList({
                 <span className="v12-composed-ledger-name min-w-0 flex-1">{it.name}</span>
                 <VersionChip versionNumber={it.versionNumber} />
               </div>
-              {it.note ? <Markdown copyRole="mechanical" className="v12-composed-ledger-rule line-clamp-2">{it.note}</Markdown> : null}
+              {it.note ? <Markdown copyRole={it.noteRole ?? "narrative"} className="v12-composed-ledger-rule line-clamp-2">{it.note}</Markdown> : null}
               {it.subText ? <div className="v12-composed-ledger-source">{it.subText}</div> : null}
             </div>
             <span className="v12-composed-ledger-bu"><b>{it.bu}</b><small>BU</small></span>
@@ -336,6 +339,7 @@ type CompositionNode = {
   versionNumber?: number | null | undefined;
   meta?: ReactNode;
   note?: string | null | undefined;
+  noteRole?: "mechanical" | "narrative" | undefined;
   children?: CompositionNode[] | undefined;
 };
 
@@ -353,6 +357,10 @@ function primitiveCardCopy(primitive: { category: string }): string | null {
     || null;
 }
 
+function primitiveCopyRole(primitive: { category: string }): "mechanical" | "narrative" {
+  return (primitive as { mechanicalOutputText?: string | null }).mechanicalOutputText?.trim() ? "mechanical" : "narrative";
+}
+
 function CompositionTree({
   title,
   nodes,
@@ -362,7 +370,33 @@ function CompositionTree({
   nodes: CompositionNode[];
   onSubLink: (link: PreviewSubLink) => void;
 }) {
+  const phone = useIsMobile();
+  const [trail, setTrail] = useState<CompositionNode[]>([]);
   if (nodes.length === 0) return null;
+  if (phone) {
+    const liveTrail: CompositionNode[] = [];
+    let visibleNodes = nodes;
+    for (const step of trail) {
+      const match = visibleNodes.find(node => node.id === step.id && node.targetType === step.targetType);
+      if (!match?.children?.length) break;
+      liveTrail.push(match);
+      visibleNodes = match.children;
+    }
+    const current = liveTrail.at(-1);
+    return <Section heading={`${title} (${nodes.length})`}>
+      <div className="sw-phone-composition">
+        {current ? <div className="sw-phone-composition-path"><button type="button" onClick={() => setTrail(liveTrail.slice(0, -1))}>← Back</button><strong>{current.name}</strong><button type="button" onClick={() => onSubLink({targetType:current.targetType,targetId:current.id,label:current.name})}>Details</button></div> : null}
+        {visibleNodes.map((node, index) => <div className="sw-phone-composition-row" key={`${node.targetType}:${node.id}:${index}`}>
+          <button type="button" onClick={() => onSubLink({targetType:node.targetType,targetId:node.id,label:node.name})}>
+            <span><strong>{node.name}</strong><b>{node.bu} BU</b></span>
+            <small>{node.kind}</small>
+            {node.note ? <Markdown copyRole={node.noteRole ?? "narrative"} className="sw-phone-composition-note">{node.note}</Markdown> : null}
+          </button>
+          {node.children?.length ? <button className="sw-phone-composition-pieces" type="button" onClick={() => setTrail([...liveTrail,node])}>Pieces · {node.children.length} <ChevronRight size={14}/></button> : null}
+        </div>)}
+      </div>
+    </Section>;
+  }
   return (
     <Section heading={`${title} (${nodes.length})`}>
       <div className="v12-composition-tree" role="list">
@@ -415,7 +449,7 @@ function CompositionTreeNode({
             <span className="v12-composition-node-name">{node.name}</span>
             <VersionChip versionNumber={node.versionNumber} />
           </span>
-          {node.note ? <Markdown copyRole="mechanical" className="v12-composition-node-note line-clamp-2">{node.note}</Markdown> : null}
+          {node.note ? <Markdown copyRole={node.noteRole ?? "narrative"} className="v12-composition-node-note line-clamp-2">{node.note}</Markdown> : null}
           {node.meta ? <span className="v12-composition-node-meta">{node.meta}</span> : null}
         </button>
         <span className="v12-composition-node-bu"><b>{node.bu}</b><small>BU</small></span>
@@ -909,6 +943,7 @@ export function EntityPreview({
     <div className="v12-entity-preview flex min-h-0 flex-col" data-preview-layout="responsive">
       {actionPlacement === "top" && resolvedActionBar ? <PreviewActions {...resolvedActionBar} /> : null}
       <div className="v12-entity-preview-content min-h-0 pr-1">
+        {item.kind !== "primitive" ? <MechanicalSummary row={item.row} /> : null}
         {body}
         {/* OwnerBar MOVED OUT of the body area — it now lives between the
             scrollable content and the footer (just above the like bar)
@@ -1110,7 +1145,7 @@ function PrimitiveBody({
       <div className="v12-primitive-preview-secondary">
         {row.mechanicalOutputText ? (
           <Section heading="Mechanical output">
-            <div className="v12-mechanical-rule"><Markdown>{row.mechanicalOutputText}</Markdown></div>
+            <div className="v12-mechanical-rule"><Markdown copyRole="mechanical">{row.mechanicalOutputText}</Markdown></div>
           </Section>
         ) : null}
         <ModifierCards row={row} buildModifiers={buildModifiers} />
@@ -1171,6 +1206,7 @@ function EffectBody({
           versionNumber: l.versionNumber,
           entityKind: "primitive" as const,
           note: primitiveCardCopy(l.primitive),
+          noteRole: primitiveCopyRole(l.primitive),
         }))}
       /></div>
     </div>
@@ -1224,6 +1260,7 @@ function CapabilityBody({
       targetType: "PRIMITIVE",
       bu: Math.abs(primitiveLink.primitive.buCost * primitiveLink.quantity),
       note: primitiveCardCopy(primitiveLink.primitive),
+          noteRole: primitiveCopyRole(primitiveLink.primitive),
     })),
   }));
   return (
@@ -1270,6 +1307,7 @@ function CapabilityBody({
           versionNumber: l.versionNumber,
           entityKind: "primitive" as const,
           note: primitiveCardCopy(l.primitive),
+          noteRole: primitiveCopyRole(l.primitive),
         }))}
         />
         <CompositionTree title="Composed effects" nodes={effectNodes} onSubLink={onSubLink} />
@@ -1332,6 +1370,7 @@ function TemplateBody({
           targetType: "PRIMITIVE",
           bu: Math.abs(primitiveLink.primitive.buCost),
           note: primitiveCardCopy(primitiveLink.primitive),
+          noteRole: primitiveCopyRole(primitiveLink.primitive),
         })),
         ...capabilityEffects.map((effectLink): CompositionNode => {
           // Heritage endpoints carry these primitives on the capability→effect
@@ -1357,6 +1396,7 @@ function TemplateBody({
             targetType: "PRIMITIVE",
             bu: Math.abs(primitiveLink.primitive.buCost),
             note: primitiveCardCopy(primitiveLink.primitive),
+          noteRole: primitiveCopyRole(primitiveLink.primitive),
           })),
         });}),
       ],
@@ -1403,6 +1443,7 @@ function TemplateBody({
           versionNumber: l.versionNumber,
           entityKind: "primitive" as const,
           note: primitiveCardCopy(l.primitive),
+          noteRole: primitiveCopyRole(l.primitive),
         }))}
       />
       </div>
@@ -1457,6 +1498,7 @@ function ItemBody({
           targetType: "PRIMITIVE",
           bu: Math.abs(primitiveLink.primitive.buCost),
           note: primitiveCardCopy(primitiveLink.primitive),
+          noteRole: primitiveCopyRole(primitiveLink.primitive),
         })),
         ...effects.map((effectLink): CompositionNode => ({
           id: effectLink.effectId,
@@ -1472,6 +1514,7 @@ function ItemBody({
             targetType: "PRIMITIVE",
             bu: Math.abs(primitiveLink.primitive.buCost),
             note: primitiveCardCopy(primitiveLink.primitive),
+          noteRole: primitiveCopyRole(primitiveLink.primitive),
           })),
         })),
       ],
@@ -1493,6 +1536,7 @@ function ItemBody({
       targetType: "PRIMITIVE",
       bu: Math.abs(primitiveLink.primitive.buCost * primitiveLink.quantity),
       note: primitiveCardCopy(primitiveLink.primitive),
+          noteRole: primitiveCopyRole(primitiveLink.primitive),
     })),
   }));
   return (
@@ -1563,6 +1607,7 @@ function ItemBody({
           versionNumber: l.versionNumber,
           entityKind: "primitive" as const,
           note: primitiveCardCopy(l.primitive),
+          noteRole: primitiveCopyRole(l.primitive),
         }))}
       />
       </div>

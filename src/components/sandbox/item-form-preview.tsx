@@ -1,4 +1,6 @@
 "use client";
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
+import { PhoneDraftPreview, draftEffectLinks, draftPrimitiveLink } from "./phone-draft-preview";
 
 // Live preview for the item being composed in ItemForm.
 
@@ -65,6 +67,8 @@ export type ItemEffectSlot = LiveEffect;
 export function ItemFormPreview({form, primitiveSlots, capabilitySlots, effectSlots}: {
   form:ItemFormState; primitiveSlots:ItemPrimitiveSlot[]; capabilitySlots:ItemCapabilitySlot[]; effectSlots:ItemEffectSlot[];
 }) {
+  const phone = useIsMobile();
+  if (phone) return <PhoneDraftPreview item={{kind:"item",row:{...form,id:"live-draft-item",tags:form.tags.split(",").map(tag=>tag.trim()).filter(Boolean),buCost:Number(form.buCost)||0,slotCost:Number(form.slotCost)||0,quantity:Math.max(1,Number(form.quantity)||1),primitiveLinks:primitiveSlots.map(draftPrimitiveLink),effectLinks:draftEffectLinks(effectSlots),capabilityLinks:capabilitySlots.map((capability,sortOrder)=>({capabilityId:capability.id,sortOrder,slotLabel:null,notes:null,capability:{...capability,primitiveLinks:(capability.primitiveLinks??[]).map(draftPrimitiveLink),effectLinks:draftEffectLinks(capability.effects??[])}}))}}}/>;
   const allSlots = [...primitiveSlots, ...effectSlots.flatMap(effect=>effect.primitiveLinks ?? []), ...capabilitySlots.flatMap(capability=>[...(capability.primitiveLinks ?? []), ...(capability.effects ?? []).flatMap(effect=>effect.primitiveLinks ?? [])])];
   const completeCost = effectSlots.every(effect=>effect.primitiveLinks !== undefined) && capabilitySlots.every(capability=>capability.primitiveLinks !== undefined && capability.effects !== undefined && capability.effects.every(effect=>effect.primitiveLinks !== undefined));
   const {transitiveBu} = computeTransitiveBu({primitiveLinks:allSlots}, {allowTemporaryIds:true});

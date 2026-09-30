@@ -10,7 +10,9 @@ import {
   type ReactNode,
   type ComponentProps,
 } from "react";
-import { Eye, Wrench } from "lucide-react";
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
+import { WorkspaceSurface } from "./workspace-surface";
+import { Eye, Wrench, Plus } from "lucide-react";
 import { PrimitiveForm } from "@/components/sandbox/primitive-form";
 import { CapabilityForm } from "@/components/sandbox/capability-form";
 import { EffectForm } from "@/components/sandbox/effect-form";
@@ -67,6 +69,8 @@ export function EntityComposer({
   onChooseEntity?: (kind:EntityKind, key?:EntityKey)=>void;
   capabilitySeed?: {name:string;description:string;type:string;sourceType:string};
 }) {
+  const phone = useIsMobile();
+  const [phonePicker,setPhonePicker] = useState(false);
   const [heritageKind, setHeritageKind] = useState(category);
   const [slotEvents] = useState(() => new EventTarget());
   const [extra, setExtra] = useState<WorkspaceNode[]>([]);
@@ -135,6 +139,7 @@ export function EntityComposer({
       sequence: (previous?.sequence ?? 0) + 1,
     }));
     setLibrary(false);
+    setPhonePicker(false);
   }
   const primitives = useMemo(
     () =>
@@ -441,9 +446,10 @@ export function EntityComposer({
       {error && <p role="alert">{error}</p>}
     </section>
   ) : null;
+  const entitySwitcher = onChooseEntity && <details className="sheet-entity-switcher"><summary>Choose another entity</summary><p>Start a new piece or open one on your character. Switching asks you to handle unfinished edits first.</p><div>{(["primitive","effect","capability","heritage","item"] as EntityKind[]).map(next=><button className="sheet-button" type="button" key={next} onClick={()=>onChooseEntity(next)}>New {next}</button>)}</div><label>Open a character piece<select aria-label="Choose another character entity" value="" onChange={event=>{const target=graph.nodes.find(item=>item.key===event.target.value);if(target)onChooseEntity(target.kind,target.key);}}><option value="">Choose an existing piece…</option>{graph.nodes.filter(item=>supplyPaths(graph,item.key).length>0).map(item=><option key={item.key} value={item.key}>{item.name} · {item.kind}</option>)}</select></label></details>;
   const authoringStudio = (
     <div className="v12-character-atelier-modal-body space-y-4">
-      {onChooseEntity && <details className="sheet-entity-switcher"><summary>Choose another entity</summary><p>Start a new piece or open one on your character. Switching asks you to handle unfinished edits first.</p><div>{(["primitive","effect","capability","heritage","item"] as EntityKind[]).map(next=><button className="sheet-button" type="button" key={next} onClick={()=>onChooseEntity(next)}>New {next}</button>)}</div><label>Open a character piece<select aria-label="Choose another character entity" value="" onChange={event=>{const target=graph.nodes.find(item=>item.key===event.target.value);if(target)onChooseEntity(target.kind,target.key);}}><option value="">Choose an existing piece…</option>{graph.nodes.filter(item=>supplyPaths(graph,item.key).length>0).map(item=><option key={item.key} value={item.key}>{item.name} · {item.kind}</option>)}</select></label></details>}
+      {!phone && entitySwitcher}
 
       {kind === "heritage" && !node && (
         <label className="v12-heritage-kind-control flex items-center gap-3 font-medium">
@@ -453,21 +459,24 @@ export function EntityComposer({
           </select>
         </label>
       )}
-      {!integratedSources && compositionStudio}
-      {integratedSources && kinds.length > 0 && <p className="sheet-guidance">Use Find on the left to bring rules into this piece. Add the finished piece to your draft when it is ready.</p>}
+      {!phone && !integratedSources && compositionStudio}
+      {phone && kinds.length > 0 && <button type="button" className="sheet-button sheet-phone-add-piece" onClick={()=>setPhonePicker(true)}><Plus size={16}/>Add a piece to this {kind}</button>}
+      {phone && phonePicker && <WorkspaceSurface modal title={`Add to ${node?.name ?? `this ${kind}`}`} kicker="Choose a piece" onClose={()=>setPhonePicker(false)}>{compositionStudio}</WorkspaceSurface>}
+      {!phone && integratedSources && kinds.length > 0 && <p className="sheet-guidance">Use Find on the left to bring rules into this piece. Add the finished piece to your draft when it is ready.</p>}
       {error && integratedSources && <p role="alert">{error}</p>}
       {form}
+      {phone && entitySwitcher}
     </div>
   );
   return (
     <section className="v12-character-atelier" data-active-pane={studioTab} data-integrated-sources={integratedSources}>
-      <header className="v12-character-atelier-head">
+      <header className="v12-character-atelier-head" data-phone-editor={phone || undefined} hidden={phone}>
         <div>
           <span>Character Atelier</span>
           <strong>{node ? `Editing ${node.name}` : `New ${kind}`}</strong>
           <p>Add this piece to your draft, then review all changes together.</p>
         </div>
-        <nav aria-label="Build and preview panes">
+        {!phone && <nav aria-label="Build and preview panes">
           <button type="button" aria-pressed={studioTab === "build"} onClick={() => setStudioTab("build")}>
             <Wrench className="size-3.5" /> Build
           </button>
@@ -475,7 +484,7 @@ export function EntityComposer({
             <Eye className="size-3.5" /> Preview
           </button>
 
-        </nav>
+        </nav>}
       </header>
       <div className="v12-character-atelier-stage">
         <div className="v12-character-atelier-build" data-atelier-pane="build">

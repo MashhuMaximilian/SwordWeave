@@ -168,7 +168,12 @@ export function BuildPreviewDrawer() {
 
   // Find the inner form's Save/Reset buttons by data-attribute.
   function dispatchReset() {
-    buildHost.current?.querySelector<HTMLButtonElement>('[data-drawer-reset]')?.click();
+    const reset = buildHost.current?.querySelector<HTMLButtonElement>('[data-drawer-reset]');
+    if (!reset) return;
+    // The secondary workspace's hidden reset owns its discard confirmation.
+    if (!reset.hidden && window.matchMedia("(max-width: 767px)").matches &&
+      !window.confirm("Discard the changes in this build?")) return;
+    reset.click();
   }
   function dispatchSave() {
     const submitBtn = buildHost.current?.querySelector<HTMLButtonElement>(
@@ -181,7 +186,7 @@ export function BuildPreviewDrawer() {
 
   return (
     <DrawerShell isOpen={drawerOpen} onClose={closeDrawer}>
-      <div className="flex max-h-[70vh] flex-col">
+      <div className="sw-build-dialog-layout flex max-h-[70vh] flex-col">
         {/* Tab strip stays attribute-stable during hydration. Missing slots
             are ignored in the click handlers instead of changing `disabled`
             between the server render and the first client render. */}
@@ -239,7 +244,7 @@ export function BuildPreviewDrawer() {
             (`{activeContent ?? <empty>}`) because that would mount/
             unmount on every tab switch. Instead we render BOTH panels
             and toggle their visibility via display:none. */}
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="sw-build-dialog-scroll min-h-0 flex-1 overflow-y-auto">
           {/*
             The "no content" empty state still applies if BOTH slots
             are null (page hasn't registered anything). Show it as a
@@ -324,11 +329,18 @@ function DrawerShell({
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e: KeyboardEvent) => {
+      if (window.matchMedia("(max-width: 767px)").matches && panelRef.current) {
+        const panel = panelRef.current;
+        const laterDialog = Array.from(document.querySelectorAll<HTMLElement>('[aria-modal="true"]')).some(dialog =>
+          dialog !== panel && !dialog.contains(panel) && !dialog.closest('[inert], [aria-hidden="true"]') &&
+          dialog.getClientRects().length > 0 && Boolean(panel.compareDocumentPosition(dialog) & Node.DOCUMENT_POSITION_FOLLOWING));
+        if (laterDialog) return;
+      }
       if (e.key === "Escape" && !document.querySelector('[data-modal-stack-top="true"]')) onClose();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, panelRef]);
 
   return (
     <>
@@ -399,7 +411,7 @@ function DrawerShell({
             <X className="size-4" />
           </button>
         </header>
-        <div className="flex-1 overflow-y-auto px-2 py-2">{children}</div>
+        <div className="sw-build-dialog-host flex-1 overflow-y-auto px-2 py-2">{children}</div>
       </aside>
     </>
   );

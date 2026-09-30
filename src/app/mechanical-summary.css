@@ -1,0 +1,19 @@
+/* Shared preview addition, intentionally available on desktop and phone. */
+body[data-ui="v12"] .sw-mechanical-summary {
+  margin:0 0 12px;border:1px solid transparent;border-radius:8px;
+  background:linear-gradient(var(--v12-inset),var(--v12-inset)) padding-box,var(--v12-copper-edge) border-box;
+}
+body[data-ui="v12"] .sw-mechanical-summary > summary {
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  min-height:40px;padding:10px 12px;cursor:pointer;color:var(--v12-gold-hi);font:600 12px/1.3 var(--font-system);
+}
+body[data-ui="v12"] .sw-mechanical-summary > summary::after {content:'+';}
+body[data-ui="v12"] .sw-mechanical-summary[open] > summary::after {content:'−';}
+body[data-ui="v12"] .sw-mechanical-summary > summary > span:first-child {flex:1;}
+body[data-ui="v12"] .sw-mechanical-summary > summary > span:nth-child(2) {font-size:10px;color:var(--v12-soft);}
+body[data-ui="v12"] .sw-mechanical-summary > ul {list-style:disc;margin:0;padding:0 14px 10px 28px;}
+body[data-ui="v12"] .sw-mechanical-summary > ul > li {padding:3px 0;color:var(--v12-copper-hi);}
+body[data-ui="v12"] .sw-mechanical-summary .v12-markdown p {margin:0;font-size:14px;line-height:1.45;}
+body[data-ui="v12"] .sw-mechanical-summary [data-copy="mechanical"] {color:var(--v12-copper-hi)!important;}
+body[data-ui="v12"] .sw-mechanical-summary [data-copy="narrative"] {color:var(--foreground)!important;}
+body[data-ui="v12"] .sw-mechanical-summary small {font:500 10px var(--font-system);color:var(--v12-gold-hi);}

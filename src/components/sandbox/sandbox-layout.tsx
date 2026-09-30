@@ -361,6 +361,7 @@ export function SandboxLayout({
               library={library}
               builder={builder}
               preview={preview}
+              buildActions={columnMeta?.buildActions}
             />
             {bottomBar ? (
               <div className="v12-workspace-dock fixed inset-x-0 bottom-0 z-30 border-t bg-background pb-[env(safe-area-inset-bottom)] shadow-[0_-2px_8px_rgba(0,0,0,0.08)]">
@@ -650,82 +651,35 @@ function TabletColumnChrome({
 
 import { DetailModal } from "@/components/ui/detail-modal";
 import { useGlobalControls } from "@/components/layout/global-controls";
-import { useDrawerSlot } from "@/components/layout/build-preview-drawer";
+
 
 type MobileProps = {
+  buildActions?: ReactNode;
   library: ReactNode;
   builder: ReactNode;
   preview: ReactNode;
 };
 
-function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
+function MobileSandboxLayout({ library, builder, preview, buildActions }: MobileProps) {
   // Layout mode comes from GlobalControls so the FAB (mounted globally) can
   // toggle it. Local state for the drawer/filter/fullscreen is gone — the
   // GlobalControls mounts a single global drawer/filter for every page.
   const {
     sandboxSplit,
     setSandboxSplit,
-    sandboxBottomTab,
     setSandboxBottomTab,
-    openDrawer,
   } = useGlobalControls();
 
-  // Hydration guard — wait for first client render so SSR HTML matches the
-  // client. While un-hydrated, render the library-only branch (no Group,
-  // no data-panel divs) so the DOM doesn't leak panels from the desktop
-  // render.
-  const [hydrated, setHydrated] = useState(false);
+  const [phonePane, setPhonePane] = useState<"library" | "build" | "preview">("library");
   useEffect(() => {
-    setHydrated(true);
-  }, []);
+    const focusBuild = () => setPhonePane("build");
+    const focusBrowse = () => { setSandboxSplit(false); setPhonePane("library"); };
+    window.addEventListener("sw-phone-focus-browse", focusBrowse);
+    window.addEventListener("sw-phone-focus-build", focusBuild);
+    return () => { window.removeEventListener("sw-phone-focus-build", focusBuild); window.removeEventListener("sw-phone-focus-browse", focusBrowse); };
+  }, [setSandboxSplit]);
 
-  // The sandbox's Build/Preview content is pushed into the global drawer
-  // via the per-tab slot system. We register each tab's content separately
-  // so the drawer's tab toggle works (previously both tabs rendered the
-  // same wrapper which ignored the global drawer state). The drawer's
-  // footer/save-reset chrome only shows on the build tab.
-  //
-  // IMPORTANT: in split mode the build form is already visible in the
-  // bottom panel. Pushing a SECOND instance to the drawer means the two
-  // have separate state — slots land in the page form, the drawer form
-  // is blank. We only push to the drawer when the form is NOT visible
-  // inline (i.e. default single-panel mode or the preview tab).
-  useDrawerSlot(
-    useMemo(
-      () => ({
-        build: sandboxSplit ? null : builder,
-        preview: preview,
-      }),
-      [builder, preview, sandboxSplit],
-    ),
-  );
-
-  // ===========================================================================
-  // MOBILE SPLIT — custom flex + pointer drag.
-  // ===========================================================================
-  //
-  // After 10+ rounds of trying react-resizable-panels' <Separator> on
-  // Android OnePlus 15 (OxygenOS 16) the drag STILL doesn't work for the
-  // user. The library's built-in pointer handling either:
-  //   1. Doesn't fire pointerdown on Android Chrome (some Chromium variant
-  //      issue with the `touch-action: none` interaction), or
-  //   2. Fires pointerdown but the pointermove gets eaten by the parent
-  //      flex container's scroll handling, or
-  //   3. Something else entirely.
-  //
-  // We can't keep guessing. The fix is to **bypass the library entirely**
-  // for the mobile split and roll our own. This is 20 lines of pointer
-  // event handling. No library. No edge cases. The mechanism is simple:
-  //   - Track the library panel's height as a percentage of the container
-  //   - On pointerdown, setPointerCapture + record start Y
-  //   - On pointermove, compute new percentage = old + (deltaY / containerH * 100)
-  //   - On pointerup, releasePointerCapture + write to localStorage
-  //   - touchAction: "none" on the handle (NOT the parent flex) keeps
-  //     Android from hijacking the drag for scrolling
-  //
-  // This is the same pattern that every CodeMirror / Monaco / Figma
-  // mobile drag uses. It's bulletproof. We've tried the library
-  // 10 times; the user is at their limit. This is the right call.
+  // The optional split shares the primary editor. Dragging only changes its viewport.
   const SPLIT_KEY = "sw_sandbox_mobile_split_v2";
   const SPLIT_DEFAULT_LIBRARY_PCT = 35;
   const SPLIT_MIN_LIBRARY_PCT = 15;
@@ -812,185 +766,32 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
     [persistSplit, splitPct],
   );
 
-  function dispatchReset() {
-    window.dispatchEvent(new CustomEvent("sw-sandbox-reset"));
-  }
-
   return (
     <div className="v12-mobile-atelier relative flex h-full min-h-0 flex-col">
-      <nav className="v12-mobile-workbench-actions" aria-label="Atelier workspace">
-        <button type="button" onClick={() => {
-          if (sandboxSplit) setSandboxBottomTab("build"); else openDrawer("build");
-        }}><IconDisplay iconSource="GAME_ICONS" iconKey="lorc/anvil-impact" iconColor={BUILD_ICON_COLOR} size={18} alt="" /> Build</button>
-        <button type="button" onClick={() => {
-          if (sandboxSplit) setSandboxBottomTab("preview"); else openDrawer("preview");
-        }}><Eye size={18} /> Preview</button>
-        <button type="button" aria-pressed={sandboxSplit} aria-label={sandboxSplit ? "Use one panel" : "Split library and build"} onClick={() => setSandboxSplit(!sandboxSplit)}><Columns2 size={18} /><span>{sandboxSplit ? "One panel" : "Split"}</span></button>
+      {phonePane !== "library" || sandboxSplit ? <header className="phone-atelier-context">
+        <button type="button" aria-label="Back to browsing" onClick={() => { setSandboxSplit(false); setPhonePane("library"); }}><ChevronLeft size={18}/><span>Browse</span></button>
+        <strong>{sandboxSplit ? "Browse & build" : phonePane === "preview" ? "Live preview" : "Your build"}</strong>
+        {phonePane === "build" ? <button type="button" aria-pressed={sandboxSplit} onClick={() => { setSandboxBottomTab("build"); setSandboxSplit(!sandboxSplit); }}><Columns2 size={17}/><span>{sandboxSplit ? "One pane" : "Split"}</span></button> : <span/>}
+      </header> : null}
+      <div ref={containerRef} className="phone-atelier-panes flex min-h-0 flex-1 flex-col" data-split={sandboxSplit}>
+        <section hidden={!sandboxSplit && phonePane !== "library"} className="phone-atelier-pane phone-atelier-library" style={sandboxSplit ? {height:`${splitPct}%`, flex:"none"} : undefined} aria-label="Library">
+          {library}
+        </section>
+        {sandboxSplit ? <div role="separator" tabIndex={0} aria-label="Resize library and editor" aria-orientation="horizontal" aria-valuemin={SPLIT_MIN_LIBRARY_PCT} aria-valuemax={SPLIT_MAX_LIBRARY_PCT} aria-valuenow={Math.round(splitPct)} className="phone-atelier-divider" style={{touchAction:"none"}} onPointerDown={onSplitPointerDown} onPointerMove={onSplitPointerMove} onPointerUp={onSplitPointerUp} onPointerCancel={onSplitPointerUp} onKeyDown={event => {
+          if (!["ArrowUp","ArrowDown","Home","End"].includes(event.key)) return;
+          event.preventDefault();
+          const next = event.key === "Home" ? SPLIT_MIN_LIBRARY_PCT : event.key === "End" ? SPLIT_MAX_LIBRARY_PCT : Math.max(SPLIT_MIN_LIBRARY_PCT,Math.min(SPLIT_MAX_LIBRARY_PCT,splitPct + (event.key === "ArrowDown" ? 5 : -5)));
+          setSplitPct(next); persistSplit(next);
+        }}><span/></div> : null}
+        <section hidden={!sandboxSplit && phonePane !== "build"} className="phone-atelier-pane phone-atelier-editor" aria-label="Primary editor">{buildActions ? <div className="phone-atelier-editor-actions">{buildActions}</div> : null}{builder}</section>
+        <section hidden={sandboxSplit || phonePane !== "preview"} className="phone-atelier-pane phone-atelier-preview" aria-label="Primary editor preview">{preview}</section>
+      </div>
+      <nav className="v12-mobile-workbench-actions phone-atelier-navigation" aria-label="Atelier workspace">
+        {(["library", "build", "preview"] as const).map(pane => <button key={pane} type="button" aria-pressed={phonePane === pane} onClick={() => { setSandboxSplit(false); setPhonePane(pane); }}>
+          {pane === "library" ? <LibraryIcon size={19}/> : pane === "preview" ? <Eye size={19}/> : <IconDisplay iconSource="GAME_ICONS" iconKey="lorc/anvil-impact" iconColor={BUILD_ICON_COLOR} size={19} alt=""/>}
+          <span>{pane === "library" ? "Browse" : pane === "build" ? "Build" : "Preview"}</span>
+        </button>)}
       </nav>
-      {!hydrated || !sandboxSplit ? (
-        // Default mode: Library fills the viewport, Build is a drawer.
-        // Add bottom padding to keep content above the fixed bottom tab bar.
-        <div className="flex h-full min-h-0 flex-col pb-12">
-          <MobileColumnChrome title="Codex" icon={<CodexIcon />} />
-          <div className="flex-1 min-h-0 overflow-hidden">{library}</div>
-        </div>
-      ) : (
-        // Split mode: Library top + Build bottom, draggable divider.
-        // Custom pointer-event drag (no library). The 12px-tall handle
-        // has a 28px-wide grip pill in the middle. touchAction: "none"
-        // on the handle (not the parent) keeps Android from stealing
-        // the drag for page scroll.
-        <div
-          ref={containerRef}
-          className="flex h-full min-h-0 flex-col pb-12"
-          style={{ touchAction: "pan-y" }}
-        >
-          <div
-            className="flex min-h-0 flex-col"
-            style={{ height: `${splitPct}%` }}
-          >
-            <MobileColumnChrome title="Codex" icon={<CodexIcon />} />
-            <div className="flex-1 min-h-0 overflow-hidden">{library}</div>
-          </div>
-          {/*
-            DRAG HANDLE — pointer-event based. The visual bar is 12px tall
-            (h-3) but the hit area extends via -my-2 to a comfortable
-            28px without bloating the visible bar. Cursor changes to
-            row-resize to telegraph the affordance. A 36x4 pill with two
-            inner bars gives the same "drag handle" visual every native
-            mobile IDE uses (VS Code, Xcode, Figma).
-          */}
-          <div
-            role="separator"
-            aria-orientation="horizontal"
-            aria-label="Drag to resize Library and Build panels"
-            aria-valuenow={Math.round(splitPct)}
-            aria-valuemin={SPLIT_MIN_LIBRARY_PCT}
-            aria-valuemax={SPLIT_MAX_LIBRARY_PCT}
-            tabIndex={0}
-            onKeyDown={(event) => {
-              if (!["ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
-              event.preventDefault();
-              const next = event.key === "Home" ? SPLIT_MIN_LIBRARY_PCT : event.key === "End" ? SPLIT_MAX_LIBRARY_PCT : Math.max(SPLIT_MIN_LIBRARY_PCT, Math.min(SPLIT_MAX_LIBRARY_PCT, splitPct + (event.key === "ArrowDown" ? 5 : -5)));
-              setSplitPct(next);
-              persistSplit(next);
-            }}
-            onPointerDown={onSplitPointerDown}
-            onPointerMove={onSplitPointerMove}
-            onPointerUp={onSplitPointerUp}
-            onPointerCancel={onSplitPointerUp}
-            className={cn(
-              "relative z-10 -my-2 flex h-3 shrink-0 cursor-row-resize select-none items-center justify-center",
-              "transition-colors hover:bg-primary/10",
-            )}
-            style={{ touchAction: "none" }}
-          >
-            {/* thin teal line across the full width (with opacity) */}
-            <span
-              aria-hidden
-              className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 h-px bg-primary/40"
-            />
-            {/* middle pill — only visible affordance */}
-            <span
-              aria-hidden
-              className="pointer-events-none relative h-1.5 w-8 rounded-full bg-primary/60 ring-1 ring-primary/30"
-            />
-          </div>
-          <div
-            className="flex min-h-0 flex-1 flex-col"
-            style={{ height: `${100 - splitPct}%` }}
-          >
-            <MobileColumnChrome
-              title={sandboxBottomTab === "preview" ? "Preview" : "Build"}
-              icon={
-                sandboxBottomTab === "preview" ? (
-                  <Eye className="size-4" />
-                ) : (
-                  <IconDisplay
-                    iconSource="GAME_ICONS"
-                    iconKey="lorc/anvil-impact"
-                    iconColor={BUILD_ICON_COLOR}
-                    size={22}
-                    alt="Build"
-                  />
-                )
-              }
-              action={
-                <div className="ml-auto flex items-center gap-1">
-                  {/* Tab strip — replaces the drawer's tab strip when
-                      in split mode. Build/Preview content is rendered
-                      inline in the bottom panel, NOT in the drawer. */}
-                  <div
-                    role="tablist"
-                    aria-label="Bottom panel"
-                    className="flex shrink-0 rounded-md border border-border bg-card p-0.5"
-                  >
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={sandboxBottomTab === "build"}
-                      onClick={() => setSandboxBottomTab("build")}
-                      className={cn(
-                        "flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold uppercase tracking-wide transition-colors",
-                        sandboxBottomTab === "build"
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      <IconDisplay
-                        iconSource="GAME_ICONS"
-                        iconKey="lorc/anvil-impact"
-                        iconColor={BUILD_ICON_COLOR}
-                        size={18}
-                        alt="Build"
-                      /> Build
-                    </button>
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={sandboxBottomTab === "preview"}
-                      onClick={() => setSandboxBottomTab("preview")}
-                      className={cn(
-                        "flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold uppercase tracking-wide transition-colors",
-                        sandboxBottomTab === "preview"
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      <Eye className="size-3" /> Preview
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={dispatchReset}
-                    className="flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-semibold uppercase tracking-wide text-secondary-foreground hover:bg-secondary/70"
-                    aria-label="Reset"
-                  >
-                    <RotateCcw className="size-3" /> Reset
-                  </button>
-                </div>
-              }
-            />
-            {/* Render Build OR Preview based on active tab. Both nodes
-                stay mounted so the slot listener + preview state never
-                unmounts when switching tabs. */}
-            <div className="flex-1 min-h-0 overflow-auto">
-              <div
-                hidden={sandboxBottomTab !== "build"}
-                className="h-full"
-              >
-                {builder}
-              </div>
-              <div
-                hidden={sandboxBottomTab !== "preview"}
-                className="h-full"
-              >
-                {preview}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

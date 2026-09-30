@@ -1,0 +1,56 @@
+/* Phone rule authoring: reveal the choices for the selected result only.
+   Inputs retain 16px text to avoid browser zoom while labels stay compact. */
+body[data-ui="v12"] .phone-rule-format-toggle { display:none; }
+@media (max-width:767px) {
+  body[data-ui="v12"] .phone-rule-format-toggle { display:flex;align-items:center;gap:7px;width:100%;min-height:40px;padding:7px 9px;text-align:left;border:1px solid transparent;border-radius:6px;background:linear-gradient(130deg,#1c282b,#0a1016) padding-box,var(--v12-gold-edge) border-box; }
+  body[data-ui="v12"] .phone-rule-format-toggle > span { font:600 10px/1.2 var(--font-system);color:var(--v12-gold-hi); }
+  body[data-ui="v12"] .phone-rule-format-toggle > b { flex:1;min-width:0;font:600 12px/1.3 var(--font-system);color:var(--v12-paper); }
+  body[data-ui="v12"] .v12-primitive-author .v12-rule-kind-picker:not(.phone-formats-open) { display:none; }
+  body[data-ui="v12"] .v12-primitive-author .v12-rule-kind-picker { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;padding:0; }
+  body[data-ui="v12"] .v12-rule-kind-label { display:none; }
+  body[data-ui="v12"] .v12-primitive-author .v12-rule-kind-picker button { min-height:36px;padding:5px 7px;font-size:12px;white-space:normal;text-align:left; }
+  body[data-ui="v12"] .v12-mechanical-rule { padding:8px!important; }
+  body[data-ui="v12"] .v12-mechanical-rule-head h2 { font-size:17px!important; }
+  body[data-ui="v12"] .v12-rule-guidance { font-size:12px!important;line-height:1.4!important;margin-block:5px!important; }
+  body[data-ui="v12"] .v12-rule-starters { padding:7px 9px; }
+  body[data-ui="v12"] .v12-rule-starters summary { font-size:12px; }
+  body[data-ui="v12"] .v12-rule-starters :is(p,button b,button span) { font-size:12px;line-height:1.4; }
+  body[data-ui="v12"] .v12-rule-builder { margin:0!important; }
+  body[data-ui="v12"] .v12-rule-steps { display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;overflow:visible; }
+  body[data-ui="v12"] .v12-rule-steps button { padding:7px 3px!important;min-height:38px!important;text-align:center; }
+  body[data-ui="v12"] .v12-rule-steps button > span { font-size:9px;letter-spacing:0;text-transform:none; }
+  body[data-ui="v12"] .v12-rule-steps button > b { display:none; }
+  body[data-ui="v12"] .v12-rule-sentence { padding:8px;gap:3px;min-height:0;font-size:14px!important;line-height:1.5; }
+  body[data-ui="v12"] .v12-rule-sentence :is(button,.is-grammar) { font-size:14px!important;line-height:1.45!important;max-width:100%;white-space:normal;overflow-wrap:anywhere; }
+  body[data-ui="v12"] .v12-rule-panel { padding:0!important;min-height:0; }
+  body[data-ui="v12"] .v12-rule-panel > header { grid-template-columns:1fr;gap:4px;padding:8px; }
+  body[data-ui="v12"] .v12-rule-panel > header h3 { font-size:14px!important; }
+  body[data-ui="v12"] .v12-rule-panel > header p { font-size:12px!important;line-height:1.35!important; }
+  body[data-ui="v12"] .v12-rule-panel > header span { display:none; }
+  body[data-ui="v12"] .v12-rule-family-tabs { display:flex;flex-wrap:wrap;overflow:visible;padding:7px;gap:4px; }
+  body[data-ui="v12"] .v12-rule-family-tabs button { flex:1 1 auto;min-height:34px!important;font-size:11px!important;padding:5px 7px!important;white-space:normal; }
+  body[data-ui="v12"] .v12-rule-search-row { padding:0 7px 6px;gap:4px; }
+  body[data-ui="v12"] .v12-rule-search-row small,
+  body[data-ui="v12"] .v12-rule-target-panel[data-single-family] .v12-rule-search-row { display:none; }
+  body[data-ui="v12"] .v12-rule-search-row input { width:100%;min-height:36px;height:36px;font-size:16px; }
+  body[data-ui="v12"] .v12-rule-target-grid { grid-template-columns:repeat(2,minmax(0,1fr));padding:0 7px 7px;gap:5px; }
+  body[data-ui="v12"] .v12-rule-target-grid article.is-selected { grid-column:1/-1; }
+  body[data-ui="v12"] .v12-rule-target-grid article:not(.is-selected) :is(.v12-rule-subchoices,.v12-rule-target-name > span) { display:none; }
+  body[data-ui="v12"] .v12-rule-target-name { min-height:38px!important;padding:7px!important; }
+  body[data-ui="v12"] .v12-rule-target-name b { font-size:12px; }
+  body[data-ui="v12"] .v12-rule-target-name span { font-size:11px;line-height:1.35; }
+  body[data-ui="v12"] .v12-rule-subchoices { gap:5px;padding:0 7px 7px; }
+  body[data-ui="v12"] :is(.v12-rule-subchoices,.v12-rule-chip-row,.v12-rule-formula-library) button { min-height:34px!important;padding:5px 7px!important;font-size:12px!important;white-space:normal; }
+  body[data-ui="v12"] .v12-rule-custom-key { display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:5px;padding:2px 7px 9px;font-size:11px;line-height:1.3;letter-spacing:0;text-transform:none; }
+  body[data-ui="v12"] .v12-rule-custom-key input { display:block!important;width:100%;min-width:0;min-height:40px;height:40px;font-size:16px!important; }
+  body[data-ui="v12"] :is(.v12-rule-value-body,.v12-rule-value-groups,.v12-rule-condition-stage,.v12-rule-condition-custom) { padding:7px;min-width:0; }
+  body[data-ui="v12"] .v12-rule-builder :is(p,label,small) { font-size:12px;line-height:1.4; }
+  body[data-ui="v12"] :is(.v12-rule-operation-grid,.v12-rule-recipient-grid,.v12-rule-trigger-modes) { padding:7px;gap:5px; }
+  body[data-ui="v12"] :is(.v12-rule-operation-grid,.v12-rule-recipient-grid,.v12-rule-trigger-modes) > button { padding:7px!important;min-height:38px!important; }
+  body[data-ui="v12"] :is(.v12-rule-operation-grid,.v12-rule-recipient-grid,.v12-rule-trigger-modes) > button b { font-size:12px!important; }
+  body[data-ui="v12"] :is(.v12-rule-operation-grid,.v12-rule-recipient-grid,.v12-rule-trigger-modes) > button span { font-size:11px!important;line-height:1.3; }
+  body[data-ui="v12"] .v12-rule-operation-grid > button:not([aria-pressed="true"]) span { display:none; }
+  body[data-ui="v12"] .v12-rule-panel-next { padding:5px 7px 7px; }
+  body[data-ui="v12"] .v12-rule-panel-next button { min-height:38px!important;font-size:12px!important; }
+  body[data-ui="v12"] .v12-rule-builder :is(input,select,textarea) { max-width:100%;min-width:0;font-size:16px!important; }
+}

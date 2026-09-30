@@ -1,4 +1,5 @@
 "use client";
+import { browserUuid } from "@/lib/browser-uuid";
 import { readJsonResponse } from "@/lib/http/read-json-response";
 import {
   useCallback,
@@ -7,10 +8,11 @@ import {
   useState,
   type Dispatch,
   type SetStateAction,
+  type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, ArrowLeft, Eye, Plus, Search, Trash2 } from "lucide-react";
-import { parseCharacterEditorIntent, type CharacterEditorIntent } from "./editor-events";
+import { ChevronRight, ChevronDown, Dna, Shield, Swords, Layers, ArrowLeft, Eye, Plus, Power, Search, Trash2 } from "lucide-react";
+import { openCharacterEditor, parseCharacterEditorIntent, type CharacterEditorIntent } from "./editor-events";
 import { CharacterBuildWorkspace } from "./character-build-workspace";
 import { BundleContents } from "./bundle-contents";
 import { WorkspaceSurface } from "./workspace-surface";
@@ -47,6 +49,8 @@ import { mechanicalDescriptionFromModifiers } from "@/lib/primitives/mechanical-
 import { flipOperation } from "@/lib/engine/mirror";
 import type { HardModifier } from "@/types/swordweave";
 import { Markdown } from "@/components/ui/markdown";
+import { DetailModal } from "@/components/ui/detail-modal";
+import { usePhoneCharacterSurface } from "../compact-hierarchy";
 
 const categories = [
   ["ALL", "All Primitives"],
@@ -155,6 +159,99 @@ export function CharacterWorkspace(props: {
   return <LegacyCharacterWorkspace {...props} mode="PLAY" />;
 }
 
+
+/** Phone source trees retain their relationships without accumulating indentation. */
+function PhonePlayLibrary({ graph, items, permission, toggles, restrictions }: {
+  graph: WorkspaceGraph; items: boolean; permission: "OWNER" | "EDITOR" | "SUGGESTER" | "VIEWER";
+  toggles: ReturnType<typeof useToggleState>; restrictions: ReturnType<typeof activeRestrictions>;
+}) {
+  const [category, setCategory] = useState<WorkspaceCategory>(() => (["MANIFEST", "LINEAGE", "UPBRINGING"] as const).find(value => graph.edges.some(edge => edge.parent === null && edge.category === value)) ?? "MANIFEST");
+  const [search, setSearch] = useState("");
+  const [trail, setTrail] = useState<EntityKey[]>([]);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const active = graph.nodes.find(node => node.key === trail.at(-1));
+  const open = (key: EntityKey) => setTrail(current => current.includes(key) ? current.slice(0, current.indexOf(key) + 1) : [...current, key]);
+  const nodes = new Map(graph.nodes.map(node => [node.key, node]));
+  const children = (key: EntityKey | null) => graph.edges.filter(edge => edge.parent === key).sort((a,b) => a.order - b.order);
+  const ruleFor = (node: WorkspaceNode, mirrored: boolean) => {
+    const stored = typeof node.data["mechanicalOutputText"] === "string" ? node.data["mechanicalOutputText"] : "";
+    const modifiers = node.data["hardModifiers"];
+    const generated = Array.isArray(modifiers) ? mechanicalDescriptionFromModifiers(modifiers as HardModifier[]) : "";
+    const mechanical = stored || generated;
+    const text = mechanical ? workspaceRuleText({...node, data:{...node.data, mechanicalOutputText: mechanical}}, mirrored) : node.description;
+    const clean = (text || "").replace(/[*#_]/g, "").trim();
+    return { mechanical: !!mechanical, text: mechanical ? clean : clean.split(/\s+/).slice(0,28).join(" ") + (clean.split(/\s+/).length > 28 ? "…" : "") };
+  };
+  const actions = (node: WorkspaceNode) => {
+    if (node.kind === "effect") return <button className="v12-phone-play-toggle" aria-pressed={!toggles.offEffectIds.has(node.id)} onClick={() => {
+      const key = effStorageKey(graph.characterId, node.id);
+      if (toggles.offEffectIds.has(node.id)) localStorage.removeItem(key); else localStorage.setItem(key,"1");
+      notifyToggleChanged();
+    }}><Power aria-hidden="true"/>{toggles.offEffectIds.has(node.id) ? "Inactive" : "Active"}</button>;
+    if (node.kind !== "capability") return null;
+    const effects = graph.edges.filter(edge => edge.parent === node.key).flatMap(edge => { const effect = graph.nodes.find(candidate => candidate.key === edge.child && candidate.kind === "effect"); return effect ? [{effectId:effect.id,effect:{id:effect.id,name:effect.name,description:effect.description}}] : []; });
+    return <CapabilityCard characterId={graph.characterId} actionsOnly showPrimitives={false} showPreviewButton={false} capability={{id:node.id,name:node.name,type:String(node.data["type"] ?? "ACTIVE"),sourceType:String(node.data["sourceType"] ?? "PHYSICAL"),acquiredAtLevel:1,versionId:node.versionId,latestVersionId:node.latestVersionId,slotSource:null,verboseDescription:node.description,effectLinks:effects}}/>;
+  };
+  type Entry = { node: WorkspaceNode; edges: WorkspaceEdge[]; ancestors: WorkspaceNode[]; id: string };
+  const entries: Entry[] = [];
+  const walk = (edge: WorkspaceEdge, edges: WorkspaceEdge[], ancestors: WorkspaceNode[]) => {
+    const node = nodes.get(edge.child);
+    if (!node || ancestors.some(parent => parent.key === node.key)) return;
+    const path = [...edges, edge];
+    const id = path.map(value => value.id).join("/");
+    const matches = (node.name + " " + ruleFor(node,path.some(value => value.isMirrored)).text).toLowerCase().includes(search.toLowerCase());
+    if ((category !== "ALL" || node.kind === "primitive" || items) && matches) entries.push({node,edges:path,ancestors,id});
+    if (!items && (search || category === "ALL" || expanded.has(id))) children(node.key).forEach(child => walk(child,path,[...ancestors,node]));
+  };
+  children(null).filter(edge => items ? nodes.get(edge.child)?.kind === "item" : category === "ALL" || edge.category === category).forEach(edge => walk(edge,[],[]));
+  const row = ({node,edges,ancestors,id}: Entry) => {
+    const mirrored = edges.some(edge => edge.isMirrored);
+    const paths = supplyPaths(graph,node.key).filter(path => path.edges.map(edge => edge.id).join("/") === id);
+    const available = effectiveAvailability(node.key,paths,restrictions,toggles.offCapabilityIds,toggles.offEffectIds).available;
+    const rule = ruleFor(node,mirrored);
+    const nested = children(node.key);
+    const canExpand = !items && category !== "ALL" && !search && nested.length > 0;
+    const icon = node.kind === "item" ? "lorc/battle-gear" : node.kind === "primitive" ? "delapouite/cube" : node.kind === "effect" ? "lorc/cubes" : node.kind === "capability" ? "lorc/cubeforce" : category === "LINEAGE" ? "lorc/dna2" : category === "UPBRINGING" ? "delapouite/plant-roots" : "caro-asercion/tarot-11-justice";
+    return <article className="v12-phone-play-record" data-piece-kind={node.kind} data-mirrored={mirrored || undefined} data-inactive={!available || undefined} key={id}>
+      {(category === "ALL" || search) && ancestors.length > 0 && <p className="v12-phone-play-source">From {ancestors.at(-1)?.name}</p>}
+      <div className="v12-phone-play-row-heading">
+        <button className="v12-phone-play-record-open" aria-label={`Preview ${node.name}`} onClick={() => open(node.key)}>
+          <span className="v12-phone-play-record-title"><IconDisplay iconSource="GAME_ICONS" iconKey={icon} size={20} iconColor={node.kind === "primitive" ? "#8be0d5" : node.kind === "effect" ? "#ffba8b" : "#efcf86"} alt=""/><strong>{node.name}</strong></span>
+        </button>
+
+      </div>
+      <div className="v12-phone-play-facts"><div className="v12-phone-play-record-meta">{node.kind} · {bundleBu(graph,node.key)} BU{!ancestors.length ? " · Direct" : node.kind === "capability" || node.kind === "effect" ? ` · in ${ancestors.at(-1)?.name}` : ""}{mirrored && <span className="v12-phone-mirrored-badge">Mirrored</span>}{!available ? " · Unavailable" : ""}</div>{(canExpand || node.kind === "capability" || node.kind === "effect") && <div className="v12-phone-play-record-actions">{actions(node)}{canExpand && <button className="v12-phone-play-expand" aria-label={`${expanded.has(id) ? "Collapse" : "Expand"} ${node.name}`} aria-expanded={expanded.has(id)} onClick={() => setExpanded(current => { const next = new Set(current); if(next.has(id)) next.delete(id); else next.add(id); return next; })}>{expanded.has(id) ? <ChevronDown/> : <ChevronRight/>}<span>{nested.length}</span></button>}</div>}</div>
+      {rule.text && rule.text !== "null" && <p className="v12-phone-play-record-rule" data-copy-role={rule.mechanical ? "mechanical" : "narrative"}>{rule.text}</p>}
+    </article>;
+  };
+  // Render actual parent/child groups. Group borders connect the pieces, while
+  // zero horizontal padding keeps every generation at nearly the full width.
+  const renderBranch = (entry: Entry): ReactNode => {
+    const directChildren = entries.filter(candidate => candidate.edges.length === entry.edges.length + 1 && candidate.id.startsWith(entry.id + "/")).sort((a,b) => { const priority = entry.node.kind === "heritage" ? "capability" : entry.node.kind === "capability" ? "effect" : null; return Number(b.node.kind === priority) - Number(a.node.kind === priority); });
+    return <section className="v12-phone-piece-branch" data-branch-kind={entry.node.kind} key={entry.id} aria-label={`${entry.node.name} composition`}>
+      {row(entry)}
+      {directChildren.length > 0 && <div className="v12-phone-piece-children">
+        <div className="v12-phone-piece-connection">Inside {entry.node.name}<span>{directChildren.length} {directChildren.length === 1 ? "piece" : "pieces"}</span></div>
+        {directChildren.map(renderBranch)}
+      </div>}
+    </section>;
+  };
+  return <section className="v12-phone-play-library" aria-label={items ? "Your items" : "Your character pieces"}>
+    {!items && <div className="v12-phone-play-kinds v12-phone-source-tabs" role="group" aria-label="Character source">{([["LINEAGE","Lineage",Dna],["UPBRINGING","Upbringing",Shield],["MANIFEST","Manifest",Swords],["ALL","All primitives",Layers]] as const).map(([value,label,Icon]) => <button key={value} aria-pressed={category === value} onClick={() => setCategory(value)}><Icon aria-hidden="true"/>{label}</button>)}</div>}
+    <div className="v12-phone-play-tools"><label><Search aria-hidden="true"/><input aria-label="Search your character" placeholder="Find a name or rule…" value={search} onChange={event => setSearch(event.target.value)}/></label>{permission !== "VIEWER" && <button className="v12-phone-play-build" onClick={() => openCharacterEditor(graph.characterId,"overview")}>Build</button>}</div>
+    <div className="v12-phone-play-results" aria-live="polite">{entries.length} {items ? entries.length === 1 ? "item" : "items" : entries.length === 1 ? "piece" : "pieces"}{search ? " found" : category === "ALL" ? " · all sources, including mirrored copies" : " · tap a name for full details"}</div>
+    <div className="v12-phone-piece-tree">{category === "ALL" || search || items ? entries.map(row) : entries.filter(entry => entry.ancestors.length === 0).map(renderBranch)}</div>
+    {!entries.length && <p className="v12-phone-play-empty">{search ? "No matching pieces. Try another name or rule." : "No pieces here yet. Open Build to add one."}</p>}
+    {active && <DetailModal isOpen title={active.name} subtitle={`${active.kind} · ${bundleBu(graph,active.key)} BU`} onClose={() => setTrail([])}>
+      <div className="v12-phone-play-detail">
+        {trail.length > 1 && <button className="v12-phone-play-back" onClick={() => setTrail(current => current.slice(0,-1))}><ArrowLeft aria-hidden="true"/>Back to {nodes.get(trail.at(-2)!)?.name}</button>}
+        {actions(active)}
+        <WorkspaceEntityPreview node={active} graph={graph} onOpen={open}/>
+      </div>
+    </DetailModal>}
+  </section>;
+}
+
 function LegacyCharacterWorkspace({
   characterId,
   mode,
@@ -168,6 +265,7 @@ function LegacyCharacterWorkspace({
   permission?: "OWNER" | "EDITOR" | "SUGGESTER" | "VIEWER";
 }) {
   const router = useRouter();
+  const phone = usePhoneCharacterSurface();
   const [graph, setGraph] = useState<WorkspaceGraph | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [category, setCategory] = useState<WorkspaceCategory>(
@@ -313,7 +411,7 @@ function LegacyCharacterWorkspace({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...JSON.parse(previewBody),
-        commandId: crypto.randomUUID(),
+        commandId: browserUuid(),
       }),
       signal: controller.signal,
     })
@@ -349,7 +447,7 @@ function LegacyCharacterWorkspace({
   const identity = (data: unknown) => {
     const key = JSON.stringify(data);
     if (!requests.current.has(key))
-      requests.current.set(key, crypto.randomUUID());
+      requests.current.set(key, browserUuid());
     return requests.current.get(key)!;
   };
   async function command(
@@ -733,6 +831,8 @@ function LegacyCharacterWorkspace({
       savedKey.current = key;
     },
   };
+
+  if (phone && mode === "PLAY") return <PhonePlayLibrary graph={graph} items={items} permission={permission} toggles={toggles} restrictions={restrictions} />;
 
   return (
     <div className="v12-character-workspace space-y-5" data-layout={layout} data-mode={mode} data-workspace-scope={items ? "items" : "capabilities"}>

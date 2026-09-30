@@ -1,4 +1,5 @@
 "use client";
+import { browserUuid } from "@/lib/browser-uuid";
 import { readJsonResponse } from "@/lib/http/read-json-response";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -46,7 +47,7 @@ export function useCharacterDraft(characterId: string) {
       const previous=JSON.parse(localStorage.getItem(key)??'null') as LocalCopy|null;
       if(previous && previous.stamp!==stamp.current) throw new Error('This character has newer edits in another tab. Reload to continue that draft.');
     } catch(cause) { if(cause instanceof Error && cause.message.startsWith('This character'))throw cause; }
-    const nextStamp=crypto.randomUUID();
+    const nextStamp=browserUuid();
     const copy:LocalCopy={schema:2,authorId:author.current,characterId,stamp:nextStamp,...(baseHash.current?{baseHash:baseHash.current}:{}),serverId:server.current?.id??null,serverVersion:server.current?.version??0,baseRevision:value.draft?.baseRevision??value.preview.graph.revision,frame:value,history:history.current.slice(-3)};
     try{localStorage.setItem(key,JSON.stringify(copy));stamp.current=nextStamp;setPersistenceWarning('');}
     catch{setPersistenceWarning('Browser storage is full or unavailable. Keep this page open and review your draft to save a server copy.');}
@@ -104,10 +105,10 @@ export function useCharacterDraft(characterId: string) {
         const newKeys=new Set(loaded.nodes.filter(n=>!next.graph.nodes.some(old=>old.key===n.key)).map(n=>n.key));
         next={...next,graph:{...next.graph,nodes:[...next.graph.nodes,...loaded.nodes.filter(n=>newKeys.has(n.key))],edges:[...next.graph.edges,...loaded.edges.filter(e=>e.parent&&newKeys.has(e.parent))]}};
       }
-      const groupId=operations.length>1?crypto.randomUUID():undefined;
+      const groupId=operations.length>1?browserUuid():undefined;
       const staged:DraftOperation[]=[];
       for(const operation of operations){const result=projectDraftOperation(next,{...operation,...(groupId?{groupId}:{})},author.current);next=result.preview;staged.push(result.operation);}
-      const value:WorkspaceDraft={...(original.draft??{id:crypto.randomUUID(),authorId:author.current,baseRevision,version:0,status:'editing' as const}),operations:[...(original.draft?.operations??[]),...staged],updatedAt:new Date().toISOString()};
+      const value:WorkspaceDraft={...(original.draft??{id:browserUuid(),authorId:author.current,baseRevision,version:0,status:'editing' as const}),operations:[...(original.draft?.operations??[]),...staged],updatedAt:new Date().toISOString()};
       const updated={draft:value,preview:next};
       history.current.push(original);
       try{persist(updated);}catch(cause){history.current.pop();throw cause;}

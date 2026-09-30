@@ -1,4 +1,8 @@
 "use client";
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
+import { PhoneTypeChoices, PHONE_RECORD_TYPES } from "./phone-type-choices";
+import { PhoneLibraryFilters } from "./phone-library-filters";
+import { LibraryTable } from "./library-table";
 
 // =============================================================================
 // LibraryBrowseClient — client wrapper that owns the toolbar state and pushes
@@ -162,6 +166,7 @@ export function LibraryBrowseClient({
   engagement,
   currentUserInternalId,
 }: Props) {
+  const phone = useIsMobile();
   const router = useRouter();
   const [selection, setSelectedItem] = useState<LibraryItem | null>(
     initialItems[0] ?? null,
@@ -196,7 +201,7 @@ export function LibraryBrowseClient({
       const params = new URLSearchParams();
       if (next.origin && next.origin !== "all") params.set("origin", next.origin);
       if (next.tier) params.set("tier", next.tier);
-      if (next.typeFilter !== "ALL") params.set("type", next.typeFilter);
+      if (next.typeFilter !== "ALL" || phone) params.set("type", next.typeFilter);
       if (next.category) params.set("category", next.category);
       if (next.search) params.set("q", next.search);
       if (next.author) params.set("author", next.author);
@@ -219,7 +224,7 @@ export function LibraryBrowseClient({
       const qs = params.toString();
       router.push(qs ? `/library/browse?${qs}` : "/library/browse");
     },
-    [router],
+    [router, phone],
   );
 
   const onStateChange = useCallback(
@@ -252,6 +257,8 @@ export function LibraryBrowseClient({
   const filterPanelContent = useMemo(
     () => (
       <div className="space-y-3">
+        {phone ? <PhoneLibraryFilters state={state} onChange={onStateChange} categories={primitiveCategories}/> : null}
+        <details className={phone ? "phone-advanced-toolbar" : "contents"} open={!phone}><summary className={phone ? "" : "hidden"}>More filters</summary>
         <LibraryToolbar
           state={state}
           onStateChange={onStateChange}
@@ -268,12 +275,14 @@ export function LibraryBrowseClient({
           showAdvancedFilters={true}
           forceExpandFilters
         />
+        </details>
       </div>
     ),
-    [state, onStateChange, primitiveCategories, itemTags, activeTags],
+    [phone, state, onStateChange, primitiveCategories, itemTags, activeTags],
   );
   useFilterSlot(filterPanelContent);
 
+  const [phoneQuickFiltersOpen, setPhoneQuickFiltersOpen] = useState(false);
   const hasActiveFilters =
     state.typeFilter !== "ALL" ||
     state.category !== "" ||
@@ -413,17 +422,18 @@ export function LibraryBrowseClient({
           ) : null}
           </section>
           <div className="v12-results-heading">
-            <div>
+            {phone ? <PhoneTypeChoices label="Record type" value={state.typeFilter} options={PHONE_RECORD_TYPES} onChange={value=>onStateChange({...state,typeFilter:value as LibraryToolbarState["typeFilter"],category:"",tier:""})}/> : <div>
               <p className="v12-kicker">Exact entries</p>
               <h3>Canonical references and community expressions</h3>
-            </div>
+            </div>}
             <span>{total.toLocaleString()} records</span>
           </div>
-          <div className="v12-browse-controls">
+          <button type="button" className="phone-library-quick-filter" aria-expanded={phoneQuickFiltersOpen} onClick={()=>setPhoneQuickFiltersOpen(value=>!value)}>Tier & origin{state.tier ? ` · Tier ${state.tier}` : ""}{state.origin && state.origin !== "all" ? ` · ${state.origin}` : ""} <span aria-hidden="true">{phoneQuickFiltersOpen ? "−" : "+"}</span></button>
+          <div className={`v12-browse-controls${phoneQuickFiltersOpen ? " phone-filters-open" : ""}`}>
             {isPrimitiveMode ? <div className="v12-tier-tabs" aria-label="Exact entry tiers">{["", "1", "2", "3", "4", "5"].map(tier => <button key={tier} type="button" aria-pressed={(state.tier ?? "") === tier} onClick={() => onStateChange({ ...state, tier })}>{tier ? `Tier ${["", "I", "II", "III", "IV", "V"][Number(tier)]}` : "All tiers"}</button>)}</div> : null}
             <div className="v12-origin-tabs" aria-label="Entry origin">{(["all", "system", "community"] as const).map(origin => <button type="button" key={origin} aria-pressed={(state.origin ?? "all") === origin} onClick={() => onStateChange({ ...state, origin })}>{origin === "all" ? "All origins" : origin === "system" ? "System" : "Community"}</button>)}</div>
           </div>
-          {initialItems.length ? (
+          {initialItems.length && phone ? <LibraryTable items={initialItems} view="LIST" surface="atelier" compact engagement={engagement} currentUserInternalId={currentUserInternalId} onSelect={onRowSelect}/> : initialItems.length ? (
             <div className={isPrimitiveMode ? "v12-cluster-list" : "v12-creation-grid"}>
               {[{ id: isPrimitiveMode ? "primitives" : "creations", entries: initialItems }].map(({ id, entries }) => <section className={`v12-entry-cluster${isPrimitiveMode ? " is-flat" : ""}`} key={id}>{entries.map((item) => (
                 <article

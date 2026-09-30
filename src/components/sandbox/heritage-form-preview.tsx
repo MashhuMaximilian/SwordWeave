@@ -1,4 +1,6 @@
 "use client";
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
+import { PhoneDraftPreview, draftEffectLinks, draftPrimitiveLink } from "./phone-draft-preview";
 
 // Live preview for the template being composed in HeritageForm.
 
@@ -50,7 +52,9 @@ function kindLabel(kind: string): string {
 export function HeritageFormPreview({form, primitives, capabilities}: {
   form: HeritageFormState; primitives: TemplateSlot[]; capabilities: TemplateSlot[];
 }) {
+  const phone = useIsMobile();
   const directSlots = primitives.map(primitive => ({primitiveId:Number(primitive.id), ...(primitive.isMirrored !== undefined ? {isMirrored:primitive.isMirrored}:{}), primitive:{...primitive,id:Number(primitive.id)}}));
+  if (phone) return <PhoneDraftPreview item={{kind:"heritage",row:{...form,id:"live-draft-heritage",primitiveLinks:directSlots,capabilityLinks:capabilities.map(capability=>({capabilityId:String(capability.id),isMirrored:capability.isMirrored,capability:{...capability,id:String(capability.id),type:capability.category,primitiveLinks:(capability.primitiveLinks??[]).map(draftPrimitiveLink),effectLinks:draftEffectLinks(capability.effects??[])}}))}}}/>;
   const allSlots = [...directSlots, ...capabilities.flatMap(capability => [...(capability.primitiveLinks ?? []), ...(capability.effects ?? []).flatMap(effect => effect.primitiveLinks ?? [])])];
   const completeCost = capabilities.every(capability => capability.primitiveLinks !== undefined && capability.effects !== undefined && capability.effects.every(effect => effect.primitiveLinks !== undefined));
   const {transitiveBu} = computeTransitiveBu({primitiveLinks: allSlots}, {allowTemporaryIds:true});

@@ -216,7 +216,7 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
         </nav>
       ) : null}
 
-      <div className="mt-3 flex min-h-[calc(100dvh-13rem)] flex-col md:h-[calc(100vh-13rem)] md:min-h-0">
+      <div className="phone-library-stage mt-3 flex min-h-[calc(100dvh-13rem)] flex-col md:h-[calc(100vh-13rem)] md:min-h-0">
         <LibraryBrowseClient
           initialItems={result.items}
           total={result.total}

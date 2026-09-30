@@ -17,8 +17,11 @@ import {
   CharacterModalProvider,
 } from "@/components/character-modal/character-modal-store";
 import { CharacterModal } from "@/components/character-modal/character-modal";
+import { usePathname } from "next/navigation";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const phoneTool = pathname === "/atelier" || pathname === "/library/browse" || pathname === "/codex";
   // Provider order matters. The modal-stack portalling target must
   // sit INSIDE the CharacterModalProvider so that SandboxPreviewBody
   // (rendered via ModalStackRenderer → createPortal → document.body)
@@ -37,7 +40,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <CharacterModalProvider>
       <ModalStackHost>
         <GlobalControls>
-          <div className="flex min-h-dvh flex-col">
+          <div className={`sw-app-shell flex min-h-dvh flex-col${phoneTool ? " sw-phone-tool-shell" : ""}`}>
           <main className="flex min-h-0 min-w-0 flex-1 flex-col pb-2">{children}</main>
           <footer className="v12-site-footer v12-section-head mt-auto shrink-0 border-t border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
             <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2">

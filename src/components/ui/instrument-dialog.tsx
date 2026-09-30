@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, type ReactNode } from "react";
-import { X } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type InstrumentDialogFrameProps = {
@@ -13,12 +13,13 @@ type InstrumentDialogFrameProps = {
   className?: string;
   bodyClassName?: string;
   titleId?: string;
+  phoneBackLabel?: string;
 };
 
 /** Shared visual and semantic shell for every focused SwordWeave instrument. */
 export const InstrumentDialogFrame = forwardRef<HTMLDivElement, InstrumentDialogFrameProps>(
   function InstrumentDialogFrame(
-    { title, kicker, subtitle, onClose, children, className, bodyClassName, titleId },
+    { title, kicker, subtitle, onClose, children, className, bodyClassName, titleId, phoneBackLabel },
     ref,
   ) {
     return (
@@ -30,13 +31,14 @@ export const InstrumentDialogFrame = forwardRef<HTMLDivElement, InstrumentDialog
           className,
         )}
       >
-        <header className="v12-instrument-dialog-head">
+        <header className={cn("v12-instrument-dialog-head", phoneBackLabel && "sw-phone-detail-header")}>
+          {phoneBackLabel ? <button className="sw-phone-detail-back" type="button" onClick={onClose} aria-label={phoneBackLabel}><ArrowLeft className="size-4" /><span>Back</span></button> : null}
           <div className="v12-instrument-dialog-identity">
             {kicker ? <span>{kicker}</span> : null}
             <h2 id={titleId}>{title}</h2>
             {subtitle ? <p>{subtitle}</p> : null}
           </div>
-          <button type="button" onClick={onClose} aria-label={`Close ${title}`}>
+          <button className="sw-detail-close" type="button" onClick={onClose} aria-label={`Close ${title}`}>
             <X className="size-4" />
           </button>
         </header>

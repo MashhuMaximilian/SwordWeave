@@ -1,3 +1,4 @@
+import { browserUuid } from "@/lib/browser-uuid";
 import type { DraftOperation, WorkspaceDraftPreview } from './draft-types';
 import { bundleBu, supplyPaths, validateReference, type EntityKey, type WorkspaceEdge, type WorkspaceGraph, type WorkspaceNode } from './model';
 import { membershipCostChange } from './cost-preview';
@@ -10,7 +11,7 @@ export interface LocalBindings {
   instances: { id: string; child: EntityKey; category: string; isMirrored: boolean }[];
 }
 function localKey(kind: WorkspaceNode['kind']): EntityKey {
-  const uuid = crypto.randomUUID();
+  const uuid = browserUuid();
   return `${kind}:${kind === 'primitive' ? -parseInt(uuid.replaceAll('-', '').slice(0, 12), 16) : uuid}`;
 }
 function edgeId(edge: WorkspaceEdge) { return edge.instanceId ?? `${edge.parent ?? edge.category}:${edge.child}${edge.data?.['role'] ? `:${edge.data['role']}` : ''}`; }
@@ -82,7 +83,7 @@ export function projectDraftOperation(previous: WorkspaceDraftPreview, operation
     if (parent) { const issue = validateReference(graph,parent,child); if(issue) throw new Error(issue); }
     if (mirrored && (node.kind !== 'primitive' || !node.data['isMirrorable'])) throw new Error('This rule cannot be mirrored.');
     if (graph.edges.some(e => e.parent === parent && e.child === child && (parent || e.category === category) && e.isMirrored === mirrored)) return;
-    const instanceId = !parent && node.kind === 'primitive' ? operation.localBindings?.instances.find(e=>e.child===child)?.id ?? crypto.randomUUID() : undefined;
+    const instanceId = !parent && node.kind === 'primitive' ? operation.localBindings?.instances.find(e=>e.child===child)?.id ?? browserUuid() : undefined;
     const edge: WorkspaceEdge = { id:'',parent,child,category,order:graph.edges.filter(e=>e.parent===parent).length,isMirrored:mirrored,data,...(instanceId?{instanceId}:{}) };
     edge.id=!parent && node.kind === "heritage" ? `ALL:${child}` : edgeId(edge); graph.edges.push(edge);
     if(instanceId) bindings.instances.push({id:instanceId,child,category,isMirrored:mirrored});

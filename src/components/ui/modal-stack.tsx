@@ -306,6 +306,7 @@ function ModalStackRenderer() {
               title={entry.label}
               kicker={entry.category ?? "Archive preview"}
               onClose={pop}
+              phoneBackLabel={idx > 0 ? `Back to ${stack[idx - 1]?.label}` : "Back to browsing"}
               className={cn(
                 "w-[calc(100%-8px)] max-w-[1180px] max-h-[calc(100dvh-8px)] sm:max-h-[90dvh]",
                 !isTop && "max-w-md",

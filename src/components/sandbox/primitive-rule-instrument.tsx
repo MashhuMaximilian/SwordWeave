@@ -519,9 +519,9 @@ export function PrimitiveRuleInstrument({
 }) {
   const [activePanel, setActivePanel] = useState<PanelKey>("target");
   const [targetFamily, setTargetFamily] = useState(
-    targetFamilyFor(String(modifier.target)).id,
+    { id: targetFamilyFor(String(modifier.target)).id, target: modifier.target },
   );
-  const [targetSearch, setTargetSearch] = useState("");
+  const [targetSearchState, setTargetSearchState] = useState({ family: "", query: "" });
   const [valueFamily, setValueFamily] = useState(modifier.valueKind === "equation" ? "formula" : modifier.tokens[0]?.kind === "keyword" || modifier.tokens[0]?.kind === "behavior" ? "state" : modifier.tokens[0]?.kind === "number" ? "fixed" : "sheet");
   const [valueSearch, setValueSearch] = useState("");
   const [customValue, setCustomValue] = useState("");
@@ -765,9 +765,15 @@ export function PrimitiveRuleInstrument({
     setFormulaOpen(false);
   };
 
+  // Format presets can replace the target without remounting this instrument.
+  // Follow that new target so its custom fields cannot remain in a hidden family.
+  const familyId = targetFamily.target === modifier.target
+    ? targetFamily.id
+    : targetFamilyFor(String(modifier.target)).id;
   const selectedFamily =
-    TARGET_FAMILIES.find((family) => family.id === targetFamily) ??
+    TARGET_FAMILIES.find((family) => family.id === familyId) ??
     TARGET_FAMILIES[0]!;
+  const targetSearch = targetSearchState.family === selectedFamily.id ? targetSearchState.query : "";
   const selectedStacking =
     STACKING_OPTIONS.find((option) => option.value === modifier.stacking) ??
     STACKING_OPTIONS[0]!;
@@ -982,7 +988,7 @@ export function PrimitiveRuleInstrument({
         </header>
 
         {activePanel === "target" ? (
-          <div className="v12-rule-target-panel">
+          <div className="v12-rule-target-panel" data-single-family={selectedFamily.targets.length === 1 || undefined}>
             <div
               className="v12-rule-family-tabs"
               role="tablist"
@@ -995,8 +1001,8 @@ export function PrimitiveRuleInstrument({
                   role="tab"
                   aria-selected={selectedFamily.id === family.id}
                   onClick={() => {
-                    setTargetFamily(family.id);
-                    setTargetSearch("");
+                    setTargetFamily({ id: family.id, target: modifier.target });
+                    setTargetSearchState({ family: family.id, query: "" });
                   }}
                 >
                   {family.label}
@@ -1006,7 +1012,7 @@ export function PrimitiveRuleInstrument({
             <div className="v12-rule-search-row">
               <input
                 value={targetSearch}
-                onChange={(event) => setTargetSearch(event.target.value)}
+                onChange={(event) => setTargetSearchState({ family: selectedFamily.id, query: event.target.value })}
                 placeholder={`Search ${selectedFamily.label.toLowerCase()}…`}
               />
               <small>{selectedFamily.help}</small>

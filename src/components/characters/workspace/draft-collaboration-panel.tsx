@@ -1,4 +1,5 @@
 "use client";
+import { browserUuid } from "@/lib/browser-uuid";
 import { readJsonResponse } from "@/lib/http/read-json-response";
 import { useCallback, useEffect, useState } from "react";
 import { Check, MessageSquare, RefreshCw, Send, X } from "lucide-react";
@@ -64,7 +65,7 @@ export function DraftCollaborationPanel({ characterId, permission, draft, onAppl
         <div className="flex flex-wrap gap-2">
           {permission !== "OWNER" && <button className="v12-btn-primary" disabled={busy || !draft?.operations.length} onClick={async () => {
             if (!draft) return;
-            const data = await send({ action: "submit", draftId: draft.id, version: draft.version, rationale: note, requestId: crypto.randomUUID() });
+            const data = await send({ action: "submit", draftId: draft.id, version: draft.version, rationale: note, requestId: browserUuid() });
             if (data) setMessage("Proposed changes sent. Your draft is kept; the owner decides whether to apply them.");
           }}><Send size={14}/>Send proposed changes</button>}
           <button className="v12-btn-ghost" disabled={busy || !state} onClick={async () => { const result = await send({ action: "reviewed", revision: state?.revision, note }); if (result) setMessage("Marked this saved build reviewed."); }}><Check size={14}/>Mark saved build reviewed</button>

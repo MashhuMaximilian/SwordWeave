@@ -19,7 +19,7 @@
 //   - Split mode may focus its inline Build tab after a load.
 //   - The persistent Build & Preview drawer opens only from its FAB action.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useModalStack } from "@/components/ui/modal-stack";
 import { useCharacterModal } from "@/components/character-modal/character-modal-store";
@@ -43,9 +43,11 @@ import { useGlobalControls } from "@/components/layout/global-controls";
 import { EntityPreview } from "@/components/preview/entity-preview";
 import type { SandboxPreviewItem } from "@/components/library/library-item-preview";
 import { useIsDark } from "@/lib/hooks/use-is-dark";
+import { PhoneTypeChoices } from "@/components/library/phone-type-choices";
 import { IconDisplay } from "@/components/icons/icon-display";
 import type { LibraryItem } from "@/lib/publishing/library-query";
 import type { SaveIntent } from "@/lib/publishing/save-intent";
+import { PrimitiveFormPreview } from "./primitive-form-preview";
 import type { ModifierDraft, PrimitiveFormState } from "./primitive-form-preview";
 import { useDrawerSlot } from "@/components/layout/build-preview-drawer";
 import { cn } from "@/lib/utils";
@@ -422,6 +424,7 @@ export function AtelierSandboxClient({
   // workspace is represented by the inline Build tab, so focus it without
   // opening the separate persistent Build & Preview drawer.
   const focusMiddleWorkspace = useCallback(() => {
+    window.dispatchEvent(new CustomEvent("sw-phone-focus-build"));
     if (sandboxSplit) setSandboxBottomTab("build");
   }, [sandboxSplit, setSandboxBottomTab]);
 
@@ -585,8 +588,14 @@ export function AtelierSandboxClient({
 
   // Focus the inline workspace on server-routed loads. The persistent
   // drawer remains closed until the user explicitly opens it from the FAB.
+  const focusedInitialBuild = useRef<string | null>(null);
   useEffect(() => {
     if (initialEditing === null && !initialNew) return;
+    const key = initialEditing ? `${initialEditing.kind}:${initialEditing.row.id}` : "new";
+    if (window.matchMedia("(max-width: 767px)").matches) {
+      if (focusedInitialBuild.current === key) return;
+      focusedInitialBuild.current = key;
+    }
     focusMiddleWorkspace();
   }, [initialEditing, initialNew, focusMiddleWorkspace]);
 
@@ -1562,6 +1571,7 @@ export function AtelierSandboxClient({
       return (
         <div className="v12-unified-source-browser">{sourcePicker}
         <GrammarLibrary
+          phoneSourceControl={<PhoneTypeChoices label="Browse collection" value={build} options={[{value:"mechanics",label:"Mechanics"},{value:"heritage",label:"Heritages"},{value:"item",label:"Items"}]} onChange={value=>guardedSwitchBuild(value as AtelierTab)}/>}
           build={build as "mechanics"}
           buildFormKind={buildFormKind}
           libraryItems={libraryItems}
@@ -1596,6 +1606,7 @@ export function AtelierSandboxClient({
     return (
       <div className="v12-unified-source-browser">{sourcePicker}
       <HeritageLibrary
+        phoneSourceControl={<PhoneTypeChoices label="Browse collection" value={build} options={[{value:"mechanics",label:"Mechanics"},{value:"heritage",label:"Heritages"},{value:"item",label:"Items"}]} onChange={value=>guardedSwitchBuild(value as AtelierTab)}/>}
         build={build as "heritage" | "item" | "monster"}
         buildFormKind={buildFormKind}
         libraryItems={libraryItems}
@@ -1746,10 +1757,25 @@ function SecondaryBuildWorkspace({
   effects: EffectRow[];
   capabilities: CapabilityRow[];
 }) {
-  const [kind, setKind] = useState<"effect" | "capability" | "heritage" | "item" | null>(null);
+  const { openDrawer } = useGlobalControls();
+  const [initialEntry, setInitialEntry] = useState<EditingState>(null);
+  const [kind, setKind] = useState<"primitive" | "effect" | "capability" | "heritage" | "item" | null>(null);
+  const [phone, setPhone] = useState(false);
+  const [modalPreview, setModalPreview] = useState<ReactNode>(null);
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 767px)");
+    const update = () => setPhone(media.matches);
+    update(); media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  const onPrimitiveState = useCallback<NonNullable<ComponentProps<typeof PrimitiveForm>["onStateChange"]>>(state => setModalPreview(<PrimitiveFormPreview form={state.form} modifiers={state.modifiers}/>), []);
+  const onEffectState = useCallback<NonNullable<ComponentProps<typeof EffectForm>["onStateChange"]>>(state => setModalPreview(<EffectFormPreview form={state.form} slots={state.slots}/>), []);
+  const onCapabilityState = useCallback<NonNullable<ComponentProps<typeof CapabilityForm>["onStateChange"]>>(state => setModalPreview(<CapabilityFormPreview form={state.form} slots={state.slots} effects={effects.filter(effect => state.effectIds.includes(effect.id))}/>), [effects]);
+  const onHeritageState = useCallback<NonNullable<ComponentProps<typeof HeritageForm>["onStateChange"]>>(state => setModalPreview(<HeritageFormPreview form={state.form} primitives={state.primitives} capabilities={state.capabilities}/>), []);
+  const onItemState = useCallback<NonNullable<ComponentProps<typeof ItemForm>["onStateChange"]>>(state => setModalPreview(<ItemFormPreview form={state.form} primitiveSlots={state.primitiveSlots} capabilitySlots={capabilities.filter(capability=>state.capabilityIds.includes(capability.id)).map(capability=>({...capability,effects:capability.effectLinks.map(link=>({...link.effect,id:link.effectId}))}))} effectSlots={effects.filter(effect=>state.effectIds.includes(effect.id))}/>), [capabilities,effects]);
   const [heritageKind, setHeritageKind] = useState<"LINEAGE" | "UPBRINGING" | "MANIFEST">("MANIFEST");
   const [revision, setRevision] = useState(0);
-  const [saved, setSaved] = useState<{ kind: "effect" | "capability" | "heritage" | "item"; id: string; name: string; heritageKind?: "LINEAGE" | "UPBRINGING" | "MANIFEST" } | null>(null);
+  const [saved, setSaved] = useState<{ kind: "primitive" | "effect" | "capability" | "heritage" | "item"; id: string; name: string; heritageKind?: "LINEAGE" | "UPBRINGING" | "MANIFEST" } | null>(null);
   const [pendingSlot, setPendingSlot] = useState<{kind:"primitive"|"effect"|"capability";id:string|number;label:string} | null>(null);
   const slotBus = useMemo(() => new EventTarget(), []);
   const characterModal = useCharacterModal();
@@ -1769,7 +1795,29 @@ function SecondaryBuildWorkspace({
     return () => window.removeEventListener("sw-slot-secondary-build", handler);
   }, [kind, slotBus]);
 
-  const reset = () => { setKind(null); setHeritageKind("MANIFEST"); setSaved(null); setPendingSlot(null); setRevision((value) => value + 1); };
+  useEffect(() => {
+    const replace = (event: Event) => {
+      if (!phone) return;
+      const entry = (event as CustomEvent<EditingState>).detail;
+      if (!entry || !["primitive", "effect", "capability", "heritage", "item"].includes(entry.kind)) return;
+      if (kind && !window.confirm("Replace the current modal build? Your primary build will stay unchanged.")) return;
+      setInitialEntry(entry);
+      setKind(entry.kind);
+      if (entry.kind === "heritage") setHeritageKind(entry.row.kind);
+      setSaved(null); setPendingSlot(null); setModalPreview(null);
+      setRevision(value => value + 1);
+      window.dispatchEvent(new CustomEvent("sw-sandbox-close-preview"));
+      openDrawer("build");
+    };
+    window.addEventListener("sw-replace-secondary-build", replace);
+    return () => window.removeEventListener("sw-replace-secondary-build", replace);
+  }, [phone, kind, openDrawer]);
+
+  const requestReset = () => {
+    if (phone && kind && !window.confirm("Discard this modal build and choose another entity? Your primary editor will stay unchanged.")) return;
+    reset();
+  };
+  const reset = () => { setInitialEntry(null); setModalPreview(null); setKind(null); setHeritageKind("MANIFEST"); setSaved(null); setPendingSlot(null); setRevision((value) => value + 1); };
   const commonSaved = (next: { id: string; name: string }, nextKind: NonNullable<typeof kind>, heritageKind?: "LINEAGE" | "UPBRINGING" | "MANIFEST") => {
     setSaved({ kind: nextKind, id: String(next.id), name: next.name, ...(heritageKind ? { heritageKind } : {}) });
     window.dispatchEvent(new CustomEvent("sw:library-changed"));
@@ -1778,14 +1826,15 @@ function SecondaryBuildWorkspace({
 
   const content = (
     <div className="v12-secondary-build" key={revision}>
-      <button type="button" data-drawer-reset hidden onClick={reset}>Reset modal build</button>
-      <header><div><p className="v12-kicker">Persistent build modal</p><h2>{kind ? `New ${kind}` : "Choose a long-running build"}</h2></div>{kind ? <button type="button" className="v12-metal-button" onClick={reset}>Change build</button> : null}</header>
+      <button type="button" data-drawer-reset hidden onClick={requestReset}>Reset modal build</button>
+      <header><div><p className="v12-kicker">Persistent build modal</p><h2>{initialEntry ? initialEntry.row.name : kind ? `New ${kind}` : "Choose a long-running build"}</h2></div>{kind ? <button type="button" className="v12-metal-button" onClick={requestReset}>Change build</button> : null}</header>
       {!kind ? (
         <NewEntityChoices
           className="space-y-4"
           onPick={(choice) => {
             if (choice.tab === "monster") return;
             if (choice.mechanicsSubKind === "primitive") {
+              if (phone) { setKind("primitive"); return; }
               // Primitive authoring belongs to the middle workspace. Close
               // the persistent modal and let the main Atelier chooser apply
               // the normal dirty-draft guard.
@@ -1806,13 +1855,15 @@ function SecondaryBuildWorkspace({
           }}
         />
       ) : null}
-      {kind === "capability" ? <CapabilityForm key={`cap-${revision}`} slotEvents={slotBus} initialCapability={null} availablePrimitives={primitiveOptions} availableEffects={effects} onSaved={(row)=>commonSaved(row,"capability")} /> : null}
-      {kind === "effect" ? <EffectForm key={`eff-${revision}`} slotEvents={slotBus} initialEffect={null} availablePrimitives={primitiveOptions} onSaved={(row)=>commonSaved(row,"effect")} /> : null}
-      {kind === "heritage" ? <HeritageForm key={`her-${revision}`} slotEvents={slotBus} initialTemplate={null} initialKind={heritageKind} availablePrimitives={primitiveOptions} availableCapabilities={capabilities} onSaved={(row)=>commonSaved(row,"heritage",row.kind)} /> : null}
-      {kind === "item" ? <ItemForm key={`item-${revision}`} slotEvents={slotBus} initialItem={null} availablePrimitives={primitiveOptions} availableCapabilities={capabilities} availableEffects={effects} onSaved={(row)=>commonSaved(row,"item")} /> : null}
+      {kind === "primitive" ? <PrimitiveForm key={`primitive-${revision}`} initialPrimitive={initialEntry?.kind === "primitive" ? initialEntry.row : null} intent={initialEntry ? "fork" : null} onStateChange={onPrimitiveState} onSaved={row=>commonSaved({id:String(row.id),name:row.name},"primitive")} /> : null}
+      {kind === "capability" ? <CapabilityForm {...(phone ? {onStateChange:onCapabilityState} : {})} key={`cap-${revision}`} slotEvents={slotBus} initialCapability={initialEntry?.kind === "capability" ? initialEntry.row : null} intent={initialEntry ? "fork" : null} availablePrimitives={primitiveOptions} availableEffects={effects} onSaved={(row)=>commonSaved(row,"capability")} /> : null}
+      {kind === "effect" ? <EffectForm {...(phone ? {onStateChange:onEffectState} : {})} key={`eff-${revision}`} slotEvents={slotBus} initialEffect={initialEntry?.kind === "effect" ? initialEntry.row : null} intent={initialEntry ? "fork" : null} availablePrimitives={primitiveOptions} onSaved={(row)=>commonSaved(row,"effect")} /> : null}
+      {kind === "heritage" ? <HeritageForm {...(phone ? {onStateChange:onHeritageState} : {})} key={`her-${revision}`} slotEvents={slotBus} initialTemplate={initialEntry?.kind === "heritage" ? initialEntry.row : null} intent={initialEntry ? "fork" : null} initialKind={heritageKind} availablePrimitives={primitiveOptions} availableCapabilities={capabilities} onSaved={(row)=>commonSaved(row,"heritage",row.kind)} /> : null}
+      {kind === "item" ? <ItemForm {...(phone ? {onStateChange:onItemState} : {})} key={`item-${revision}`} slotEvents={slotBus} initialItem={initialEntry?.kind === "item" ? initialEntry.row : null} intent={initialEntry ? "fork" : null} availablePrimitives={primitiveOptions} availableCapabilities={capabilities} availableEffects={effects} onSaved={(row)=>commonSaved(row,"item")} /> : null}
       {pendingSlot ? <SecondarySlotDelivery slotBus={slotBus} detail={pendingSlot} onDelivered={()=>setPendingSlot(null)} /> : null}
       {saved ? <div className="v12-secondary-build-saved"><span>Saved: {saved.name}</span><button type="button" className="v12-metal-button v12-metal-button--primary" onClick={()=>{
         const tab = saved.kind === "item" ? "items" : characterModal.activeStep === "lineage" || characterModal.activeStep === "upbringing" || characterModal.activeStep === "manifest" ? characterModal.activeStep : "manifest";
+        if(saved.kind === "primitive") characterModal.queueSlot({kind:"primitive",primitiveId:Number(saved.id),tab,name:saved.name});
         if(saved.kind === "capability") characterModal.queueSlot({kind:"capability",capabilityId:saved.id,tab,name:saved.name});
         if(saved.kind === "effect") characterModal.queueSlot({kind:"effect",effectId:saved.id,tab,name:saved.name});
         if(saved.kind === "item") characterModal.queueSlot({kind:"item",itemId:saved.id,tab:"items",name:saved.name});
@@ -1821,7 +1872,7 @@ function SecondaryBuildWorkspace({
       }}>Slot into character</button></div> : null}
     </div>
   );
-  useDrawerSlot(useMemo(() => ({ build: content, preview: null }), [content]));
+  useDrawerSlot(useMemo(() => ({ build: content, preview: phone ? modalPreview ?? <p className="p-4">Choose a build and add its rules to see the preview.</p> : null }), [content, phone, modalPreview]));
   return null;
 }
 

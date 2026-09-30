@@ -1080,6 +1080,15 @@ export function CharacterSheetView(props: CharacterSheetProps) {
   }
 
   const [conditionsOpen, setConditionsOpen] = useState(false);
+  useEffect(() => {
+    const summary = document.querySelector(".v12-sheet-identity-summary");
+    if (!summary) return;
+    const measure = () => document.documentElement.style.setProperty("--sw-sheet-identity-height", `${summary.getBoundingClientRect().height}px`);
+    const observer = new ResizeObserver(measure);
+    observer.observe(summary);
+    measure();
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <>
@@ -1097,9 +1106,9 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         // extended drawer's top edge so the user can always see
         // and click it. We use top (not bottom) so it stays in
         // position regardless of how tall the drawer is.
-        className="fixed right-0 top-[12vh] z-30 rounded-l-md border border-r-0 border-amber-500/40 bg-amber-500 px-2 py-3 text-xs font-semibold text-white shadow-md transition-colors hover:bg-amber-600"
+        className="v12-consequences-edge-launcher fixed right-0 top-[12vh] z-30 rounded-l-md border border-r-0 border-amber-500/40 bg-amber-500 px-2 py-3 text-xs font-semibold text-white shadow-md transition-colors hover:bg-amber-600"
       >
-        <ChevronLeft className="size-4" />
+        <ChevronLeft className="size-4" /><span className="v12-phone-consequences-label">Consequences</span>
       </button>
       <ConditionsDrawer
         characterId={props.id}
@@ -1107,7 +1116,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         onClose={() => setConditionsOpen(false)}
         autoEvaluated={autoEvaluated}
       />
-    <div className="v12-character-page mx-auto w-full max-w-[1480px] px-5 pt-20 pb-32" data-character-surface>
+    <div className="v12-character-page mx-auto w-full max-w-[1480px] px-5 pt-20 pb-32" data-character-surface data-sheet-mode={sheetMode}>
       <nav className="v12-character-lenses" aria-label="Character sheet sections">
         <div>
           {TABS.map((item) => {
@@ -1538,6 +1547,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
 
 
       <BottomStickyBar
+        onOpenConsequences={() => setConditionsOpen(true)}
         characterId={props.id}
         level={props.level}
         currentVitality={props.currentVitality}

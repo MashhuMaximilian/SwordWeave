@@ -1,4 +1,5 @@
 "use client";
+import { browserUuid } from "@/lib/browser-uuid";
 import { useRef, useState } from "react";
 import { PrimitiveForm } from "@/components/sandbox/primitive-form";
 import type { ConsequenceOccurrence } from "@/lib/character/consequences/types";
@@ -73,7 +74,7 @@ export function PromoteConsequence({
           expectedRevision: record.revision,
           draft: JSON.parse(draft),
         }),
-        id: crypto.randomUUID(),
+        id: browserUuid(),
       };
     }
     const { body, id } = command.current;

@@ -1,4 +1,7 @@
 "use client";
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
+import { PhoneTypeChoices } from "@/components/library/phone-type-choices";
+import { PhoneLibraryFilters } from "@/components/library/phone-library-filters";
 
 // Grammar Library column.
 //
@@ -98,6 +101,7 @@ export function canSlotFromBuild(
 }
 
 interface GrammarLibraryProps {
+  phoneSourceControl?: React.ReactNode;
   build: MechanicsBuildMode;
   /**
    * Phase 8 rev 9: the kind currently loaded into the build column (or
@@ -228,6 +232,7 @@ function resolveSlotDestination(activeStep: CharacterTabId): CharacterTabId {
 }
 
 export function GrammarLibrary({
+  phoneSourceControl,
   build,
   buildFormKind,
   libraryItems,
@@ -243,7 +248,11 @@ export function GrammarLibrary({
   onSelect,
   onFork,
 }: GrammarLibraryProps) {
+  const phone = useIsMobile();
   const [familiesCollapsed, setFamiliesCollapsed] = useState(false);
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 767px)").matches) setFamiliesCollapsed(true);
+  }, []);
   const [entriesCollapsed, setEntriesCollapsed] = useState(false);
   // Default type filter per build mode. For the collapsed Mechanics tab
   // we default to "ALL" so primitives + effects + capabilities show
@@ -586,6 +595,8 @@ export function GrammarLibrary({
   const filterPanelContent = useMemo(
     () => (
       <div className="space-y-3">
+        {phone ? <PhoneLibraryFilters state={toolbarState} onChange={setToolbarState} categories={primitiveCategories} source={phoneSourceControl} types={[{value:"ALL",label:"All mechanics"},{value:"GROUP_MECHANICS",label:"Mechanics"},{value:"PRIMITIVE",label:"Primitives"},{value:"EFFECT",label:"Effects"},{value:"CAPABILITY",label:"Capabilities"}]} /> : null}
+        <details className={phone ? "phone-advanced-toolbar" : "contents"} open={!phone}><summary className={phone ? "" : "hidden"}>More filters</summary>
         <LibraryToolbar
           state={toolbarState}
           onStateChange={setToolbarState}
@@ -595,9 +606,10 @@ export function GrammarLibrary({
           showAdvancedFilters={true}
           forceExpandFilters
         />
+        </details>
       </div>
     ),
-    [toolbarState, setToolbarState, primitiveCategories],
+    [phone, phoneSourceControl, toolbarState, setToolbarState, primitiveCategories],
   );
   useFilterSlot(filterPanelContent);
 
@@ -737,9 +749,10 @@ export function GrammarLibrary({
           onOpenFilters={() => setFilterPanelOpen(true)}
           hasActiveFilters={hasActiveFilters}
         />
+        {phone ? <div className="phone-browse-scope">{phoneSourceControl}<PhoneTypeChoices label="Record type" value={toolbarState.typeFilter} options={[{value:"ALL",label:"All"},{value:"GROUP_MECHANICS",label:"Mechanics"},{value:"PRIMITIVE",label:"Primitives"},{value:"EFFECT",label:"Effects"},{value:"CAPABILITY",label:"Capabilities"}]} onChange={value=>setToolbarState(prev=>({...prev,typeFilter:value as LibraryToolbarState["typeFilter"],category:"",tier:""}))}/></div> : null}
         {/* Collapsed Mechanics tab: quick-filter chips for the concrete
             kinds (mirrors the Heritage tab's chip row). */}
-        {build === "mechanics" ? (
+        {!phone && build === "mechanics" ? (
           <div className="v12-source-tabs -mx-1 mt-2 flex flex-nowrap gap-1 overflow-x-auto px-1">
             {(
               [
@@ -782,7 +795,7 @@ export function GrammarLibrary({
         {(toolbarState.typeFilter === "PRIMITIVE" ||
           toolbarState.typeFilter === "ALL" ||
           toolbarState.typeFilter === "GROUP_MECHANICS") &&
-        primitiveCategories.length > 0 ? (
+        primitiveCategories.length > 0 && !phone ? (
           <section className="v12-source-families min-h-0">
             <header className="v12-source-pane-head"><p className="v12-kicker">Lexicon categories · market families</p><button type="button" aria-label={familiesCollapsed ? "Show market families" : "Hide market families"} aria-expanded={!familiesCollapsed} onClick={()=>setFamiliesCollapsed(value=>!value)}>{familiesCollapsed ? "⌄" : "⌃"}</button></header>
             {!familiesCollapsed ? <div className="v12-source-pane-scroll v12-source-family-list">
@@ -816,7 +829,7 @@ export function GrammarLibrary({
         ) : null}
         <section className="v12-source-entries min-h-0">
           <header className="v12-source-pane-head"><p className="v12-kicker">Entries</p><button type="button" aria-label={entriesCollapsed ? "Show exact entries" : "Hide exact entries"} aria-expanded={!entriesCollapsed} onClick={()=>setEntriesCollapsed(value=>!value)}>{entriesCollapsed ? "⌃" : "⌄"}</button></header>
-          {!entriesCollapsed ? <div className="v12-source-pane-scroll">
+          {phone || !entriesCollapsed ? <div className="v12-source-pane-scroll">
           {(toolbarState.typeFilter === "PRIMITIVE" || toolbarState.category) ? <div className="v12-tier-tabs" aria-label="Source tiers">{["", "1", "2", "3", "4", "5"].map(tier => <button type="button" key={tier} aria-pressed={(toolbarState.tier ?? "") === tier} onClick={() => setToolbarState(prev => ({ ...prev, tier }))}>{tier ? `Tier ${["", "I", "II", "III", "IV", "V"][Number(tier)]}` : "All"}</button>)}</div> : null}
           <div className="v12-origin-tabs" aria-label="Source origin">{(["all", "system", "community"] as const).map(origin => <button type="button" key={origin} aria-pressed={(toolbarState.origin ?? "all") === origin} onClick={() => setToolbarState(prev => ({ ...prev, origin }))}>{origin === "all" ? "All origins" : origin === "system" ? "System" : "Community"}</button>)}</div>
           <div className="v12-source-results-head">
@@ -825,8 +838,9 @@ export function GrammarLibrary({
           </div>
           <LibraryTable
             surface="atelier"
+          compact={phone}
             items={filteredItems}
-            view={toolbarState.view}
+            view={phone ? "LIST" : toolbarState.view}
             engagement={engagement}
             currentUserInternalId={currentUserInternalId}
             onSelect={(item) => {
@@ -884,6 +898,7 @@ function SandboxPreviewBody({
   currentUser: { username: string; displayName: string | null; avatarUrl: string | null } | null;
   currentUserInternalId: string | null;
 }) {
+  const phone = useIsMobile();
   // Preview actions may focus the inline split workspace, but the
   // persistent Build & Preview drawer is reserved for its FAB action.
   const {
@@ -1179,16 +1194,21 @@ function SandboxPreviewBody({
   const activeBuildLabel = buildFormKind ?? "build";
 
   const actionBar: PreviewActionProps = {
+    ...(phone ? { primary: {
+      label: "Replace modal build",
+      description: "Load this entry into the independent Build & Preview modal.",
+      onClick: () => window.dispatchEvent(new CustomEvent("sw-replace-secondary-build", { detail: {kind:item.kind,row:item.row} })),
+    } } : {}),
     workspace: {
-      label: "Edit in middle workspace",
-      description: "Replace the current draft in the middle column.",
+      label: phone ? "Replace primary build" : "Edit in middle workspace",
+      description: phone ? "Replace the draft in the Build tab." : "Replace the current draft in the middle column.",
       onClick: onLoadIntoBuild,
     },
     ...(canSlot
       ? {
           primarySecondary: {
             label: `Add to active ${activeBuildLabel}`,
-            description: "Insert this into the draft open in the middle workspace.",
+            description: phone ? "Add to the draft in the Build tab." : "Insert this into the draft open in the middle workspace.",
             onClick: slotIntoBuild,
           },
         }
@@ -1196,7 +1216,7 @@ function SandboxPreviewBody({
     ...((item.kind === "primitive" || item.kind === "effect" || item.kind === "capability")
       ? {
           buildModal: {
-            label: "Add to persistent build",
+            label: phone ? "Add to modal build" : "Add to persistent build",
             description: "Keep it in Build & Preview; open that workspace from the FAB.",
             onClick: () => {
               window.dispatchEvent(new CustomEvent("sw-slot-secondary-build", { detail: { kind: item.kind, id: item.row.id, label: item.row.name } }));

@@ -1,4 +1,7 @@
 "use client";
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
+import { PhoneTypeChoices } from "@/components/library/phone-type-choices";
+import { PhoneLibraryFilters } from "@/components/library/phone-library-filters";
 
 // Blueprint Library column.
 //
@@ -59,6 +62,7 @@ import {
 export type HeritageBuildMode = "heritage" | "item" | "monster";
 
 interface HeritageLibraryProps {
+  phoneSourceControl?: React.ReactNode;
   build: HeritageBuildMode;
   /**
    * Phase 8 rev 9: the kind currently loaded into the build column (or
@@ -157,6 +161,7 @@ function resolveHeritageSlotDestination(
 }
 
 export function HeritageLibrary({
+  phoneSourceControl,
   build,
   buildFormKind,
   libraryItems,
@@ -174,6 +179,7 @@ export function HeritageLibrary({
   onFork,
   versionMap,
 }: HeritageLibraryProps) {
+  const phone = useIsMobile();
   // Default type filter per build mode. The kind filter is exposed in
   // the toolbar. We pick a sensible default that matches the active
   // build's primary entity type:
@@ -702,6 +708,8 @@ export function HeritageLibrary({
   const filterPanelContent = useMemo(
     () => (
       <div className="space-y-3">
+        {phone ? <PhoneLibraryFilters state={toolbarState} onChange={setToolbarState} categories={primitiveCategories} source={phoneSourceControl} types={[{value:"ALL",label:"All"},{value:"GROUP_HERITAGES",label:"All heritages"},{value:"LINEAGE_TEMPLATE",label:"Lineage"},{value:"UPBRINGING_TEMPLATE",label:"Upbringing"},{value:"MANIFEST_TEMPLATE",label:"Manifest"},{value:"ITEM",label:"Items"}]} /> : null}
+        <details className={phone ? "phone-advanced-toolbar" : "contents"} open={!phone}><summary className={phone ? "" : "hidden"}>More filters</summary>
         <LibraryToolbar
           state={toolbarState}
           onStateChange={setToolbarState}
@@ -711,9 +719,10 @@ export function HeritageLibrary({
           showAdvancedFilters={true}
           forceExpandFilters
         />
+        </details>
       </div>
     ),
-    [toolbarState, setToolbarState, availableTypes, primitiveCategories],
+    [phone, phoneSourceControl, toolbarState, setToolbarState, availableTypes, primitiveCategories],
   );
   useFilterSlot(filterPanelContent);
 
@@ -766,7 +775,8 @@ export function HeritageLibrary({
             faster, always-visible inline filter scoped to just the
             template sub-kinds (mirrors the side-panel behaviour, only
             quicker, and only in this tab). */}
-        {build === "heritage" ? (
+        {phone ? <div className="phone-browse-scope">{phoneSourceControl}<PhoneTypeChoices label="Record type" value={toolbarState.typeFilter} options={[{value:"ALL",label:"All"},{value:"GROUP_HERITAGES",label:"Heritages"},{value:"LINEAGE_TEMPLATE",label:"Lineages"},{value:"UPBRINGING_TEMPLATE",label:"Upbringings"},{value:"MANIFEST_TEMPLATE",label:"Manifests"},{value:"ITEM",label:"Items"}]} onChange={value=>setToolbarState(prev=>({...prev,typeFilter:value as LibraryToolbarState["typeFilter"],category:"",tier:""}))}/></div> : null}
+        {!phone && build === "heritage" ? (
           <div className="-mx-1 mt-2 flex flex-nowrap gap-1.5 overflow-x-auto px-1">
             {(
               [
@@ -807,8 +817,9 @@ export function HeritageLibrary({
       <div className="min-h-0 flex-1 overflow-auto p-3">
         <LibraryTable
           surface="atelier"
+          compact={phone}
           items={filteredItems}
-          view={toolbarState.view}
+          view={phone ? "LIST" : toolbarState.view}
           engagement={engagement}
           currentUserInternalId={currentUserInternalId}
           onSelect={(item) => {
@@ -866,6 +877,7 @@ function BlueprintPreviewBody({
   currentUser: { username: string; displayName: string | null; avatarUrl: string | null } | null;
   currentUserInternalId: string | null;
 }) {
+  const phone = useIsMobile();
   // Preview actions may focus the inline split workspace, but the
   // persistent Build & Preview drawer is reserved for its FAB action.
   const {
@@ -1143,16 +1155,21 @@ function BlueprintPreviewBody({
   const isSeedingEdit = characterModal.isSeedingEdit;
 
   const actionBar: PreviewActionProps = {
+    ...(phone ? { primary: {
+      label: "Replace modal build",
+      description: "Load this entry into the independent Build & Preview modal.",
+      onClick: () => window.dispatchEvent(new CustomEvent("sw-replace-secondary-build", { detail: {kind:item.kind,row:item.row} })),
+    } } : {}),
     workspace: {
-      label: "Edit in middle workspace",
-      description: "Replace the current draft in the middle column.",
+      label: phone ? "Replace primary build" : "Edit in middle workspace",
+      description: phone ? "Replace the draft in the Build tab." : "Replace the current draft in the middle column.",
       onClick: loadAndPreview,
     },
     ...(canSlot
       ? {
           primarySecondary: {
             label: `Add to active ${buildFormKind ?? "build"}`,
-            description: "Insert this into the draft open in the middle workspace.",
+            description: phone ? "Add to the draft in the Build tab." : "Insert this into the draft open in the middle workspace.",
             onClick: slotIntoBuild,
           },
         }

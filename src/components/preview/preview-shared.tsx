@@ -15,6 +15,7 @@
 
 import { Fragment, type ReactElement, type ReactNode } from "react";
 import { OP_SPECS, type ModifierOperation } from "@/types/modifier";
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 
 // =============================================================================
 // Shared preview callback + sub-link types. Declared here (a cycle-free
@@ -66,6 +67,10 @@ export function Section({
   heading: string;
   children: ReactNode;
 }) {
+  const phone = useIsMobile();
+  if (phone && /^(tags|narrative|suggested traits)/i.test(heading)) {
+    return <details className="sw-phone-preview-section"><summary>{heading}</summary><div>{children}</div></details>;
+  }
   return (
     <section data-preview-section={heading.toLowerCase().replaceAll(" ", "-")}>
       <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -546,6 +551,7 @@ export function PreviewActions(props: PreviewActionProps) {
 
   return (
     <div className="v12-preview-actions sticky bottom-0 z-10 space-y-3 border-t border-border bg-card px-1 pb-3 pt-3">
+      <PhoneActionTray label={hasDestinationActions ? "Use this entry" : "Actions & source"}>
       {onVisibilityChange && visibility ? (
         <VisibilitySelect
           value={visibility}
@@ -667,6 +673,14 @@ export function PreviewActions(props: PreviewActionProps) {
           </div>
         </div>
       ) : null}
+      </PhoneActionTray>
     </div>
   );
+}
+
+/** Keep the reading surface clear while retaining every destination and action. */
+function PhoneActionTray({ label, children }: { label: string; children: ReactNode }) {
+  const phone = useIsMobile();
+  if (!phone) return <>{children}</>;
+  return <details className="sw-phone-action-tray"><summary>{label}<span aria-hidden="true">⌃</span></summary><div className="sw-phone-action-tray-body">{children}</div></details>;
 }
