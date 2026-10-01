@@ -343,6 +343,9 @@ async function migrate(tx:typeof db) {
   if (apply) {
     const repairRows=await tx.select().from(primitives);
     for (const row of repairRows) {
+      // Versioned audit repairs own these rows. Generic migration copy must
+      // never rewrite their reviewed rule or create a new version on deploy.
+      if (AUDITED_PRIMITIVE_IDS.has(row.id) && row.contentHash) continue;
       const repair=CONTENT_REPAIRS[normalizeKey(row.name)];
       if (!repair) continue;
       const modifiers=(row.hardModifiers ?? []) as HardModifier[];

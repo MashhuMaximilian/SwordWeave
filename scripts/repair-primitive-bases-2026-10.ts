@@ -82,7 +82,7 @@ const repairs: ReadonlyArray<{ id: number; priorVersion: number; patch: Patch }>
     } satisfies Patch,
   })),
   ...(["PHYSICAL", "MENTAL", "MAGICAL"] as const).map((attribute, index) => ({
-    id: 22495 + index, priorVersion: 4,
+    id: 22495 + index, priorVersion: 6,
     patch: {
       hardModifiers: [{
         kind: "modify", target: "attribute", operation: "grant",
@@ -90,7 +90,7 @@ const repairs: ReadonlyArray<{ id: number; priorVersion: number; patch: Patch }>
         metadata: { recipient: "SELF", targetScope: { layer: "ATTRIBUTE", values: [attribute] } },
         condition: { kind: "tags", customTags: [`actor:not_proficient_in_attribute(${attribute.toLowerCase()})`] },
       }],
-      narrativeRule: `Gain proficiency on ${attribute[0]}${attribute.slice(1).toLowerCase()} saving throws. Add your full Proficiency Bonus only when that save is not already proficient. Repeated grants do not add it again.`,
+      narrativeRule: `Gain proficiency on ${attribute[0]}${attribute.slice(1).toLowerCase()} saving throws. Add your full Proficiency Bonus only when that save is not already proficient. This grant does not stack with another proficiency grant to that save.`,
     } satisfies Patch,
   })),
 ];
