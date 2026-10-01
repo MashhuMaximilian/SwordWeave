@@ -85,6 +85,7 @@ import { onCharacterLogAdded, onVitalityChanged } from "@/lib/character/characte
 import { TabErrorBoundary } from "@/components/characters/tab-error-boundary";
 import { HeritageBundleView } from "@/components/characters/heritage-bundle-view";
 import { proficiencyBonus } from "@/lib/engine/practices";
+import { buildClientSpeedByType } from "@/lib/engine/client-speed";
 // Phase 8.3f S4 (Mashu 2026-07-28): the canonical resolver
 // replaces the presentation-time approximation in
 // `attribute-modifier-delta.ts`. The hook returns totals +
@@ -545,52 +546,6 @@ export function computeClientPracticeTotal(
 }
 
 
-
-/**
- * Build condition-aware speedByType from the resolver.
- * Mirrors computeClientPracticeTotal / buildClientBehaviorVariables:
- * any value affected by runtime conditions needs an override
- * because the server's aggregateCharacterSheet doesn't see them.
- */
-function buildClientSpeedByType(
-  serverSpeedByType: Readonly<Record<string, number>>,
-  resolver: { byTarget: Readonly<Record<string, ReadonlyArray<{op: string; value: number; inhibited: boolean}>>> } | null,
-): Readonly<Record<string, number>> {
-  if (!resolver) return serverSpeedByType;
-  const out: Record<string, number> = {};
-  // Map locomotion types to resolver target keys.
-  // The resolver emits keys as speed.walking_speed, speed.flying_speed, etc.
-  const locomotionToResolverKey: Record<string, string> = {
-    WALKING_SPEED: "speed.walking_speed",
-    CLIMBING_SPEED: "speed.climbing_speed",
-    SWIMMING_SPEED: "speed.swimming_speed",
-    FLYING_SPEED: "speed.flying_speed",
-    BURROWING_SPEED: "speed.burrowing_speed",
-  };
-  for (const [key, serverValue] of Object.entries(serverSpeedByType)) {
-    const resolverKey = locomotionToResolverKey[key];
-    if (!resolverKey) {
-      out[key] = serverValue;
-      continue;
-    }
-    const contribs = resolver.byTarget[resolverKey] ?? [];
-    const activeContribs = contribs.filter(
-      (c) => !c.inhibited && (c.op === "add" || c.op === "subtract"),
-    );
-    if (activeContribs.length === 0) {
-      out[key] = serverValue;
-      continue;
-    }
-    const delta = activeContribs.reduce(
-      (sum, c) => sum + (c.op === "subtract" ? -c.value : c.value),
-      0,
-    );
-    // Resolver doesn't know the base speed (size-based default).
-    // Compute delta-only adjustment: add resolver delta to server value.
-    out[key] = serverValue + delta;
-  }
-  return out;
-}
 
 /**
  * Build the BSB-shaped behavior variables array from the resolver.
