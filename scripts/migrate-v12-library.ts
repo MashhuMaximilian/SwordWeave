@@ -25,6 +25,9 @@ type Report = {
   orphans:Array<{id:number;source:string}>; selfForks:Array<{id:number;source:string}>;
 };
 const report:Report={families:0,templates:0,expressions:0,versions:0,classifications:0,lineage:0,ambiguous:[],orphans:[],selfForks:[]};
+// The October audit versions are authored through the primitive versioning path.
+// This broad catalog migration must not regenerate their rules from modifiers.
+const AUDITED_PRIMITIVE_IDS = new Set([54, 65, 218, 22391, 22393, 22492, 22493, 22494, 22495, 22496, 22497]);
 
 function expressionRule(template:typeof MARKET_TEMPLATES[number], bindings:Record<string,string>) {
   return {...template.rule, bindings};
@@ -313,7 +316,7 @@ async function migrate(tx:typeof db) {
         }
       }
     }
-    const changed=isSystem && complete && (
+    const changed=isSystem && complete && !(AUDITED_PRIMITIVE_IDS.has(row.id) && row.contentHash) && (
       row.definitionKind!=="EXPRESSION" || row.templatePrimitiveId!==canonicalTemplateId ||
       JSON.stringify(row.bindings)!==JSON.stringify(bindings) || row.mechanicalOutputText!==mechanicalText || row.narrativeRule!==narrativeText || !isDeepStrictEqual(row.mechanicalRule,mechanicalRule)
     );

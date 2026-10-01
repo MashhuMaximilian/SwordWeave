@@ -9,6 +9,7 @@ import { buildCanonicalPrimitivePayload, hashPrimitiveContent } from "@/lib/publ
 import { resolveContentVersionId } from "@/lib/versions/content-hash";
 import { resolveModifiers, type ResolvedPrimitiveSlot } from "@/lib/engine/resolve-modifiers";
 import type { HardModifier } from "@/types/swordweave";
+import { isDeepStrictEqual } from "node:util";
 
 config({ path: ".env.local", quiet: true });
 
@@ -27,30 +28,30 @@ const practiceNames = ["PROWESS", "FINESSE", "FIELDCRAFT", "AWARENESS", "REASON"
 
 const repairs: ReadonlyArray<{ id: number; priorVersion: number; patch: Patch }> = [
   {
-    id: 54, priorVersion: 3,
+    id: 54, priorVersion: 5,
     patch: {
       mechanicalRule: { family: "UNIVERSAL_MODIFIER", target: "Attack Roll", operation: "add", value: 1, recipient: "SELF" },
       mechanicalOutputText: "Add +1 to Attack Rolls.",
-      narrativeRule: "Add 1 to the character's Attack Rolls while this primitive is active. A fork can restrict the source or add an authored condition.",
+      narrativeRule: "Add 1 to the character's Attack Rolls while this primitive is active. It does not affect other action rolls. A fork can restrict the source or add an authored condition.",
       hardModifiers: [numeric("action_roll", 1, "ATTACK_ROLL")],
     },
   },
   {
-    id: 65, priorVersion: 3,
+    id: 65, priorVersion: 5,
     patch: {
       mechanicalRule: { family: "UNIVERSAL_MODIFIER", target: "Attack Roll", operation: "add", value: 1, recipient: "SELF" },
       mechanicalOutputText: "Add +1 to Attack Rolls.",
-      narrativeRule: "Add 1 to the character's Attack Rolls while this primitive is active. This currently overlaps Attack Bonus Increment; choose one as the starter-library parent before expanding either family.",
+      narrativeRule: "Add 1 to the character's Attack Rolls while this primitive is active; other action rolls are unaffected. This currently overlaps Attack Bonus Increment; choose one as the starter-library parent before expanding either family.",
       hardModifiers: [numeric("action_roll", 1, "ATTACK_ROLL")],
       isMirrorable: true, mirrorVector: "VARIABLE_VECTOR", mirrorBuCredit: 4,
     },
   },
   {
-    id: 22391, priorVersion: 2,
+    id: 22391, priorVersion: 4,
     patch: {
       mechanicalRule: { family: "UNIVERSAL_MODIFIER", target: "Save DC", operation: "add", value: 1, recipient: "SELF" },
       mechanicalOutputText: "Add +1 to Save DC.",
-      narrativeRule: "Increase the character's single Save DC by 1 while this primitive is active.",
+      narrativeRule: "Increase the character's single Save DC by 1 while this primitive is active. This does not change Physical, Mental, or Magical saving throws.",
       hardModifiers: [numeric("save_dc", 1)],
       isMirrorable: true, mirrorVector: "VARIABLE_VECTOR", mirrorBuCredit: 4,
     },
@@ -154,7 +155,10 @@ async function main(): Promise<void> {
     const payload = buildCanonicalPrimitivePayload({ ...candidate, hardModifiers: candidate.hardModifiers });
     const hash = await hashPrimitiveContent(payload);
     if (latest?.versionNumber === repair.priorVersion + 1) {
-      if (row.contentHash !== hash) throw new Error(`Unexpected content at repaired version ${row.id}`);
+      if (row.contentHash !== hash || Object.entries(repair.patch).some(([key, value]) =>
+        !isDeepStrictEqual(row[key as keyof PrimitiveRow], value))) {
+        throw new Error(`Unexpected content at repaired version ${row.id}`);
+      }
       console.log(`already repaired ${row.id} ${row.name} v${latest.versionNumber}`);
       continue;
     }
