@@ -75,6 +75,7 @@ import {
   type ConditionContext,
 } from "./condition-evaluator";
 import { hasMeaningfulCondition } from "./condition-dictionary";
+import { BASE_DC } from "./dc";
 
 // =============================================================================
 // Public types
@@ -303,7 +304,7 @@ export function resolveModifiers(
   // chip and modal IS the raw attribute, NOT (attr-10)/2.
   //
   // For attack_bonus: PB + chosen_attr_value + primitives
-  // For save_dc: 8 + PB + chosen_attr_value + primitives
+  // For save_dc: 5 + PB + chosen_attr_value + primitives
   // For saving throws: PB + per_attr_value + primitives
   //
   // The "modifier" terminology in the UI is misleading but
@@ -317,17 +318,17 @@ export function resolveModifiers(
         : (input.attributes.magical ?? 0);
   // Attack bonus = PB + chosen attribute (full value).
   const baseAttackBonus = input.pb + attrModForSeed(chosenAttrForSeed);
-  // Save DC = 8 + PB + chosen attribute (full value).
-  const baseSaveDc = 8 + input.pb + attrModForSeed(chosenAttrForSeed);
+  // DC = 5 + PB + chosen attribute (full value).
+  const baseSaveDc = BASE_DC + input.pb + attrModForSeed(chosenAttrForSeed);
   totals["attack_bonus"] = baseAttackBonus;
   totals["save_dc"] = baseSaveDc;
   // Per-attribute: each scales with its own modifier, NOT chosenAttr.
   totals["attack_bonus.physical"] = input.pb + attrModForSeed("physical");
   totals["attack_bonus.mental"] = input.pb + attrModForSeed("mental");
   totals["attack_bonus.magical"] = input.pb + attrModForSeed("magical");
-  totals["save_dc.physical"] = 8 + input.pb + attrModForSeed("physical");
-  totals["save_dc.mental"] = 8 + input.pb + attrModForSeed("mental");
-  totals["save_dc.magical"] = 8 + input.pb + attrModForSeed("magical");
+  totals["save_dc.physical"] = BASE_DC + input.pb + attrModForSeed("physical");
+  totals["save_dc.mental"] = BASE_DC + input.pb + attrModForSeed("mental");
+  totals["save_dc.magical"] = BASE_DC + input.pb + attrModForSeed("magical");
   // Saving throws = (PB if proficient in this attribute) + per-attribute modifier.
   // Phase 8.L round 129 (Mashu 2026-08-26): save proficiency is
   // ATTRIBUTE-LINKED — you only get the +PB bonus on the save of
@@ -419,7 +420,13 @@ export function resolveModifiers(
     for (const mod of slot.hardModifiers) {
       if (!isEngineModifierValid(mod)) continue;
 
-      const target = String(mod.target);
+      // Pinned versions can still carry the retired per-attribute DC keys.
+      // All such defenses change SwordWeave's one shared DC.
+      const storedTarget = String(mod.target);
+      const target = storedTarget === "defense_dc" ||
+        /^defense_dc\.(physical|mental|magical)$/i.test(storedTarget)
+        ? "save_dc"
+        : storedTarget;
 
       // Phase 8.I i2.5: for behavior variables, before resolving
       // we need to know WHICH variable. The metadata carries
@@ -565,7 +572,8 @@ const eq = resolveEquation(operandsRaw as never, ctx);
       // defense_dc, speed, skill_practice_check). For free-text
       // targets (behavior, scene_pace, etc.) the empty scope is
       // left as-is — the modifier still lands on the parent target.
-      if (scopedValuesList.length === 0) {
+      if (target !== storedTarget) scopedValuesList = [];
+      if (scopedValuesList.length === 0 && target === storedTarget) {
         const targetSpec =
           MODIFIER_TARGET_SPEC[target as ModifierTarget];
         if (targetSpec && Array.isArray(targetSpec.options) && targetSpec.options.length > 0) {
@@ -1342,38 +1350,19 @@ const eq = resolveEquation(operandsRaw as never, ctx);
   }
   const perAttrAtkBase =
     input.pb + rawAttr + attrPrimitiveDelta + perAttrAtkPrimitiveDelta;
-  // Phase 8.L round 92 (Mashu): same fix as attack_bonus —
-  // save_dc seed includes the COMPUTED attribute primitive
-  // contributions plus per-attr save_dc primitives (Defender,
-  // Stone Skin, etc.).
+  // DC uses the current selected attribute, including its active
+  // primitive modifiers, as well as direct DC modifiers.
   const saveDcAttrTarget = `attribute.${chosenAttr}`;
-  let saveDcAttrPrimitiveDelta = 0;
-  for (const c of byTarget[saveDcAttrTarget] ?? []) {
-    if (c.op === "add" && c.conditionActive !== false && !c.inhibited) {
-      saveDcAttrPrimitiveDelta += c.value;
-    } else if (c.op === "subtract" && c.conditionActive !== false && !c.inhibited) {
-      saveDcAttrPrimitiveDelta -= c.value;
-    }
-  }
   // save_dc.physical post-PASS 2 already includes its seed
-  // (8 + PB + raw_attr) AND all per-attr save_dc primitives
+  // (5 + PB + raw_attr) AND all per-attr save_dc primitives
   // (Defender, Stone Skin, Save DC Buff, etc.). We only want
   // the primitive delta here, not the seed (which is already
   // in perAttrSaveBase).
-  // save_dc.physical post-PASS 2 already includes its seed
-  // (8 + PB + raw_attr) AND all per-attr save_dc primitives
-  // (Defender, Stone Skin, Save DC Buff, etc.). We only want
-  // the primitive delta here, not the seed (which is already
-  // in perAttrSaveBase).
-  const saveDcSeed = 8 + input.pb + (input.attributes[chosenAttr] ?? 0);
+  const saveDcSeed = BASE_DC + input.pb + (input.attributes[chosenAttr] ?? 0);
   const saveDcPerAttrDelta =
     (totals[`save_dc.${chosenAttr}`] ?? totals[`defense_dc.${chosenAttr}`] ?? 0) - saveDcSeed;
-  // Phase 8.L round 92 (Mashu): save_dc seed uses raw attribute
-  // (NOT computed). The save_dc formula is:
-  //   save_dc = 8 + PB + chosen_attr (raw) + save_dc_primitive_delta
-  // Attribute primitive deltas are NOT included in save_dc.
-  const perAttrSaveBase = saveDcSeed;
-  void saveDcAttrPrimitiveDelta;
+  const currentChosenAttribute = totals[saveDcAttrTarget] ?? rawAttr;
+  const perAttrSaveBase = BASE_DC + input.pb + currentChosenAttribute;
   // Re-apply direct modifiers on top of per-attr value. This
   // matters for divide/multiply/set where the per-attr value
   // IS the new base.

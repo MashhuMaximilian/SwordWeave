@@ -76,6 +76,7 @@ function isValidTarget(t: string): boolean {
     ...Object.values(ATTR_TARGETS),
     ...Object.values(SAVE_TARGETS),
     ...Object.values(VITALITY_TARGETS),
+    "save_dc",
     "character.attribute.physical",
     "character.attribute.mental",
     "character.attribute.magical",
@@ -90,6 +91,9 @@ function isValidTarget(t: string): boolean {
 }
 
 function attrFromTarget(target: string): Attribute | null {
+  if (target === SAVE_TARGETS.physical) return "physical";
+  if (target === SAVE_TARGETS.mental) return "mental";
+  if (target === SAVE_TARGETS.magical) return "magical";
   if (target === "character.attribute.physical" || target === "character.defense.physicalDc") return "physical";
   if (target === "character.attribute.mental" || target === "character.defense.mentalDc") return "mental";
   if (target === "character.attribute.magical" || target === "character.defense.magicalDc") return "magical";
@@ -384,25 +388,7 @@ export async function GET(
     practiceStates[key] = 0;
   }
 
-  const conditionContext: ConditionContext = {
-    character: {
-      vitality: currentVit,
-      vitalityMax: maxVit,
-      saveDc: 0,
-      blockValue: 0,
-      attributes: {
-        physical: charRow.attrPhysical,
-        mental: charRow.attrMental,
-        magical: charRow.attrMagical,
-      },
-      practices: practiceStates,
-      proficiencies,
-      flags: new Set(),
-      custom: {},
-    },
-  };
-
-  const input: ResolvedCharacterInput = {
+  const baseInput: ResolvedCharacterInput = {
     characterId: id,
     level: charRow.level,
     pb: proficiencyBonus(charRow.level),
@@ -414,8 +400,43 @@ export async function GET(
       magical: charRow.attrMagical,
     },
     slots,
-    conditionContext,
   };
+  const initialContext: ConditionContext = {
+    character: {
+      vitality: currentVit,
+      vitalityMax: maxVit,
+      saveDc: 5 + baseInput.pb + baseInput.attributes[
+        baseInput.chosenAttribute ?? baseInput.proficientAttribute ?? "physical"
+      ],
+      blockValue: 0,
+      attributes: baseInput.attributes,
+      practices: practiceStates,
+      proficiencies,
+      flags: new Set(),
+      custom: { proficiency_bonus: baseInput.pb },
+    },
+  };
+  const preliminary = resolveModifiers({ ...baseInput, conditionContext: initialContext }, sourceNames);
+  const conditionContext: ConditionContext = {
+    ...initialContext,
+    character: {
+      ...initialContext.character,
+      saveDc: preliminary.totals["save_dc"] ?? initialContext.character.saveDc,
+      attributes: {
+        physical: preliminary.totals["attribute.physical"] ?? baseInput.attributes.physical,
+        mental: preliminary.totals["attribute.mental"] ?? baseInput.attributes.mental,
+        magical: preliminary.totals["attribute.magical"] ?? baseInput.attributes.magical,
+      },
+      custom: {
+        proficiency_bonus: preliminary.totals["proficiency_bonus"] ?? baseInput.pb,
+        physical_saving_throw: preliminary.totals["physical_saving_throw"] ?? 0,
+        mental_saving_throw: preliminary.totals["mental_saving_throw"] ?? 0,
+        magical_saving_throw: preliminary.totals["magical_saving_throw"] ?? 0,
+        attack_bonus: preliminary.totals["attack_bonus"] ?? 0,
+      },
+    },
+  };
+  const input: ResolvedCharacterInput = { ...baseInput, conditionContext };
 
   // -----------------------------------------------------------------
   // Single-target fast path

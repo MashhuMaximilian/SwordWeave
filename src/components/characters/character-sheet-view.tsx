@@ -299,7 +299,6 @@ type PracticeRow = {
   }[];
 };
 
-type DefensiveDC = { attribute: string; dc: number };
 
 export type CharacterSheetProps = {
   id: string;
@@ -357,7 +356,6 @@ export type CharacterSheetProps = {
   currentVitality: number | null;
   enforceTemplateCaps: boolean;
   practices: PracticeRow[];
-  defensiveDCs: DefensiveDC[];
   vitality: {
     max: number;
     current: number | null;
@@ -1552,6 +1550,7 @@ export function CharacterSheetView(initialProps: CharacterSheetProps) {
           magical: props.attrMagical,
         }}
         resolver={resolver}
+        resolveForAttribute={resolver.resolveForAttribute}
         // Phase 8.L round 58 (Mashu): recompute practice totals
         // client-side using the SAME formula BottomStickyBar
         // uses. This ensures PB-token primitives and conditions

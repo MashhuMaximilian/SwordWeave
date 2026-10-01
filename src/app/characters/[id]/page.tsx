@@ -618,9 +618,7 @@ export default async function CharacterSheetPage({
     character: {
       vitality: row.currentVitality ?? sheet.vitality.max,
       vitalityMax: sheet.vitality.max,
-      saveDc: sheet.saveDCs?.find(
-        (s) => s.attribute === (row.attrProficient ?? "PHYSICAL"),
-      )?.dc ?? 5,
+      saveDc: sheet.dc,
       blockValue: sheet.behaviorVariables.find((b) => b.key === "blockvalue")?.value ?? 0,
       attributes: {
         physical: sheet.attributes.physical,
@@ -639,7 +637,12 @@ export default async function CharacterSheetPage({
         ],
       ),
       flags: new Set(),
-      custom: {},
+      custom: {
+        proficiency_bonus: sheet.proficiencyBonus,
+        ...Object.fromEntries(sheet.savingThrows.map((save) => [
+          `${save.attribute.toLowerCase()}_saving_throw`, save.bonus,
+        ])),
+      },
     },
   };
 
@@ -702,10 +705,6 @@ export default async function CharacterSheetPage({
           })),
         };
       })}
-      defensiveDCs={sheet.defensiveDCs.map((d) => ({
-        attribute: d.attribute,
-        dc: d.dc,
-      }))}
       vitality={sheet.vitality}
       encumbrance={sheet.encumbrance}
       // Phase 8.I i2 finish (Mashu 2026-08-06): speed +

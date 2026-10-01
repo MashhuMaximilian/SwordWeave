@@ -1026,7 +1026,7 @@ function readCharacterStat(
     case "proficiency_bonus":
       return typeof character.custom["proficiency_bonus"] === "number"
         ? character.custom["proficiency_bonus"]
-        : Math.floor((character.vitalityMax + 30) / 20);
+        : undefined;
     case "physical":
     case "mental":
     case "magical":
@@ -1043,30 +1043,23 @@ function readCharacterStat(
     case "intuition":
       return character.practices[stat];
     case "attack_bonus":
-      // MVP alias — the engine math is the same as save_dc until the
-      // proper attack_roll math is wired in a later phase.
-      return character.saveDc;
+      return typeof character.custom["attack_bonus"] === "number"
+        ? character.custom["attack_bonus"] : undefined;
     case "physical_save":
     case "mental_save":
     case "magical_save": {
-      // MVP: save DC = 8 + proficiency bonus. The full save math
-      // (8 + attribute + prof + save modifiers) lives in
-      // aggregateCharacterSheet's defense_dc walk; we don't have
-      // that wired here, so we approximate with 8 + PB.
-      return 8 + Math.floor((character.vitalityMax + 30) / 20);
+      const key = `${stat.slice(0, -5)}_saving_throw`;
+      return typeof character.custom[key] === "number"
+        ? character.custom[key] : undefined;
     }
     case "any_save":
-      return Math.max(
-        character.attributes.physical,
-        character.attributes.mental,
-        character.attributes.magical,
+    case "all_saves": {
+      const saves = ["physical", "mental", "magical"].map(
+        (attribute) => character.custom[`${attribute}_saving_throw`],
       );
-    case "all_saves":
-      return Math.min(
-        character.attributes.physical,
-        character.attributes.mental,
-        character.attributes.magical,
-      );
+      if (!saves.every((save): save is number => typeof save === "number")) return undefined;
+      return stat === "any_save" ? Math.max(...saves) : Math.min(...saves);
+    }
     case "any_attribute":
       return Math.max(
         character.attributes.physical,

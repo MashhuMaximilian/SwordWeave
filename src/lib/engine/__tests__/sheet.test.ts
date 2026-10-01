@@ -64,14 +64,9 @@ describe("aggregateCharacterSheet", () => {
     expect(sheet.vitality.max).toBe((10 + 5) * 5 - 3);
   });
 
-  it("computes defensive DCs (5 + attr + PB if proficient)", () => {
+  it("computes one DC from the proficient attribute", () => {
     const sheet = aggregateCharacterSheet(baseInput());
-    const physical = sheet.defensiveDCs.find((d) => d.attribute === "PHYSICAL");
-    const mental = sheet.defensiveDCs.find((d) => d.attribute === "MENTAL");
-    // PHYSICAL is proficient attr, gets PB
-    expect(physical?.dc).toBe(5 + 3 + 2); // 10
-    // MENTAL is not proficient, no PB
-    expect(mental?.dc).toBe(5 + 4 + 0); // 9
+    expect(sheet.dc).toBe(5 + 3 + 2);
   });
 
   it("flags encumbrance when load exceeds capacity", () => {
@@ -644,12 +639,10 @@ describe("aggregateCharacterSheet — i2 finish (attribute + DC walks)", () => {
         ],
       }),
     );
-    const physical = sheet.defensiveDCs.find((d) => d.attribute === "PHYSICAL");
-    // Base: 5 + 3 + 2 (PB) = 10. Plus 1 = 11.
-    expect(physical?.dc).toBe(11);
+    expect(sheet.dc).toBe(11);
   });
 
-  it("defense_dc: mental (non-proficient) starts at 5 + attr, plus primitive contributions", () => {
+  it("legacy mental defense grants the single DC even when Physical is chosen", () => {
     const sheet = aggregateCharacterSheet(
       baseInput({
         attrProficient: "PHYSICAL",
@@ -679,9 +672,8 @@ describe("aggregateCharacterSheet — i2 finish (attribute + DC walks)", () => {
         ],
       }),
     );
-    const mental = sheet.defensiveDCs.find((d) => d.attribute === "MENTAL");
-    // Base: 5 + 4 + 0 (no PB) = 9. Plus 2 = 11.
-    expect(mental?.dc).toBe(11);
+    // The legacy target is global; base uses chosen Physical (3).
+    expect(sheet.dc).toBe(12);
   });
 });
 
@@ -705,22 +697,19 @@ describe("aggregateCharacterSheet — saving throws + save DC (R3-Q1 split)", ()
     expect(st?.bonus).toBe(4);
   });
 
-  it("saveDC PHYSICAL = 8 + physical + PB (proficient)", () => {
+  it("DC = 5 + chosen Physical + PB", () => {
     const sheet = aggregateCharacterSheet(
       baseInput({ attrPhysical: 3, attrProficient: "PHYSICAL" }),
     );
-    const sdc = sheet.saveDCs.find((s) => s.attribute === "PHYSICAL");
-    // 8 + 3 + 2 = 13
-    expect(sdc?.dc).toBe(13);
+    expect(sheet.dc).toBe(10);
   });
 
-  it("saveDC MENTAL = 8 + mental (not proficient)", () => {
+  it("Mental saving throw does not create another DC", () => {
     const sheet = aggregateCharacterSheet(
       baseInput({ attrMental: 4, attrProficient: "PHYSICAL" }),
     );
-    const sdc = sheet.saveDCs.find((s) => s.attribute === "MENTAL");
-    // 8 + 4 + 0 = 12
-    expect(sdc?.dc).toBe(12);
+    expect(sheet.dc).toBe(10);
+    expect(sheet.savingThrows.find((s) => s.attribute === "MENTAL")?.bonus).toBe(4);
   });
 
   it("savingThrow primitive modifier adds to ST", () => {
@@ -788,9 +777,7 @@ describe("aggregateCharacterSheet — saving throws + save DC (R3-Q1 split)", ()
         ],
       }),
     );
-    const sdc = sheet.saveDCs.find((s) => s.attribute === "PHYSICAL");
-    // (8 + 3 + 2 PB) + 1 primitive = 14
-    expect(sdc?.dc).toBe(14);
+    expect(sheet.dc).toBe(11);
   });
 });
 

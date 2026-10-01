@@ -16,7 +16,7 @@ config({ path: ".env.local", quiet: true });
 type PrimitiveRow = typeof primitives.$inferSelect;
 type Patch = Partial<Pick<PrimitiveRow,
   "hardModifiers" | "mechanicalRule" | "mechanicalOutputText" | "narrativeRule" |
-  "isMirrorable" | "mirrorVector" | "mirrorBuCredit"
+  "isMirrorable" | "mirrorVector" | "mirrorBuCredit" | "isPublic"
 >>;
 
 const numeric = (target: string, value: number, scope?: string): HardModifier => ({
@@ -56,6 +56,16 @@ const repairs: ReadonlyArray<{ id: number; priorVersion: number; patch: Patch }>
       isMirrorable: true, mirrorVector: "VARIABLE_VECTOR", mirrorBuCredit: 4,
     },
   },
+  ...([382, 383, 384, 385] as const).map((id) => ({
+    id, priorVersion: 3,
+    patch: {
+      isPublic: false,
+      mechanicalRule: { family: "UNIVERSAL_MODIFIER", target: "Save DC", operation: "add", value: 1, recipient: "SELF" },
+      mechanicalOutputText: "Add +1 to the single DC (legacy catalog entry).",
+      narrativeRule: "This retired entry increases the character's one DC by 1 while active. It applies to attacks against the character and saves their effects force. It does not change Physical, Mental, or Magical saving throw bonuses. Use Focused Presence for new builds.",
+      hardModifiers: [numeric("save_dc", 1)],
+    } satisfies Patch,
+  })),
   {
     id: 218, priorVersion: 3,
     patch: {
@@ -116,7 +126,9 @@ function checkCandidate(row: PrimitiveRow): void {
   const total = (mirrored = false) => resolveModifiers({ ...base, slots: [testSlot(row, mirrored)] }).totals;
   const expected = new Map<number, [string, number, number?]>([
     [54, ["attack_bonus", 6, 4]], [65, ["attack_bonus", 6, 4]],
-    [22391, ["save_dc", 14, 12]], [22393, ["skill_practice_check.awareness", 2, -2]],
+    [22391, ["save_dc", 11, 9]], [22393, ["skill_practice_check.awareness", 2, -2]],
+    [382, ["save_dc", 11]], [383, ["save_dc", 11]],
+    [384, ["save_dc", 11]], [385, ["save_dc", 11]],
     [218, ["speed.walking_speed", 10, -10]],
     [22492, ["attribute.physical", 5, 3]], [22493, ["attribute.mental", 4, 2]],
     [22494, ["attribute.magical", 3, 1]],

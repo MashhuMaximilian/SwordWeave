@@ -625,7 +625,7 @@ export function computeAllSavingThrows(
 // =============================================================================
 
 /**
- * Save DC = 8 + attribute modifier + PB (if proficient in that attribute).
+ * DC = 5 + attribute + PB (if proficient in that attribute).
  *
  * Phase 8.I i2 finish (Mashu 2026-08-06): per R3-Q1, separate
  * from saving_throw. Enemies roll against this number when
@@ -642,7 +642,7 @@ export function computeSaveDC(
   const attrValue = attributes[attribute.toLowerCase() as keyof Attributes];
   const isProficient = attrProficient === attribute;
   const pb = isProficient ? proficiencyBonus(level) : 0;
-  let dc = 8 + attrValue + pb;
+  let dc = 5 + attrValue + pb;
 
   if (primitiveLinks !== undefined) {
     dc += sumPrimitiveContributions(

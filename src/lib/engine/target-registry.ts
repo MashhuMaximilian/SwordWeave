@@ -9,8 +9,9 @@
  *   - Save value       (d20 modifier when making a save)
  *   - Save DC          (threshold enemies must meet against you)
  *
- * If Phase 9 changes the save DC formula (e.g., 8 + PB instead of
- * 5 + PB), it's one file. Per Mashu 2026-07-28:
+ * Current rule: one DC = 5 + PB + chosen attribute + DC modifiers.
+ * Physical, Mental, and Magical saving throw bonuses are separate.
+ * Earlier per-attribute DC helpers remain as compatibility entry points.
  *
  *   "Each character has a save DC = 5 + modifier of attribute
  *    you are proficient in (PB included) + primitives."
@@ -57,9 +58,9 @@ export const ATTR_TARGETS = {
 } as const;
 
 export const SAVE_TARGETS = {
-  physical: "defense_dc",
-  mental: "defense_dc",
-  magical: "defense_dc",
+  physical: "physical_saving_throw",
+  mental: "mental_saving_throw",
+  magical: "magical_saving_throw",
 } as const;
 
 export const VITALITY_TARGETS = {
@@ -118,57 +119,39 @@ export function resolveAttributeModifier(
  *
  *   save = attribute modifier + (PB if proficient) + primitive contributions
  *
- * "Primitive contributions" target the SCOPED save axis
- * (`defense_dc.physical` / `defense_dc.mental` / `defense_dc.magical`).
- * Per Mashu: PB is ONLY added for the proficient attribute.
+ * Primitive contributions target the three saving throw axes.
  */
 export function resolveSaveValue(
   input: ResolvedCharacterInput,
   attr: Attribute,
 ): { total: number; contributions: readonly ModifierContribution[] } {
-  // Phase 8.3g v2 (Mashu 2026-07-28): the save VALUE is
-  // the d20 modifier the character adds when making a
-  // save — NOT the DC. The formula is just:
-  //   save = attribute modifier + (PB if proficient)
-  // The `defense_dc.<attr>` primitives bump the DC, not
-  // the character's own save roll. Earlier code
-  // incorrectly added the DC primitives to the save
-  // value, which inflated it.
-  const mod = resolveAttributeModifier(input, attr);
-  const pb = input.proficientAttribute === attr ? input.pb : 0;
+  // The resolver keeps the saving throw bonus distinct from the shared DC.
+  const r = resolveModifiers(input);
+  const target = SAVE_TARGETS[attr];
   return {
-    total: mod.total + pb,
-    contributions: mod.contributions,
+    total: r.totals[target] ?? 0,
+    contributions: r.byTarget[target] ?? [],
   };
 }
 
 /**
- * Resolve the **save DC** (the threshold enemies must meet when
- * forcing a save on the character).
- *
- *   dc = 5 + PB + attribute modifier + primitive contributions
- *
- * Primitive contributions target the SCOPED save axis
- * (`defense_dc.<attr>`).
+ * Compatibility helper. All attributes return the same single DC;
+ * input.chosenAttribute selects its scaling attribute.
  */
 export function resolveSaveDc(
   input: ResolvedCharacterInput,
-  attr: Attribute,
+  _attr: Attribute,
 ): { total: number; contributions: readonly ModifierContribution[] } {
-  const mod = resolveAttributeModifier(input, attr);
   const r = resolveModifiers(input);
-  const scopedTarget = `${SAVE_TARGETS[attr]}.${attr}`;
-  const primitiveDelta = r.totals[scopedTarget] ?? 0;
-  const primitiveContribs = r.byTarget[scopedTarget] ?? [];
   return {
-    total: 5 + input.pb + mod.total + primitiveDelta,
-    contributions: [...mod.contributions, ...primitiveContribs],
+    total: r.totals["save_dc"] ?? 5,
+    contributions: r.byTarget["save_dc"] ?? [],
   };
 }
 
 /**
- * Resolve the **primary save DC** (the single DC for the character,
- * derived from the proficient attribute).
+ * Resolve the single DC for the character, using the chosen proficient
+ * attribute (or the creation choice by default).
  *
  *   dc = 5 + PB + (proficient attribute modifier) + primitive contributions
  *
@@ -177,40 +160,27 @@ export function resolveSaveDc(
  * (the one that adds PB to saves). If `proficientAttribute` is null,
  * falls back to physical.
  *
- * Primitive contributions are taken from `SAVE_TARGETS[proficientAttr]`
- * — primitives that target the specific attribute's defense.
- *
  * Used by the Vitality card and Quick bar to display the single DC
  * inline with the vitality number.
  */
 export function resolvePrimarySaveDc(
   input: ResolvedCharacterInput,
 ): { total: number; contributions: readonly ModifierContribution[]; attr: Attribute; scopedTarget: string } {
-  const attr: Attribute = input.proficientAttribute ?? "physical";
-  // Phase 8.3g v2 (Mashu 2026-07-28): the SCOPED target
-  // (`defense_dc.mental`) is what the resolver actually
-  // populates byTarget with. Looking up `defense_dc`
-  // (unscoped) returns nothing for characters that only
-  // have the scoped form. The modal uses `scopedTarget`
-  // to find the per-primitive attribution list.
-  const scopedTarget = `${SAVE_TARGETS[attr]}.${attr}`;
+  const attr: Attribute = input.chosenAttribute ?? input.proficientAttribute ?? "physical";
+  // `save_dc` is the displayed axis for attacks and forced saves.
+  const scopedTarget = "save_dc";
   const r = resolveModifiers(input);
-  const mod = resolveAttributeModifier(input, attr);
-  const primitiveDelta = r.totals[scopedTarget] ?? 0;
-  const primitiveContribs = r.byTarget[scopedTarget] ?? [];
   return {
     attr,
     scopedTarget,
-    total: 5 + input.pb + mod.total + primitiveDelta,
-    contributions: [...mod.contributions, ...primitiveContribs],
+    total: r.totals[scopedTarget] ?? 5,
+    contributions: r.byTarget[scopedTarget] ?? [],
   };
 }
 
 /**
- * Resolve all three saves at once. Used by the Vitality card and
- * the Quick Practices bar. NOTE: the per-attribute DC values are
- * exposed for debugging, but the **primary** save DC (for the
- * character) is always `resolvePrimarySaveDc()`'s output.
+ * Resolve all three saving throw bonuses at once. `dc` is repeated
+ * solely for callers of this older return shape; it is one shared DC.
  */
 export function resolveAllSaves(
   input: ResolvedCharacterInput,

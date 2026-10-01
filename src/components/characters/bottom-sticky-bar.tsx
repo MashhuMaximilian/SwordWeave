@@ -402,6 +402,7 @@ export interface BottomStickyBarProps {
   readonly proficientAttribute: "PHYSICAL" | "MENTAL" | "MAGICAL" | null;
   readonly attributeModifiers?: { physical: number; mental: number; magical: number };
   readonly resolver?: ResolvedModifiers;
+  readonly resolveForAttribute?: (attribute: "physical" | "mental" | "magical") => ResolvedModifiers;
   readonly practices: ReadonlyArray<PracticeRowForSticky>;
 
   // Phase 8.4: identity strip data (moved from Overview tab)
@@ -477,6 +478,7 @@ export function BottomStickyBar({
   proficientAttribute,
   attributeModifiers,
   resolver,
+  resolveForAttribute,
   practices,
   lineageName,
   lineageDescription,
@@ -582,19 +584,16 @@ export function BottomStickyBar({
   //
   // Phase 8.L round 79: engine SEEDS totals[attack_bonus] and
   // totals[save_dc] with their base values (PB + attr mod for
-  // attack; 8 + PB + attr mod for save DC). So the card reads
+  // attack; 5 + PB + attr mod for DC). So the card reads
   // totals[...] DIRECTLY, without adding the base again. This
   // also means operations like divide/multiply work correctly
   // because the engine operates on the seeded base.
-  const primaryDc = resolver?.totals["save_dc"] ?? 8 + pb + primaryMod;
-
   // Attack Bonus = PB + PrimaryAttribute mod + primitive bonuses
   // The single attack_bonus target already includes the primitive
   // contributions for the chosen attribute AND is seeded with
   // the base (PB + chosen attr mod).
   const atkFloor = findFloor(resolver?.byTarget ?? {}, "attack_bonus");
   const atkCeiling = findCeiling(resolver?.byTarget ?? {}, "attack_bonus");
-  const primaryAttackBonus = resolver?.totals["attack_bonus"] ?? pb + primaryMod;
 
   // Phase 8.M: selector state for multi-attribute attack_bonus / save_dc.
   // Default to the proficient attribute (or physical fallback). User
@@ -637,7 +636,9 @@ export function BottomStickyBar({
     for (const attr of ["physical", "mental", "magical"] as const) {
       if (out.includes(attr)) continue;
       const hasGrant = (resolver?.byTarget?.[`${attr}_saving_throw`] ?? [])
-        .some((c) => c.op === "add" && c.value === pb && !(c.tags ?? []).includes("expertise"));
+        .some((c) => !c.inhibited && c.conditionActive !== false &&
+          ["proficiency", "pb", "proficiency_bonus"].includes(grantedKeyword(c.rawValue) ?? "") &&
+          !(c.tags ?? []).includes("expertise"));
       if (hasGrant) out.push(attr);
     }
     return out;
@@ -650,6 +651,16 @@ export function BottomStickyBar({
   // Phase 8.L round 137 (Mashu): same multi-attr expansion.
   const saveAttrsWithPrimitives = attrsWithProfGrant.slice();
   const showSaveSelector = saveAttrsWithPrimitives.length > 1;
+  const effectiveAttackAttr = atkAttrsWithPrimitives.includes(chosenAttackAttr)
+    ? chosenAttackAttr : primaryAttr;
+  const effectiveDcAttr = saveAttrsWithPrimitives.includes(chosenSaveAttr)
+    ? chosenSaveAttr : primaryAttr;
+  const attackResolver = effectiveAttackAttr === primaryAttr || !resolveForAttribute
+    ? resolver : resolveForAttribute(effectiveAttackAttr);
+  const dcResolver = effectiveDcAttr === primaryAttr || !resolveForAttribute
+    ? resolver : resolveForAttribute(effectiveDcAttr);
+  const primaryAttackBonus = attackResolver?.totals["attack_bonus"] ?? pb + primaryMod;
+  const primaryDc = dcResolver?.totals["save_dc"] ?? 5 + pb + primaryMod;
 
   const PRACTICE_ATTR_LABEL: Record<"PHYSICAL" | "MENTAL" | "MAGICAL", string> = {
     PHYSICAL: "Physical",
@@ -1373,45 +1384,35 @@ export function BottomStickyBar({
           // attributes, the Save DC modal reads from the chosen
           // attribute (selected via the dropdown below).
           (() => {
-            const dcAttr = (saveAttrsWithPrimitives.includes(chosenSaveAttr)
-              ? chosenSaveAttr
-              : primaryAttr) as "physical" | "mental" | "magical";
+            const dcAttr = effectiveDcAttr;
             const dcAttrLabel =
               dcAttr === "physical" ? "PHYSICAL" :
               dcAttr === "mental" ? "MENTAL" : "MAGICAL";
             // Phase 8.L round 82: dcTotal now reads directly from
             // resolver.totals["save_dc"], which the engine seeds
-            // with 8+PB+attr_mod and includes per-attr + direct
+            // with 5+PB+current attribute and includes direct
             // contributions. The previous `5 + pb + dcMod +
             // dcPrimitiveBonus` formula was double-counting the
             // base. Note: dcMod was the FULL attribute value (not
             // the modifier) — another bug masked by the base=5.
-            // Phase 8.L round 109 (Mashu): the engine seeds
-            // save_dc with the RAW attribute (not computed),
-            // so the breakdown needs to include that raw value.
-            const dcAttrBase =
+            // The chosen attribute includes its active primitives.
+            const dcAttribute =
               dcAttr === "physical"
-                ? baseAttributes?.physical ?? physical
+                ? physMod
                 : dcAttr === "mental"
-                  ? baseAttributes?.mental ?? mental
-                  : baseAttributes?.magical ?? magical;
-            const dcTotal = resolver?.totals["save_dc"] ?? 8 + pb + dcAttrBase;
+                  ? mentMod
+                  : magiMod;
+            const dcTotal = dcResolver?.totals["save_dc"] ?? 5 + pb + dcAttribute;
             return (
           <FormulaModal
             title={`DC (${dcAttrLabel})`}
             subtitle="from the chosen attribute"
             total={dcTotal}
-            formula={`Start at 8, add proficiency bonus and the ${dcAttrLabel.toLowerCase()} attribute, then apply DC primitives.`}
+            formula={`Start at 5, add proficiency bonus and the ${dcAttrLabel.toLowerCase()} attribute, then apply DC primitives.`}
             breakdown={[
-              { label: "Base", value: 8 },
+              { label: "Base", value: 5 },
               { label: "PB", value: pb },
-              // Phase 8.L round 109 (Mashu): include the raw
-              // attribute value as a step. The engine uses RAW
-              // attr (not computed) for save_dc, so this is the
-              // value the engine adds. Without this step, the
-              // breakdown sum doesn't match the displayed total
-              // when there are save_dc primitives.
-              { label: `${dcAttrLabel} attribute`, value: dcAttrBase },
+              { label: `${dcAttrLabel} attribute`, value: dcAttribute },
               // Phase 8.L round 88: dcTotal already includes the
               // base (8+PB+chosen_attr) from the engine seed. So
               // we only show primitive contributions here, not the
@@ -1423,9 +1424,9 @@ export function BottomStickyBar({
               // the user's divide-by-3 condition would be invisible
               // and the breakdown sum would not match the displayed
               // total (which is divided).
-              ...contributionsToSteps(`defense_dc.${dcAttr}`, resolver_),
-              ...contributionsToSteps(`save_dc.${dcAttr}`, resolver_),
-              ...contributionsToSteps(`save_dc`, resolver_),
+              ...contributionsToSteps(`defense_dc.${dcAttr}`, dcResolver ?? resolver_),
+              ...contributionsToSteps(`save_dc.${dcAttr}`, dcResolver ?? resolver_),
+              ...contributionsToSteps(`save_dc`, dcResolver ?? resolver_),
             ]}
             selector={
               showSaveSelector
@@ -1506,9 +1507,7 @@ export function BottomStickyBar({
           // multiple attributes, the modal reads from the chosen
           // attribute (selected via the dropdown below).
           (() => {
-            const atkAttr = (atkAttrsWithPrimitives.includes(chosenAttackAttr)
-              ? chosenAttackAttr
-              : primaryAttr) as "physical" | "mental" | "magical";
+            const atkAttr = effectiveAttackAttr;
             const atkAttrLabel =
               atkAttr === "physical" ? "PHYSICAL" :
               atkAttr === "mental" ? "MENTAL" : "MAGICAL";
@@ -1518,12 +1517,12 @@ export function BottomStickyBar({
             // "modifier" computed in the breakdown is (atkMod-10)/2.
             const atkMod = atkAttr === "physical" ? physMod :
               atkAttr === "mental" ? mentMod : magiMod;
-            const atkTotal = resolver?.totals["attack_bonus"] ?? pb;
+            const atkTotal = attackResolver?.totals["attack_bonus"] ?? pb;
             const atkSelectorFloor = findFloor(
-              resolver?.byTarget ?? {}, `attack_bonus.${atkAttr}`,
+              attackResolver?.byTarget ?? {}, `attack_bonus.${atkAttr}`,
             );
             const atkSelectorCeiling = findCeiling(
-              resolver?.byTarget ?? {}, `attack_bonus.${atkAttr}`,
+              attackResolver?.byTarget ?? {}, `attack_bonus.${atkAttr}`,
             );
             return (
           // Phase 8.5 H6: Attack Bonus popup. Mirrors the PB popup
@@ -1558,7 +1557,7 @@ export function BottomStickyBar({
               // attack_bonus (parent). The L81 reapply merges
               // per-attr entries into the parent, causing the
               // duplicate. Removed the duplicate.
-              ...contributionsToSteps(`attack_bonus.${atkAttr}`, resolver_),
+              ...contributionsToSteps(`attack_bonus.${atkAttr}`, attackResolver ?? resolver_),
               ...(atkSelectorFloor !== null && atkTotal < atkSelectorFloor
                 ? [{ label: `Minimum to-hit (floor ${atkSelectorFloor})`, value: atkSelectorFloor }]
                 : []),

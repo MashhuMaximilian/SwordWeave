@@ -51,7 +51,7 @@ export async function readDraftSheet(characterId: string, currentGraph?: Workspa
   return aggregateCharacterSheet({ ...input, conditionContext: { character: {
     vitality: row.currentVitality ?? base.vitality.max,
     vitalityMax: base.vitality.max,
-    saveDc: base.saveDCs.find(s => s.attribute === (row.attrProficient ?? "PHYSICAL"))?.dc ?? 5,
+    saveDc: base.dc,
     blockValue: base.behaviorVariables.find(b => b.key === "blockvalue")?.value ?? 0,
     attributes: base.attributes,
     practices: Object.fromEntries(base.practices.map(p => [p.practice, p.total])) as never,
@@ -59,6 +59,11 @@ export async function readDraftSheet(characterId: string, currentGraph?: Workspa
       ...base.practices.filter(p => p.attribute === (row.attrProficient ?? "PHYSICAL")).map(p => p.practice),
       (row.attrProficient ?? "PHYSICAL").toLowerCase(),
     ]),
-    flags: new Set(), custom: {},
+    flags: new Set(), custom: {
+      proficiency_bonus: base.proficiencyBonus,
+      ...Object.fromEntries(base.savingThrows.map((save) => [
+        `${save.attribute.toLowerCase()}_saving_throw`, save.bonus,
+      ])),
+    },
   } } });
 }

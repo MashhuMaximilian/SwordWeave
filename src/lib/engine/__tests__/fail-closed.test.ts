@@ -8,8 +8,8 @@
  * fire on every roll. Mashu wanted fail-CLOSED instead — if we
  * can't prove the predicate, suppress the bonus.
  *
- * This file pins that contract. Save DC seed is 8 + PB(3) +
- * chosenAttr(physical=10) = 21.
+ * This file pins that contract. DC seed is 5 + PB(3) +
+ * chosenAttr(physical=10) = 18.
  */
 
 import { describe, expect, it } from "vitest";
@@ -84,11 +84,11 @@ describe("resolveModifiers — fail closed on non-computable conditions", () => 
 
     const result = resolveModifiers(input);
 
-    // Without fail-closed: save_dc = 21 + (-5) = 16.
-    // With fail-closed: save_dc stays at 21 because the
+    // Without fail-closed: save_dc = 18 + (-5) = 13.
+    // With fail-closed: save_dc stays at 18 because the
     // engine can't prove target:exposed and refuses to apply
     // the unverified modifier.
-    expect(result.totals["save_dc"]).toBe(21);
+    expect(result.totals["save_dc"]).toBe(18);
   });
 
   it("applies target:exposed modifier when target context with the tag IS present", () => {
@@ -134,7 +134,7 @@ describe("resolveModifiers — fail closed on non-computable conditions", () => 
 
     const result = resolveModifiers(input);
 
-    // target:exposed evaluates TRUE — save_dc = 21 + (-5) = 16.
-    expect(result.totals["save_dc"]).toBe(16);
+    // target:exposed evaluates TRUE — save_dc = 18 + (-5) = 13.
+    expect(result.totals["save_dc"]).toBe(13);
   });
 });

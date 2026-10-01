@@ -78,20 +78,68 @@ const ADD_TO_SAVE_PHYS: HardModifier = {
 // =============================================================================
 
 describe("resolveModifiers", () => {
+  it("uses one chosen-attribute DC while keeping saving throws separate", () => {
+    const input: ResolvedCharacterInput = {
+      ...BASE_INPUT,
+      proficientAttribute: "physical",
+      chosenAttribute: "mental",
+      attributes: { physical: 4, mental: 2, magical: 1 },
+      slots: [],
+    };
+    const mental = resolveModifiers(input);
+    const physical = resolveModifiers({ ...input, chosenAttribute: "physical" });
+    expect(mental.totals["save_dc"]).toBe(10);
+    expect(physical.totals["save_dc"]).toBe(12);
+    for (const attr of ["physical", "mental", "magical"] as const) {
+      expect(mental.totals[`${attr}_saving_throw`]).toBe(physical.totals[`${attr}_saving_throw`]);
+    }
+    expect(mental.totals["physical_saving_throw"]).toBe(7);
+    expect(mental.totals["mental_saving_throw"]).toBe(2);
+    expect(mental.totals["magical_saving_throw"]).toBe(1);
+  });
+
+  it("includes an active selected-attribute primitive in DC", () => {
+    const input: ResolvedCharacterInput = {
+      ...BASE_INPUT,
+      pb: 3,
+      proficientAttribute: "physical",
+      chosenAttribute: "physical",
+      attributes: { physical: 2, mental: 2, magical: 2 },
+      slots: [makeSlot({ primitiveId: 22492, hardModifiers: [{
+        kind: "modify", target: "attribute", operation: "add", value: 3,
+        metadata: { targetScope: { layer: "ATTRIBUTE", values: ["PHYSICAL"] } },
+      }] })],
+    };
+    expect(resolveModifiers(input).totals["save_dc"]).toBe(13); // 5 + 3 PB + (2 + 3 Physical)
+    expect(resolveModifiers({ ...input, slots: [] }).totals["save_dc"]).toBe(10);
+  });
+
+  it("applies a legacy attribute defense and a global DC bonus to the same DC", () => {
+    const slots = [
+      makeSlot({ primitiveId: 382, hardModifiers: [{ kind: "modify", target: "defense_dc.physical", operation: "add", value: 1 }] }),
+      makeSlot({ primitiveId: 22391, hardModifiers: [{ kind: "modify", target: "save_dc", operation: "add", value: 1 }] }),
+    ];
+    const input = { ...BASE_INPUT, chosenAttribute: "mental" as const, slots };
+    const result = resolveModifiers(input);
+    expect(result.totals["save_dc"]).toBe(20);
+    expect(result.totals["physical_saving_throw"]).toBe(10);
+    expect(result.totals["mental_saving_throw"]).toBe(10);
+  });
+
   it("returns seeded base attributes + empty byTarget when no slots are slotted", () => {
     const r = resolveModifiers(BASE_INPUT);
     // Phase 8.L round 54: base attributes seeded into totals.
     // Phase 8.L round 79: attack_bonus and save_dc are ALSO
     // seeded with their base values (PB + chosen attr mod for
-    // attack; 8 + PB + chosen attr mod for save DC). With
+    // attack; 5 + PB + chosen attr mod for DC). With
     // BASE_INPUT (pb=3, attrs=10), chosenAttr defaults to
-    // physical, so attack_bonus = 13 and save_dc = 21.
+    // physical, so attack_bonus = 13 and save_dc = 18.
     expect(r.totals["attribute.physical"]).toBe(10);
     expect(r.totals["attribute.mental"]).toBe(10);
     expect(r.totals["attribute.magical"]).toBe(10);
     expect(r.totals["attack_bonus"]).toBe(13);
-    // L84: seed uses modifier (attr-10)/2 = 0. 8 + PB(3) + mod(0) = 11.
-    expect(r.totals["save_dc"]).toBe(21);
+    // The full attribute value is used: 5 + PB(3) + 10 = 18.
+    expect(r.totals["save_dc"]).toBe(18);
     expect(r.mirrorCosts).toEqual([]);
   });
 
@@ -891,7 +939,7 @@ describe("L78 action_roll sub-target mirroring (with seed)", () => {
     // Seed = 0 + 10 = 10. Plus 2 = 12.
     expect(result.totals["physical_saving_throw"]).toBe(12);
     // save_dc UNCHANGED (no action_roll.<save_sub> contribution).
-    expect(result.totals["save_dc"]).toBe(21);
+    expect(result.totals["save_dc"]).toBe(18);
   });
 
   it("mental_save mirrors to mental_saving_throw (per-attr, not chosenAttr)", () => {
@@ -954,7 +1002,7 @@ describe("L79 divide/multiply on seeded save_dc / attack_bonus", () => {
     });
     const result = resolveModifiers({ ...BASE_INPUT, slots: [slot] });
     // 21 / 2 = 10.5 → roundUp → 11
-    expect(result.totals["save_dc"]).toBe(11);
+    expect(result.totals["save_dc"]).toBe(9);
   });
 
   it("multiply 2 doubles attack_bonus", () => {
@@ -1011,7 +1059,7 @@ describe("L81 parent totals mirror + reapply direct modifier (user data)", () =>
     });
     // BASE_INPUT: pb=3, attrs=10. save_dc.physical = 8+3+10 = 21.
     // +1 +2 = 24. /3 = 8.
-    expect(result.totals["save_dc"]).toBe(8);
+    expect(result.totals["save_dc"]).toBe(7);
   });
 
   it("attack_roll subtract 5 reaches attack_bonus via mirror", () => {

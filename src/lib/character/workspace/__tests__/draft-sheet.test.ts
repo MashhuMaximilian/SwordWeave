@@ -11,7 +11,7 @@ beforeEach(()=>{
   vi.clearAllMocks();
   mocks.character.mockResolvedValue({id:"character",level:1,primitiveLinks:[],capabilityLinks:[],itemLinks:[],practiceSlices:{},attrProficient:"PHYSICAL",currentVitality:null});
   mocks.read.mockResolvedValue(graph);mocks.pins.mockResolvedValue([]);mocks.conditions.mockResolvedValue([]);
-  mocks.aggregate.mockReturnValue({vitality:{max:12},saveDCs:[],behaviorVariables:[],attributes:{},practices:[]});
+  mocks.aggregate.mockReturnValue({vitality:{max:12},dc:10,proficiencyBonus:2,savingThrows:[],behaviorVariables:[],attributes:{},practices:[]});
 });
 describe("draft sheet graph reuse",()=>{
   it("uses the supplied transaction graph without a redundant workspace read",async()=>{

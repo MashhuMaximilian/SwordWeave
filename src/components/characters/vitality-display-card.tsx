@@ -63,9 +63,9 @@ const ATTR_TARGET: Record<Attribute, string> = {
 // (`defense_dc.physical` etc.). The modal needs the
 // scoped key to look up `byTarget[target]`.
 const SAVE_TARGET: Record<Attribute, string> = {
-  physical: "defense_dc.physical",
-  mental: "defense_dc.mental",
-  magical: "defense_dc.magical",
+  physical: "physical_saving_throw",
+  mental: "mental_saving_throw",
+  magical: "magical_saving_throw",
 };
 
 const MAX_VITALITY_TARGET = "max_vitality";
@@ -123,7 +123,7 @@ export function VitalityDisplayCard({
         </div>
         <button
           type="button"
-          onClick={() => setProvenanceTarget(SAVE_TARGET[primaryDc.attr])}
+          onClick={() => setProvenanceTarget("save_dc")}
           // Phase 8.3g v4 (Mashu 2026-07-28): regular card
           // (no teal BG). Just the number is teal. Per
           // Mashu: "Keep the values teal but the
@@ -319,25 +319,38 @@ export function VitalityDisplayCard({
             ]}
             onClose={closeProvenance}
           />
-        ) : provenanceTarget.startsWith("defense_dc.") ? (
+        ) : provenanceTarget === "save_dc" ? (
           <FormulaModal
-            title={`${ATTR_FULL[provenanceTarget.split(".").pop() as Attribute]} save`}
+            title="DC"
+            total={primaryDc.total}
+            formula="DC = 5 + PB + chosen attribute + DC primitives"
+            breakdown={[
+              { label: "Base", value: 5 },
+              { label: "PB", value: pb },
+              { label: `${ATTR_FULL[primaryDc.attr]} attribute`, value: resolveAttributeModifier(resolverInput, primaryDc.attr).total },
+              ...contributionsToSteps("save_dc", resolver),
+            ]}
+            onClose={closeProvenance}
+          />
+        ) : Object.values(SAVE_TARGET).includes(provenanceTarget) ? (
+          <FormulaModal
+            title={`${ATTR_FULL[Object.entries(SAVE_TARGET).find(([, target]) => target === provenanceTarget)?.[0] as Attribute]} save`}
             total={resolveSaveValue(
               resolverInput,
-              provenanceTarget.split(".").pop() as Attribute,
+              Object.entries(SAVE_TARGET).find(([, target]) => target === provenanceTarget)?.[0] as Attribute,
             ).total}
-            formula={`${ATTR_FULL[provenanceTarget.split(".").pop() as Attribute]} save = attribute mod + PB (if proficient) + primitive save contributions`}
+            formula="Saving throw bonus = attribute + PB (if trained) + modifiers; roll d20 + this bonus against DC."
             breakdown={[
               {
-                label: `${ATTR_FULL[provenanceTarget.split(".").pop() as Attribute]} modifier`,
+                label: "Attribute",
                 value: resolveAttributeModifier(
                   resolverInput,
-                  provenanceTarget.split(".").pop() as Attribute,
+                  Object.entries(SAVE_TARGET).find(([, target]) => target === provenanceTarget)?.[0] as Attribute,
                 ).total,
               },
               ...contributionsToSteps(provenanceTarget, resolver),
               ...(proficientAttribute?.toLowerCase() ===
-              (provenanceTarget.split(".").pop() as Attribute).toLowerCase()
+              (Object.entries(SAVE_TARGET).find(([, target]) => target === provenanceTarget)?.[0] as Attribute).toLowerCase()
                 ? [{ label: "PB (proficient)", value: pb }]
                 : []),
             ]}

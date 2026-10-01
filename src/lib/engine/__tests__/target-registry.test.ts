@@ -75,10 +75,10 @@ describe("target constants", () => {
     expect(ATTR_TARGETS.magical).toBe("attribute");
   });
 
-  it("SAVE_TARGETS maps to canonical short axis 'defense_dc'", () => {
-    expect(SAVE_TARGETS.physical).toBe("defense_dc");
-    expect(SAVE_TARGETS.mental).toBe("defense_dc");
-    expect(SAVE_TARGETS.magical).toBe("defense_dc");
+  it("SAVE_TARGETS maps to three separate saving throws", () => {
+    expect(SAVE_TARGETS.physical).toBe("physical_saving_throw");
+    expect(SAVE_TARGETS.mental).toBe("mental_saving_throw");
+    expect(SAVE_TARGETS.magical).toBe("magical_saving_throw");
   });
 
   it("VITALITY_TARGETS exposes max + current (snake_case)", () => {
@@ -236,10 +236,10 @@ describe("resolveSaveDc", () => {
     // MENT: 5 + 6 + 5 + 0 = 16
     expect(resolveSaveDc(input, "mental").total).toBe(16);
     // MAGI: 5 + 6 + 0 + 0 = 11
-    expect(resolveSaveDc(input, "magical").total).toBe(11);
+    expect(resolveSaveDc(input, "magical").total).toBe(16);
   });
 
-  it("includes primitive contributions", () => {
+  it("applies a global DC primitive without changing saving throws", () => {
     const input: ResolvedCharacterInput = {
       ...TESSY,
       slots: [
@@ -248,7 +248,7 @@ describe("resolveSaveDc", () => {
           hardModifiers: [
             {
               kind: "modify",
-              target: `${SAVE_TARGETS.magical}.magical`,
+              target: "save_dc",
               operation: "add",
               value: 3,
             },
@@ -256,8 +256,9 @@ describe("resolveSaveDc", () => {
         }),
       ],
     };
-    // MAGI DC: 5 + 6 + 0 + 3 = 14
-    expect(resolveSaveDc(input, "magical").total).toBe(14);
+    expect(resolveSaveDc(input, "magical").total).toBe(19);
+    expect(resolveSaveDc(input, "physical").total).toBe(19);
+    expect(resolveSaveValue(input, "magical").total).toBe(0);
   });
 });
 
@@ -278,7 +279,7 @@ describe("resolveAllSaves", () => {
     // MENT: mod 5, +PB 6 (proficient), SV 11; DC 5+6+5 = 16
     expect(r.mental).toEqual({ total: 11, dc: 16 });
     // MAGI: mod 0, SV 0; DC 5+6+0 = 11
-    expect(r.magical).toEqual({ total: 0, dc: 11 });
+    expect(r.magical).toEqual({ total: 0, dc: 16 });
   });
 });
 

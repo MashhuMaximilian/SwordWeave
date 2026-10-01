@@ -168,7 +168,8 @@ describe("3. Empty scope expansion (any)", () => {
           // NO metadata — engine should expand to "any"
         },
       ]);
-      const keys = Object.keys(r.totals).filter((k) => k.startsWith(target));
+      const resolvedTarget = target === "defense_dc" ? "save_dc" : target;
+      const keys = Object.keys(r.totals).filter((k) => k.startsWith(resolvedTarget));
       console.log(`[add 2] ${target}: keys=${keys.map(k => `${k}=${r.totals[k]}`).join(", ")}`);
       expect(keys.length).toBeGreaterThan(0);
     });

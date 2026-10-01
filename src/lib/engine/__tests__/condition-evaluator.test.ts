@@ -596,26 +596,24 @@ describe("evaluateCondition — grouped stat refs (i2.6)", () => {
     ).toBe(false); // max is 5, 5 > 5 → false (strict greater)
   });
 
-  it("attack_bonus read returns the save DC value (MVP alias)", () => {
+  it("attack_bonus reads its own resolved value", () => {
     const ctx = makeCtx({
-      character: makeCharacter({ saveDc: 14 }),
+      character: makeCharacter({ saveDc: 14, custom: { attack_bonus: 12 } }),
     });
     expect(
       evaluateCondition(
         {
           kind: "tags",
-          customTags: ["actor:stat|attack_bonus|=|14"],
+          customTags: ["actor:stat|attack_bonus|=|12"],
         },
         ctx,
       ),
     ).toBe(true);
   });
 
-  it("physical_save reads a stable MVP value", () => {
-    // MVP formula: 8 + floor((vitalityMax + 30) / 20)
-    // vitalityMax=30 → 8 + floor(60/20) = 8 + 3 = 11
+  it("physical_save reads its own resolved bonus", () => {
     const ctx = makeCtx({
-      character: makeCharacter({ vitalityMax: 30 }),
+      character: makeCharacter({ vitalityMax: 30, custom: { physical_saving_throw: 11 } }),
     });
     const ps = (ctx.character as { vitalityMax: number }).vitalityMax;
     expect(ps).toBe(30);
@@ -822,6 +820,14 @@ describe("evaluateCondition — dynamic attribute axis (i2.6)", () => {
 // ---- i2.7 — new atoms from canonical PDFs ----
 
 describe("evaluateCondition — i2.7 atoms (PDFs)", () => {
+  it("compares the actual saving throw bonuses for any_save, failing closed without them", () => {
+    const condition = { kind: "tags" as const, customTags: ["actor:stat|any_save|>=|9"] };
+    expect(evaluateCondition(condition, makeCtx())).toBe(false);
+    expect(evaluateCondition(condition, makeCtx({ character: makeCharacter({
+      custom: { physical_saving_throw: 8, mental_saving_throw: 10, magical_saving_throw: 4 },
+    }) }))).toBe(true);
+  });
+
   it("speed > 25 fires when character.custom.speed is 30", () => {
     const ctx = makeCtx({
       character: makeCharacter({

@@ -6,7 +6,7 @@
  *   - BU balance (progression + item BU separate)
  *   - Practice table (10 practices with breakdown)
  *   - Vitality (max + current + percent)
- *   - Defensive DCs (per attribute)
+ *   - One DC and three attribute saving throws
  *   - Encumbrance (load + capacity + state)
  *
  * Pure function — no DB dependency. Takes pre-loaded data, returns ready-to-render.
@@ -14,7 +14,6 @@
 
 import {
   computeAllPracticeModifiers,
-  computeAllDefensiveDCs,
   type Attribute,
   type Attributes,
   type Practice,
@@ -32,7 +31,7 @@ import { resolveEquation } from "./equation-resolver";
 import { evaluateCondition, type ConditionContext } from "./condition-evaluator";
 import type { HardModifier } from "@/types/swordweave";
 import { sumPrimitiveContributions, walkPrimitiveContributionsForAxis } from "./primitive-walk";
-import { computeAllSavingThrows, computeAllSaveDCs, proficiencyBonus } from "./practices";
+import { computeAllSavingThrows, proficiencyBonus } from "./practices";
 import { resolveModifiers, type ResolvedPrimitiveSlot } from "./resolve-modifiers";
 import { resolvePracticeGrants } from "./practice-grants";
 import { SIZE_CAPACITY } from "./encumbrance";
@@ -219,19 +218,13 @@ export type CharacterSheet = {
     readonly percent: number | null;
     readonly modifiers: ReadonlyArray<VitalityModifier>;
   };
-  readonly defensiveDCs: ReadonlyArray<{
-    readonly attribute: Attribute;
-    readonly dc: number;
-  }>;
-  // Phase 8.I i2 finish: saving throws (player rolls) +
-  // save DCs (enemies roll against). Separate axes per R3-Q1.
+  /** One DC for attacks against this character and saves they force. */
+  readonly dc: number;
+  readonly proficiencyBonus: number;
+  // Each attribute has its own saving throw bonus.
   readonly savingThrows: ReadonlyArray<{
     readonly attribute: Attribute;
     readonly bonus: number;
-  }>;
-  readonly saveDCs: ReadonlyArray<{
-    readonly attribute: Attribute;
-    readonly dc: number;
   }>;
   readonly encumbrance: EncumbranceBreakdown;
   readonly practiceCount: number;
@@ -854,25 +847,13 @@ export function aggregateCharacterSheet(
       ? null
       : Math.max(0, Math.min(100, Math.round((vitalityCurrent / maxVitality) * 100)));
 
-  // Defensive DCs
-  // Phase 8.I i2 finish (Mashu 2026-08-06): walk primitive
-  // modifiers targeting defense_dc.<physical|mental|magical>
-  // and add to the base DC.
-  const dcRecord = computeAllDefensiveDCs(
-    attributes,
-    input.attrProficient,
-    input.level,
-    input.primitiveLinks,
-    input.conditionContext,
-  );
-  const defensiveDCs: Array<{ attribute: Attribute; dc: number }> = [
-    { attribute: "PHYSICAL", dc: dcRecord.physical },
-    { attribute: "MENTAL", dc: dcRecord.mental },
-    { attribute: "MAGICAL", dc: dcRecord.magical },
-  ];
+  const dc = sheetResolver.totals["save_dc"] ?? 5 +
+    (pbOverride ?? proficiencyBonus(input.level)) +
+    (input.attrProficient === "MENTAL" ? input.attrMental
+      : input.attrProficient === "MAGICAL" ? input.attrMagical
+        : input.attrPhysical);
 
-  // Phase 8.I i2 finish: saving throws (player rolls) and
-  // save DCs (enemies roll against) — separate axes per R3-Q1.
+  // Saving throws are separate from the single DC.
   // Phase 8.L round 55: pass the engine-resolved PB so PB-affecting
   // modifiers propagate to all 3 saving throws.
   const stRecord = computeAllSavingThrows(
@@ -887,18 +868,6 @@ export function aggregateCharacterSheet(
     { attribute: "PHYSICAL", bonus: stRecord.physical },
     { attribute: "MENTAL", bonus: stRecord.mental },
     { attribute: "MAGICAL", bonus: stRecord.magical },
-  ];
-  const saveDCRecord = computeAllSaveDCs(
-    attributes,
-    input.attrProficient,
-    input.level,
-    allLinks,
-    input.conditionContext,
-  );
-  const saveDCs: Array<{ attribute: Attribute; dc: number }> = [
-    { attribute: "PHYSICAL", dc: saveDCRecord.physical },
-    { attribute: "MENTAL", dc: saveDCRecord.mental },
-    { attribute: "MAGICAL", dc: saveDCRecord.magical },
   ];
 
   // Encumbrance
@@ -1240,9 +1209,9 @@ behaviorVariables.sort((a, b) => a.key.localeCompare(b.key));
       percent: vitalityPercent,
       modifiers: vitalityModifiers,
     },
-    defensiveDCs,
+    dc,
+    proficiencyBonus: pbOverride ?? proficiencyBonus(input.level),
     savingThrows,
-    saveDCs,
     encumbrance,
     speedByType: Object.fromEntries(
       Object.entries(speedByType).map(([k, v]) => [k, roundUp(v)]),

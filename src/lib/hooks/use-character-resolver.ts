@@ -102,6 +102,8 @@ export interface UseCharacterResolverInput {
 }
 
 export interface UseCharacterResolverResult {
+  /** Re-evaluate the same active slots when a proficient attribute is selected in the drawer. */
+  resolveForAttribute: (attribute: "physical" | "mental" | "magical") => ResolvedModifiers;
   maxVitality?: number;
   /** Resolved totals per target. */
   totals: ResolvedModifiers["totals"];
@@ -210,6 +212,8 @@ export function useCharacterResolver(
 
     const r = resolveModifiers(resolverInput, input.sourceNames);
     return {
+      resolveForAttribute: (attribute: "physical" | "mental" | "magical") =>
+        resolveModifiers({ ...resolverInput, chosenAttribute: attribute }, input.sourceNames),
       maxVitality: Math.max(0, Math.ceil((10 + (r.totals["proficiency_bonus"] ?? input.pb)) * input.level + (r.totals["max_vitality"] ?? 0))),
       totals: r.totals,
       byTarget: r.byTarget,

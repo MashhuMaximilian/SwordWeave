@@ -12,7 +12,7 @@ export function DraftChangeReview({preview}: {preview: ReviewPreview}) {
     ["Available BU",before.buLedger.remaining,after.buLedger.remaining],
     ["Maximum vitality",before.vitality.max,after.vitality.max],
     ["Carry capacity",before.carryCapacity,after.carryCapacity],
-    ...after.defensiveDCs.map(value => [`${value.attribute.toLowerCase()} defense`,before.defensiveDCs.find(old=>old.attribute===value.attribute)?.dc??0,value.dc] as [string,number,number]),
+    ["DC", before.dc, after.dc] as [string, number, number],
     ...after.practices.map(value=>[value.practice,before.practices.find(old=>old.practice===value.practice)?.total??0,value.total] as [string,number,number]),
     ...Object.keys(after.speedByType).map(key=>[`${key.toLowerCase()} speed`,before.speedByType[key]??0,after.speedByType[key]??0] as [string,number,number]),
   ];
