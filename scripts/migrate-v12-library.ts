@@ -229,7 +229,12 @@ async function migrate(tx:typeof db) {
     let row=existing;
     let changed=false;
     if (apply) {
-      if (existing) {
+      if (existing && AUDITED_PRIMITIVE_IDS.has(existing.id) && existing.contentHash) {
+        // Keep the reviewed expression and its hard modifier. In particular,
+        // the old template would replace save proficiency with an obsolete
+        // action_roll modifier on every build.
+        row=existing;
+      } else if (existing) {
         changed=existing.mechanicalOutputText!==text || existing.templatePrimitiveId!==templateId || existing.narrativeRule!==narrative;
         [row]=await tx.update(primitives).set({name:binding.name,isPublic:true,definitionKind:"EXPRESSION",templatePrimitiveId:templateId,bindingSchema:{},bindings:binding.bindings,mechanicalRule:rule as Record<string,unknown>,mechanicalTemplateText:"",mechanicalOutputText:text,narrativeRule:narrative,hardModifiers:hardModifierFor(template.key,binding.bindings),sourceOrigin,updatedAt:new Date()}).where(eq(primitives.id,existing.id)).returning();
       } else {

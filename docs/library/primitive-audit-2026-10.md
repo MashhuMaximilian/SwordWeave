@@ -8,30 +8,30 @@ This is the implementation record for phases 1–2 of the library plan: repair e
 
 The live system catalog has **276 primitives**: **141 with a stored hard modifier** and **135 without** after the first three repairs below. The no-modifier set is dominated by 96 Domain rows, plus Verb, Range, Duration, Structure, Condition and die permissions. Their absence of a modifier is not a defect by itself. Numeric promises were triaged separately.
 
-The existing character sheet distinguishes the resolver's totals from a second sheet calculation (`primitive-walk.ts`). Both must honor the same binding. Before this pass, the sheet walk matched a parent target such as `speed` or `attribute` without checking `metadata.targetScope.values`, so one scoped primitive could affect other subtargets. The local fix restricts the contribution to the bound result. The live sheet still needs the code deployment before that fix is available there.
+The character sheet distinguishes the resolver's totals from a second sheet calculation (`primitive-walk.ts`). Both now honor `metadata.targetScope.values`, so one scoped primitive cannot affect unrelated subtargets. The client speed bridge also reconciles only local runtime conditions and inactive published sources; adding every resolver contribution to an already calculated server speed counted the new Stride Extension twice.
 
 ## Versioned database repairs already applied
 
 | Primitive | Latest version | Repair | Local resolver check |
 | --- | --- | --- | --- |
-| 54 Attack Bonus Increment | v4 | Expresses +1 on `action_roll` / `ATTACK_ROLL` instead of an orphan `action_roll.attack_bonus` target. | Attack 5→6; mirrored 5→4. |
-| 65 Precise Vector Alignment | v4 | Same working attack target, mirrored eligibility and one explicit +1 promise. The concept currently overlaps row 54; choose one ladder parent before creating variants. | Attack 5→6; mirrored 5→4. |
-| 22391 Focused Presence | v3 | Replaces descriptive-only “+1 Save DC” with a tracked `save_dc` modifier. | Save DC 13→14; mirrored 13→12. |
+| 54 Attack Bonus Increment | v6 | Expresses +1 on `action_roll` / `ATTACK_ROLL` instead of an orphan `action_roll.attack_bonus` target. | Attack 5→6; mirrored 5→4. |
+| 65 Precise Vector Alignment | v6 | Same working attack target, mirrored eligibility and one explicit +1 promise. The concept currently overlaps row 54; choose one ladder parent before creating variants. | Attack 5→6; mirrored 5→4. |
+| 22391 Focused Presence | v5 | Replaces descriptive-only “+1 Save DC” with a tracked `save_dc` modifier. | Save DC 13→14; mirrored 13→12. |
 
 Previous versions remain in `primitive_versions`. Pinned character occurrences use their snapshots through `effectivePrimitiveDefinition`; unpinned occurrences read the updated row. The repair script is idempotent, checks content hashes and prior latest versions, and uses a transaction for each row.
 
-## Verified locally, held for resolver deployment
+## Eight further database repairs applied
 
-The following versions are prepared in `scripts/repair-primitive-bases-2026-10.ts` and pass its dry-run against live source rows. They are **not applied to the live database** because the deployed character sheet does not yet contain their required resolver fixes.
+The following versions were applied with `scripts/repair-primitive-bases-2026-10.ts` after the resolver deployment and initial live sheet check.
 
 | Primitive | Prepared version | Contract |
 | --- | --- | --- |
 | 218 Stride Extension | v4 | +10 walking speed only, with the scoped sheet walk preventing a swimming/flying bonus. Mirrored use yields −10 walking. |
 | 22393 Broad Familiarity | v3 | Half PB, rounded up, on each non-proficient Practice; proficient Practices receive zero. PB 3 contributes +2. |
 | 22492–22494 bound Physical/Mental/Magical Attribute Increments | v5 | Each stays +1 to its named attribute and becomes eligible for the corresponding −1 mirrored use. |
-| 22495–22497 bound Physical/Mental/Magical Saving Throw Proficiencies | v5 | Grants PB to a named non-proficient save once; it does not double the primary proficient save or repeated grants. |
+| 22495–22497 bound Physical/Mental/Magical Saving Throw Proficiencies | v9 | Grants PB to a named non-proficient save once; it does not double the primary proficient save or repeated grants. |
 
-The code also fixes activation and deactivation of scoped conditions, compiled capability toggles, mirror opt-out, inverse arithmetic mirrors, and upward rounding of fractional results, including resisted damage and Vitality clamping. These are verified with a local resolver contract test and the existing engine tests.
+The code also fixes activation and deactivation of scoped conditions, compiled capability toggles, mirror opt-out, inverse arithmetic mirrors, and upward rounding of fractional results, including resisted damage and Vitality clamping. These are verified with a local resolver contract test and the existing engine tests. All 11 repaired rows now report `already repaired` on a rerun; a full `migrate-v12-library.ts --apply` rerun generated zero versions. The migration has guards in its template expression, generic classification, and late content-repair passes so deployments preserve reviewed versions.
 
 ## Further phase-1 decisions before editing these rows
 
@@ -49,11 +49,13 @@ The catalog also contains legacy behavior flags and capability-shape pieces. A r
 
 One separate condition-context gap remains: `condition-evaluator.ts` still approximates PB from max Vitality and aliases an attack-bonus predicate to Save DC when those values are absent from the context. A primitive whose trigger reads either number should not be promoted as an automatic condition until the character context supplies the actual resolved value. The prepared Broad Familiarity condition reads Practice proficiency and is covered by the checks above.
 
-## Verification evidence and remaining gate
+## Verification evidence and follow-up
 
-- Versioned repair dry-run: 3 already repaired, 8 ready; all candidate numbers, mirrored results where applicable, inactive compiled use, and Broad Familiarity's proficient exclusion checked against the resolver.
-- Engine and Vitality tests: **42 files, 825 tests passed**. This includes character-sheet assertions for a tracked +1 Physical condition and half-PB Broad Familiarity at PB 3. TypeScript typecheck and ESLint on changed files passed.
-- The broader `pnpm test` suite is **not green**: 142 failures in 9 files, concentrated in historical DB seed assertions and three old sandbox card expectations. Two seed assertions still expect the repaired rows 54 and 65 to use their former orphan targets. The current engine suite is green; the full-suite failures require separate test/seed reconciliation before any release gate.
-- The opened production character sheet was inspected read-only after the restart. It showed existing live totals and authored examples, but it does not contain these repaired system rows. That view therefore cannot certify the new versions' displayed numbers.
+- The resolver deployment and eight version edits were tested against the original [i2 Test Character](https://www.swordweave.quest/characters/462f9048-b0da-4185-98db-d18027132c82) and a [disposable copy](https://www.swordweave.quest/characters/f07c81b8-62e1-497a-a221-9b96e248c0b8). The original's baseline was Vitality 338/338, Physical +6, Mental +7, Magical +4, PB +6, DC 21, attack +14, Physical save +19, Fieldcraft +24, Intuition +7, walking 50, climbing 20, swimming 25. These remained stable after deployment. Turning the compiled Stone's Endurance capability off changed Reason +10→+7 and DC 21→19; turning it back on restored both.
+- On the disposable copy, Iron Will's tracked below-half-Vitality condition changed Awareness +7→+12 at 168/338 and back to +7 after healing. This checked live condition activation and deactivation. The copy had a different Physical baseline because the existing Clone flow lost the source character's mirrored flag; see below.
+- All eight repaired primitives were added through the library to the copy and passed draft validation. Its review showed walking speed 50→60; Physical/Mental/Magical +1 each; proficient Fieldcraft +1 only; non-proficient Awareness +4 (Mental +1 plus half PB +3). After saving and a page reload, Physical +14→+15, Mental +7→+8, Magical +4→+5, attack +22→+23, Physical save +27→+28, Mental save +7→+14, Magical save +4→+11, Fieldcraft +32→+33, and Awareness +7→+11. Mental and Magical saves gained PB once; the already-proficient Physical save gained only the attribute point. Walking and immediate post-save state require the final speed/refresh deployment below.
+- The first post-save live view still showed old resolver numbers until reload, while server-derived speed had changed. A full reload displayed the saved modifiers. The build apply path now reloads after a confirmed save so the user sees the authoritative character values immediately. A separate speed bridge bug added the published +10 walking modifier twice after reload (70 instead of 60); `client-speed.ts` now adds only runtime-condition deltas and removes inhibited published contributions. A focused regression test covers both cases. The final deployment and live confirmation are the remaining gate for these fixes.
+- Engine and Vitality tests: **42 files, 825 tests passed** before the final speed patch; the focused speed and sheet tests passed **50/50** after it. TypeScript typecheck and local production build passed. The broader `pnpm test` suite is **not green**: 142 failures in 9 files, concentrated in historical DB seed assertions and old sandbox card expectations. Two seed assertions still expect repaired rows 54 and 65 to use former orphan targets.
+- Preview builds run the v12 library migration against the live database. Two previews exposed separate migration paths that rewrote audited rows. They were corrected through versioned repairs; the migration now skips audited rows in all three relevant passes, and a full apply rerun generated **0 versions**. The corrected latest versions are 54 v6, 65 v6, 22391 v5, 218 v4, 22393 v3, 22492–22494 v5, and 22495–22497 v9.
 
-**Next gate:** deploy the resolver/sheet changes, then inspect a disposable test character with each repaired row in direct and compiled placements. Confirm the displayed attribute, Practice, attack, Save DC, save, and walking numbers in both active and inactive states, plus mirrored and conditional states. Only then apply the eight pending version edits and recheck the same character against the live rows. Do not repin existing character instances silently.
+The disposable copy exposed a separate existing Clone problem: the clone route copies primitive IDs but not `isMirrored`, pinned `versionId`, slot source, or origin metadata, and does not reproduce heritage links. Its “Mirrored Str Buff” therefore became +4 instead of −4. This copy is useful for isolated post-copy tests but is not a faithful regression baseline. The original was not edited except for a capability toggle that was restored to Active. Do not silently repin existing character instances.
