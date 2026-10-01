@@ -752,7 +752,6 @@ export function BottomStickyBar({
   // Phase 8.M: SINGLE save_dc target (no attr suffix). Engine
   // routes primitives for the chosen attribute to this target.
   const dcTarget = "save_dc";
-  const practiceTarget = `skill_practice_check`;
   const vitalityTarget = "max_vitality";
 
   // Phase 8.I i3: * marker for conditional modifiers — see
@@ -1449,28 +1448,21 @@ export function BottomStickyBar({
             );
           })()
         ) : combo === "practice" ? (
-          <FormulaModal
-            title={`${comboAttr.toUpperCase()} practice`}
-            total={
-              (resolver_.totals[practiceTarget] ?? 0) +
-              (comboAttr === "physical" ? physMod : comboAttr === "mental" ? mentMod : magiMod) +
-              (proficientAttribute?.toLowerCase() === comboAttr ? pb : 0)
-            }
-            formula={`Combine the ${comboAttr.toLowerCase()} attribute, proficiency when trained, and practice-specific effects.`}
-            breakdown={[
-              {
-                label: `${comboAttr.toUpperCase()} attribute (mod)`,
-                value:
-                  comboAttr === "physical" ? physMod : comboAttr === "mental" ? mentMod : magiMod,
-              },
-              ...contributionsToSteps(practiceTarget, resolver_),
-              ...(proficientAttribute?.toLowerCase() === comboAttr
-                ? [{ label: "PB (proficient)", value: pb }]
-                : []),
-            ]}
+          <PracticeGroupModal
+            attribute={comboAttr}
+            practices={practices
+              .filter((practice) => practice.attribute.toLowerCase() === comboAttr)
+              .map((practice) => ({
+                name: practice.name,
+                attribute: practice.attribute,
+                total:
+                  (comboAttr === "physical" ? physMod : comboAttr === "mental" ? mentMod : magiMod) +
+                  (proficientAttribute === practice.attribute ? pb : 0) +
+                  (resolver_.totals[`skill_practice_check.${practice.name.toLowerCase()}`] ?? 0),
+              }))}
+            onSelect={openPracticeDetailModal}
             onClose={() => setCombo(null)}
-
-            characterId={characterId}          />
+          />
         ) : combo === "practice-detail" && comboPractice ? (
           // PracticeDetailModal keeps its own layout — per-row
           // provenance. It uses FormulaModal for the formula +
@@ -2381,6 +2373,41 @@ function uniqueContributions(
     seen.add(key);
     return true;
   });
+}
+
+function PracticeGroupModal({ attribute, practices, onSelect, onClose }: {
+  attribute: "physical" | "mental" | "magical";
+  practices: ReadonlyArray<{ name: string; attribute: "PHYSICAL" | "MENTAL" | "MAGICAL"; total: number }>;
+  onSelect: (practice: { name: string; attribute: "PHYSICAL" | "MENTAL" | "MAGICAL"; total: number }) => void;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  return createPortal(
+    <div className="v12-formula-backdrop fixed inset-0 z-[120] flex items-center justify-center overflow-hidden bg-black/60 p-3 backdrop-blur-sm sm:p-5" onClick={onClose} role="dialog" aria-modal="true" aria-label={`${attribute} practices`}>
+      <div className="v12-formula-modal v12-calculation-instrument v12-instrument-dialog flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[1180px] flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl" onClick={(event) => event.stopPropagation()}>
+        <div className="v12-formula-head flex items-center justify-between border-b border-border px-4 py-3">
+          <div><span className="v12-modal-kicker">Character instrument</span><h2>{attribute.toUpperCase()} practices</h2></div>
+          <button type="button" onClick={onClose} className="rounded-md p-1 transition-colors hover:bg-muted" aria-label="Close">×</button>
+        </div>
+        <div className="v12-formula-body min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
+          <p className="text-sm text-muted-foreground">Each Practice has its own total and rule contributions. Select one to see its calculation.</p>
+          {practices.map((practice) => (
+            <button key={practice.name} type="button" onClick={() => onSelect(practice)} className="flex w-full items-center justify-between rounded-md border border-border bg-background px-3 py-2 text-left hover:bg-secondary/30">
+              <span className="capitalize">{practice.name}</span><strong className="font-mono tabular-nums">{practice.total >= 0 ? `+${practice.total}` : practice.total}</strong>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
 }
 
 function ContribListItem({ c, setRawTokensOpen, isOff, offReason }: {
