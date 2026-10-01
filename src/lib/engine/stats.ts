@@ -593,9 +593,6 @@ export function compileMovement(
         if (numericValue === 0) break;
         current /= numericValue;
         break;
-      case "grant":
-      case "revoke":
-        break;
     }
 
     if (movementType === "land") land = current;
