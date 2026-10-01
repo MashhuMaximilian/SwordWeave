@@ -246,8 +246,8 @@ export type CharacterSheet = {
   // Phase 8.I i2 finish: total load = item-derived load +
   // primitive load contributions (set/add ops).
   readonly load: number;
-  // Phase 8.I i2 finish: equip slots used = item-derived
-  // slots + primitive equip_slot contributions.
+  // Equipped slots used by items. Primitive equip_slot contributions
+  // change encumbrance.equipSlotsAvailable, not this count.
   readonly equipSlotsUsed: number;
   // Phase 8.I Wave 5 (Mashu 2026-08-06): size, source_type,
   // complexity, combat_action, upkeep_cost.
@@ -986,15 +986,10 @@ const loadPrimitive = sumPrimitiveContributions(
 );
 const loadTotal = itemLoad + loadPrimitive;
 
-// Equip slots = item-derived + primitive equip_slot contributions.
+// Equipped slots used come from items. Slot primitives change the
+// available limit, which computeEncumbrance calculated above.
 const slotsUsed = encumbrance.equipSlotsUsed;
-const slotPrimitiveBonus = sumPrimitiveContributions(
-  allLinks,
-  "equip_slot",
-  null,
-  input.conditionContext,
-);
-const equipSlotsUsed = slotsUsed + slotPrimitiveBonus;
+const equipSlotsUsed = slotsUsed;
 
 // Phase 8.I Wave 5 (Mashu 2026-08-06): size, source_type,
 // complexity, combat_action. Tag-enum / boolean axes the

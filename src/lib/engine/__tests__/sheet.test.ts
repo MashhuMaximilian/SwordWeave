@@ -928,7 +928,7 @@ describe("aggregateCharacterSheet - Wave 2 (speed + carry)", () => {
     expect(sheet.load).toBe(4);
   });
 
-  it("equipSlotsUsed: item slots + primitive equip_slot contributions", () => {
+  it("equip_slot increases available slots without counting as an equipped item", () => {
     const sheet = aggregateCharacterSheet(
       baseInput({
         itemLinks: [
@@ -973,8 +973,9 @@ describe("aggregateCharacterSheet - Wave 2 (speed + carry)", () => {
         ],
       }),
     );
-    // Item uses 1 slot (MEDIUM × 1); +1 primitive = 2
-    expect(sheet.equipSlotsUsed).toBe(2);
+    expect(sheet.equipSlotsUsed).toBe(1);
+    expect(sheet.encumbrance.equipSlotsUsed).toBe(1);
+    expect(sheet.encumbrance.equipSlotsAvailable).toBe(7);
   });
 });
 
