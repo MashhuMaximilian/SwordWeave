@@ -121,6 +121,6 @@ export function resolveDamage(input: ResolveDamageInput): ResolveDamageResult {
     }
   }
 
-  const final = Math.floor(input.amount * multiplier);
+  const final = Math.ceil(input.amount * multiplier);
   return { final, multiplier, contributions };
 }

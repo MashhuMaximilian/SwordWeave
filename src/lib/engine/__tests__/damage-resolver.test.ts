@@ -141,8 +141,8 @@ describe("resolveDamage — Phase 8.I i2 finish (Wave 3)", () => {
         },
       ]),
     });
-    // 10 * 0.5 * 0.5 = 2.5 -> floor = 2
-    expect(result.final).toBe(2);
+    // 10 * 0.5 * 0.5 = 2.5, rounded up to 3.
+    expect(result.final).toBe(3);
   });
 
   it("mirrored resistance (0.5x) inverts to 2x (vulnerability)", () => {

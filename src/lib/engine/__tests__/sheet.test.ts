@@ -465,6 +465,60 @@ describe("aggregateCharacterSheet — i2 finish (attribute + DC walks)", () => {
     expect(sheet.attributes.physical).toBe(4); // 3 + 1
   });
 
+  it("displays a conditional bound attribute increment only while its condition is met", () => {
+    const primitiveLinks: CharacterSheetInput["primitiveLinks"] = [{
+      primitiveId: 22492, source: "PERSONAL", acquiredAtLevel: 1, isMirrored: false,
+      primitive: {
+        id: 22492, name: "Conditional Physical", category: "SHEET_AUGMENT",
+        buCost: 4, isMirrorable: true, mirrorBuCredit: 4,
+        hardModifiers: [{
+          kind: "modify", target: "attribute", operation: "add", value: { kind: "number", value: 1 },
+          metadata: { targetScope: { layer: "ATTRIBUTE", values: ["PHYSICAL"] } },
+          condition: { kind: "compound", tokens: ["self:stat|vitality|<|10"] },
+        }],
+      },
+    }];
+    const context = (vitality: number): ConditionContext => ({
+      character: {
+        vitality, vitalityMax: 20, saveDc: 10, blockValue: 0,
+        attributes: { physical: 3, mental: 4, magical: 3 },
+        practices: {} as ConditionContext["character"]["practices"],
+        proficiencies: new Set(["physical"]), flags: new Set(), custom: {},
+      },
+    });
+    expect(aggregateCharacterSheet(baseInput({ primitiveLinks, conditionContext: context(20) })).attributes.physical).toBe(3);
+    expect(aggregateCharacterSheet(baseInput({ primitiveLinks, conditionContext: context(5) })).attributes.physical).toBe(4);
+  });
+
+  it("displays rounded half-PB familiarity only on non-proficient Practices", () => {
+    const primitiveLinks: CharacterSheetInput["primitiveLinks"] = [{
+      primitiveId: 22393, source: "PERSONAL", acquiredAtLevel: 1, isMirrored: false,
+      primitive: {
+        id: 22393, name: "Broad Familiarity", category: "PRACTICE_PROGRESSION_AUGMENT",
+        buCost: 8, isMirrorable: true, mirrorBuCredit: 8,
+        hardModifiers: [{
+          kind: "modify", target: "skill_practice_check", operation: "add",
+          value: { kind: "derived", which: "pb_half" },
+          metadata: { targetScope: { layer: "PRACTICE", values: ["PROWESS", "AWARENESS"] } },
+          condition: { kind: "tags", customTags: ["actor:not_proficient"] },
+        }],
+      },
+    }];
+    const conditionContext: ConditionContext = {
+      character: {
+        vitality: 20, vitalityMax: 20, saveDc: 13, blockValue: 0,
+        attributes: { physical: 3, mental: 4, magical: 3 },
+        practices: {} as ConditionContext["character"]["practices"],
+        proficiencies: new Set(["physical", "prowess"]), flags: new Set(), custom: {},
+      },
+    };
+    const sheet = aggregateCharacterSheet(baseInput({ level: 5, primitiveLinks, conditionContext }));
+    const bonus = (practice: string) => sheet.practices.find((entry) => entry.practice === practice)
+      ?.primitiveContributions.find((entry) => entry.primitiveName === "Broad Familiarity")?.bonus ?? 0;
+    expect(bonus("prowess")).toBe(0);
+    expect(bonus("awareness")).toBe(2);
+  });
+
   it("attribute: +2 to mental primitive adds 2 to displayed mental", () => {
     const sheet = aggregateCharacterSheet(
       baseInput({

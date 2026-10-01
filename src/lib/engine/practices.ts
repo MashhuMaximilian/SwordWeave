@@ -21,8 +21,7 @@
  */
 function roundUp(value: number): number {
   if (!Number.isFinite(value)) return 0;
-  if (value >= 0) return Math.ceil(value);
-  return Math.floor(value);
+  return Math.ceil(value) || 0;
 }
 
 // =============================================================================

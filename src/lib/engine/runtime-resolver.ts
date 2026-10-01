@@ -94,7 +94,7 @@ export function resolveToken(
         case "pb":
           return ctx.pb;
         case "pb_half":
-          return ctx.pb / 2;
+          return Math.ceil(ctx.pb / 2);
         // Phase 8.I i2.7c (Mashu 2026-08-06): pb2 / expertise
         // / pb*2 alias 2*pb. Authoring shortcut.
         case "pb2":

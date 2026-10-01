@@ -66,5 +66,5 @@ export async function loadCharacterMaxVitality(
  */
 export function clampVitality(next: number, max: number): number {
   if (!Number.isFinite(next)) return 0;
-  return Math.max(0, Math.min(max, Math.floor(next)));
+  return Math.max(0, Math.min(max, Math.ceil(next)));
 }

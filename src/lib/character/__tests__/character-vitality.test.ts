@@ -34,9 +34,9 @@ describe("clampVitality", () => {
     expect(clampVitality(45, 30)).toBe(30);
   });
 
-  it("floors fractional values", () => {
-    expect(clampVitality(15.7, 30)).toBe(15);
-    expect(clampVitality(15.99, 30)).toBe(15);
+  it("rounds fractional vitality up", () => {
+    expect(clampVitality(15.7, 30)).toBe(16);
+    expect(clampVitality(15.99, 30)).toBe(16);
   });
 
   it("returns 0 for NaN", () => {

@@ -56,14 +56,13 @@ import {
 
 /**
  * Phase 8.I i3 fix (Mashu): global rounding — no .5 values
- * anywhere on the sheet. Round 0.5 → up for positive numbers,
- * down for negative (i.e. Math.ceil on the absolute value).
+ * anywhere on the sheet. Round toward positive infinity, including
+ * negative results.
  * Applies to modifiers, vitality, carry capacity, speed.
  */
 function roundUp(value: number): number {
   if (!Number.isFinite(value)) return 0;
-  if (value >= 0) return Math.ceil(value);
-  return Math.floor(value);
+  return Math.ceil(value) || 0;
 }
 
 export type PrimitiveLinkSnapshot = {
@@ -680,6 +679,7 @@ export function aggregateCharacterSheet(
       magical: input.attrMagical,
     },
     slots: resolverSlots,
+    ...(input.conditionContext !== undefined ? { conditionContext: input.conditionContext } : {}),
   });
   const pbOverride = sheetResolver.totals["proficiency_bonus"];
 

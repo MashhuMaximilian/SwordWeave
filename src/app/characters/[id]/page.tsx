@@ -631,9 +631,12 @@ export default async function CharacterSheetPage({
         sheet.practices.map((p) => [p.practice, p.total]),
       ) as never,
       proficiencies: new Set(
-        sheet.practices
-          .filter((p) => p.attribute === (row.attrProficient ?? "PHYSICAL"))
-          .map((p) => p.practice),
+        [
+          ...sheet.practices
+            .filter((p) => p.attribute === (row.attrProficient ?? "PHYSICAL"))
+            .map((p) => p.practice),
+          (row.attrProficient ?? "PHYSICAL").toLowerCase(),
+        ],
       ),
       flags: new Set(),
       custom: {},

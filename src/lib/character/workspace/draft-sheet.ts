@@ -55,7 +55,10 @@ export async function readDraftSheet(characterId: string, currentGraph?: Workspa
     blockValue: base.behaviorVariables.find(b => b.key === "blockvalue")?.value ?? 0,
     attributes: base.attributes,
     practices: Object.fromEntries(base.practices.map(p => [p.practice, p.total])) as never,
-    proficiencies: new Set(base.practices.filter(p => p.attribute === (row.attrProficient ?? "PHYSICAL")).map(p => p.practice)),
+    proficiencies: new Set([
+      ...base.practices.filter(p => p.attribute === (row.attrProficient ?? "PHYSICAL")).map(p => p.practice),
+      (row.attrProficient ?? "PHYSICAL").toLowerCase(),
+    ]),
     flags: new Set(), custom: {},
   } } });
 }

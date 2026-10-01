@@ -234,14 +234,11 @@ function buildContextLookup(
  * the same rule to multiply / divide so 4 * 0.5 = 2 (already
  * integer), 4 * 0.7 = 2.8 → 3, 5 / 2 = 2.5 → 3.
  *
- * Mirrors the practices.ts convention: positive values round UP
- * (ceiling), negative values round UP toward zero (floor) so the
- * "round up" semantic is consistent regardless of sign.
+ * Round toward positive infinity, including for negative results.
  */
 function roundUp(value: number): number {
   if (!Number.isFinite(value)) return 0;
-  if (value >= 0) return Math.ceil(value);
-  return Math.floor(value);
+  return Math.ceil(value) || 0;
 }
 
 // =============================================================================
@@ -669,7 +666,7 @@ export function resolveDamageApplication(
   }
 
   return {
-    finalDamage: Math.max(0, Math.floor(final)),
+    finalDamage: Math.max(0, Math.ceil(final)),
     ...(bestVulnMod ? { appliedModifier: bestVulnMod } : bestResistMod ? { appliedModifier: bestResistMod } : {}),
     resisted: resistanceFactor !== 0,
     vulnerable: vulnerabilityFactor !== 0,

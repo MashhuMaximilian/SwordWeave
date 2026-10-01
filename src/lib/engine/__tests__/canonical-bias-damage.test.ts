@@ -54,17 +54,17 @@ function damage(modifier: Record<string, unknown>, overrides: Record<string, unk
 const resistance = { target: "damage_modifier", metadata: { scopeName: "fire" }, operation: "multiply", value: { kind: "number", value: 0.5 } };
 describe("canonical damage multipliers", () => {
   it("uses typed numbers and named scopes, preserving fractional multipliers until final damage", () => {
-    expect(damage(resistance)).toMatchObject({ multiplier: 0.5, final: 5 });
+    expect(damage(resistance)).toMatchObject({ multiplier: 0.5, final: 6 });
     expect(damage({ ...resistance, metadata: { scopeName: "cold" } }).final).toBe(11);
-    expect(damage({ ...resistance, metadata: { targetScope: { values: ["fire", "cold"] } } }).final).toBe(5);
+    expect(damage({ ...resistance, metadata: { targetScope: { values: ["fire", "cold"] } } }).final).toBe(6);
   });
   it("retains dotted/split legacy targets, mirror reciprocal and opt-out", () => {
-    expect(damage({ targetAxis: "damage_modifier", targetKey: "fire", operation: "multiply", value: 0.5 }).final).toBe(5);
+    expect(damage({ targetAxis: "damage_modifier", targetKey: "fire", operation: "multiply", value: 0.5 }).final).toBe(6);
     expect(damage(resistance, { isMirrored: true }).final).toBe(22);
-    expect(damage({ ...resistance, metadata: { scopeName: "fire", mirror: { optedOut: true } } }, { isMirrored: true }).final).toBe(5);
+    expect(damage({ ...resistance, metadata: { scopeName: "fire", mirror: { optedOut: true } } }, { isMirrored: true }).final).toBe(6);
   });
   it("supports exact legacy resistance grants without mistaking type access for resistance", () => {
-    expect(damage({ target: "damage_type", operation: "grant", metadata: { scopeName: "fire" }, value: { kind: "keyword", text: "resistance" } }).final).toBe(5);
+    expect(damage({ target: "damage_type", operation: "grant", metadata: { scopeName: "fire" }, value: { kind: "keyword", text: "resistance" } }).final).toBe(6);
     expect(damage({ target: "damage_type", operation: "grant", metadata: { scopeName: "fire" }, value: { kind: "keyword", text: "fire" } }).final).toBe(11);
   });
   it("does not apply inactive, unknown-context, or inhibited damage modifiers", () => {
@@ -72,7 +72,7 @@ describe("canonical damage multipliers", () => {
     expect(damage({ ...resistance, condition: asleep }).final).toBe(11);
     expect(damage(resistance, { isToggledOff: true }).final).toBe(11);
     const prone = { ...context, character: { ...context.character, flags: new Set(["is_prone"]) } };
-    expect(damage({ ...resistance, condition: asleep }, {}, prone).final).toBe(5);
+    expect(damage({ ...resistance, condition: asleep }, {}, prone).final).toBe(6);
   });
   it("never turns invalid, absent, or negative numeric tokens into immunity", () => {
     for (const value of [null, "", { kind: "keyword", text: "fire" }, { kind: "number", value: -1 }]) expect(damage({ ...resistance, value }).final).toBe(11);

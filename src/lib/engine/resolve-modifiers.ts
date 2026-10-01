@@ -54,7 +54,7 @@ import {
   applyOperation,
   applyStacking,
 } from "./modifiers";
-import { resolveMirrorEffect } from "./mirror";
+import { flipOperation, readMirrorMeta, resolveMirrorEffect } from "./mirror";
 import {
   MODIFIER_TARGET_SPEC,
   type ModifierTarget,
@@ -441,7 +441,9 @@ export function resolveModifiers(
       // Mirror handling.
       let effectiveValue: number;
       let preMirrorValue: number | null = null;
-      if (slot.isMirrored && slot.isMirrorable) {
+      const shouldMirror = slot.isMirrored && slot.isMirrorable
+        && readMirrorMeta(mod)?.optedOut !== true;
+      if (shouldMirror) {
         const mirror = resolveMirrorEffect(
           slot.mirrorVector ?? "STANDARD_ONLY",
           true,
@@ -508,6 +510,28 @@ const eq = resolveEquation(operandsRaw as never, ctx);
         resolvedValue = resolveValue(mod.value, ctx);
       } else {
         resolvedValue = effectiveValue;
+      }
+      if (shouldMirror && typeof mod.value !== "number" && typeof mod.value !== "string") {
+        preMirrorValue = resolvedValue;
+      }
+
+      // VARIABLE_VECTOR mirrors invert the operation. Inverting the
+      // numeric sign alone fails for typed values (which are resolved
+      // above) and for multiply/divide and min/max pairs.
+      const mirroredOp = shouldMirror
+        && slot.mirrorVector === "VARIABLE_VECTOR"
+        ? flipOperation(mod.operation)
+        : null;
+      const effectiveMod = mirroredOp && mod.operation !== "add" && mod.operation !== "subtract"
+        ? { ...mod, operation: mirroredOp as HardModifier["operation"] }
+        : mod;
+      if (mirroredOp) {
+        const plainValue = typeof mod.value === "number" || typeof mod.value === "string"
+          ? numericValue(mod.value)
+          : resolvedValue;
+        resolvedValue = mod.operation === "add" || mod.operation === "subtract"
+          ? -plainValue
+          : plainValue;
       }
 
       // Compute scoped targets from metadata.targetScope.values
@@ -604,7 +628,7 @@ const eq = resolveEquation(operandsRaw as never, ctx);
       if (behaviorKey !== null) {
         // Apply the op to the existing variable (default 0).
         const prev = behaviorVariables[behaviorKey] ?? 0;
-        const next = conditionActive && !slotInhibited ? applyOperation(prev, mod.operation, resolvedValue) : prev;
+        const next = conditionActive && !slotInhibited ? applyOperation(prev, effectiveMod.operation, resolvedValue) : prev;
         behaviorVariables[behaviorKey] = numericOr(
           next,
           prev,
@@ -613,7 +637,7 @@ const eq = resolveEquation(operandsRaw as never, ctx);
         // so multiple behaviors don't collide.
         entries.push({
           slot,
-          mod,
+          mod: effectiveMod,
           target: `behavior.${behaviorKey}`,
           effectiveValue: resolvedValue,
           preMirrorValue,
@@ -627,7 +651,7 @@ const eq = resolveEquation(operandsRaw as never, ctx);
       } else {
         entries.push({
           slot,
-          mod,
+          mod: effectiveMod,
           target,
           effectiveValue: resolvedValue,
           preMirrorValue,
@@ -659,7 +683,7 @@ const eq = resolveEquation(operandsRaw as never, ctx);
   // scoped form; legacy callers read the raw target.
   // ----------------------------------------------------------------─
   for (const entry of entries) {
-    const { slot, mod, target, effectiveValue, preMirrorValue, tags, scopedTargets, hasCondition, conditionActive, conditionComputable } = entry;
+    const { slot, mod, target, effectiveValue, preMirrorValue, tags, scopedTargets, hasCondition } = entry;
     // Phase 8.I POST C1: capture the raw condition for readable display.
     const conditionRaw = hasCondition ? mod.condition ?? null : null;
 
@@ -674,6 +698,21 @@ const eq = resolveEquation(operandsRaw as never, ctx);
     const bias = (mod.operation === "grant" || mod.operation === "revoke") ? biasKeyword(mod.value) : null;
 
     for (const t of allTargets) {
+      // A single Practice modifier can cover several Practices. Evaluate
+      // dynamic predicates such as actor:not_proficient for each scoped
+      // result, rather than once without a currentPractice (which would
+      // suppress every contribution).
+      const scopedContext = input.conditionContext && t.startsWith("skill_practice_check.")
+        ? { ...input.conditionContext, currentPractice: t.slice("skill_practice_check.".length) as NonNullable<ConditionContext["currentPractice"]> }
+        : input.conditionContext && t.startsWith("attribute.")
+          ? { ...input.conditionContext, currentAttribute: t.slice("attribute.".length) as NonNullable<ConditionContext["currentAttribute"]> }
+          : input.conditionContext;
+      const conditionComputable = hasCondition && scopedContext
+        ? isConditionComputable(mod.condition as import("@/types/condition").ModifierCondition, scopedContext)
+        : entry.conditionComputable;
+      const conditionActive = hasCondition && scopedContext
+        ? conditionComputable && evaluateCondition(mod.condition as import("@/types/condition").ModifierCondition, scopedContext)
+        : entry.conditionActive;
       const list = byTarget[t] ?? [];
       list.push({
         target: t,
@@ -711,9 +750,7 @@ const eq = resolveEquation(operandsRaw as never, ctx);
 
       // Bias changes the roll's advantage counter, never its numeric score.
       if (bias) {
-        const mirrorMetadata = mod.metadata?.["mirror"] as { optedOut?: boolean } | undefined;
-        const reverse = slot.isMirrored && slot.isMirrorable && slot.mirrorVector === "VARIABLE_VECTOR" && !mirrorMetadata?.optedOut;
-        const direction = (mod.operation === "revoke" ? -1 : 1) * (reverse ? -1 : 1);
+        const direction = mod.operation === "revoke" ? -1 : 1;
         const t2 = `behavior.${bias}.${t}`;
         const list2 = byTarget[t2] ?? [];
         list2.push({
@@ -1081,13 +1118,13 @@ const eq = resolveEquation(operandsRaw as never, ctx);
         .filter((c) => c.op === "max" && c.conditionActive && !c.inhibited)
         .map((c) => c.value);
       for (const v of maxValues) {
-        total = Math.min(total, v);
+        total = Math.ceil(Math.min(total, v));
       }
       const minValues = contribs
         .filter((c) => c.op === "min" && c.conditionActive && !c.inhibited)
         .map((c) => c.value);
       for (const v of minValues) {
-        total = Math.max(total, v);
+        total = Math.ceil(Math.max(total, v));
       }
     }
     totals[target] = total;
@@ -1354,8 +1391,8 @@ const eq = resolveEquation(operandsRaw as never, ctx);
       case "multiply": return roundUp(base * v);
       case "divide": return v === 0 ? base : roundUp(base / v);
       case "set": return roundUp(v);
-      case "min": return Math.min(base, v);
-      case "max": return Math.max(base, v);
+      case "min": return roundUp(Math.min(base, v));
+      case "max": return roundUp(Math.max(base, v));
       default: return roundUp(base + v);
     }
   }
@@ -1401,11 +1438,19 @@ const eq = resolveEquation(operandsRaw as never, ctx);
   // The seed is already PB + per-attr mod. We apply each op on top.
   function reapplyMirror(
     base: number,
-    entries: ReadonlyArray<{ op: string; value: unknown; conditionActive?: boolean; inhibited?: boolean }>,
+    entries: ReadonlyArray<{ op: string; value: unknown; rawValue?: unknown; conditionActive?: boolean; inhibited?: boolean }>,
   ): number {
     let cur = base;
+    let proficiencyGranted = false;
     for (const e of entries) {
       if (e.conditionActive === false || e.inhibited) continue;
+      const raw = e.rawValue as { kind?: string; text?: string } | undefined;
+      const isProficiencyGrant = e.op === "add" && raw?.kind === "keyword"
+        && ["proficiency", "pb", "proficiency_bonus"].includes(raw.text?.toLowerCase() ?? "");
+      if (isProficiencyGrant) {
+        if (proficiencyGranted) continue;
+        proficiencyGranted = true;
+      }
       cur = reapplyOp(cur, e.op, e.value);
     }
     return cur;
@@ -1541,6 +1586,7 @@ const eq = resolveEquation(operandsRaw as never, ctx);
     // defensive.
     let cur = baseTotal;
     for (const c of subContribs) {
+      if (c.conditionActive === false || c.inhibited) continue;
       const value = typeof c.value === "number" ? c.value : Number(c.value);
       if (!Number.isFinite(value)) continue;
       switch (c.op) {
@@ -1615,6 +1661,29 @@ const eq = resolveEquation(operandsRaw as never, ctx);
       for (const target of Object.keys(byTarget)) {
         const contribs = byTarget[target];
         if (!contribs || contribs.length === 0) continue;
+        // Direct PB tokens have an exact source value. Recompute each
+        // contribution from the final PB; scaling a rounded half-PB by
+        // a ratio loses information (PB 3 -> 5 is 2 -> 3, not 2 -> 4).
+        let recomputedDirectToken = false;
+        const recomputed = contribs.map((c) => {
+          const raw = c.rawValue as { kind?: string; which?: string } | null;
+          if ((c.op !== "add" && c.op !== "subtract") || raw?.kind !== "derived"
+            || !["pb", "pb_half", "pb2", "expertise", "pb*2"].includes(raw.which ?? "")) return c;
+          const original = resolveValue(c.rawValue, resolveCtx);
+          const next = resolveValue(c.rawValue, { ...resolveCtx, pb: finalPb });
+          const sign = c.preMirrorValue !== null && c.value === -original ? -1 : 1;
+          const nextValue = sign * next;
+          if (c.conditionActive !== false && !c.inhibited) {
+            totals[target] = (totals[target] ?? 0)
+              + (c.op === "subtract" ? -1 : 1) * (nextValue - c.value);
+          }
+          recomputedDirectToken = true;
+          return { ...c, value: nextValue };
+        });
+        if (recomputedDirectToken) {
+          byTarget[target] = recomputed;
+          continue;
+        }
         const firstContrib = contribs[0];
         if (!firstContrib) continue;
         // A literal numeric modifier can coincidentally equal base PB.
@@ -1626,10 +1695,7 @@ const eq = resolveEquation(operandsRaw as never, ctx);
         const expectedRatios = [0.25, 0.5, 1, 2, 4] as const;
         for (const r of expectedRatios) {
           if (Math.abs(baseValue - input.pb * r) < 0.01) {
-            const newBase =
-              (baseValue * ratio) >= 0
-                ? Math.ceil(baseValue * ratio)
-                : Math.floor(baseValue * ratio);
+            const newBase = Math.ceil(baseValue * ratio);
             // Rebuild byTarget[target] as a mutable array of
             // contributions with potentially-rescaled values.
             const newContribs = contribs.map((c) =>

@@ -349,6 +349,9 @@ describe("calculateMaxVitality", () => {
 // =============================================================================
 
 describe("calculateDefenseDc", () => {
+  it("rounds a fractional defense result up", () => {
+    expect(calculateDefenseDc(BASELINE_DEFENSE, 2, 0.5)).toBe(13);
+  });
   it("L1 with PB=2, attribute 0: 10 + 2 + 0 = 12", () => {
     expect(calculateDefenseDc(BASELINE_DEFENSE, 2, 0)).toBe(12);
   });

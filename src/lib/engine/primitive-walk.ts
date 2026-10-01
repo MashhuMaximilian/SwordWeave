@@ -128,8 +128,16 @@ export function walkPrimitiveContributionsForAxis(
       // or `targetAxis` + `targetKey` (i2.7 split form).
       let matchedSub: string | null = null;
       if (target === axis) {
-        // Exact match (no sub-target). Sub-target axis.
-        matchedSub = "";
+        // The builder stores a scoped result as a parent target plus
+        // metadata.targetScope.values. Respect that binding when this
+        // sheet walk asks for one Attribute, Practice, or speed.
+        const metadata = rawMod.metadata as { targetScope?: { values?: unknown } } | undefined;
+        const scopedValues = metadata?.targetScope?.values;
+        const normalized = Array.isArray(scopedValues)
+          ? scopedValues.map((value) => String(value).toLowerCase().replace(/_speed$/, ""))
+          : [];
+        if (subTarget !== null && normalized.length > 0 && !normalized.includes(subTarget)) continue;
+        matchedSub = normalized.length === 1 ? normalized[0] ?? "" : "";
       } else {
         const dotIdx = target.indexOf(".");
         if (dotIdx > 0) {

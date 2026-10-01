@@ -320,7 +320,7 @@ export function calculateMaxVitality(
     }
   }
 
-  return Math.max(0, Math.floor(value));
+  return Math.max(0, Math.ceil(value));
 }
 
 // =============================================================================
@@ -386,7 +386,7 @@ export function calculateDefenseDc(
     }
   }
 
-  return Math.floor(value);
+  return Math.ceil(value);
 }
 
 /**
@@ -419,7 +419,7 @@ export function compileDefenses(
     "defense_dc",         // canonical short axis
   );
   return {
-    saveDc: Math.floor(BASELINE_DEFENSE + pb + attrModifier + primitiveDelta),
+    saveDc: Math.ceil(BASELINE_DEFENSE + pb + attrModifier + primitiveDelta),
     proficientAttribute,
   };
 }
@@ -612,12 +612,12 @@ export function compileMovement(
   void level;
 
   return {
-    land: Math.max(0, Math.floor(land)),
-    ...(fly !== undefined && fly > 0 ? { fly: Math.floor(fly) } : {}),
-    ...(swim !== undefined && swim > 0 ? { swim: Math.floor(swim) } : {}),
-    ...(climb !== undefined && climb > 0 ? { climb: Math.floor(climb) } : {}),
+    land: Math.max(0, Math.ceil(land)),
+    ...(fly !== undefined && fly > 0 ? { fly: Math.ceil(fly) } : {}),
+    ...(swim !== undefined && swim > 0 ? { swim: Math.ceil(swim) } : {}),
+    ...(climb !== undefined && climb > 0 ? { climb: Math.ceil(climb) } : {}),
     ...(burrow !== undefined && burrow > 0
-      ? { burrow: Math.floor(burrow) }
+      ? { burrow: Math.ceil(burrow) }
       : {}),
   };
 }
