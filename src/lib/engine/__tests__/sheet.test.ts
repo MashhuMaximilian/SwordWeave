@@ -69,6 +69,24 @@ describe("aggregateCharacterSheet", () => {
     expect(sheet.dc).toBe(5 + 3 + 2);
   });
 
+  it("uses a saved primitive's mirror vector in build-review sheet totals", () => {
+    const link: CharacterSheetInput["primitiveLinks"][number] = {
+      primitiveId: 23152, source: "PERSONAL", acquiredAtLevel: 1, isMirrored: false,
+      primitive: {
+        id: 23152, name: "Attribute Increment +2 Physical", category: "SHEET_AUGMENT",
+        buCost: 16, isMirrorable: true, mirrorBuCredit: 16, mirrorVector: "VARIABLE_VECTOR",
+        hardModifiers: [{ kind: "modify", target: "attribute", operation: "add", value: { kind: "number", value: 2 },
+          stacking: "stack", metadata: { recipient: "SELF", targetScope: { layer: "ATTRIBUTE", values: ["PHYSICAL"] } } }],
+      },
+    };
+    const normal = aggregateCharacterSheet(baseInput({ primitiveLinks: [link] }));
+    const mirrored = aggregateCharacterSheet(baseInput({ primitiveLinks: [{ ...link, isMirrored: true }] }));
+    expect(normal.attributes.physical).toBe(5);
+    expect(normal.dc).toBe(12);
+    expect(mirrored.attributes.physical).toBe(1);
+    expect(mirrored.dc).toBe(8);
+  });
+
   it("flags encumbrance when load exceeds capacity", () => {
     const sheet = aggregateCharacterSheet(
       baseInput({

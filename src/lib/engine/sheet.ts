@@ -80,6 +80,7 @@ export type PrimitiveLinkSnapshot = {
     buCost: number;
     isMirrorable: boolean;
     mirrorBuCredit: number;
+    mirrorVector?: string | null;
     /**
      * Phase 8.3d (Mashu 2026-07-27): the primitive's authored
      * hard_modifiers JSONB, passed through verbatim so the
@@ -638,7 +639,7 @@ export function aggregateCharacterSheet(
       hardModifiers: (link.primitive.hardModifiers ?? []) as readonly HardModifier[],
       isMirrored: link.isMirrored,
       isMirrorable: link.primitive.isMirrorable,
-      mirrorVector: null,
+      mirrorVector: link.primitive.mirrorVector ?? (link.primitive.isMirrorable ? "VARIABLE_VECTOR" : "STANDARD_ONLY"),
       originHeritageId: null,
       originCapabilityId: null,
       originEffectId: null,
