@@ -44,6 +44,7 @@ const variants: Variant[] = [
 ];
 
 const sourceOrigin = (v: Variant) => `system:v12:curated:${v.family}:${v.parentId}:${String(v.magnitude).toLowerCase()}`;
+const marketFamily = (v: Variant) => v.family === "attribute" ? "PRACTICE_PROGRESSION" : "UNIVERSAL_MODIFIERS";
 const valueOf = (magnitude: Magnitude) => magnitude === "PB"
   ? { kind: "derived", which: "pb" } as const
   : { kind: "number", value: magnitude } as const;
@@ -133,6 +134,12 @@ async function main() {
       const [version] = await db.select().from(primitiveVersions).where(and(eq(primitiveVersions.primitiveId, existing.id), eq(primitiveVersions.isLatest, true))).limit(1);
       const [edge] = await db.select().from(forks).where(and(eq(forks.sourceTargetType, "PRIMITIVE"), eq(forks.sourceTargetId, String(v.parentId)), eq(forks.forkedTargetType, "PRIMITIVE"), eq(forks.forkedTargetId, String(existing.id)))).limit(1);
       if (!version || !edge) throw new Error(`Incomplete version or fork lineage for ${existing.id}`);
+      const [classification] = await db.select().from(primitiveMarketClassifications).where(eq(primitiveMarketClassifications.primitiveId, existing.id)).limit(1);
+      if (!classification) throw new Error(`Missing market classification for ${existing.id}`);
+      if (classification.familyKey !== marketFamily(v)) {
+        console.log(`${apply ? "correcting" : "would correct"} market family for ${existing.id}: ${classification.familyKey} -> ${marketFamily(v)}`);
+        if (apply) await db.update(primitiveMarketClassifications).set({ familyKey: marketFamily(v), updatedAt: new Date() }).where(eq(primitiveMarketClassifications.primitiveId, existing.id));
+      }
       console.log(`already present ${existing.id} ${v.name}`);
       continue;
     }
@@ -151,7 +158,7 @@ async function main() {
       await tx.insert(forks).values({ forkedByUserId: actor!.id, sourceTargetType: "PRIMITIVE", sourceTargetId: String(v.parentId),
         sourceVersionId: parentVersion.id, sourceAuthorId: null, forkedTargetType: "PRIMITIVE", forkedTargetId: String(inserted.id),
         forkedVersionId: versionId, metadata: { canonical: true, curatedPhase: 3, magnitude: v.magnitude } });
-      await tx.insert(primitiveMarketClassifications).values({ primitiveId: inserted.id, familyKey: "PRACTICE_PROGRESSION",
+      await tx.insert(primitiveMarketClassifications).values({ primitiveId: inserted.id, familyKey: marketFamily(v),
         tier: v.tier, expressionKey: `${v.family}-${String(v.magnitude).toLowerCase()}-${v.scope?.values[0]?.toLowerCase() ?? "all"}`,
         canonicalTemplateId: v.templateId, canonicalExpressionId: inserted.id, source: "INHERITED", status: "CLASSIFIED",
         evidence: { parentId: v.parentId, curatedPhase: 3, scope: v.scope ?? null } });
