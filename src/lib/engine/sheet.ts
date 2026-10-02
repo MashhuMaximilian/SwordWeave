@@ -865,10 +865,13 @@ export function aggregateCharacterSheet(
     input.conditionContext,
     pbOverride,
   );
+  // The resolver is the source for scoped Action Roll save modifiers as well
+  // as legacy saving_throw.* modifiers. The fallback keeps old sheet inputs
+  // without a resolver seed readable, but published forks use these totals.
   const savingThrows: Array<{ attribute: Attribute; bonus: number }> = [
-    { attribute: "PHYSICAL", bonus: stRecord.physical },
-    { attribute: "MENTAL", bonus: stRecord.mental },
-    { attribute: "MAGICAL", bonus: stRecord.magical },
+    { attribute: "PHYSICAL", bonus: sheetResolver.totals["physical_saving_throw"] ?? stRecord.physical },
+    { attribute: "MENTAL", bonus: sheetResolver.totals["mental_saving_throw"] ?? stRecord.mental },
+    { attribute: "MAGICAL", bonus: sheetResolver.totals["magical_saving_throw"] ?? stRecord.magical },
   ];
 
   // Encumbrance

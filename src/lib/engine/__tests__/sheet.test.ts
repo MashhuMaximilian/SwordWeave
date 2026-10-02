@@ -87,6 +87,29 @@ describe("aggregateCharacterSheet", () => {
     expect(mirrored.dc).toBe(8);
   });
 
+  it("shows a scoped saving throw fork in the sheet without changing the one DC", () => {
+    const link: CharacterSheetInput["primitiveLinks"][number] = {
+      primitiveId: 23189, source: "PERSONAL", acquiredAtLevel: 1, isMirrored: false,
+      primitive: {
+        id: 23189, name: "Physical Saving Throw +2", category: "SHEET_AUGMENT",
+        buCost: 6, isMirrorable: true, mirrorBuCredit: 6, mirrorVector: "VARIABLE_VECTOR",
+        hardModifiers: [{ kind: "modify", target: "action_roll", operation: "add", value: { kind: "number", value: 2 },
+          stacking: "stack", metadata: { recipient: "SELF", targetScope: { layer: "METRIC", values: ["PHYSICAL_SAVE"] } } }],
+      },
+    };
+    const before = aggregateCharacterSheet(baseInput());
+    const active = aggregateCharacterSheet(baseInput({ primitiveLinks: [link] }));
+    const mirrored = aggregateCharacterSheet(baseInput({ primitiveLinks: [{ ...link, isMirrored: true }] }));
+    const save = (sheet: typeof before) => sheet.savingThrows.find(row => row.attribute === "PHYSICAL")?.bonus;
+    expect(save(active)).toBe(save(before)! + 2);
+    expect(save(mirrored)).toBe(save(before)! - 2);
+    for (const axis of ["MENTAL", "MAGICAL"] as const) {
+      expect(active.savingThrows.find(row => row.attribute === axis)?.bonus).toBe(before.savingThrows.find(row => row.attribute === axis)?.bonus);
+    }
+    expect(active.dc).toBe(before.dc);
+    expect(mirrored.dc).toBe(before.dc);
+  });
+
   it("flags encumbrance when load exceeds capacity", () => {
     const sheet = aggregateCharacterSheet(
       baseInput({
