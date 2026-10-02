@@ -35,6 +35,7 @@
 // =============================================================================
 
 import { cn } from "@/lib/utils";
+import { DEFAULT_ICON_COLOR, ICON_FINISH_VERSION } from "@/lib/icons/metallic-svg";
 
 export type IconSource = "GAME_ICONS" | "UPLOAD" | null | undefined;
 
@@ -58,7 +59,7 @@ export function IconDisplay({
   iconSource,
   iconKey,
   iconUrl,
-  iconColor = "#ffffff",
+  iconColor = DEFAULT_ICON_COLOR,
   size = 32,
   alt,
   className,
@@ -97,8 +98,8 @@ export function IconDisplay({
 
   if (iconSource === "GAME_ICONS") {
     if (!iconKey) return null;
-    const color = encodeURIComponent(iconColor ?? "#ffffff");
-    const src = `/api/icons/game/${iconKey}?color=${color}${outline ? "&outline=1" : ""}`;
+    const color = encodeURIComponent(iconColor ?? DEFAULT_ICON_COLOR);
+    const src = `/api/icons/game/${iconKey}?color=${color}&finish=${ICON_FINISH_VERSION}${outline ? "&outline=1" : ""}`;
     return (
       <img
         src={src}

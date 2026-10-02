@@ -88,7 +88,7 @@ const blankForm: HeritageFormState = {
   iconSource: null,
   iconKey: null,
   iconUrl: null,
-  iconColor: "#ffffff",
+  iconColor: "#d8ad54",
 };
 
 function expectedCategory(kind: string): string {
@@ -232,7 +232,7 @@ export function HeritageForm({
       iconSource: initialTemplate.iconSource,
       iconKey: initialTemplate.iconKey,
       iconUrl: initialTemplate.iconUrl,
-      iconColor: initialTemplate.iconColor ?? "#ffffff",
+      iconColor: initialTemplate.iconColor ?? "#d8ad54",
     });
     // Check for a saved draft (e.g. when the form unmounted in the panel
     // and remounted in the drawer). If a draft exists, restore primitiveIds

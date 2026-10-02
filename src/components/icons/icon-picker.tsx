@@ -6,7 +6,7 @@
 // UX flow:
 //   1. User clicks the entity's icon slot (or "Choose icon" button)
 //   2. IconPicker opens as a modal in the existing modal stack
-//   3. User picks a color (defaults to current iconColor or #ffffff)
+//   3. User picks a color (defaults to current iconColor or metallic gold)
 //   4. User browses by category tab (Weapon / Body / Creature / ...)
 //   5. User optionally types in the search box to narrow further
 //   6. User clicks an icon → modal closes, entity row updates with the
@@ -47,6 +47,7 @@ import { createPortal } from "react-dom";
 import { Filter, Search, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { IconDisplay, type IconSource } from "./icon-display";
+import { DEFAULT_ICON_COLOR, ICON_FINISH_VERSION } from "@/lib/icons/metallic-svg";
 import {
   ColorArea,
   ColorField,
@@ -555,7 +556,7 @@ function IconGrid({
               }}
             >
               <img
-                src={`/api/icons/game/${icon.key}?color=${encodeURIComponent(color)}`}
+                src={`/api/icons/game/${icon.key}?color=${encodeURIComponent(color)}&finish=${ICON_FINISH_VERSION}`}
                 alt={icon.label}
                 width={ICON_SIZE}
                 height={ICON_SIZE}
@@ -1127,13 +1128,13 @@ function parseHueFromHex(hex: string): number {
 
 // normalizeColor ensures the native <input type="color"> always has a
 // 6-digit hex (it rejects 3-digit). If the current color is invalid,
-// fall back to white.
+// fall back to metallic gold.
 function normalizeColor(c: string): string {
-  if (!c) return "#ffffff";
+  if (!c) return DEFAULT_ICON_COLOR;
   const h = c.startsWith("#") ? c.slice(1) : c;
   if (/^[0-9a-fA-F]{6}$/.test(h)) return `#${h}`;
   if (/^[0-9a-fA-F]{3}$/.test(h)) {
     return `#${h.split("").map((x) => x + x).join("")}`;
   }
-  return "#ffffff";
+  return DEFAULT_ICON_COLOR;
 }

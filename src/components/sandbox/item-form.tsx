@@ -117,7 +117,7 @@ const blankForm: ItemFormState = {
   iconSource: null,
   iconKey: null,
   iconUrl: null,
-  iconColor: "#ffffff",
+  iconColor: "#d8ad54",
 };
 
 export function ItemForm({
@@ -253,7 +253,7 @@ export function ItemForm({
       iconSource: initialItem.iconSource,
       iconKey: initialItem.iconKey,
       iconUrl: initialItem.iconUrl,
-      iconColor: initialItem.iconColor ?? "#ffffff",
+      iconColor: initialItem.iconColor ?? "#d8ad54",
     });
     // Check for a saved draft (e.g. when the form unmounted in the panel
     // and remounted in the drawer). If a draft exists, restore all three

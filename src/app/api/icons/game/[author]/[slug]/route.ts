@@ -1,12 +1,11 @@
 // =============================================================================
 // GET /api/icons/game/[author]/[slug]?color=#rrggbb
 //
-// Server-side recolor proxy for game-icons.net SVGs. The official site's
-// icons ship as white-on-transparent SVGs. This route fetches the SVG,
-// swaps the white fill for the entity's iconColor, and returns the
-// recolored SVG bytes.
+// Server-side finish proxy for game-icons.net SVGs. The official site's
+// icons ship as white-on-transparent SVGs. This route fetches the SVG
+// and turns its white fill into a metallic gradient based on iconColor.
 //
-// Caching: keyed by (author, slug, color). We use the Vercel edge cache
+// Caching: keyed by (author, slug, color, finish). We use the Vercel edge cache
 // with Cache-Control: public, max-age=31536000, immutable. Two request
 // for the same color = one upstream fetch. The icon color is the entity
 // row's `icon_color` column, so any color change requires a row update
@@ -24,6 +23,7 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import { KNOWN_AUTHORS } from "@/lib/icons/game-icons-known-authors";
+import { DEFAULT_ICON_COLOR, metallicSvg } from "@/lib/icons/metallic-svg";
 
 const CDN_BASE =
   "https://cdn.jsdelivr.net/gh/game-icons-net/game-icons@master/";
@@ -37,7 +37,7 @@ export const dynamic = "force-dynamic";
 // Validate + normalize hex color. Accepts #rgb, #rrggbb, #rrggbbaa.
 // Returns null on invalid input (which the route handler maps to 400).
 function normalizeHex(input: string | null): string | null {
-  if (!input) return "#ffffff";
+  if (!input) return DEFAULT_ICON_COLOR;
   const s = input.trim().toLowerCase();
   // Accept shorthand #abc → #aabbcc
   let h = s.startsWith("#") ? s.slice(1) : s;
@@ -46,54 +46,6 @@ function normalizeHex(input: string | null): string | null {
   if (h.length === 4) h = h.split("").map((c) => c + c).join(""); // #rgba → #rrggbb
   if (h.length !== 6 && h.length !== 8) return null;
   return `#${h}`;
-}
-
-// Recolor a single SVG document, replacing every white fill (in any of
-// the shapes the official pack uses) with the supplied color. Returns
-// the modified SVG text.
-//
-// The official pack uses these patterns to express white:
-//   fill="#fff"            (the most common)
-//   fill="#ffffff"         (long form)
-//   fill="white"           (rare)
-//   style="fill:#fff"      (CSS-in-attribute form)
-//   stroke="#fff"          (very rare — outline icons)
-//   style="stroke:#fff"    (CSS outline form)
-//
-// We only replace fills, not strokes, because the recolor is meant to
-// recolor the icon's solid mass, not thin outlines. The icon CSS file
-// itself uses currentColor in a few places — we leave those alone so
-// authors can still style icons via parent CSS when needed.
-function recolorSvg(svg: string, color: string, outline = false): string {
-  // Pre-lowercase so matches are case-insensitive (the official pack is
-  // all-lowercase but be safe).
-  const lower = svg.toLowerCase();
-  const variants = ["#fff", "#ffffff", "white"];
-  // Use a single replace pass over a fixed set of patterns. We split
-  // the work by attribute style so the patterns don't collide.
-  let out = svg;
-  for (const v of variants) {
-    // fill="white" / fill="#fff" etc.
-    const fillRe = new RegExp(`(fill=["'])${v.replace("#", "\\#")}(["'])`, "gi");
-    out = out.replace(fillRe, `$1${color}$2`);
-    // style="fill:white" / style="fill:#fff"
-    const styleRe = new RegExp(`(style=["'][^"']*fill:\\s*)${v.replace("#", "\\#")}([^"']*["'])`, "gi");
-    out = out.replace(styleRe, `$1${color}$2`);
-  }
-  // Also handle a stray 'currentColor' that the upstream pack sometimes
-  // uses for fill (Lorc icons occasionally do this). Replace with the
-  // requested color so the icon actually renders in the chosen color.
-  out = out.replace(/fill=["']currentColor["']/gi, `fill="${color}"`);
-
-  // Outline mode: hollow the icon — drop all fills (including the color we
-  // just applied) and draw the shapes with a colored stroke instead. This
-  // matches the stroke-based lucide icons used elsewhere in the UI.
-  if (outline) {
-    out = out.replace(/fill=["'][^"']*["']/gi, 'fill="none"');
-    out = out.replace(/stroke=["'][^"']*["']/gi, `stroke="${color}"`);
-    out = out.replace(/<svg([^>]*)>/i, `<svg$1 stroke="${color}" stroke-width="2" fill="none">`);
-  }
-  return out;
 }
 
 async function fetchUpstream(author: string, slug: string): Promise<string | null> {
@@ -139,8 +91,7 @@ export async function GET(
     return new NextResponse("Invalid slug", { status: 400 });
   }
 
-  // 3. Normalize color. Default is #ffffff which is a no-op recolor
-  // (we still go through recolorSvg so the output is canonical).
+  // 3. Normalize color. An omitted color uses the metallic gold default.
   const colorParam = req.nextUrl.searchParams.get("color");
   const color = normalizeHex(colorParam);
   if (!color) {
@@ -151,14 +102,14 @@ export async function GET(
   // icon reads as a line drawing, matching the lucide icons elsewhere.
   const outline = req.nextUrl.searchParams.get("outline") === "1";
 
-  // 4. Fetch + recolor. The result is cached at the edge by Vercel for
+  // 4. Fetch + finish. The result is cached at the edge by Vercel for
   // 1 year (immutable) keyed by full URL including the color query param.
   const upstream = await fetchUpstream(author, slug);
   if (!upstream) {
     return new NextResponse("Not found upstream", { status: 404 });
   }
 
-  const recolored = recolorSvg(upstream, color, outline);
+  const recolored = metallicSvg(upstream, color, outline);
 
   return new NextResponse(recolored, {
     headers: {

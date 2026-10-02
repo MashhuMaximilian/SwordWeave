@@ -124,7 +124,7 @@ export function BuildComposer({
         iconSource: editingBuild.iconSource ?? null,
         iconKey: editingBuild.iconKey ?? null,
         iconUrl: editingBuild.iconUrl ?? null,
-        iconColor: editingBuild.iconColor ?? "#ffffff",
+        iconColor: editingBuild.iconColor ?? "#d8ad54",
         isPublic: editingBuild.isPublic,
       }
     : {
@@ -148,7 +148,7 @@ export function BuildComposer({
         iconSource: null,
         iconKey: null,
         iconUrl: null,
-        iconColor: "#ffffff",
+        iconColor: "#d8ad54",
         isPublic: false,
       };
 
@@ -231,7 +231,7 @@ export function BuildComposer({
       iconSource: null,
       iconKey: null,
       iconUrl: null,
-      iconColor: "#ffffff",
+      iconColor: "#d8ad54",
       isPublic: false,
     });
     setSelectedCapabilityIds([]);

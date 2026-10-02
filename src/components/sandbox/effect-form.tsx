@@ -88,7 +88,7 @@ const blankForm: EffectFormState = {
   iconSource: null,
   iconKey: null,
   iconUrl: null,
-  iconColor: "#ffffff",
+  iconColor: "#d8ad54",
 };
 
 export function EffectForm({
@@ -491,7 +491,7 @@ export function EffectForm({
             iconSource={(form.iconSource as IconSource | null) ?? null}
             iconKey={form.iconKey ?? null}
             iconUrl={form.iconUrl ?? null}
-            iconColor={form.iconColor ?? "#ffffff"}
+            iconColor={form.iconColor ?? "#d8ad54"}
             onChange={(next) =>
               setForm({
                 ...form,

@@ -10,7 +10,7 @@ import {
 import { resolveModifiers, type ResolvedPrimitiveSlot } from "@/lib/engine/resolve-modifiers";
 import { expandBundles } from "@/lib/engine/bundle-expander";
 import { aggregateCharacterSheet } from "@/lib/engine/sheet";
-import { capabilityIdeas, effectIdeas, heritageRecipes, permissions } from "./phase4-heritage-data";
+import { capabilityIdeas, effectIdeas, heritageDescriptions, heritageRecipes, permissions } from "./phase4-heritage-data";
 
 const prefix="system:v13:heritage-shelf:";
 function assert(ok:unknown,message:string): asserts ok {if(!ok)throw new Error(message)}
@@ -37,6 +37,7 @@ async function main(){
     const row=pRows.find(x=>x.name===idea.name&&x.sourceOrigin?.startsWith(`${prefix}permission:`));
     assert(row,`Missing permission ${idea.name}`);
     assert(row.buCost===idea.bu&&row.isPublic&&!row.isMirrorable&&row.hardModifiers.length===0,`Permission drift ${idea.name}`);
+    assert(row.narrativeRule===idea.rule,`Permission description drift ${idea.name}`);
     assert(published("PRIMITIVE",String(row.id)),`Not published ${idea.name}`);
     latest(pVersions.filter(x=>x.primitiveId===row.id),idea.name);
     assert(edges.some(x=>x.forkedTargetType==="PRIMITIVE"&&x.forkedTargetId===String(row.id)),`No fork ${idea.name}`);
@@ -46,6 +47,7 @@ async function main(){
   for(const idea of effectIdeas){
     const row=eRows.find(x=>x.name===idea.name&&x.sourceOrigin?.startsWith(`${prefix}effect:`));assert(row,`Missing effect ${idea.name}`);
     assert(published("EFFECT",row.id),`Not published effect ${idea.name}`);
+    assert(row.narrativeDescription===idea.text,`Effect description drift ${idea.name}`);
     latest(eVersions.filter(x=>x.effectId===row.id),idea.name);
     const actual=sorted(eLinks.filter(x=>x.effectId===row.id).map(x=>pById.get(x.primitiveId)?.name??""));
     assert(same(actual,sorted(idea.primitives)),`Effect links differ ${idea.name}: ${actual}`);
@@ -55,6 +57,7 @@ async function main(){
   for(const idea of capabilityIdeas){
     const row=cRows.find(x=>x.name===idea.name&&x.sourceOrigin?.startsWith(`${prefix}capability:`));assert(row,`Missing capability ${idea.name}`);
     assert(published("CAPABILITY",row.id),`Not published capability ${idea.name}`);
+    assert(row.verboseDescription===idea.text,`Capability description drift ${idea.name}`);
     latest(cVersions.filter(x=>x.capabilityId===row.id),idea.name);
     const actual=sorted(cLinks.filter(x=>x.capabilityId===row.id).map(x=>pById.get(x.primitiveId)?.name??""));
     assert(same(actual,sorted(idea.primitives)),`Capability links differ ${idea.name}: ${actual}`);
@@ -82,7 +85,7 @@ async function main(){
       for(const ce of ceLinks.filter(x=>x.capabilityId===cap.id))for(const ep of eLinks.filter(x=>x.effectId===ce.effectId))full.add(ep.primitiveId);
     }
     const cost=[...full].reduce((sum,id)=>sum+pById.get(id)!.buCost,0);
-    assert(row.description?.includes(`${cost} BU`),`Cost/description drift ${recipe.name}: ${cost}`);
+    assert(row.description===heritageDescriptions[recipe.name],`Description drift ${recipe.name}`);
     prices.push(cost);
   }
   // Use the same expander that the character workshop uses, then feed the

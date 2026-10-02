@@ -15,7 +15,7 @@ import {
 } from "@/lib/publishing/hash-content";
 import { resolveContentVersionId } from "@/lib/versions/content-hash";
 import { resolveVirtualVersionId } from "@/lib/engagement/version-helpers";
-import { capabilityIdeas, effectIdeas, heritageRecipes, permissions } from "./phase4-heritage-data";
+import { capabilityIdeas, effectIdeas, heritageDescriptions, heritageRecipes, permissions } from "./phase4-heritage-data";
 
 type Primitive = typeof primitives.$inferSelect;
 type Capability = typeof capabilities.$inferSelect;
@@ -57,14 +57,10 @@ function parentFor(name: string): { id: number | "practical"; family: string } {
 
 function tier(cost: number) { return cost <= 2 ? 1 : cost <= 4 ? 2 : cost <= 8 ? 3 : 4; }
 function unique<T>(values: T[]): T[] { return [...new Set(values)]; }
-function describe(name: string, concept: string, price: number, primitivesUsed: string[], capabilitiesUsed: string[]): string {
-  const playerConcept = concept.split(";")[0]!.trim();
-  const qualifier = name === "Mystic" ? " This sample is a Light-domain Mystic; other domains can be built from the same market families."
-    : name === "Elemental Shaper" ? " This sample specializes in Stone; another domain requires its own purchased primitives."
-      : name === "Hexwright" ? " The spoken consequence is decided from the particular scene, without a universal condition penalty."
-        : "";
-  const techniques=capabilitiesUsed.length?` Techniques: ${capabilitiesUsed.join(", ")}.`:"";
-  return `${playerConcept}${playerConcept.endsWith(".") ? "" : "."}${qualifier} Linked primitives: ${primitivesUsed.join(", ")}.${techniques} This example contains ${price} BU of distinct linked primitives; the container has no additional BU cost.`;
+function describe(name: string): string {
+  const playerConcept = heritageDescriptions[name];
+  if (!playerConcept) throw new Error(`Missing player-facing description: ${name}`);
+  return playerConcept;
 }
 function role(p: Primitive): "VERB" | "DOMAIN" | "SIZING" | "RANGE" | "DURATION" | "OUTPUT" | "OTHER" {
   if (p.category === "DOMAIN") return "DOMAIN";
@@ -117,6 +113,7 @@ async function main(): Promise<void> {
   const conceptMap = concepts();
   if (heritageRecipes.length !== 90 || conceptMap.size < 90) throw new Error(`Recipe/document count mismatch ${heritageRecipes.length}/${conceptMap.size}`);
   for (const r of heritageRecipes) if (!conceptMap.has(r.name)) throw new Error(`Missing concept: ${r.name}`);
+  for (const r of heritageRecipes) if (!heritageDescriptions[r.name]) throw new Error(`Missing description: ${r.name}`);
   const originalPrimitives = await db.select().from(primitives);
   const originalEffects = await db.select().from(effects);
   const originalCaps = await db.select().from(capabilities);
@@ -215,7 +212,8 @@ async function main(): Promise<void> {
       const ids = unique(idea.primitives.map(name=>p.get(name)?.id ?? 0));
       if (ids.includes(0)) throw new Error(`Unresolved effect ${idea.name}`);
       const payload=buildCanonicalEffectPayload({ name:idea.name,narrativeDescription:idea.text,tags:["curated"],isPublic:true,
-        primitiveSlots:ids.map(primitiveId=>({primitiveId,quantity:1,notes:""})) });
+        primitiveSlots:ids.map(primitiveId=>({primitiveId,quantity:1,notes:""})),
+        iconSource: existing?.iconSource, iconKey: existing?.iconKey, iconUrl: existing?.iconUrl, iconColor: existing?.iconColor });
       const hash=await hashEffectContent(payload);
       if(existing?.contentHash===hash){e.set(idea.name,existing);continue;}
       const [row]=existing
@@ -242,7 +240,8 @@ async function main(): Promise<void> {
       const totalBu=[...fullCostIds].reduce((sum,id)=>sum+pById.get(id)!.buCost,0);
       const slots=prims.map(id=>({primitiveId:id,role:role(pById.get(id)!),quantity:1,slotLabel:"",notes:""}));
       const payload=buildCanonicalCapabilityPayload({name:idea.name,type:idea.type??"ACTIVE",sourceType:idea.source??"PHYSICAL",
-        verboseDescription:idea.text,tags:["curated"],isPublic:true,primitiveSlots:slots,effectIds});
+        verboseDescription:idea.text,tags:["curated"],isPublic:true,primitiveSlots:slots,effectIds,
+        iconSource: existing?.iconSource, iconKey: existing?.iconKey, iconUrl: existing?.iconUrl, iconColor: existing?.iconColor });
       const hash=await hashCapabilityContent(payload);
       if(existing?.contentHash===hash){
         if(existing.metadata?.totalBu!==totalBu)await db.update(capabilities).set({metadata:{...existing.metadata,totalBu},updatedAt:new Date()}).where(eq(capabilities.id,existing.id));
@@ -278,10 +277,11 @@ async function main(): Promise<void> {
       }
       const price=[...allIds].reduce((sum,id)=>sum+(pById.get(id)?.buCost??0),0);
       const concept=conceptMap.get(recipe.name)!;
-      const description=describe(recipe.name,concept.text,price,[...allIds].map(id=>pById.get(id)!.name),recipe.capabilities);
+      const description=describe(recipe.name);
       const suggestedTraits=existing?.suggestedTraits??"";
       const payload=buildCanonicalTemplatePayload({kind:recipe.kind,name:recipe.name,description,suggestedTraits,isPublic:true,
-        primitiveIds:directIds,primitiveSlots:directIds.map(primitiveId=>({primitiveId,isMirrored:false})),capabilityIds:capIds});
+        primitiveIds:directIds,primitiveSlots:directIds.map(primitiveId=>({primitiveId,isMirrored:false})),capabilityIds:capIds,
+        iconSource: existing?.iconSource, iconKey: existing?.iconKey, iconUrl: existing?.iconUrl, iconColor: existing?.iconColor });
       const hash=await hashTemplateContent(payload);
       if(existing?.contentHash===hash){
         console.log(`${recipe.kind} ${recipe.name}: already current (${price} BU)`);

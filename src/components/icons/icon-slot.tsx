@@ -57,6 +57,7 @@ import dynamic from "next/dynamic";
 import { Pencil } from "lucide-react";
 import { useEffect, useState } from "react";
 import { IconDisplay, type IconSource } from "./icon-display";
+import { DEFAULT_ICON_COLOR } from "@/lib/icons/metallic-svg";
 import { PickerLoadingShell } from "./picker-loading-shell";
 
 // =============================================================================
@@ -262,7 +263,7 @@ export function IconSlot({
                 currentSource={iconSource ?? null}
                 currentKey={iconKey ?? null}
                 currentUrl={iconUrl ?? null}
-                currentColor={iconColor ?? "#ffffff"}
+                currentColor={iconColor ?? DEFAULT_ICON_COLOR}
                 onSelect={handleSelect}
               />
             </div>

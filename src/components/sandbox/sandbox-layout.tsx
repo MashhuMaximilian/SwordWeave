@@ -52,7 +52,7 @@ function CodexIcon() {
 }
 
 /** Color for build-column game-icons — white to match the lucide icons. */
-const BUILD_ICON_COLOR = "#ffffff";
+const BUILD_ICON_COLOR = "#d8ad54";
 /**
  * SandboxLayout — three-column resizable shell used by every /sandbox/* page.
  *

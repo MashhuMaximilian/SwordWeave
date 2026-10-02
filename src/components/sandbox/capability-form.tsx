@@ -147,7 +147,7 @@ const blankForm: CapabilityFormState = {
   iconSource: null,
   iconKey: null,
   iconUrl: null,
-  iconColor: "#ffffff",
+  iconColor: "#d8ad54",
 };
 
 export function CapabilityForm({
@@ -276,7 +276,7 @@ export function CapabilityForm({
       iconSource: initialCapability.iconSource,
       iconKey: initialCapability.iconKey,
       iconUrl: initialCapability.iconUrl,
-      iconColor: initialCapability.iconColor ?? "#ffffff",
+      iconColor: initialCapability.iconColor ?? "#d8ad54",
     });
     if (draft) {
       // Restore effectIds from the draft.
@@ -910,7 +910,7 @@ export function CapabilityForm({
             iconSource={(form.iconSource as IconSource | null) ?? null}
             iconKey={form.iconKey ?? null}
             iconUrl={form.iconUrl ?? null}
-            iconColor={form.iconColor ?? "#ffffff"}
+            iconColor={form.iconColor ?? "#d8ad54"}
             onChange={(next) =>
               setForm({
                 ...form,
@@ -972,7 +972,7 @@ export function CapabilityForm({
           iconSource={(form.iconSource as IconSource | null) ?? null}
           iconKey={form.iconKey ?? null}
           iconUrl={form.iconUrl ?? null}
-          iconColor={form.iconColor ?? "#ffffff"}
+          iconColor={form.iconColor ?? "#d8ad54"}
           onChange={(next) =>
             setForm({
               ...form,
