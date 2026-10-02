@@ -11,7 +11,7 @@ This is a research catalog for rebuilding and expanding the public effects, capa
 - **Capability:** a usable recipe assembled from primitives and effects. It may be active, passive, reactive, or an augment, with its own scope, target, timing, upkeep, and description.
 - **Heritage:** a bundle of direct primitives and capabilities. Lineage describes species, origin, or constructed nature; upbringing describes background and training; manifest describes the current class-like main build. Placement is the player's choice, and the same building block can serve different stories.
 - **Item:** a physical carrier of primitives, effects, or capabilities. Item BU is separate from character primitive BU. Its slot cost, two-handed minimum, carried Load, and pouch behavior use SwordWeave's existing rules.
-- **Starting use:** a character gets 25 BU for the creation package at any starting level, with Touch and d4 at 0 BU. Additional pieces can be purchased and assembled on the sheet, including during play. The suggestions below are content, not a new character creation workflow.
+- **Starting use:** a character gets 25 BU for the creation package at any starting level, with Touch and d4 at 0 BU. That package establishes domain, verb tier, range, and die type; it is not a price ceiling or target price for the rest of the library. Players purchase and assemble further pieces on the sheet, including during play. The suggestions below are content, not a new character creation workflow.
 
 The current read-only public catalog has **459 primitives, 9 effects, 27 capabilities, 18 heritages, and 7 items** (2 October 2026). Its heritage split is 7 lineages, 5 upbringings, and 6 manifests, but one lineage is named as a fork test and one manifest as atelier QA. One public effect, two capabilities, and one item also carry atelier QA names. Those entries need individual review before they count as a ready-to-play shelf. This is a name/count audit, not a verdict on every composition.
 
@@ -182,7 +182,7 @@ These are proposed **forks or descriptive permissions**. For every one, inspect 
 
 ## Content collections worth authoring first
 
-The 146 entries above are prompts. The first publishable batch should be a **network** of reusable pieces rather than 146 isolated cards. These collections offer coverage to ordinary starter characters as well as stranger builds:
+The 146 entries above are prompts. The first publishable batch should be a **network** of reusable pieces rather than 146 isolated cards. These collections should support simple builds, developed characters, and ambitious compositions across the range of author-assigned BU costs:
 
 1. **Traversal and exploration:** Reefglass Folk, Marsh Salvager, Night Ferry Ward, Shelter Finder, Boundary Marker, Joining Frame, Improvised Span, and Tide Pressure Sense. Include climber, swimmer, flyer, and burrower examples using the phase 3 speed forks, but give each a clear physical permission and limitation.
 2. **Guard and rescue:** Bridgewatch Veteran, Storm Warder, Pulse Triage, Counterweight Stand, Relay Guard, Deployable Bulwark, Shelter Square, and Lastlight Sash. Distinguish a numeric bonus to the one DC from a bonus to one of the three saving throws.
@@ -224,7 +224,7 @@ Only general design patterns were taken from the sources. The candidate names, f
 
 ## Next database pass
 
-1. Audit the 9 public effects, 27 capabilities, 18 heritages, and 7 items by their **linked primitive snapshots and current card behavior**, and remove QA/test rows from the starter shortlist. Do not delete or rewrite pinned history casually.
+1. Audit the 9 public effects, 27 capabilities, 18 heritages, and 7 items by their **linked primitive snapshots and current card behavior**, and remove QA/test rows from the publishable shortlist. Do not delete or rewrite pinned history casually.
 2. Compare the proposals to public names and mechanics, mark reuse/fork/new for each, then author the missing primitive roles first. Preserve author-defined BU costs and current version/fork lineage.
 3. Build effects first, then capabilities, heritages, and items. For every composed card verify normal, mirrored where eligible, active/inactive, conditional, self/target/scene scope, compiled use, BU total, and the visible sheet or manual resolution path.
-4. In the final phase, make complete warrior, guardian, scout, healer, controller, social, and crafter starters from public entries, run the randomizer, and fill the gaps revealed by those tests.
+4. In the final phase, make complete warrior, guardian, scout, healer, controller, social, and crafter characters at several stages of development from public entries; also test quick-start choices and the randomizer. Fill the gaps revealed by those tests.

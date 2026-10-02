@@ -1,6 +1,8 @@
 # Phase 4 depth and buildability review
 
-Research supplement to [the 34-game inspiration catalog](./phase4-inspiration-catalog-2026-10.md), 2 October 2026. This is a **read-only authoring plan**, not published database content. The earlier catalog has 20 proposed effects, 26 capabilities, 20 upbringings, and 20 manifests. Those are too few to be a finished public shelf, and many lack a checked assembly. This supplement adds **24 effects, 24 capabilities, 24 upbringings, and 24 manifests**: proposed totals of **44 effects, 50 capabilities, 44 upbringings, and 44 manifests**. Counts are ideas, not verified playable rows. Exact names and prices remain subject to a duplicate and editorial pass.
+Research supplement to [the 34-game inspiration catalog](./phase4-inspiration-catalog-2026-10.md), 2 October 2026. This is a **read-only authoring plan**, not published database content. The earlier catalog has 20 proposed effects, 26 capabilities, 20 upbringings, and 20 manifests. Those are too few to be a finished public shelf, and many lack a checked assembly. This supplement adds **24 effects, 24 capabilities, 24 upbringings, and 24 manifests**: proposed totals of **44 effects, 50 capabilities, 44 upbringings, and 44 manifests**. Counts are ideas, not verified playable rows. Exact names and prices remain subject to a duplicate and editorial pass. The library must support characters across **all budgets and stages of development**, including substantial heritages whose assembled cost is well above the 25 BU creation package.
+
+**Selection principle:** optimize for how easily a player can find useful pieces and assemble the character they imagine. In every major role and theme, offer a compact ready-to-use option, several narrower forks and effects to grow it, and deeper composed capabilities and heritages for larger budgets. A 10, 20, or 50 BU heritage can all belong in the public library if its components and price are clear; those numbers are examples, not mandated price bands. Players remain free to buy the same components separately or place them in a different channel. Starter coverage is one usability check, not the organizing rule for most entries.
 
 ## What the current system can express
 
@@ -186,7 +188,7 @@ The heritage schema already stores `imageUrl`; the current form takes an absolut
 
 ## Authoring gate for the next pass
 
-1. Deduplicate and prioritize the proposed shelves against public DB names and current versions. Start with the common starter roles plus noncombat upbringings.
+1. Deduplicate and prioritize the proposed shelves against public DB names and current versions. Select a mix of straightforward, specialized, and extensive builds for each role and heritage channel. Do not force every effect, capability, or heritage toward the 25 BU creation package; the final price is authored from its actual pieces.
 2. Save only the necessary primitive forks/permissions. Test each numeric fork on the sheet in active, inactive, condition true/false, mirror, and compiled use before making it public.
 3. Author effects, then capabilities, then heritages/items. On every card show the relevant target, duration/end, manual resolution step, and linked version. Keep item BU separate from character BU.
-4. Check one complete starter per role and run the character randomizer before calling the library ready. Record any card whose text promises more than the resolver actually computes.
+4. Check both a quick-start character and more developed characters for every role, then run the character randomizer. Record any card whose text promises more than the resolver actually computes.
