@@ -1,0 +1,132 @@
+{
+  "tool": "built-in imagegen",
+  "approvedStyle": "Angular graphic fantasy illustration; flat cel shading, cut-paper forms, screenprint texture; nonhuman silhouettes.",
+  "entries": [
+    {
+      "name": "Human",
+      "prompt": "Use case: stylized-concept. ORIGINAL graphic fantasy RPG lineage illustration, NOT realistic, NOT photograph or 3D render. Bold angular drawn contours, exaggerated graphic-design silhouette, flat cut-paper color planes, sharp 2-tone cel shading, selective ink crosshatching, screenprint grain, luminous geometric arcane detail. Midnight navy antique gold electric turquoise warm vermilion accents. Square full torso with both hands, abstract minimal background mostly dark negative space. All surfaces graphic painted shapes. No text logo watermark frame or recognizable franchise species/character. Adult ordinary human traveler, brown skin and short graphic curly hair, expressive simplified angular drawn face, patched bold angular long coat, measuring cord and route paper held in hands. Deliberate drawn concept-design proportions and stylized face, zero skin realism. A human example of adaptability.",
+      "source": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-4c9171c2-deb9-4599-a011-6b93a688817f.png",
+      "path": "/images/lineages/human-graphic-v1.png",
+      "webp": "/images/lineages/human-graphic-v1.webp"
+    },
+    {
+      "name": "Mountainfolk",
+      "prompt": "Use case: stylized-concept. ORIGINAL graphic fantasy RPG lineage illustration, NOT realistic, NOT photograph or 3D render. Bold angular drawn contours, exaggerated graphic-design silhouette, flat cut-paper color planes, sharp 2-tone cel shading, selective ink crosshatching, screenprint grain, luminous geometric arcane detail. Midnight navy antique gold electric turquoise warm vermilion accents. Square full torso with both hands, abstract minimal background mostly dark negative space. All surfaces graphic painted shapes. No text logo watermark frame or recognizable franchise species/character. NONHUMAN short dense cliff-dweller with massive geometric stone-textured forearms, squat trapezoid torso, broad wedge-shaped craggy mineral head, tiny luminous inset eyes and a slab chin, slate-brown polygon skin; no human nose, hair, beard, or natural skin. Gripping a rough cliff ledge, woven climbing straps, distinctive squat powerful silhouette.",
+      "source": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-91053fe0-3c87-4a01-a3c7-252437b7a70c.png",
+      "path": "/images/lineages/mountainfolk-graphic-v1.png",
+      "webp": "/images/lineages/mountainfolk-graphic-v1.webp"
+    },
+    {
+      "name": "Skyborn",
+      "prompt": "Use case: stylized-concept. ORIGINAL graphic fantasy RPG lineage illustration, NOT realistic, NOT photograph or 3D render. Bold angular drawn contours, exaggerated graphic-design silhouette, flat cut-paper color planes, sharp 2-tone cel shading, selective ink crosshatching, screenprint grain, luminous geometric arcane detail. Midnight navy antique gold electric turquoise warm vermilion accents. Square full torso with both hands, abstract minimal background mostly dark negative space. All surfaces graphic painted shapes. No text logo watermark frame or recognizable franchise species/character. NONHUMAN airy feathered people: large back-rooted feather wings, angular owl-like mask-face with beak ridge, tall swept feather crest, slender digitigrade legs implied, hooked three-digit hands, layered lightweight travelling wraps. Wings distinct from arms, folded in graphic arcs. No angel human face or halo. Landing terrace abstract behind.",
+      "source": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-86aa763e-d5e2-4db2-8061-d7f77ef7e9b3.png",
+      "path": "/images/lineages/skyborn-graphic-v1.png",
+      "webp": "/images/lineages/skyborn-graphic-v1.webp"
+    },
+    {
+      "name": "Tidekin",
+      "prompt": "Use case: stylized-concept. ORIGINAL graphic fantasy RPG lineage illustration, NOT realistic, NOT photograph or 3D render. Bold angular drawn contours, exaggerated graphic-design silhouette, flat cut-paper color planes, sharp 2-tone cel shading, selective ink crosshatching, screenprint grain, luminous geometric arcane detail. Midnight navy antique gold electric turquoise warm vermilion accents. Square full torso with both hands, abstract minimal background mostly dark negative space. All surfaces graphic painted shapes. No text logo watermark frame or recognizable franchise species/character. NONHUMAN amphibious person with broad axolotl-like head, wide-set luminous eyes, fan-like external gill fins, smooth graphic teal skin, webbed paddle hands, sturdy sweeping fin-tail behind torso, no human hair or facial anatomy. Woven river sash, one hand reads water ripples by tidal landing.",
+      "source": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-b1be9b1a-0529-4ce9-8282-55d0838fb454.png",
+      "path": "/images/lineages/tidekin-graphic-v1.png",
+      "webp": "/images/lineages/tidekin-graphic-v1.webp"
+    },
+    {
+      "name": "Forestkind",
+      "prompt": "Use case: stylized-concept. ORIGINAL graphic fantasy RPG lineage illustration, NOT realistic, NOT photograph or 3D render. Bold angular drawn contours, exaggerated graphic-design silhouette, flat cut-paper color planes, sharp 2-tone cel shading, selective ink crosshatching, screenprint grain, luminous geometric arcane detail. Midnight navy antique gold electric turquoise warm vermilion accents. Square full torso with both hands, abstract minimal background mostly dark negative space. All surfaces graphic painted shapes. No text logo watermark frame or recognizable franchise species/character. NONHUMAN living canopy people with a branching wooden crown, split bark face with inset seed-like eyes, long vine gripping fingers and angled springy branch limbs, olive-brown cutpaper bark plates, cloth slung around torso; no human skin/hair/elf face. One hand grips a limb in woodland.",
+      "source": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-ef3ea35e-aeb4-4216-a64a-b8d21481156f.png",
+      "path": "/images/lineages/forestkind-graphic-v1.png",
+      "webp": "/images/lineages/forestkind-graphic-v1.webp"
+    },
+    {
+      "name": "Ashlung",
+      "prompt": "Use case: stylized-concept. ORIGINAL graphic fantasy RPG lineage illustration, NOT realistic, NOT photograph or 3D render. Bold angular drawn contours, exaggerated graphic-design silhouette, flat cut-paper color planes, sharp 2-tone cel shading, selective ink crosshatching, screenprint grain, luminous geometric arcane detail. Midnight navy antique gold electric turquoise warm vermilion accents. Square full torso with both hands, abstract minimal background mostly dark negative space. All surfaces graphic painted shapes. No text logo watermark frame or recognizable franchise species/character. NONHUMAN ash-filtering people with porous charcoal ceramic-looking hide, blunt rounded snout of honeycomb filtering vents, hooded turquoise slit eyes, broad vent-like collarbone, coarse ash-textured geometric limbs, no human skin nose lips hair. Practical short apron, holding fuel scoop in lightly smoky workshop. No fire emanation or elemental flame body.",
+      "source": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-11887005-2654-4d6d-b8b1-f902b985ac34.png",
+      "path": "/images/lineages/ashlung-graphic-v1.png",
+      "webp": "/images/lineages/ashlung-graphic-v1.webp"
+    },
+    {
+      "name": "Ironborn",
+      "prompt": "Use case: stylized-concept. Create an ORIGINAL graphic fantasy RPG character illustration, NOT realistic, NOT a photograph or 3D render. Art direction: bold angular drawn contours, exaggerated graphic-design silhouette, flat cut-paper-like color planes, sharp 2-tone cel shading, selective ink crosshatching, screenprint grain, luminous geometric arcane circuitry, energetic hand-drawn character-sheet illustration. Rich midnight navy, antique gold and electric turquoise with warm vermilion accents. One Ironborn lineage person, square composition full torso and both hands. NONHUMAN constructed person: no human skin, no hair, no human nose/lips. A compact asymmetrical faceted iron head with two glowing inset slit eyes and brass seams, broad replaceable floating-but-attached segmented shoulder plates, oversized jointed tool-ready hands, narrow flexible mechanical waist wrapped in practical cloth. Personality through tilt and gesture, examining an ordinary replacement plate. Abstract angular workshop shapes behind, mostly dark negative space. All materials depicted as graphic shapes and painted strokes, no realistic skin or metal rendering. Original design not a known game robot; no text logo watermark or frame.",
+      "source": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-a8ead92e-e354-459d-971f-d8d70519852c.png",
+      "path": "/images/lineages/ironborn-graphic-v1.png",
+      "webp": "/images/lineages/ironborn-graphic-v1.webp"
+    },
+    {
+      "name": "Burrowhide",
+      "prompt": "Use case: stylized-concept. ORIGINAL graphic fantasy RPG lineage illustration, NOT realistic, photo or 3D. Bold angular drawn contours, exaggerated graphic silhouette, flat cut-paper color planes, sharp 2-tone cel shading, selective ink crosshatching, screenprint grain, geometric arcane details. Midnight navy antique gold electric turquoise warm vermilion accents. Square full torso both hands, abstract minimal backdrop dark negative space, readable thumbnail. All surfaces graphic painted shapes. No text logo watermark border or known franchise design. Strong NONHUMAN body with distinctive facial anatomy, not human in makeup. Compact squat burrowing person, broad shovel forearms and blunt digging claws, wedge-shaped mole-like face with tiny inset eyes and ridged protective eyelids, earth-brown thick hide and low shoulders, woven short apron, palm in loose soil at tunnel mouth. Personable alert expression no human hair.",
+      "source": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-d7ba2069-c7ad-4f68-be20-2eda92bf2b66.png",
+      "path": "/images/lineages/burrowhide-graphic-v1.png",
+      "webp": "/images/lineages/burrowhide-graphic-v1.webp"
+    },
+    {
+      "name": "Toneweft",
+      "prompt": "Use case: stylized-concept. ORIGINAL graphic fantasy RPG lineage illustration, NOT realistic, photo or 3D. Bold angular drawn contours, exaggerated graphic silhouette, flat cut-paper color planes, sharp 2-tone cel shading, selective ink crosshatching, screenprint grain, geometric arcane details. Midnight navy antique gold electric turquoise warm vermilion accents. Square full torso both hands, abstract minimal backdrop dark negative space, readable thumbnail. All surfaces graphic painted shapes. No text logo watermark border or known franchise design. Strong NONHUMAN body with distinctive facial anatomy, not human in makeup. Rigid-surface vibration listener, tall narrow layered shell-like head, no human face/nose/lips, huge concentric ear-fin plates, tiny dark eye jewels, elongated tactile hands with segmented vibration pads, gray lilac polygon hide. Palm pressed on stone wall with angular wave diagrams as faint environmental motifs.",
+      "source": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-7d932cb9-cd75-4768-a376-5ee652242b16.png",
+      "path": "/images/lineages/toneweft-graphic-v1.png",
+      "webp": "/images/lineages/toneweft-graphic-v1.webp"
+    },
+    {
+      "name": "Sporeveil",
+      "prompt": "Use case: stylized-concept. ORIGINAL graphic fantasy RPG lineage illustration, NOT realistic, photo or 3D. Bold angular drawn contours, exaggerated graphic silhouette, flat cut-paper color planes, sharp 2-tone cel shading, selective ink crosshatching, screenprint grain, geometric arcane details. Midnight navy antique gold electric turquoise warm vermilion accents. Square full torso both hands, abstract minimal backdrop dark negative space, readable thumbnail. All surfaces graphic painted shapes. No text logo watermark border or known franchise design. Strong NONHUMAN body with distinctive facial anatomy, not human in makeup. Fungal colony person with asymmetric branching shelf-gill crown, NO human face, large simple dark eyes in an oval mycelial head, soft clustered fungal collar, slender woven filament arms, delicate three-prong fingers, quietly exchanging a visible scent puff. Practical navy sash in colony courtyard.",
+      "source": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-56a15147-2faa-4480-b370-46d59c7b3986.png",
+      "path": "/images/lineages/sporeveil-graphic-v1.png",
+      "webp": "/images/lineages/sporeveil-graphic-v1.webp"
+    },
+    {
+      "name": "Mirebody",
+      "prompt": "Use case: stylized-concept. ORIGINAL graphic fantasy RPG lineage illustration, NOT realistic, photo or 3D. Bold angular drawn contours, exaggerated graphic silhouette, flat cut-paper color planes, sharp 2-tone cel shading, selective ink crosshatching, screenprint grain, geometric arcane details. Midnight navy antique gold electric turquoise warm vermilion accents. Square full torso both hands, abstract minimal backdrop dark negative space, readable thumbnail. All surfaces graphic painted shapes. No text logo watermark border or known franchise design. Strong NONHUMAN body with distinctive facial anatomy, not human in makeup. Soft-bodied marsh person, gelatinous teardrop-shaped translucent turquoise torso and flattened rounded head, dark eye spots without human mouth/nose/hair, broad flexible mitten hands, pliable contours. Pressing one arm through a plausible narrow gap, clothes and pack stay outside. Graphic contour rings not realistic slime.",
+      "source": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-6c58455b-7eb7-4349-a044-80b74a80c7a0.png",
+      "path": "/images/lineages/mirebody-graphic-v1.png",
+      "webp": "/images/lineages/mirebody-graphic-v1.webp"
+    },
+    {
+      "name": "Kilnmaw",
+      "prompt": "Use case: stylized-concept. ORIGINAL graphic fantasy RPG lineage illustration, NOT realistic, photo or 3D. Bold angular drawn contours, exaggerated graphic silhouette, flat cut-paper color planes, sharp 2-tone cel shading, selective ink crosshatching, screenprint grain, geometric arcane details. Midnight navy antique gold electric turquoise warm vermilion accents. Square full torso both hands, abstract minimal backdrop dark negative space, readable thumbnail. All surfaces graphic painted shapes. No text logo watermark border or known franchise design. Strong NONHUMAN body with distinctive facial anatomy, not human in makeup. Heat-tolerant jawed person with massive hinged angular terracotta-metal jaw, blocky exposed hard alloy teeth, stout neck and small set-back eyes, broad short forearms, no human skin or hair. Carefully biting a thin soft metal strip in kiln-work apron, not breathing fire.",
+      "source": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-d4dcbc13-5296-402f-be2d-a206e1428fbc.png",
+      "path": "/images/lineages/kilnmaw-graphic-v1.png",
+      "webp": "/images/lineages/kilnmaw-graphic-v1.webp"
+    },
+    {
+      "name": "Hearthspark",
+      "prompt": "Use case: stylized-concept. ORIGINAL graphic fantasy RPG lineage illustration, NOT realistic, photo or 3D. Bold angular drawn contours, exaggerated graphic silhouette, flat cut-paper color planes, sharp 2-tone cel shading, selective ink crosshatching, screenprint grain, geometric arcane details. Midnight navy antique gold electric turquoise warm vermilion accents. Square full torso both hands, abstract minimal backdrop dark negative space, readable thumbnail. All surfaces graphic painted shapes. No text logo watermark border or known franchise design. Strong NONHUMAN body with distinctive facial anatomy, not human in makeup. A smaller lightly mineral-bodied lineage person, dark polygon skin with warm brass flecks, rounded angular face with tiny diamond eyes and blunt seam mouth, stubby robust fingers. Striking a knuckle on a tinder stone to produce one tiny spark, practical short cape. No immunity or flame aura, clear original little sturdy silhouette.",
+      "source": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-07e2b6be-f75f-44b8-a57b-c784e86f2fc7.png",
+      "path": "/images/lineages/hearthspark-graphic-v1.png",
+      "webp": "/images/lineages/hearthspark-graphic-v1.webp"
+    },
+    {
+      "name": "Duskling",
+      "prompt": "Use case: stylized-concept. ORIGINAL graphic fantasy RPG lineage illustration, NOT realistic, photo or 3D. Bold angular drawn contours, exaggerated graphic silhouette, flat cut-paper color planes, sharp 2-tone cel shading, selective ink crosshatching, screenprint grain, geometric arcane details. Midnight navy antique gold electric turquoise warm vermilion accents. Square full torso both hands, abstract minimal backdrop dark negative space, readable thumbnail. All surfaces graphic painted shapes. No text logo watermark border or known franchise design. Strong NONHUMAN body with distinctive facial anatomy, not human in makeup. Small nocturnal person with huge luminous deep-set pupils, fan of fine light-sensitive lashes, oversized angular batlike ears and a compact round tapered head, soft graphic navy fur, long watchful fingers. Simple dusk travel wrap, noticing a tiny moving moth. Not a human child.",
+      "source": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-c60f5a3f-b8a4-46c9-8a5c-208b3dde81e3.png",
+      "path": "/images/lineages/duskling-graphic-v1.png",
+      "webp": "/images/lineages/duskling-graphic-v1.webp"
+    },
+    {
+      "name": "Griproot",
+      "prompt": "Use case: stylized-concept. ORIGINAL graphic fantasy RPG lineage illustration, NOT realistic, photo or 3D. Bold angular drawn contours, exaggerated graphic silhouette, flat cut-paper color planes, sharp 2-tone cel shading, selective ink crosshatching, screenprint grain, geometric arcane details. Midnight navy antique gold electric turquoise warm vermilion accents. Square full torso both hands, abstract minimal backdrop dark negative space, readable thumbnail. All surfaces graphic painted shapes. No text logo watermark border or known franchise design. Strong NONHUMAN body with distinctive facial anatomy, not human in makeup. Small canopy gripping person with branch-like slender limbs, wide adhesive fingertips and toe pads, split wooden face with seed-like inset eyes, modest leaf crest rather than human hair. Gripping rough bark with three long fingers, olive-brown polygon textures, simple woven harness.",
+      "source": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-2334d210-0982-4914-ae4c-905176fa7397.png",
+      "path": "/images/lineages/griproot-graphic-v1.png",
+      "webp": "/images/lineages/griproot-graphic-v1.webp"
+    },
+    {
+      "name": "Whispercolony",
+      "prompt": "Use case: stylized-concept. ORIGINAL graphic fantasy RPG lineage illustration, NOT realistic, photo or 3D. Bold angular drawn contours, exaggerated graphic silhouette, flat cut-paper color planes, sharp 2-tone cel shading, selective ink crosshatching, screenprint grain, geometric arcane details. Midnight navy antique gold electric turquoise warm vermilion accents. Square full torso both hands, abstract minimal backdrop dark negative space, readable thumbnail. All surfaces graphic painted shapes. No text logo watermark border or known franchise design. Strong NONHUMAN body with distinctive facial anatomy, not human in makeup. Small fungal colony person with clustered collar gills, asymmetric low mushroom ridge crown, rounded mycelial head with two large simple dark eyes, fine scent tendrils around shoulders and thin three-prong hands. Sending a subtle teal scent curl; simple navy shawl. No human nose or lips.",
+      "source": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-77e56e30-1cca-40a7-8eb2-3bb2813c1a34.png",
+      "path": "/images/lineages/whispercolony-graphic-v1.png",
+      "webp": "/images/lineages/whispercolony-graphic-v1.webp"
+    },
+    {
+      "name": "Glidesprout",
+      "prompt": "Use case: stylized-concept. ORIGINAL graphic fantasy RPG lineage illustration, NOT realistic, photo or 3D. Bold angular drawn contours, exaggerated graphic silhouette, flat cut-paper color planes, sharp 2-tone cel shading, selective ink crosshatching, screenprint grain, geometric arcane details. Midnight navy antique gold electric turquoise warm vermilion accents. Square full torso both hands, abstract minimal backdrop dark negative space, readable thumbnail. All surfaces graphic painted shapes. No text logo watermark border or known franchise design. Strong NONHUMAN body with distinctive facial anatomy, not human in makeup. Small light-framed person with slender angular featherless birdlike skull and large eyes, thin expressive hands, short sail membranes attached between arms and sides unfolding behind. Not full powered wings. Showing one folded membrane with visible geometric vein struts, simple travel vest in high overlook.",
+      "source": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-c9ee38e2-051e-4290-8999-d007b9f358dd.png",
+      "path": "/images/lineages/glidesprout-graphic-v1.png",
+      "webp": "/images/lineages/glidesprout-graphic-v1.webp"
+    },
+    {
+      "name": "Reachling",
+      "prompt": "Use case: stylized-concept. ORIGINAL graphic fantasy RPG lineage illustration, NOT realistic, photo or 3D. Bold angular drawn contours, exaggerated graphic silhouette, flat cut-paper color planes, sharp 2-tone cel shading, selective ink crosshatching, screenprint grain, geometric arcane details. Midnight navy antique gold electric turquoise warm vermilion accents. Square full torso both hands, abstract minimal backdrop dark negative space, readable thumbnail. All surfaces graphic painted shapes. No text logo watermark border or known franchise design. Strong NONHUMAN body with distinctive facial anatomy, not human in makeup. Tall limber person with elongated flexible arm joints and extraordinarily long elegant three-finger hands, narrow angular wedge face with small diamond eyes, smooth pale geometric hide, no human nose/hair. One hand reaching across a modest ledge gap to retrieve a small token, torso bends gently. Practical sash and light pack.",
+      "source": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-dd4cdafc-52cf-4be8-a33d-321010037248.png",
+      "path": "/images/lineages/reachling-graphic-v1.png",
+      "webp": "/images/lineages/reachling-graphic-v1.webp"
+    }
+  ]
+}

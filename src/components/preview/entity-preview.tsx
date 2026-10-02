@@ -18,6 +18,7 @@
 // NOT displayed.
 // =============================================================================
 
+import { lineageArtUrl } from "@/lib/heritage/lineage-art";
 import { useEffect, useState, type ReactNode } from "react";
 import { Markdown } from "@/components/ui/markdown";
 import { MechanicalSummary } from "./mechanical-summary";
@@ -1424,6 +1425,7 @@ function TemplateBody({
           </>
         }
         />
+        {lineageArtUrl(row) ? <img src={lineageArtUrl(row)!} alt={row.name} className="mb-4 w-full max-w-md rounded-md border border-border" /> : null}
         {row.description ? (
           <Section heading="Description"><Markdown>{row.description}</Markdown></Section>
         ) : null}

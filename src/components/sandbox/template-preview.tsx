@@ -3,6 +3,7 @@
 // of engagement (likes/forks), authorship metadata, and edit affordances —
 // this is a pure preview, not a destination page.
 
+import { lineageArtUrl } from "@/lib/heritage/lineage-art";
 import { Markdown } from "@/components/ui/markdown";
 import { IconDisplay } from "@/components/icons/icon-display";
 
@@ -24,6 +25,7 @@ type HeritageRow = {
   kind: string;
   name: string;
   imageUrl: string | null;
+  sourceOrigin?: string | null;
   description: string | null;
   suggestedTraits: string | null;
   isPublic: boolean;
@@ -98,9 +100,9 @@ export function TemplatePreview({ row }: { row: HeritageRow }) {
         </div>
       </header>
 
-      {row.imageUrl ? (
+      {lineageArtUrl(row) ? (
         <img
-          src={row.imageUrl}
+          src={lineageArtUrl(row)!}
           alt={row.name}
           className="w-full max-w-md rounded-md border"
         />

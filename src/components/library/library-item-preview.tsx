@@ -119,6 +119,8 @@ export type SandboxCapabilityRow = {
 };
 
 export type SandboxTemplateRow = {
+  imageUrl?: string | null;
+  sourceOrigin?: string | null;
   id: string;
   kind: "LINEAGE" | "UPBRINGING" | "MANIFEST";
   name: string;

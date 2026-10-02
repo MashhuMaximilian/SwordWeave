@@ -7,6 +7,7 @@ describe("metallic game icon finish", () => {
   it("uses a bright and dark gradient in the selected color", () => {
     const red = metallicSvg(svg, "#db0f0f");
     expect(red).toContain('id="sw-metal"');
+    expect(red).toContain('x1="0" y1="0" x2="0.7" y2="1"');
     expect(red).toContain('stop-color="#db0f0f"');
     expect(red).toContain('fill="url(#sw-metal)"');
     expect(red).toContain('style="fill:url(#sw-metal)"');

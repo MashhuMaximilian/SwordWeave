@@ -1,0 +1,50 @@
+import{db}from'@/db/client';
+import{characters,primitives,primitiveVersions,capabilities,capabilityVersions,effects,effectPrimitives,capabilityPrimitives,capabilityEffects,heritage,heritageVersions,heritagePrimitives,heritageCapabilities,items,itemVersions}from'@/db/schema';
+import{eq}from'drizzle-orm';
+import{expandBundles,type BundleExpansionInput}from'@/lib/engine/bundle-expander';
+import{aggregateCharacterSheet}from'@/lib/engine/sheet';
+import{resolveModifiers}from'@/lib/engine/resolve-modifiers';
+import{cumulativeBuForLevel}from'@/lib/engine/bu';
+import{validateAttributes}from'@/lib/engine/practices';
+import{demoCharacters}from'./library-demo-characters-data-2026-10';
+export const demoPrefix='system:v14:library-demo:';
+export async function demoPlan(){
+ const[original]=await db.select().from(characters).where(eq(characters.id,'462f9048-b0da-4185-98db-d18027132c82'));if(!original?.userId)throw new Error('Reference owner unavailable');
+ const[ps,pv,cs,cv,es,ep,cp,ce,hs,hv,hp,hc,is,iv,chars]=await Promise.all([db.select().from(primitives),db.select().from(primitiveVersions),db.select().from(capabilities),db.select().from(capabilityVersions),db.select().from(effects),db.select().from(effectPrimitives),db.select().from(capabilityPrimitives),db.select().from(capabilityEffects),db.select().from(heritage),db.select().from(heritageVersions),db.select().from(heritagePrimitives),db.select().from(heritageCapabilities),db.select().from(items),db.select().from(itemVersions),db.select().from(characters)]);
+ const pNames=new Map<string,typeof ps[number]>();for(const p of ps.filter(x=>x.isPublic))if(!pNames.has(p.name)||p.sourceOrigin?.startsWith('system')&&!pNames.get(p.name)!.sourceOrigin?.startsWith('system'))pNames.set(p.name,p);
+ for(const[name,id]of[['Verb Access Tier I',20],['Focused Presence (Global DC Modifier)',22391]]as const){const p=ps.find(x=>x.id===id);if(!p)throw new Error(`Missing canonical ${name}`);pNames.set(name,p);}
+ const pIds=new Map(ps.map(x=>[x.id,x]));const cNames=new Map(cs.filter(x=>x.isPublic&&x.userId===null).map(x=>[x.name,x]));const hNames=new Map(hs.filter(x=>x.isPublic&&x.userId===null).map(x=>[x.name,x]));const iNames=new Map(is.filter(x=>x.isPublic&&x.userId===null).map(x=>[x.name,x]));
+ const pLatest=new Map(pv.filter(x=>x.isLatest).map(x=>[x.primitiveId,x.id]));const cLatest=new Map(cv.filter(x=>x.isLatest).map(x=>[x.capabilityId,x.id]));const hLatest=new Map(hv.filter(x=>x.isLatest).map(x=>[x.templateId,x.id]));const iLatest=new Map(iv.filter(x=>x.isLatest).map(x=>[x.itemId,x.id]));
+ const capBundle=(id:string)=>({capabilityId:id,primitiveLinks:cp.filter(x=>x.capabilityId===id).map(x=>({primitiveId:x.primitiveId,isMirrored:x.isMirrored})),effectLinks:ce.filter(x=>x.capabilityId===id).map(e=>({effectId:e.effectId,primitiveLinks:ep.filter(x=>x.effectId===e.effectId).map(x=>({primitiveId:x.primitiveId,isMirrored:x.isMirrored}))}))});
+ return demoCharacters.map(recipe=>{
+  const need=<T>(map:Map<string,T>,name:string,kind:string)=>{const row=map.get(name);if(!row)throw new Error(`Demo dependency missing ${kind}: ${name}. Apply base/expansion/item shelves first.`);return row;};
+  if(!validateAttributes({physical:recipe.attributes[0],mental:recipe.attributes[1],magical:recipe.attributes[2]}).valid)throw new Error(`Attributes ${recipe.name}`);
+  const heritageRows=recipe.heritages.map(name=>need(hNames,name,'heritage'));const capRows=recipe.capabilities.map(name=>need(cNames,name,'capability'));const direct=recipe.primitives.map(name=>need(pNames,name,'primitive'));
+  const inventory=recipe.items.map(x=>({...x,row:need(iNames,x.name,'item')}));
+  const input:BundleExpansionInput={heritages:heritageRows.map(h=>({id:h.id,kind:h.kind,primitiveLinks:hp.filter(x=>x.templateId===h.id).map(x=>({primitiveId:x.primitiveId,isMirrored:x.isMirrored})),capabilityLinks:hc.filter(x=>x.templateId===h.id).map(x=>capBundle(x.capabilityId))})),capabilities:capRows.map(c=>({...capBundle(c.id),id:c.id,source:'MANIFEST'})),effects:[],primitives:direct.map(p=>({primitiveId:p.id,source:'PERSONAL',isMirrored:false}))};
+  const supplied=new Set(expandBundles({...input,primitives:[]}).primitives.map(x=>x.primitiveId));
+  input.primitives=input.primitives.filter(p=>!supplied.has(p.primitiveId));
+  const expansion=expandBundles(input);if(expansion.warnings.length)throw new Error(`${recipe.name}: ${expansion.warnings.join(',')}`);
+  const cost=expansion.primitives.reduce((sum,x)=>sum+pIds.get(x.primitiveId)!.buCost,0);
+  if(cost>recipe.budget)throw new Error(`Over budget ${recipe.name}: ${cost}/${recipe.budget}`);
+  const bonus=recipe.budget-cumulativeBuForLevel(recipe.level);if(bonus<0)throw new Error(`Budget smaller than level ${recipe.name}`);
+  for(const x of expansion.primitives)if(!pLatest.get(x.primitiveId))throw new Error(`Missing primitive pin ${x.primitiveId}`);
+  for(const x of expansion.capabilities)if(!cLatest.get(x.capabilityId))throw new Error(`Missing capability pin ${x.capabilityId}`);
+  for(const x of expansion.heritages)if(!hLatest.get(x.heritageId))throw new Error(`Missing heritage pin ${x.heritageId}`);
+  for(const x of inventory)if(!iLatest.get(x.row.id))throw new Error(`Missing item pin ${x.name}`);
+  const chosen=recipe.proficient.toLowerCase()as'physical'|'mental'|'magical';const attributes={physical:recipe.attributes[0],mental:recipe.attributes[1],magical:recipe.attributes[2]};
+  const conditionContext={character:{vitality:100,vitalityMax:100,attributes,proficiencies:new Set([chosen]),flags:new Set<string>(),custom:{},practices:{}as never,saveDc:0,blockValue:0}};
+  const primitiveLinks=expansion.primitives.map(x=>{const p=pIds.get(x.primitiveId)!;return {...x,acquiredAtLevel:1,primitive:p};});
+  const itemLinks=inventory.map(x=>({itemId:x.row.id,equipped:x.equipped,quantity:1,item:x.row}));
+  const sheet=aggregateCharacterSheet({characterId:`planned:${recipe.key}`,level:recipe.level,attrPhysical:attributes.physical,attrMental:attributes.mental,attrMagical:attributes.magical,attrProficient:recipe.proficient,practiceSlices:null,startingBu:25,dmBonusBu:bonus,buSpent:cost,currentVitality:null,size:'MEDIUM',primitiveLinks,capabilityLinks:[],itemLinks,conditionContext});
+  const slots=expansion.primitives.map(x=>{const p=pIds.get(x.primitiveId)!;return {...x,name:p.name,category:p.category,hardModifiers:p.hardModifiers,isMirrorable:p.isMirrorable,mirrorVector:p.mirrorVector};});
+  const resolved=resolveModifiers({characterId:`planned:${recipe.key}`,level:recipe.level,pb:sheet.proficiencyBonus,attributes,proficientAttribute:chosen,chosenAttribute:chosen,conditionContext,slots});
+  const baseline=resolveModifiers({characterId:`baseline:${recipe.key}`,level:recipe.level,pb:sheet.proficiencyBonus,attributes,proficientAttribute:chosen,chosenAttribute:chosen,conditionContext,slots:[]});
+  if(baseline.totals.save_dc!==5+sheet.proficiencyBonus+attributes[chosen])throw new Error(`DC base formula drift ${recipe.name}`);
+  if(sheet.savingThrows.length!==3)throw new Error(`Saving throw axes ${recipe.name}`);
+  if(sheet.dc!==resolved.totals.save_dc)throw new Error(`Sheet/DC resolver differ ${recipe.name}: ${sheet.dc}/${resolved.totals.save_dc}`);
+  if(sheet.buBalance.progressionPool!==recipe.budget||sheet.buBalance.overBudget)throw new Error(`Pool ${recipe.name}`);
+  if(sheet.encumbrance.load>sheet.encumbrance.capacity||sheet.encumbrance.equipSlotsUsed>sheet.encumbrance.equipSlotsAvailable)throw new Error(`Illegal inventory ${recipe.name}`);
+  return{recipe,ownerId:original.userId,heritageRows,expansion,inventory,cost,bonus,sheet,pLatest,cLatest,hLatest,iLatest,existing:chars.find(x=>x.sourceOrigin===`${demoPrefix}${recipe.key}`)};
+ });
+}

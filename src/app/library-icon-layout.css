@@ -1,0 +1,46 @@
+/* Shared entity rows keep the emblem beside the first line of the name.
+   Load after responsive sheets so desktop and touch layouts use one inset. */
+body[data-ui="v12"] .v12-entry-row,
+body[data-ui="v12"] .v12-creation-grid .v12-entry-row,
+body[data-ui="v12"] .v12-unified-source-browser > :not(.v12-source-browser) button[data-library-row-id],
+body[data-ui="v12"] .v12-live-recipe .v12-live-identity {
+  align-items: start;
+}
+
+body[data-ui="v12"] .v12-entry-glyph,
+body[data-ui="v12"] .sheet-library-entry-icon,
+.sw-entity-medallion {
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  align-self: start;
+  padding: 5px;
+}
+
+body[data-ui="v12"] .v12-entry-glyph > img,
+body[data-ui="v12"] .sheet-library-entry-icon > img,
+.sw-entity-medallion > img {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 0;
+}
+
+@media (max-width: 767px) {
+  body[data-ui="v12"] .phone-library-record {
+    grid-template-columns: 32px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  body[data-ui="v12"] .phone-library-record .sheet-library-entry-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  body[data-ui="v12"] .v12-live-emblem :is(img, svg) {
+    width: 18px !important;
+    height: 18px !important;
+  }
+}

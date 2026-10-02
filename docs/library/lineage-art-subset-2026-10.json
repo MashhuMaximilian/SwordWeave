@@ -1,0 +1,138 @@
+{
+  "created": "2026-10-02",
+  "style": "Approved Ironborn angular graphic/screenprint reference",
+  "images": [
+    {
+      "slug": "claymold",
+      "name": "Claymold",
+      "source": "/Users/max/.codex/generated_images/01a0fe37-f379-7db0-8142-5852a979b456/exec-a2e66c88-20da-49f5-99dc-543f25591c9b.png",
+      "png": "public/images/lineages/claymold-graphic-v1.png",
+      "webp": "public/images/lineages/claymold-graphic-v1.webp",
+      "prompt": "Use case: stylized-concept. Create one original SwordWeave lineage library illustration, square waist-up portrait including both hands. Use attached image ONLY as reference for graphic medium and palette, replace its character entirely. CLAYMOLD: a nonhuman living terracotta body with broad soft clay shoulders, elongated palms, sculpted cheek planes and an unfinished asymmetrical face that is being slowly reshaped by the creature's own fingers; one smooth face plane and one flowing clay fold, no mask, no human actor. Quiet pottery cavern backdrop with simple geometric arcane marks. Bold angular contours, cut-paper color planes, two-tone cel shading, selective ink hatching and screenprint grain; midnight navy, antique gold ochre, turquoise light, small vermilion accents. Luminous geometric fantasy design, thoughtful personal presence. Organic clay anatomy is visible, no class costume, no armor, no robot, no photorealism, no 3D rendering, no text, no logo, no known franchise design. Match reference's striking poster-like visual clarity and handmade texture.",
+      "tool": "built-in image_gen",
+      "styleReference": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-a8ead92e-e354-459d-971f-d8d70519852c.png",
+      "visualReview": "Inspected inline: distinctive nonhuman anatomy, square portrait with hands, angular cel planes and textured navy/gold/turquoise palette; no text or franchise design."
+    },
+    {
+      "slug": "mirrorhide",
+      "name": "Mirrorhide",
+      "source": "/Users/max/.codex/generated_images/01a0fe37-f379-7db0-8142-5852a979b456/exec-c4930f5d-69e3-4c62-82f2-f21823aefdad.png",
+      "png": "public/images/lineages/mirrorhide-graphic-v1.png",
+      "webp": "public/images/lineages/mirrorhide-graphic-v1.webp",
+      "prompt": "Use case: stylized-concept. One original SwordWeave lineage illustration, square waist-up portrait including both hands. Input image is ONLY graphic-style/palette reference; replace Ironborn entirely. MIRRORHIDE: a nonhuman amphibious cephalopod-like body with a flattened broad head, small deep-set eyes, scalloped shoulder membranes and two webbed hands. Across its matte living skin, angular mosaic bands match the adjacent dark slate wall on one side and ochre stone on the other; show stationary surface color camouflage, not shiny armor, a mirror mask, or a tinted human. One hand held quietly against the wall. Background: simple shadowed fantasy architecture and quiet geometric arcane marks. Bold angular contours, cut-paper color planes, two-tone cel shading, selective ink hatching and screenprint grain; midnight navy, antique gold ochre, electric turquoise glow, small vermilion accents. Luminous geometric fantasy design, individual personal presence, strong species silhouette. Anatomy is central, no class costume, no text/logo, no photorealism, no 3D rendering, no known franchise character. Match reference poster-like clarity and handmade texture.",
+      "tool": "built-in image_gen",
+      "styleReference": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-a8ead92e-e354-459d-971f-d8d70519852c.png",
+      "visualReview": "Inspected inline: distinctive nonhuman anatomy, square portrait with hands, angular cel planes and textured navy/gold/turquoise palette; no text or franchise design."
+    },
+    {
+      "slug": "flintskin",
+      "name": "Flintskin",
+      "source": "/Users/max/.codex/generated_images/01a0fe37-f379-7db0-8142-5852a979b456/exec-f5805a32-0714-494d-8188-9a1565e5eecd.png",
+      "png": "public/images/lineages/flintskin-graphic-v1.png",
+      "webp": "public/images/lineages/flintskin-graphic-v1.webp",
+      "prompt": "Use case: stylized-concept. One original SwordWeave lineage illustration, square waist-up portrait including both hands. Input image is ONLY graphic-style/palette reference; replace Ironborn entirely. FLINTSKIN: a sturdy nonhuman mineral-bodied creature with a blunt wedge-shaped reptilian face, interlocking flint scales, broad shoulders and two thick mineral hands. One knuckle rubs against a small hard stone, making a few tiny vivid sparks; rough black flint with chipped ochre edges, no full fire body, no armor or machine. Background: simple shadowed fantasy architecture and quiet geometric arcane marks. Bold angular contours, cut-paper color planes, two-tone cel shading, selective ink hatching and screenprint grain; midnight navy, antique gold ochre, electric turquoise glow, small vermilion accents. Luminous geometric fantasy design, individual personal presence, strong species silhouette. Anatomy is central, no class costume, no text/logo, no photorealism, no 3D rendering, no known franchise character. Match reference poster-like clarity and handmade texture.",
+      "tool": "built-in image_gen",
+      "styleReference": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-a8ead92e-e354-459d-971f-d8d70519852c.png",
+      "visualReview": "Inspected inline: distinctive nonhuman anatomy, square portrait with hands, angular cel planes and textured navy/gold/turquoise palette; no text or franchise design."
+    },
+    {
+      "slug": "rootwaker",
+      "name": "Rootwaker",
+      "source": "/Users/max/.codex/generated_images/01a0fe37-f379-7db0-8142-5852a979b456/exec-a075f887-099f-4c26-896c-f79419697f19.png",
+      "png": "public/images/lineages/rootwaker-graphic-v1.png",
+      "webp": "public/images/lineages/rootwaker-graphic-v1.webp",
+      "prompt": "Use case: stylized-concept. One original SwordWeave lineage illustration, square waist-up portrait including both hands. Input image is ONLY graphic-style/palette reference; replace Ironborn entirely. ROOTWAKER: a distinctly botanical living body with a long hollow fibrous seedpod head, leaflike sensory slits rather than a human face, intertwined root forearms and two many-root palms gently touching fertile soil. Fine branching roots descend from its torso into the ground. Sparse young leaves, warm woodfiber planes, not a person wearing tree armor or a known tree monster. Background: simple shadowed fantasy architecture and quiet geometric arcane marks. Bold angular contours, cut-paper color planes, two-tone cel shading, selective ink hatching and screenprint grain; midnight navy, antique gold ochre, electric turquoise glow, small vermilion accents. Luminous geometric fantasy design, individual personal presence, strong species silhouette. Anatomy is central, no class costume, no text/logo, no photorealism, no 3D rendering, no known franchise character. Match reference poster-like clarity and handmade texture.",
+      "tool": "built-in image_gen",
+      "styleReference": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-a8ead92e-e354-459d-971f-d8d70519852c.png",
+      "visualReview": "Inspected inline: distinctive nonhuman anatomy, square portrait with hands, angular cel planes and textured navy/gold/turquoise palette; no text or franchise design."
+    },
+    {
+      "slug": "latticevein",
+      "name": "Latticevein",
+      "source": "/Users/max/.codex/generated_images/01a0fe37-f379-7db0-8142-5852a979b456/exec-d42b4df3-f53d-43e3-a40f-0c52463f164d.png",
+      "png": "public/images/lineages/latticevein-graphic-v1.png",
+      "webp": "public/images/lineages/latticevein-graphic-v1.webp",
+      "prompt": "Use case: stylized-concept. One original SwordWeave lineage illustration, square waist-up portrait including both hands. Input image is ONLY graphic-style/palette reference; replace Ironborn entirely. LATTICEVEIN: an organic mineral creature with an elongated faceted crystal crown that grows naturally from a nonhuman narrow head, translucent branching crystal veins visible in torso and palms. Two hands touch a resonating small crystal, faint concentric turquoise vibration lines within the living lattice. Faces and body are natural crystal growth, not a humanoid robot, armored knight, or cut jewel costume. Background: simple shadowed fantasy architecture and quiet geometric arcane marks. Bold angular contours, cut-paper color planes, two-tone cel shading, selective ink hatching and screenprint grain; midnight navy, antique gold ochre, electric turquoise glow, small vermilion accents. Luminous geometric fantasy design, individual personal presence, strong species silhouette. Anatomy is central, no class costume, no text/logo, no photorealism, no 3D rendering, no known franchise character. Match reference poster-like clarity and handmade texture.",
+      "tool": "built-in image_gen",
+      "styleReference": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-a8ead92e-e354-459d-971f-d8d70519852c.png",
+      "visualReview": "Inspected inline: distinctive nonhuman anatomy, square portrait with hands, angular cel planes and textured navy/gold/turquoise palette; no text or franchise design."
+    },
+    {
+      "slug": "coppervein",
+      "name": "Coppervein",
+      "source": "/Users/max/.codex/generated_images/01a0fe37-f379-7db0-8142-5852a979b456/exec-8650d996-7201-4d63-b181-235404db7b72.png",
+      "png": "public/images/lineages/coppervein-graphic-v1.png",
+      "webp": "public/images/lineages/coppervein-graphic-v1.webp",
+      "prompt": "Use case: stylized-concept. One original SwordWeave lineage illustration, square waist-up portrait including both hands. Input image is ONLY graphic-style/palette reference; replace Ironborn entirely. COPPERVEIN: a sinewy nonhuman conductive organism with a broad crescent crest, deep-set small eyes, smooth dark insulating skin and branching copper-colored living tissue exposed along neck, forearms and two long palms. One palm touches an ordinary narrow copper rod and reveals restrained turquoise current lines ONLY along direct contact. Biological not robot; no human face, circuit armor, huge lightning bolts or invented distant sensing. Background: simple shadowed fantasy architecture and quiet geometric arcane marks. Bold angular contours, cut-paper color planes, two-tone cel shading, selective ink hatching and screenprint grain; midnight navy, antique gold ochre, electric turquoise glow, small vermilion accents. Luminous geometric fantasy design, individual personal presence, strong species silhouette. Anatomy is central, no class costume, no text/logo, no photorealism, no 3D rendering, no known franchise character. Match reference poster-like clarity and handmade texture.",
+      "tool": "built-in image_gen",
+      "styleReference": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-a8ead92e-e354-459d-971f-d8d70519852c.png",
+      "visualReview": "Inspected inline: distinctive nonhuman anatomy, square portrait with hands, angular cel planes and textured navy/gold/turquoise palette; no text or franchise design."
+    },
+    {
+      "slug": "nightpupil",
+      "name": "Nightpupil",
+      "source": "/Users/max/.codex/generated_images/01a0fe37-f379-7db0-8142-5852a979b456/exec-0689d607-1088-4acd-b421-860232429f12.png",
+      "png": "public/images/lineages/nightpupil-graphic-v1.png",
+      "webp": "public/images/lineages/nightpupil-graphic-v1.webp",
+      "prompt": "Use case: stylized-concept. One original SwordWeave lineage illustration, square waist-up portrait including both hands. Input image is ONLY graphic-style/palette reference; replace Ironborn entirely. NIGHTPUPIL: a nocturnal nonhuman creature with a broad triangular owl-amphibian face, enormous low-light eyes with broad pupils, a low ridge instead of a nose, soft midnight skin, long thin sensory fins near cheeks and two small clawed palms. Quiet under faint natural moonlight with eyes reflecting scarce light; no glowing supernatural eye beam, no human actor, no costume, no total-darkness claim. Background: simple shadowed fantasy architecture and quiet geometric arcane marks. Bold angular contours, cut-paper color planes, two-tone cel shading, selective ink hatching and screenprint grain; midnight navy, antique gold ochre, electric turquoise glow, small vermilion accents. Luminous geometric fantasy design, individual personal presence, strong species silhouette. Anatomy is central, no class costume, no text/logo, no photorealism, no 3D rendering, no known franchise character. Match reference poster-like clarity and handmade texture.",
+      "tool": "built-in image_gen",
+      "styleReference": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-a8ead92e-e354-459d-971f-d8d70519852c.png",
+      "visualReview": "Inspected inline: distinctive nonhuman anatomy, square portrait with hands, angular cel planes and textured navy/gold/turquoise palette; no text or franchise design."
+    },
+    {
+      "slug": "lantern-eyed",
+      "name": "Lantern-Eyed",
+      "source": "/Users/max/.codex/generated_images/01a0fe37-f379-7db0-8142-5852a979b456/exec-39bf2504-26ab-4a87-8161-f28169f155c0.png",
+      "png": "public/images/lineages/lantern-eyed-graphic-v1.png",
+      "webp": "public/images/lineages/lantern-eyed-graphic-v1.webp",
+      "prompt": "Use case: stylized-concept. One original SwordWeave lineage illustration, square waist-up portrait including both hands. Input image is ONLY graphic-style/palette reference; replace Ironborn entirely. LANTERN-EYED: a short-necked nonhuman amphibious creature with a wide flattened head and a pair of naturally bioluminescent eye bulbs, visible glowing turquoise rings within the eyes. Two webbed hands frame its face as it displays one gentle coded light; eye light subtly illuminates nearby palms. Ochre smooth skin with small vermilion accents, not a human with glowing eyes, not a robot or enormous searchlight. Background: simple shadowed fantasy architecture and quiet geometric arcane marks. Bold angular contours, cut-paper color planes, two-tone cel shading, selective ink hatching and screenprint grain; midnight navy, antique gold ochre, electric turquoise glow, small vermilion accents. Luminous geometric fantasy design, individual personal presence, strong species silhouette. Anatomy is central, no class costume, no text/logo, no photorealism, no 3D rendering, no known franchise character. Match reference poster-like clarity and handmade texture.",
+      "tool": "built-in image_gen",
+      "styleReference": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-a8ead92e-e354-459d-971f-d8d70519852c.png",
+      "visualReview": "Inspected inline: distinctive nonhuman anatomy, square portrait with hands, angular cel planes and textured navy/gold/turquoise palette; no text or franchise design."
+    },
+    {
+      "slug": "hollowbone",
+      "name": "Hollowbone",
+      "source": "/Users/max/.codex/generated_images/01a0fe37-f379-7db0-8142-5852a979b456/exec-d2944d81-b78e-4e2e-b2dc-fb7ae931333f.png",
+      "png": "public/images/lineages/hollowbone-graphic-v1.png",
+      "webp": "public/images/lineages/hollowbone-graphic-v1.webp",
+      "prompt": "Use case: stylized-concept. One original SwordWeave lineage illustration, square waist-up portrait including both hands. Input image is ONLY graphic-style/palette reference; replace Ironborn entirely. HOLLOWBONE: a delicate nonhuman gliding creature with an elongated narrow birdlike skull, airy collarbone arches, very long light forearms and thin folded skin sail membranes between wrists and torso. Both hands clearly visible holding membranes slightly open. Show gliding anatomy and featherless lightweight silhouette; no full feathered bird wings, no hovering, no human with wings, no armor. Background: simple shadowed fantasy architecture and quiet geometric arcane marks. Bold angular contours, cut-paper color planes, two-tone cel shading, selective ink hatching and screenprint grain; midnight navy, antique gold ochre, electric turquoise glow, small vermilion accents. Luminous geometric fantasy design, individual personal presence, strong species silhouette. Anatomy is central, no class costume, no text/logo, no photorealism, no 3D rendering, no known franchise character. Match reference poster-like clarity and handmade texture.",
+      "tool": "built-in image_gen",
+      "styleReference": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-a8ead92e-e354-459d-971f-d8d70519852c.png",
+      "visualReview": "Inspected inline: distinctive nonhuman anatomy, square portrait with hands, angular cel planes and textured navy/gold/turquoise palette; no text or franchise design."
+    },
+    {
+      "slug": "antlerhand",
+      "name": "Antlerhand",
+      "source": "/Users/max/.codex/generated_images/01a0fe37-f379-7db0-8142-5852a979b456/exec-6ab2632a-ee71-4eff-9626-08ac8d24dcb8.png",
+      "png": "public/images/lineages/antlerhand-graphic-v1.png",
+      "webp": "public/images/lineages/antlerhand-graphic-v1.webp",
+      "prompt": "Use case: stylized-concept. One original SwordWeave lineage illustration, square waist-up portrait including both hands. Input image is ONLY graphic-style/palette reference; replace Ironborn entirely. ANTLERHAND: a nonhuman soft-skinned creature with an elongated organic head crowned by several finely branching sensitive feelers shaped like small antler branches. Two slender ordinary hands are visible; one delicate forehead feeler probes a narrow pottery cavity near its chest while a hand steadies the vessel. Organic feelers rather than a deer costume, no extra arms or equipped hands, no familiar franchise antler species. Background: simple shadowed fantasy architecture and quiet geometric arcane marks. Bold angular contours, cut-paper color planes, two-tone cel shading, selective ink hatching and screenprint grain; midnight navy, antique gold ochre, electric turquoise glow, small vermilion accents. Luminous geometric fantasy design, individual personal presence, strong species silhouette. Anatomy is central, no class costume, no text/logo, no photorealism, no 3D rendering, no known franchise character. Match reference poster-like clarity and handmade texture.",
+      "tool": "built-in image_gen",
+      "styleReference": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-a8ead92e-e354-459d-971f-d8d70519852c.png",
+      "visualReview": "Inspected inline: distinctive nonhuman anatomy, square portrait with hands, angular cel planes and textured navy/gold/turquoise palette; no text or franchise design."
+    },
+    {
+      "slug": "chitterkin",
+      "name": "Chitterkin",
+      "source": "/Users/max/.codex/generated_images/01a0fe37-f379-7db0-8142-5852a979b456/exec-09055e42-7a10-4870-b675-e89e43da9095.png",
+      "png": "public/images/lineages/chitterkin-graphic-v1.png",
+      "webp": "public/images/lineages/chitterkin-graphic-v1.webp",
+      "prompt": "Use case: stylized-concept. One original SwordWeave lineage illustration, square waist-up portrait including both hands. Input image is ONLY graphic-style/palette reference; replace Ironborn entirely. CHITTERKIN: a fully nonhuman insectoid body with overlapping ochre chitin plates, a broad mantis-beetle head, small articulated mouthparts, paired fine sensory antennae and two jointed claw hands. One hand rests on a stone surface as fine tactile hairs read a nearby vibration; expressive composed stance, only two arms. No armored human, no standard giant bug monster pose, no known franchise design. Background: simple shadowed fantasy architecture and quiet geometric arcane marks. Bold angular contours, cut-paper color planes, two-tone cel shading, selective ink hatching and screenprint grain; midnight navy, antique gold ochre, electric turquoise glow, small vermilion accents. Luminous geometric fantasy design, individual personal presence, strong species silhouette. Anatomy is central, no class costume, no text/logo, no photorealism, no 3D rendering, no known franchise character. Match reference poster-like clarity and handmade texture.",
+      "tool": "built-in image_gen",
+      "styleReference": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-a8ead92e-e354-459d-971f-d8d70519852c.png",
+      "visualReview": "Inspected inline: distinctive nonhuman anatomy, square portrait with hands, angular cel planes and textured navy/gold/turquoise palette; no text or franchise design."
+    },
+    {
+      "slug": "longreach",
+      "name": "Longreach",
+      "source": "/Users/max/.codex/generated_images/01a0fe37-f379-7db0-8142-5852a979b456/exec-66b7192f-efb2-4e05-88c7-b8e054eeea7e.png",
+      "png": "public/images/lineages/longreach-graphic-v1.png",
+      "webp": "public/images/lineages/longreach-graphic-v1.webp",
+      "prompt": "Use case: stylized-concept. One original SwordWeave lineage illustration, square waist-up portrait including both hands. Input image is ONLY graphic-style/palette reference; replace Ironborn entirely. LONGREACH: a tall nonhuman flexible-bodied creature with a long smooth narrow head, understated slitlike features, elongated neck and astonishingly long jointed forearms. Two delicate long-fingered hands visible; one arm bends sinuously to retrieve a small ordinary object across a modest gap while the other rests near the torso. Organic ochre-dark anatomy, no tentacle monster, no human stretched by editing, no spell beam or extra reach attack. Background: simple shadowed fantasy architecture and quiet geometric arcane marks. Bold angular contours, cut-paper color planes, two-tone cel shading, selective ink hatching and screenprint grain; midnight navy, antique gold ochre, electric turquoise glow, small vermilion accents. Luminous geometric fantasy design, individual personal presence, strong species silhouette. Anatomy is central, no class costume, no text/logo, no photorealism, no 3D rendering, no known franchise character. Match reference poster-like clarity and handmade texture.",
+      "tool": "built-in image_gen",
+      "styleReference": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-a8ead92e-e354-459d-971f-d8d70519852c.png",
+      "visualReview": "Inspected inline: distinctive nonhuman anatomy, square portrait with hands, angular cel planes and textured navy/gold/turquoise palette; no text or franchise design."
+    }
+  ]
+}

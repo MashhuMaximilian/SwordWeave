@@ -8,6 +8,7 @@
 // rendered for description fields via react-markdown.
 // =============================================================================
 
+import { lineageArtUrl } from "@/lib/heritage/lineage-art";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
@@ -1329,9 +1330,9 @@ async function TemplateDetail({
     iconUrl={row.iconUrl}
     iconColor={row.iconColor}
     >
-      {row.imageUrl && (
+      {lineageArtUrl(row) && (
         <img
-          src={row.imageUrl}
+          src={lineageArtUrl(row)!}
           alt={row.name}
           className="mb-4 w-full max-w-md rounded-md border border-border"
         />

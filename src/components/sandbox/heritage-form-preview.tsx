@@ -1,4 +1,5 @@
 "use client";
+import { lineageArtUrl } from "@/lib/heritage/lineage-art";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { PhoneDraftPreview, draftEffectLinks, draftPrimitiveLink } from "./phone-draft-preview";
 
@@ -61,7 +62,7 @@ export function HeritageFormPreview({form, primitives, capabilities}: {
   return <LiveRecipeCard name={form.name} kind={kindLabel(form.kind)} icon={form} description={form.description} sourceOrigin={form.sourceOrigin} tags={form.tags} badges={<>
     <span data-tone="violet">{kindLabel(form.kind)}</span><span data-tone="teal">{form.isPublic ? "Public" : "Private draft"}</span><span>{transitiveBu} BU{completeCost ? "" : " · loaded rules"}</span>
   </>}>
-    {form.imageUrl ? <img src={form.imageUrl} alt={form.name} className="v12-live-portrait" /> : null}
+    {lineageArtUrl(form) ? <img src={lineageArtUrl(form)!} alt={form.name} className="v12-live-portrait" /> : null}
     <LiveMechanicalSummary slots={allSlots} />
     {capabilities.length ? <section className="v12-live-composition"><h3 className="v12-kicker">Granted capabilities · {capabilities.length}</h3>{capabilities.map((capability,index)=>{const capabilityBu=[...(capability.primitiveLinks ?? []),...(capability.effects ?? []).flatMap(effect=>effect.primitiveLinks ?? [])].reduce((sum,slot)=>sum+Math.abs(slot.primitive.buCost*(slot.quantity ?? 1)),0);return <article className="v12-live-effect" key={`${capability.id}:${index}`}><button type="button" className="v12-live-effect-open" onClick={()=>dispatchOpenPreview({targetType:"CAPABILITY",targetId:String(capability.id),label:capability.name})}><span className="v12-kicker">Capability · {capability.category}</span><strong>{capability.name}</strong><small>{capabilityBu} BU</small><span aria-hidden="true">↗</span></button>
       <LivePrimitiveRules slots={capability.primitiveLinks ?? []} /><LiveEffectRules effects={capability.effects ?? []} />

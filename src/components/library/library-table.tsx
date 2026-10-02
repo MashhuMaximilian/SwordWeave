@@ -248,13 +248,13 @@ function ListItem({
           between rows. */}
       <div className={cn("flex shrink-0 flex-col items-center gap-1", isAtelier ? "w-11" : "w-12")}>
         {item.iconSource ? (
-          <span className={cn(isAtelier && "grid size-10 place-items-center rounded-full border border-[#a97830] bg-black/30 shadow-[inset_0_0_0_3px_rgba(8,13,20,0.9)]")}>
+          <span className={cn(isAtelier && "sw-entity-medallion grid size-10 place-items-center rounded-full border border-[#a97830] bg-black/30 shadow-[inset_0_0_0_3px_rgba(8,13,20,0.9)]")}>
             <IconDisplay
               iconSource={item.iconSource}
               iconKey={item.iconKey}
               iconUrl={item.iconUrl}
               iconColor={item.iconColor}
-              size={isAtelier ? 27 : 36}
+              size={isAtelier ? 24 : 36}
               className={isAtelier ? "rounded-full" : "rounded-md"}
               alt={item.name}
             />
@@ -385,13 +385,13 @@ function GridCard({
       <header className="flex items-start gap-2">
         <div className="flex w-10 shrink-0 flex-col items-center gap-1">
           {item.iconSource ? (
-            <span className={cn(isAtelier && "grid size-9 place-items-center rounded-full border border-[#a97830] bg-black/30 shadow-[inset_0_0_0_3px_rgba(8,13,20,0.9)]")}>
+            <span className={cn(isAtelier && "sw-entity-medallion grid size-9 place-items-center rounded-full border border-[#a97830] bg-black/30 shadow-[inset_0_0_0_3px_rgba(8,13,20,0.9)]")}>
               <IconDisplay
                 iconSource={item.iconSource}
                 iconKey={item.iconKey}
                 iconUrl={item.iconUrl}
                 iconColor={item.iconColor}
-                size={isAtelier ? 24 : 28}
+                size={isAtelier ? 22 : 28}
                 alt={item.name}
                 className={cn("shrink-0", isAtelier && "rounded-full")}
               />
