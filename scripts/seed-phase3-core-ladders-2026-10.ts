@@ -13,33 +13,38 @@ config({ path: ".env.local", quiet: true });
 
 type Row = typeof primitives.$inferSelect;
 type Axis = "practice" | "save" | "speed";
+type Magnitude = number | "PB";
 type Variant = {
   key: string; parentId: number; axis: Axis; name: string; subject: string;
   target: string; scope: { layer: string; values: string[] };
-  amount: number; cost: number; tier: number; family: string; description: string;
+  amount: Magnitude; cost: number; tier: number; family: string; description: string;
 };
 
 const practices = ["PROWESS", "FINESSE", "FIELDCRAFT", "AWARENESS", "REASON", "KNOWLEDGE", "INFLUENCE", "MYSTICISM", "COMMUNION", "INTUITION"] as const;
 const title = (s: string) => s[0] + s.slice(1).toLowerCase();
 const practiceVariants: Variant[] = practices.flatMap((practice, index) =>
-  ([1, 2, 3, 5] as const).map((amount) => ({
+  ([1, 2, 3, 5, "PB"] as const).map((amount) => ({
     key: `practice-${practice.toLowerCase()}-${amount}`, parentId: 22498 + index, axis: "practice" as const,
     name: `${title(practice)} Check +${amount}`, subject: `${title(practice)} checks`,
     target: "skill_practice_check", scope: { layer: "PRACTICE", values: [practice] },
-    amount, cost: { 1: 2, 2: 4, 3: 6, 5: 10 }[amount], tier: amount <= 2 ? 2 : amount === 3 ? 3 : 4,
+    amount, cost: amount === "PB" ? 12 : { 1: 2, 2: 4, 3: 6, 5: 10 }[amount], tier: amount === "PB" ? 4 : amount <= 2 ? 2 : amount === 3 ? 3 : 4,
     family: "PRACTICE_PROGRESSION",
-    description: `Add ${amount} to ${title(practice)} checks while active, whether or not the character is proficient. This is a flat check bonus, not a proficiency grant or an extra Proficiency Bonus. A mirrored use subtracts ${amount}.`,
+    description: amount === "PB"
+      ? `While active, add one extra full Proficiency Bonus to ${title(practice)} checks. This is an additive bonus even if already proficient; it does not grant proficiency or replace the existing proficiency contribution. A mirrored use subtracts one full Proficiency Bonus.`
+      : `Add ${amount} to ${title(practice)} checks while active, whether or not the character is proficient. This is a flat check bonus, not a proficiency grant or an extra Proficiency Bonus. A mirrored use subtracts ${amount}.`,
   })));
 
 const saves = ["PHYSICAL", "MENTAL", "MAGICAL"] as const;
 const saveVariants: Variant[] = saves.flatMap((save, index) =>
-  ([1, 2, 3, 5] as const).map((amount) => ({
+  ([1, 2, 3, 5, "PB"] as const).map((amount) => ({
     key: `save-${save.toLowerCase()}-${amount}`, parentId: 22495 + index, axis: "save" as const,
     name: `${title(save)} Saving Throw +${amount}`, subject: `${title(save)} saving throws`,
     target: "action_roll", scope: { layer: "METRIC", values: [`${save}_SAVE`] },
-    amount, cost: { 1: 3, 2: 6, 3: 9, 5: 15 }[amount], tier: amount === 1 ? 2 : amount === 2 ? 3 : amount === 3 ? 4 : 5,
+    amount, cost: amount === "PB" ? 16 : { 1: 3, 2: 6, 3: 9, 5: 15 }[amount], tier: amount === "PB" ? 5 : amount === 1 ? 2 : amount === 2 ? 3 : amount === 3 ? 4 : 5,
     family: "UNIVERSAL_MODIFIERS",
-    description: `Add ${amount} to ${title(save)} saving throws while active. This does not grant proficiency, affect the other two saving throws, or alter the character's one DC. A mirrored use subtracts ${amount}.`,
+    description: amount === "PB"
+      ? `While active, add one extra full Proficiency Bonus to ${title(save)} saving throws. This is additive, not a proficiency grant or replacement. Other saving throws and the one DC are unchanged. A mirrored use subtracts one full Proficiency Bonus.`
+      : `Add ${amount} to ${title(save)} saving throws while active. This does not grant proficiency, affect the other two saving throws, or alter the character's one DC. A mirrored use subtracts ${amount}.`,
   })));
 
 const movement: ReadonlyArray<{ mode: string; parentId: number; amounts: readonly number[]; costs: readonly number[]; notes: string }> = [
@@ -63,7 +68,7 @@ const origin = (v: Variant) => `system:v12:curated:core:${v.key}`;
 
 function candidate(parent: Row, v: Variant): Row {
   const modifier: HardModifier = {
-    kind: "modify", target: v.target, operation: "add", value: { kind: "number", value: v.amount },
+    kind: "modify", target: v.target, operation: "add", value: v.amount === "PB" ? { kind: "derived", which: "pb" } : { kind: "number", value: v.amount },
     stacking: "stack", metadata: { recipient: "SELF", targetScope: v.scope },
   };
   return {
@@ -71,8 +76,8 @@ function candidate(parent: Row, v: Variant): Row {
     definitionKind: "EXPRESSION", templatePrimitiveId: parent.templatePrimitiveId,
     bindingSchema: {}, bindings: v.axis === "practice" ? { practice: v.scope.values[0] } : {},
     buCost: v.cost, costTier: `Tier ${v.tier} — author price ${v.cost} BU`,
-    mechanicalRule: { family: "UNIVERSAL_MODIFIER", target: v.subject, operation: "add", value: { kind: "number", value: v.amount }, recipient: "SELF" },
-    mechanicalTemplateText: "", mechanicalOutputText: `Add ${v.amount} to ${v.subject}.`, narrativeRule: v.description,
+    mechanicalRule: { family: "UNIVERSAL_MODIFIER", target: v.subject, operation: "add", value: v.amount === "PB" ? { kind: "derived", which: "pb" } : { kind: "number", value: v.amount }, recipient: "SELF" },
+    mechanicalTemplateText: "", mechanicalOutputText: `Add ${v.amount === "PB" ? "one full PB" : v.amount} to ${v.subject}.`, narrativeRule: v.description,
     hardModifiers: [modifier], isMirrorable: true, mirrorVector: "VARIABLE_VECTOR", mirrorBuCredit: v.cost,
     mirrorEligibilityNotes: "Mirroring changes add to subtract; direct acquisition uses the stated BU credit.",
     contentHash: null, createdAt: new Date(), updatedAt: new Date(),
@@ -87,7 +92,8 @@ function slot(row: Row, mirrored: boolean, inactive: boolean): ResolvedPrimitive
 }
 
 function verify(row: Row, v: Variant): void {
-  const context = { characterId: "phase3-core-check", level: 5, pb: 3,
+  for (const pb of [3, 6]) {
+  const context = { characterId: "phase3-core-check", level: pb === 3 ? 5 : 20, pb,
     attributes: { physical: 2, mental: 1, magical: 0 },
     proficientAttribute: "physical" as const, chosenAttribute: "physical" as const };
   const resolve = (slots: ResolvedPrimitiveSlot[]) => resolveModifiers({ ...context, slots }).totals;
@@ -97,7 +103,7 @@ function verify(row: Row, v: Variant): void {
     : v.axis === "save" ? `${metric.replace("_save", "")}_saving_throw`
       : `speed.${metric}`;
   for (const mirrored of [false, true]) {
-    const expected = (mirrored ? -1 : 1) * v.amount;
+    const expected = (mirrored ? -1 : 1) * (v.amount === "PB" ? context.pb : v.amount);
     const active = resolve([slot(row, mirrored, false)]);
     const off = resolve([slot(row, mirrored, true)]);
     if ((active[key] ?? 0) !== (before[key] ?? 0) + expected || (off[key] ?? 0) !== (before[key] ?? 0))
@@ -109,6 +115,7 @@ function verify(row: Row, v: Variant): void {
         if ((active[`speed.${other}`] ?? 0) !== (before[`speed.${other}`] ?? 0)) throw new Error(`${v.name} changed ${other}`);
     }
     if (v.axis === "save" && active.save_dc !== before.save_dc) throw new Error(`${v.name} changed DC`);
+  }
   }
 }
 

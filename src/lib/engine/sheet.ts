@@ -34,7 +34,6 @@ import { sumPrimitiveContributions, walkPrimitiveContributionsForAxis } from "./
 import { computeAllSavingThrows, proficiencyBonus } from "./practices";
 import { resolveModifiers, type ResolvedPrimitiveSlot } from "./resolve-modifiers";
 import { resolvePracticeGrants } from "./practice-grants";
-import { SIZE_CAPACITY } from "./encumbrance";
 import {
   BUAccount,
   BUBalance,
@@ -919,14 +918,16 @@ const { resolvedSize, resolvedSourceType, inCombat } = resolveCharacterAxes(
   input.size,
   input.attrProficient ?? "PHYSICAL",
 );
+const carryCapacityBonus = sheetResolver.totals["carry_capacity"] ?? 0;
 
 const encumbrance = computeEncumbrance(
   resolvedSize as CharacterSize,
-  input.attrPhysical,
+  attributesFinal.physical,
   encumbranceItems,
   // Phase 8.L: Extra Slot primitive adds +1 to available slots.
   // Previously this was hardcoded 6 (No bonus applied).
-  sumPrimitiveContributions(input.primitiveLinks, "equip_slot", null, input.conditionContext),
+  sheetResolver.totals["equip_slot"] ?? 0,
+  carryCapacityBonus,
 );
 
 // Phase 8.I i2 finish (Mashu 2026-08-06) — speed walks per locomotion.
@@ -964,20 +965,8 @@ for (const locomotion of Object.keys(SPEED_DEFAULTS)) {
   speedByType[locomotion] = Math.max(0, roundUp((SPEED_DEFAULTS[locomotion] ?? 0) + primitiveSum));
 }
 
-// Phase 8.I i2 finish - carry capacity = SIZE_CAPACITY[size]
-// + (physical × 5) + primitive bonus.
-// Phase 8.L: use resolvedSize so the Enlarge primitive reaches the
-// capacity formula. (Without this, charSize was input.size which
-// doesn't reflect primitive transformations.)
-const charSize = resolvedSize as CharacterSize;
-const baseCarry = SIZE_CAPACITY[charSize] + input.attrPhysical * 5;
-const carryCapacityBonus = sumPrimitiveContributions(
-  allLinks,
-  "carry_capacity",
-  null,
-  input.conditionContext,
-);
-const carryCapacity = roundUp(baseCarry + carryCapacityBonus);
+// Display the same resolved capacity used for encumbrance checks.
+const carryCapacity = encumbrance.capacity;
 
 // Load = item-derived + primitive load contributions.
 const itemLoad = encumbrance.load;

@@ -23,7 +23,7 @@
  *
  *   Incoming: 10 fire damage
  *   Primitives: resistance:fire (0.5x) + resistance:fire (0.5x)
- *   Final: 10 * 0.5 * 0.5 = 2.5 (stacking halves)
+ *   Final: ceil(10 * 0.5 * 0.5) = 3 (stacking halves)
  */
 import { evaluateCondition, isConditionComputable, type ConditionContext } from "./condition-evaluator";
 import type { ModifierCondition } from "@/types/condition";
@@ -41,7 +41,7 @@ export interface ResolveDamageInput {
 }
 
 export interface ResolveDamageResult {
-  /** Final damage after multipliers (rounded down to integer). */
+  /** Final damage after multipliers (rounded up to integer). */
   readonly final: number;
   /** Total multiplier applied (1.0 = no modifiers, 0.5 = resistance, 2.0 = vulnerability, 0 = immunity). */
   readonly multiplier: number;

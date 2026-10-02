@@ -19,6 +19,8 @@ type Variant = {
 };
 
 const variants: Variant[] = [
+  { parentId: 61, key: "vitality-5", name: "Vitality Core Augment +5", target: "max_vitality", amount: 5, cost: 3, tier: 2,
+    family: "UNIVERSAL_MODIFIERS", description: "Increase maximum Vitality by 5 while active. A mirrored use decreases maximum Vitality by 5; current Vitality cannot exceed the resulting maximum." },
   { parentId: 61, key: "vitality-10", name: "Vitality Core Augment +10", target: "max_vitality", amount: 10, cost: 6, tier: 2,
     family: "UNIVERSAL_MODIFIERS", description: "Increase maximum Vitality by 10 while active. A mirrored use decreases maximum Vitality by 10; current Vitality cannot exceed the resulting maximum." },
   { parentId: 218, key: "walk-5", name: "Stride Extension +5", target: "speed", amount: 5, scope: { layer: "METRIC", values: ["WALKING_SPEED"] }, cost: 3, tier: 2,
@@ -27,8 +29,14 @@ const variants: Variant[] = [
     family: "MOBILITY", description: "Increase walking speed by 20 feet while active. Climbing, swimming, flying, and burrowing speeds are unchanged. A mirrored use decreases walking speed by 20 feet." },
   { parentId: 22701, key: "carry-20", name: "Carry Capacity Augment +20", target: "carry_capacity", amount: 20, cost: 4, tier: 2,
     family: "SHEET_AUGMENT", description: "Increase the character's Carry Capacity by 20 Load while active. This does not increase Equipped Slots. A mirrored use decreases Carry Capacity by 20." },
+  { parentId: 22701, key: "carry-10", name: "Carry Capacity Augment +10", target: "carry_capacity", amount: 10, cost: 2, tier: 1,
+    family: "SHEET_AUGMENT", description: "Increase the character's Carry Capacity by 10 Load while active. This does not increase Equipped Slots. A mirrored use decreases Carry Capacity by 10." },
   { parentId: 22701, key: "carry-50", name: "Carry Capacity Augment +50", target: "carry_capacity", amount: 50, cost: 8, tier: 3,
     family: "SHEET_AUGMENT", description: "Increase the character's Carry Capacity by 50 Load while active. This does not increase Equipped Slots. A mirrored use decreases Carry Capacity by 50." },
+  { parentId: 22701, key: "carry-100", name: "Carry Capacity Augment +100", target: "carry_capacity", amount: 100, cost: 14, tier: 4,
+    family: "SHEET_AUGMENT", description: "Increase the character's Carry Capacity by 100 Load while active. This does not increase Equipped Slots. A mirrored use decreases Carry Capacity by 100." },
+  { parentId: 22702, key: "equip-1", name: "Equipment Slot Augment +1", target: "equip_slot", amount: 1, cost: 4, tier: 2,
+    family: "SHEET_AUGMENT", description: "Increase the six universal Equipped Slots by 1 while active. An item still consumes its own stated slots; a two-handed weapon consumes at least 2. A mirrored use reduces the available limit by 1." },
   { parentId: 22702, key: "equip-2", name: "Equipment Slot Augment +2", target: "equip_slot", amount: 2, cost: 8, tier: 3,
     family: "SHEET_AUGMENT", description: "Increase the six universal Equipped Slots by 2 while active. An item still consumes its own stated slots; a two-handed weapon consumes at least 2. A mirrored use reduces the available limit by 2." },
 ];

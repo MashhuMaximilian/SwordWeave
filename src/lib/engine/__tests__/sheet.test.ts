@@ -89,9 +89,9 @@ describe("aggregateCharacterSheet", () => {
 
   it("shows a scoped saving throw fork in the sheet without changing the one DC", () => {
     const link: CharacterSheetInput["primitiveLinks"][number] = {
-      primitiveId: 23189, source: "PERSONAL", acquiredAtLevel: 1, isMirrored: false,
+      primitiveId: 23219, source: "PERSONAL", acquiredAtLevel: 1, isMirrored: false,
       primitive: {
-        id: 23189, name: "Physical Saving Throw +2", category: "SHEET_AUGMENT",
+        id: 23219, name: "Physical Saving Throw +2", category: "SHEET_AUGMENT",
         buCost: 6, isMirrorable: true, mirrorBuCredit: 6, mirrorVector: "VARIABLE_VECTOR",
         hardModifiers: [{ kind: "modify", target: "action_roll", operation: "add", value: { kind: "number", value: 2 },
           stacking: "stack", metadata: { recipient: "SELF", targetScope: { layer: "METRIC", values: ["PHYSICAL_SAVE"] } } }],
@@ -922,6 +922,34 @@ describe("aggregateCharacterSheet - Wave 2 (speed + carry)", () => {
     );
     // (40 + 3*5) + 20 = 75
     expect(sheet.carryCapacity).toBe(75);
+  });
+
+  it("uses capacity forks and current Physical for encumbrance as well as the displayed limit", () => {
+    const itemLinks: CharacterSheetInput["itemLinks"] = [{
+      itemId: "load-stack", equipped: false, quantity: 60,
+      item: { id: "load-stack", name: "Supply tokens", itemType: "GEAR", rarity: "COMMON",
+        slotCost: 0, isTwoHanded: false, isConsumable: false, buCost: 0, size: "SMALL" },
+    }];
+    const capacity: CharacterSheetInput["primitiveLinks"][number] = {
+      primitiveId: 23175, source: "PERSONAL", acquiredAtLevel: 1, isMirrored: false,
+      primitive: { id: 23175, name: "Carry Capacity Augment +20", category: "SHEET_AUGMENT",
+        buCost: 4, isMirrorable: true, mirrorBuCredit: 4, mirrorVector: "VARIABLE_VECTOR",
+        hardModifiers: [{ kind: "modify", target: "carry_capacity", operation: "add", value: { kind: "number", value: 20 } }] },
+    };
+    const physical: CharacterSheetInput["primitiveLinks"][number] = {
+      primitiveId: 23152, source: "PERSONAL", acquiredAtLevel: 1, isMirrored: false,
+      primitive: { id: 23152, name: "Attribute Increment +2 Physical", category: "SHEET_AUGMENT",
+        buCost: 16, isMirrorable: true, mirrorBuCredit: 16, mirrorVector: "VARIABLE_VECTOR",
+        hardModifiers: [{ kind: "modify", target: "attribute", operation: "add", value: { kind: "number", value: 2 },
+          metadata: { targetScope: { layer: "ATTRIBUTE", values: ["PHYSICAL"] } } }] },
+    };
+    const baseline = aggregateCharacterSheet(baseInput({ itemLinks }));
+    const augmented = aggregateCharacterSheet(baseInput({ itemLinks, primitiveLinks: [capacity, physical] }));
+    const mirrored = aggregateCharacterSheet(baseInput({ itemLinks, primitiveLinks: [{ ...capacity, isMirrored: true }] }));
+    expect(baseline.encumbrance).toMatchObject({ capacity: 55, load: 60, encumbered: true });
+    expect(augmented.carryCapacity).toBe(85);
+    expect(augmented.encumbrance).toMatchObject({ capacity: 85, load: 60, encumbered: false });
+    expect(mirrored.encumbrance).toMatchObject({ capacity: 35, load: 60, encumbered: true });
   });
 
   it("load: item-derived + primitive load contributions", () => {

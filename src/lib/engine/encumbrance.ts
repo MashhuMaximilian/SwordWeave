@@ -259,11 +259,12 @@ export function computeEncumbrance(
   physicalModifier: number,
   items: ReadonlyArray<EncumbranceItem>,
   bonusSlots: number = 0,
+  bonusCapacity: number = 0,
 ): EncumbranceBreakdown {
-  const capacity = computeCapacity(size, physicalModifier, items);
+  const capacity = Math.max(0, Math.ceil(computeCapacity(size, physicalModifier, items) + bonusCapacity));
   const load = computeLoad(items);
   const equipSlotsUsed = computeEquipSlotsUsed(items);
-  const equipSlotsAvailable = BASE_EQUIP_SLOTS + bonusSlots;
+  const equipSlotsAvailable = Math.max(0, Math.ceil(BASE_EQUIP_SLOTS + bonusSlots));
   const encumbered = load > capacity;
   const percentOfCapacity =
     capacity > 0 ? Math.round((load / capacity) * 100) : 0;
