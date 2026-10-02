@@ -1,5 +1,7 @@
 # SwordWeave phase 4 inspiration catalog
 
+**Depth and buildability follow-up:** [phase4-depth-and-buildability-2026-10.md](./phase4-depth-and-buildability-2026-10.md) expands the thin shelves to 44 effect proposals, 50 capability proposals, 44 upbringing proposals, and 44 manifest proposals; it traces their assembly paths and corrects readiness claims. Read the two documents together.
+
 This is a research catalog for rebuilding and expanding the public effects, capabilities, lineages, upbringings, manifests, items, and any missing primitives. It draws design prompts from 34 games (16 tabletop RPGs and 18 video games). Every named SwordWeave entry below is a **proposal**, not a copied rule, published entry, assigned BU price, or claim that its mechanics already run automatically. The linked official rules, publisher pages, developer notes, and authorized SRDs support the short observation in each row; the proposed content is our own inference from that pattern.
 
 ## SwordWeave translation rules
