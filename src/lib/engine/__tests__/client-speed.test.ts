@@ -27,4 +27,12 @@ describe("client speed reconciliation", () => {
     );
     expect(speed["WALKING_SPEED"]).toBe(55);
   });
+
+  it("does not display a negative speed after a runtime penalty", () => {
+    const speed = buildClientSpeedByType(
+      { FLYING_SPEED: 0 },
+      { byTarget: { "speed.flying_speed": [contribution({ value: -15, primitiveCategory: "RUNTIME_CONDITION" })] } },
+    );
+    expect(speed["FLYING_SPEED"]).toBe(0);
+  });
 });

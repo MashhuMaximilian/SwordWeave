@@ -37,7 +37,7 @@ export function buildClientSpeedByType(
         adjustment -= signedValue;
       }
     }
-    out[key] = serverValue + adjustment;
+    out[key] = Math.max(0, serverValue + adjustment);
   }
   return out;
 }

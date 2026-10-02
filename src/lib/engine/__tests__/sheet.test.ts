@@ -837,6 +837,28 @@ describe("aggregateCharacterSheet - Wave 2 (speed + carry)", () => {
     expect(sheet.speedByType["WALKING_SPEED"]).toBe(40);
   });
 
+  it("floors a mirrored movement penalty at zero without changing other speeds", () => {
+    const sheet = aggregateCharacterSheet(baseInput({
+      primitiveLinks: [{
+        primitiveId: 23001,
+        source: "PERSONAL" as const,
+        acquiredAtLevel: 1,
+        isMirrored: true,
+        primitive: {
+          id: 23001,
+          name: "Climbing Speed +20",
+          category: "MOBILITY_LOCOMOTION",
+          buCost: 9,
+          isMirrorable: true,
+          mirrorBuCredit: 9,
+          hardModifiers: [{ target: "speed", operation: "add", value: { kind: "number", value: 20 }, metadata: { targetScope: { layer: "METRIC", values: ["CLIMBING_SPEED"] } } }],
+        },
+      }],
+    }));
+    expect(sheet.speedByType["CLIMBING_SPEED"]).toBe(0);
+    expect(sheet.speedByType["WALKING_SPEED"]).toBe(30);
+  });
+
   it("carry_capacity: MEDIUM default = 40 + physical*5", () => {
     const sheet = aggregateCharacterSheet(
       baseInput({ size: "MEDIUM", attrPhysical: 3 }),

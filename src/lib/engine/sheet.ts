@@ -958,7 +958,7 @@ for (const locomotion of Object.keys(SPEED_DEFAULTS)) {
     lower,
     input.conditionContext,
   );
-  speedByType[locomotion] = roundUp((SPEED_DEFAULTS[locomotion] ?? 0) + primitiveSum);
+  speedByType[locomotion] = Math.max(0, roundUp((SPEED_DEFAULTS[locomotion] ?? 0) + primitiveSum));
 }
 
 // Phase 8.I i2 finish - carry capacity = SIZE_CAPACITY[size]
