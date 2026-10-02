@@ -1,6 +1,6 @@
 # SwordWeave heritage shelf: top-down design pass
 
-2 October 2026. **Research and design only; no database changes.** This pass defines a coherent target shelf of **24 lineages, 48 upbringings, and 18 manifests**. It supersedes the *heritage selection order* in the earlier [inspiration catalog](./phase4-inspiration-catalog-2026-10.md) and [buildability supplement](./phase4-depth-and-buildability-2026-10.md). Their primitive, effect, capability, and item ideas remain candidate ingredients. The sequence for authoring is now **heritage concept → intended budget and play use → needed capabilities and effects → precise primitive links/forks → resolver and table verification**.
+2 October 2026. This was the research and design pass for **24 lineages, 48 upbringings, and 18 manifests**. Its recipes have since been saved; the [saved inventory](./phase4-heritage-recipes-saved-2026-10.md) gives their exact links and BU totals. It supersedes the *heritage selection order* in the earlier [inspiration catalog](./phase4-inspiration-catalog-2026-10.md) and [buildability supplement](./phase4-depth-and-buildability-2026-10.md). Their other primitive, effect, capability, and item ideas remain candidate ingredients. The sequence for authoring is **heritage concept → intended budget and play use → needed capabilities and effects → precise primitive links/forks → resolver and table verification**.
 
 ## Design rules for this shelf
 
@@ -10,7 +10,7 @@
 - **P** means likely direct primitive or fork; **C** means capability to compose; **E** means effect carried by that capability. Existing names are examples to inspect, not a promise that the current saved row is correct. A descriptive permission can be a primitive with no hard modifier. Named conditions have authored, contextual consequences.
 - A target such as **10 / 20 / 50 BU** indicates useful variety across budgets. It does not create a fixed tier, level gate, or mandatory starter/nonstarter classification. The 2/4/8/12/16 BU anchors guide *individual primitive* pricing and remain author-adjustable.
 
-The live public DB currently shows 7 lineages, 5 upbringings, and 6 manifests. One lineage is **Ironborn fork test (fork)** and one manifest is **Atelier QA · Bellforged Scion**; neither belongs in the playable target count. Six named existing lineages, five upbringings, and five manifests below are **repair candidates**, not proven ready cards. Existing public rows such as Tinkerer, Scholar, Soldier, and Courtier link the same Corenered Combatant primitive despite different descriptions; Guardian still describes separate Physical/Mental defenses even though SwordWeave has **one DC and three distinct saving throws**. Their cards need new versioned compositions and wording before they count as reliable choices.
+At the time of this design pass, the public DB had 7 lineages, 5 upbringings, and 6 manifests. One lineage was **Ironborn fork test (fork)** and one manifest was **Atelier QA · Bellforged Scion**; neither belongs in the playable target count. The six named existing lineages, five upbringings, and five manifests below were repaired through new versions in the saved pass. This table preserves the original editorial targets; the saved inventory is the source of truth for actual priced compositions.
 
 ## 24 lineages
 
