@@ -1,3 +1,4 @@
+import { seedOrigin } from "./srd-seed-identity";
 import{db}from'@/db/client';
 import{characters,primitives,primitiveVersions,capabilities,capabilityVersions,effects,effectPrimitives,capabilityPrimitives,capabilityEffects,heritage,heritageVersions,heritagePrimitives,heritageCapabilities,items,itemVersions}from'@/db/schema';
 import{eq}from'drizzle-orm';
@@ -11,7 +12,7 @@ export const demoPrefix='system:v14:library-demo:';
 export async function demoPlan(){
  const[original]=await db.select().from(characters).where(eq(characters.id,'462f9048-b0da-4185-98db-d18027132c82'));if(!original?.userId)throw new Error('Reference owner unavailable');
  const[ps,pv,cs,cv,es,ep,cp,ce,hs,hv,hp,hc,is,iv,chars]=await Promise.all([db.select().from(primitives),db.select().from(primitiveVersions),db.select().from(capabilities),db.select().from(capabilityVersions),db.select().from(effects),db.select().from(effectPrimitives),db.select().from(capabilityPrimitives),db.select().from(capabilityEffects),db.select().from(heritage),db.select().from(heritageVersions),db.select().from(heritagePrimitives),db.select().from(heritageCapabilities),db.select().from(items),db.select().from(itemVersions),db.select().from(characters)]);
- const pNames=new Map<string,typeof ps[number]>();for(const p of ps.filter(x=>x.isPublic))if(!pNames.has(p.name)||p.sourceOrigin?.startsWith('system')&&!pNames.get(p.name)!.sourceOrigin?.startsWith('system'))pNames.set(p.name,p);
+ const pNames=new Map<string,typeof ps[number]>();for(const p of ps.filter(x=>x.isPublic))if(!pNames.has(p.name)||seedOrigin(p)?.startsWith('system')&&!pNames.get(p.name)!.sourceOrigin?.startsWith('system'))pNames.set(p.name,p);
  for(const[name,id]of[['Verb Access Tier I',20],['Focused Presence (Global DC Modifier)',22391]]as const){const p=ps.find(x=>x.id===id);if(!p)throw new Error(`Missing canonical ${name}`);pNames.set(name,p);}
  const pIds=new Map(ps.map(x=>[x.id,x]));const cNames=new Map(cs.filter(x=>x.isPublic&&x.userId===null).map(x=>[x.name,x]));const hNames=new Map(hs.filter(x=>x.isPublic&&x.userId===null).map(x=>[x.name,x]));const iNames=new Map(is.filter(x=>x.isPublic&&x.userId===null).map(x=>[x.name,x]));
  const pLatest=new Map(pv.filter(x=>x.isLatest).map(x=>[x.primitiveId,x.id]));const cLatest=new Map(cv.filter(x=>x.isLatest).map(x=>[x.capabilityId,x.id]));const hLatest=new Map(hv.filter(x=>x.isLatest).map(x=>[x.templateId,x.id]));const iLatest=new Map(iv.filter(x=>x.isLatest).map(x=>[x.itemId,x.id]));
@@ -45,6 +46,6 @@ export async function demoPlan(){
   if(sheet.dc!==resolved.totals.save_dc)throw new Error(`Sheet/DC resolver differ ${recipe.name}: ${sheet.dc}/${resolved.totals.save_dc}`);
   if(sheet.buBalance.progressionPool!==recipe.budget||sheet.buBalance.overBudget)throw new Error(`Pool ${recipe.name}`);
   if(sheet.encumbrance.load>sheet.encumbrance.capacity||sheet.encumbrance.equipSlotsUsed>sheet.encumbrance.equipSlotsAvailable)throw new Error(`Illegal inventory ${recipe.name}`);
-  return{recipe,ownerId:original.userId,heritageRows,expansion,inventory,cost,bonus,sheet,pLatest,cLatest,hLatest,iLatest,existing:chars.find(x=>x.sourceOrigin===`${demoPrefix}${recipe.key}`)};
+  return{recipe,ownerId:original.userId,heritageRows,expansion,inventory,cost,bonus,sheet,pLatest,cLatest,hLatest,iLatest,existing:chars.find(x=>seedOrigin(x)===`${demoPrefix}${recipe.key}`)};
  });
 }

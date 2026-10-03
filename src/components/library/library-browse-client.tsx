@@ -1,4 +1,5 @@
 "use client";
+import { libraryHeritageArt } from "@/lib/heritage/lineage-art";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { PhoneTypeChoices, PHONE_RECORD_TYPES } from "./phone-type-choices";
 import { PhoneLibraryFilters } from "./phone-library-filters";
@@ -60,6 +61,7 @@ const ENTITY_ICONS: Record<string, string> = {
 
 function LibraryEntityIcon({ item, size = 24 }: { item: LibraryItem; size?: number }) {
   return <IconDisplay
+              portraitUrl={libraryHeritageArt(item)}
     iconSource={item.iconSource ?? "GAME_ICONS"}
     iconKey={item.iconSource ? item.iconKey : ENTITY_ICONS[item.targetType] ?? "delapouite/cube"}
     iconUrl={item.iconUrl}
@@ -613,7 +615,7 @@ export function LibraryBrowseClient({
         size="xl"
       >
         {selectedItem ? (
-          <div className="v12-library-modal-layout"><FetchedEntityPreview key={selectedItem.id} targetType={selectedItem.targetType} targetId={selectedItem.targetId} owner={{ authorId:selectedItem.authorId, authorUsername:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorUsername, authorDisplayName:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorDisplayName, isOwner:selectedItem.authorId === currentUserInternalId, sourceOrigin:libraryOrigin(selectedItem) === "system" ? "system" : selectedItem.sourceOrigin }} /></div>
+          <div className="v12-library-modal-layout"><FetchedEntityPreview key={selectedItem.id} targetType={selectedItem.targetType} targetId={selectedItem.targetId} owner={{ authorId:selectedItem.authorId, authorUsername:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorUsername, authorDisplayName:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorDisplayName, isOwner:selectedItem.authorId === currentUserInternalId, sourceOrigin:libraryOrigin(selectedItem) === "system" ? "SRD" : selectedItem.sourceOrigin }} /></div>
         ) : null}
       </DetailModal>
       <DetailModal

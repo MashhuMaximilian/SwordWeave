@@ -11,7 +11,7 @@ async function main() {
   const rows = await db.select().from(heritage);
   const plan = curatedLineageArt.map(art => {
     if (!existsSync(resolve(process.cwd(), "public" + art.imageUrl))) throw new Error(`Missing local asset ${art.imageUrl}`);
-    const matching = rows.filter(row => row.kind === "LINEAGE" && row.name === art.name && row.sourceOrigin === art.sourceOrigin && row.userId === null && row.isPublic);
+    const matching = rows.filter(row => row.kind === "LINEAGE" && row.name === art.name && (row.sourceOrigin === art.sourceOrigin || row.sourceOrigin === "SRD") && row.userId === null && row.isPublic);
     if (matching.length !== 1) throw new Error(`Expected one public curated identity: ${art.name}; found ${matching.length}`);
     return { ...art, row: matching[0]! };
   });
@@ -27,7 +27,7 @@ async function main() {
     if (!response.ok || !response.headers.get("content-type")?.includes("image/webp") || header.slice(0,4) !== "RIFF" || header.slice(8,12) !== "WEBP") throw new Error(`Deployment gate failed: ${url}`);
   }
   await withDatabaseTransaction(async () => {
-    for (const entry of pending) await db.update(heritage).set({imageUrl:entry.imageUrl,updatedAt:new Date()}).where(and(eq(heritage.id,entry.row.id),eq(heritage.kind,"LINEAGE"),eq(heritage.name,entry.name),eq(heritage.sourceOrigin,entry.sourceOrigin),isNull(heritage.userId),eq(heritage.isPublic,true),entry.row.imageUrl === null ? isNull(heritage.imageUrl) : eq(heritage.imageUrl,entry.row.imageUrl)));
+    for (const entry of pending) await db.update(heritage).set({imageUrl:entry.imageUrl,updatedAt:new Date()}).where(and(eq(heritage.id,entry.row.id),eq(heritage.kind,"LINEAGE"),eq(heritage.name,entry.name),eq(heritage.sourceOrigin,entry.row.sourceOrigin!),isNull(heritage.userId),eq(heritage.isPublic,true),entry.row.imageUrl === null ? isNull(heritage.imageUrl) : eq(heritage.imageUrl,entry.row.imageUrl)));
   });
   console.log(`Attached ${pending.length} presentation images; hashes and version snapshots unchanged.`);
 }

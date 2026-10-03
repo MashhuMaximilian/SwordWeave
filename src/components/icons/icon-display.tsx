@@ -51,6 +51,8 @@ export interface IconDisplayProps {
   /** When true, render with eager loading + high fetchpriority for
    *  above-the-fold placement. Default lazy. */
   priority?: boolean | undefined;
+  /** Heritage artwork bypasses the metallic game-icon proxy. */
+  portraitUrl?: string | null | undefined;
   /** When true, request the outline (hollow) variant from the proxy. */
   outline?: boolean | undefined;
 }
@@ -65,7 +67,22 @@ export function IconDisplay({
   className,
   priority = false,
   outline = false,
+  portraitUrl,
 }: IconDisplayProps) {
+  if (portraitUrl) {
+    return (
+      <img
+        src={portraitUrl}
+        alt={alt ?? "Heritage portrait"}
+        width={size}
+        height={size}
+        loading={priority ? "eager" : "lazy"}
+        className={cn("sw-entity-image sw-heritage-portrait inline-block shrink-0", className)}
+        style={{ width: size, height: size, objectFit: "cover", objectPosition: "center 20%" }}
+      />
+    );
+  }
+
   if (!iconSource) {
     // No icon set on this entity. Render a subtle fallback square so
     // the layout doesn't collapse when an icon slot is empty.
@@ -111,7 +128,7 @@ export function IconDisplay({
         // for accessibility tools / right-click "view source" users.
         // Hover tooltip is added by the parent (<IconChip>) when more
         // UI chrome is appropriate; the img alone stays simple.
-        className={cn("inline-block shrink-0", className)}
+        className={cn("sw-entity-icon inline-block shrink-0", className)}
         style={{ width: size, height: size }}
       />
     );
@@ -122,7 +139,7 @@ export function IconDisplay({
     // The blob path comes back from /api/icons/upload as a relative
     // pathname ("user-uploads/<id>/<uuid>.png"). We route through our
     // Clerk-auth proxy so the private blob is never exposed directly.
-    const src = iconUrl.startsWith("/")
+    const src = /^(https?:\/\/|\/)/i.test(iconUrl)
       ? iconUrl
       : `/api/icons/blob/${iconUrl}`;
     return (
@@ -132,8 +149,8 @@ export function IconDisplay({
         width={size}
         height={size}
         loading={priority ? "eager" : "lazy"}
-        className={cn("inline-block shrink-0 rounded", className)}
-        style={{ width: size, height: size }}
+        className={cn("sw-entity-image inline-block shrink-0", className)}
+        style={{ width: size, height: size, objectFit:"cover", objectPosition:"center 20%" }}
       />
     );
   }

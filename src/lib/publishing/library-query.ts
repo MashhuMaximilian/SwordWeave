@@ -152,6 +152,8 @@ export interface LibraryQuery {
 }
 
 export interface LibraryItem {
+  /** Presentation-only artwork for heritage rows. */
+  imageUrl?: string | null;
   costTier?: string | null;
   groupKey?: string;
   /** Composite ID: `<type>:<id>` for routing */
@@ -1648,6 +1650,7 @@ async function fetchTemplates(q: LibraryFetchQuery): Promise<LibraryItem[]> {
       // Same pattern as the items/capabilities/effects fetchers above.
       tags: r.tags ?? [],
       sourceOrigin: r.sourceOrigin ?? null,
+      imageUrl: r.imageUrl ?? null,
       // Phase 8: per-entity iconography (resolved — live or proposed)
       iconSource: icon.iconSource,
       iconKey: icon.iconKey,

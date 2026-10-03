@@ -1,3 +1,4 @@
+import { seedOrigin } from "./srd-seed-identity";
 /** Separate research expansion. Dry-run unless --apply; transaction, canonical full versions, fork edges. */
 import {and,eq} from "drizzle-orm";
 import {db,pool,withDatabaseTransaction} from "@/db/client";
@@ -55,18 +56,18 @@ async function saveVersion(kind: "primitive" | "effect" | "capability" | "templa
 async function main(){
  const apply=process.argv.includes("--apply");
  const [ps,es,cs,classes]=await Promise.all([db.select().from(primitives),db.select().from(effects),db.select().from(capabilities),db.select().from(primitiveMarketClassifications)]);
- const p=new Map<string,Primitive>(); for(const row of ps.filter(x=>x.isPublic||x.name==="Bounded Practical Permission")) {if(!p.has(row.name)||row.sourceOrigin?.startsWith("system"))p.set(row.name,row);}
+ const p=new Map<string,Primitive>(); for(const row of ps.filter(x=>x.isPublic||x.name==="Bounded Practical Permission")) {if(!p.has(row.name)||seedOrigin(row)?.startsWith("system"))p.set(row.name,row);}
  // Canonical IDs resolve legacy duplicate names exactly as the previous verified shelf.
  for(const [name,id] of [["Verb Access Tier I",20]] as const){const row=ps.find(x=>x.id===id);if(!row||row.name!==name)throw Error(`Canonical drift ${name}`);p.set(name,row);}
  const e=new Map(es.filter(x=>x.isPublic).map(x=>[x.name,x])); const c=new Map(cs.filter(x=>x.isPublic).map(x=>[x.name,x]));
  const keys=new Set(icons.icons.map(x=>x.key));
  for(const idea of [...expansionPrimitives,...expansionEffects,...expansionCapabilities])if(!keys.has(idea.icon))throw Error(`Invalid icon ${idea.name}: ${idea.icon}`);
  const plannedP=new Set(expansionPrimitives.map(x=>x.name)); const plannedE=new Set(expansionEffects.map(x=>x.name));
- for(const idea of expansionPrimitives){const parent=p.get(idea.parent);if(!parent)throw Error(`Missing parent ${idea.parent}`);if(idea.magnitude!==undefined&&!parent.hardModifiers?.[0])throw Error(`No numeric parent ${idea.parent}`);const existing=p.get(idea.name);if(existing&&!existing.sourceOrigin?.startsWith(prefix))throw Error(`Primitive collision ${idea.name}`);}
+ for(const idea of expansionPrimitives){const parent=p.get(idea.parent);if(!parent)throw Error(`Missing parent ${idea.parent}`);if(idea.magnitude!==undefined&&!parent.hardModifiers?.[0])throw Error(`No numeric parent ${idea.parent}`);const existing=p.get(idea.name);if(existing&&!seedOrigin(existing)?.startsWith(prefix))throw Error(`Primitive collision ${idea.name}`);}
  for(const idea of [...expansionEffects,...expansionCapabilities])for(const name of idea.primitives)if(!p.has(name)&&!plannedP.has(name))throw Error(`Missing ${idea.name} ingredient: ${name}`);
  for(const idea of expansionCapabilities)for(const name of idea.effects)if(!e.has(name)&&!plannedE.has(name))throw Error(`Missing effect ${name}`);
- for(const idea of expansionEffects)if(e.has(idea.name)&&!e.get(idea.name)!.sourceOrigin?.startsWith(prefix))throw Error(`Effect collision ${idea.name}`);
- for(const idea of expansionCapabilities)if(c.has(idea.name)&&!c.get(idea.name)!.sourceOrigin?.startsWith(prefix))throw Error(`Capability collision ${idea.name}`);
+ for(const idea of expansionEffects)if(e.has(idea.name)&&!seedOrigin(e.get(idea.name))?.startsWith(prefix))throw Error(`Effect collision ${idea.name}`);
+ for(const idea of expansionCapabilities)if(c.has(idea.name)&&!seedOrigin(c.get(idea.name))?.startsWith(prefix))throw Error(`Capability collision ${idea.name}`);
  const newCounts={primitives:expansionPrimitives.filter(x=>!p.has(x.name)).length,effects:expansionEffects.filter(x=>!e.has(x.name)).length,capabilities:expansionCapabilities.filter(x=>!c.has(x.name)).length};
  console.log("Validated recipes and icons",JSON.stringify(newCounts));
  const cost=new Map([...p].map(([name,row])=>[name,row.buCost]));for(const idea of expansionPrimitives)cost.set(idea.name,idea.bu);

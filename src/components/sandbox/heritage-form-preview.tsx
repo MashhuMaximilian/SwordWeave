@@ -59,7 +59,7 @@ export function HeritageFormPreview({form, primitives, capabilities}: {
   const allSlots = [...directSlots, ...capabilities.flatMap(capability => [...(capability.primitiveLinks ?? []), ...(capability.effects ?? []).flatMap(effect => effect.primitiveLinks ?? [])])];
   const completeCost = capabilities.every(capability => capability.primitiveLinks !== undefined && capability.effects !== undefined && capability.effects.every(effect => effect.primitiveLinks !== undefined));
   const {transitiveBu} = computeTransitiveBu({primitiveLinks: allSlots}, {allowTemporaryIds:true});
-  return <LiveRecipeCard name={form.name} kind={kindLabel(form.kind)} icon={form} description={form.description} sourceOrigin={form.sourceOrigin} tags={form.tags} badges={<>
+  return <LiveRecipeCard portraitUrl={lineageArtUrl(form)} name={form.name} kind={kindLabel(form.kind)} icon={form} description={form.description} sourceOrigin={form.sourceOrigin} tags={form.tags} badges={<>
     <span data-tone="violet">{kindLabel(form.kind)}</span><span data-tone="teal">{form.isPublic ? "Public" : "Private draft"}</span><span>{transitiveBu} BU{completeCost ? "" : " · loaded rules"}</span>
   </>}>
     {lineageArtUrl(form) ? <img src={lineageArtUrl(form)!} alt={form.name} className="v12-live-portrait" /> : null}

@@ -1,3 +1,4 @@
+import { seedSourceCondition } from "./srd-seed-identity";
 /** Curated sheet-value forks. Dry-run by default; pass --apply to publish. */
 import { config } from "dotenv";
 import { and, eq } from "drizzle-orm";
@@ -96,7 +97,7 @@ async function main(): Promise<void> {
     const row = candidate(parent, v);
     verify(row, v);
     const hash = await hashPrimitiveContent(buildCanonicalPrimitivePayload(row));
-    const [existing] = await db.select().from(primitives).where(eq(primitives.sourceOrigin, origin(v))).limit(1);
+    const [existing] = await db.select().from(primitives).where(seedSourceCondition(primitives.sourceOrigin, primitives.id, origin(v))).limit(1);
     if (existing) {
       if (existing.contentHash !== hash || existing.name !== v.name) throw new Error(`Drift in ${origin(v)}`);
       const [version] = await db.select().from(primitiveVersions).where(and(eq(primitiveVersions.primitiveId, existing.id), eq(primitiveVersions.isLatest, true))).limit(1);

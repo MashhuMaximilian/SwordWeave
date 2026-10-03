@@ -1,4 +1,5 @@
 "use client";
+import { sourceDisplayLabel } from "@/lib/publishing/source-display";
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -243,7 +244,7 @@ export function LibraryCapabilitiesView({
                   <h3 className="truncate font-semibold">{cap.name}</h3>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {cap.type} - {cap.sourceType}
-                    {cap.sourceOrigin ? ` - ${cap.sourceOrigin}` : ""}
+                    {cap.sourceOrigin ? ` - ${sourceDisplayLabel(cap.sourceOrigin)}` : ""}
                   </p>
                 </div>
                 <span className="shrink-0 rounded-full bg-primary/10 px-2 py-1 font-mono text-xs font-semibold text-primary">
@@ -330,7 +331,7 @@ export function LibraryCapabilitiesView({
         subtitle={
           detailCap
             ? `${detailCap.type} - ${detailCap.sourceType}${
-                detailCap.sourceOrigin ? ` - ${detailCap.sourceOrigin}` : ""
+                detailCap.sourceOrigin ? ` - ${sourceDisplayLabel(detailCap.sourceOrigin)}` : ""
               }`
             : null
         }

@@ -44,3 +44,44 @@ body[data-ui="v12"] .sheet-library-entry-icon > img,
     height: 18px !important;
   }
 }
+
+/* The ring owns the frame. Transparent icon glyphs never get a second box. */
+body[data-ui="v12"] img.sw-entity-icon,
+body[data-ui="v12"] img.sw-entity-image {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+/* Portraits fill the existing badge; numerical and rules layout stays intact. */
+.sw-heritage-portrait { border-radius: 50% !important; }
+body[data-ui="v12"] :is(.v12-entry-glyph,.sheet-library-entry-icon,.sw-entity-medallion,.v12-source-medallion,.v12-live-emblem,.v12-preview-medallion):has(> img.sw-entity-image) {
+  padding: 0 !important;
+  overflow: hidden;
+  border-radius: 50%;
+}
+body[data-ui="v12"] :is(.v12-entry-glyph,.sheet-library-entry-icon,.sw-entity-medallion,.v12-source-medallion,.v12-live-emblem,.v12-preview-medallion) > img.sw-entity-image {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  object-position: center 20% !important;
+}
+body[data-ui="v12"] .v12-preview-medallion.is-portrait,
+body[data-ui="v12"] .v12-entity-preview[data-preview-layout] .v12-entity-preview-content .v12-preview-medallion.is-portrait,
+body[data-ui="v12"] .v12-live-recipe .v12-live-emblem:has(> img.sw-heritage-portrait) {
+  width: 112px !important;
+  height: 112px !important;
+  min-width: 112px !important;
+  padding: 0 !important;
+  flex-shrink: 0;
+}
+body[data-ui="v12"] .v12-entity-preview[data-preview-layout] .v12-entity-preview-content .v12-preview-identity:has(.is-portrait),
+body[data-ui="v12"] .v12-live-recipe .v12-live-identity:has(.sw-heritage-portrait) {
+  grid-template-columns: 112px minmax(0, 1fr) !important;
+  align-items: start !important;
+}
+body[data-ui="v12"] .v12-live-emblem:has(> img.sw-entity-image)::after { display: none; }
+body[data-ui="v12"] .sw-heritage-art-input .sw-portrait-input__preview { max-width: 180px; }

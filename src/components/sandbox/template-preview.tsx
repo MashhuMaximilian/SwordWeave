@@ -58,14 +58,15 @@ export function TemplatePreview({ row }: { row: HeritageRow }) {
     <div className="space-y-5 p-4">
       <header className="space-y-2">
         {/* Phase 8: entity icon above the title. */}
-        {row.iconSource ? (
+        {row.iconSource || lineageArtUrl(row) ? (
           <IconDisplay
+            portraitUrl={lineageArtUrl(row)}
             iconSource={row.iconSource as "GAME_ICONS" | "UPLOAD"}
             iconKey={row.iconKey}
             iconUrl={row.iconUrl}
             iconColor={row.iconColor}
-            size={56}
-            className="rounded-md border border-border"
+            size={lineageArtUrl(row) ? 112 : 56}
+            className="rounded-full"
             alt={row.name}
           />
         ) : null}

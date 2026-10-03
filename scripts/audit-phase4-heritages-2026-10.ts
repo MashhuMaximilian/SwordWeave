@@ -1,3 +1,4 @@
+import { seedOrigin } from "./srd-seed-identity";
 /** Read-only post-save integrity and resolver smoke checks for the heritage shelf. */
 import { and, eq } from "drizzle-orm";
 import { db, pool } from "@/db/client";
@@ -34,7 +35,7 @@ async function main(){
   const published=(type:string,id:string)=>pubs.some(x=>x.targetType===type&&x.targetId===id&&x.visibility==="PUBLIC"&&!x.unpublishedAt);
   const latest=(rows:{isLatest:boolean}[],name:string)=>assert(rows.filter(x=>x.isLatest).length===1,`Latest version count ${name}`);
   for(const idea of permissions){
-    const row=pRows.find(x=>x.name===idea.name&&x.sourceOrigin?.startsWith(`${prefix}permission:`));
+    const row=pRows.find(x=>x.name===idea.name&&seedOrigin(x)?.startsWith(`${prefix}permission:`));
     assert(row,`Missing permission ${idea.name}`);
     assert(row.buCost===idea.bu&&row.isPublic&&!row.isMirrorable&&row.hardModifiers.length===0,`Permission drift ${idea.name}`);
     assert(row.narrativeRule===idea.rule,`Permission description drift ${idea.name}`);
@@ -45,7 +46,7 @@ async function main(){
   }
   const eByName=new Map<string,typeof eRows[number]>();
   for(const idea of effectIdeas){
-    const row=eRows.find(x=>x.name===idea.name&&x.sourceOrigin?.startsWith(`${prefix}effect:`));assert(row,`Missing effect ${idea.name}`);
+    const row=eRows.find(x=>x.name===idea.name&&seedOrigin(x)?.startsWith(`${prefix}effect:`));assert(row,`Missing effect ${idea.name}`);
     assert(published("EFFECT",row.id),`Not published effect ${idea.name}`);
     assert(row.narrativeDescription===idea.text,`Effect description drift ${idea.name}`);
     latest(eVersions.filter(x=>x.effectId===row.id),idea.name);
@@ -55,7 +56,7 @@ async function main(){
   }
   const cByName=new Map<string,typeof cRows[number]>();
   for(const idea of capabilityIdeas){
-    const row=cRows.find(x=>x.name===idea.name&&x.sourceOrigin?.startsWith(`${prefix}capability:`));assert(row,`Missing capability ${idea.name}`);
+    const row=cRows.find(x=>x.name===idea.name&&seedOrigin(x)?.startsWith(`${prefix}capability:`));assert(row,`Missing capability ${idea.name}`);
     assert(published("CAPABILITY",row.id),`Not published capability ${idea.name}`);
     assert(row.verboseDescription===idea.text,`Capability description drift ${idea.name}`);
     latest(cVersions.filter(x=>x.capabilityId===row.id),idea.name);

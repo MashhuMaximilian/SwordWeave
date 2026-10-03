@@ -1,6 +1,6 @@
 /** Shared classification for public browsing and the Atelier source shelf. */
 export function libraryOrigin(item: { authorId: string | null; authorIsAdmin: boolean | null; sourceOrigin: string | null }): "system" | "community" {
-  return !item.authorId || item.authorIsAdmin || item.sourceOrigin === "system" || item.sourceOrigin?.startsWith("system:") ? "system" : "community";
+  return !item.authorId || item.authorIsAdmin || item.sourceOrigin === "SRD" || item.sourceOrigin === "system" || item.sourceOrigin?.startsWith("system:") ? "system" : "community";
 }
 
 export function libraryAuthorLabel(item: {
@@ -50,7 +50,7 @@ export function primitiveGroupKey(
     if (match?.[1]) return match[1].trim().replace(/\s+/g, " ");
   }
   if (!Array.isArray(modifiers) || !modifiers.length) {
-    return sourceOrigin === "system" || sourceOrigin?.startsWith("system:")
+    return sourceOrigin === "SRD" || sourceOrigin === "system" || sourceOrigin?.startsWith("system:")
       ? name?.replace(/\s+tier\s+[ivx]+$/i, "").trim() || "Canonical expression"
       : "Needs classification";
   }

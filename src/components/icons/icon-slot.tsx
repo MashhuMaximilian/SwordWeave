@@ -181,7 +181,7 @@ export function IconSlot({
           iconKey={iconKey}
           iconUrl={iconUrl}
           iconColor={iconColor}
-          size={appearance === "medallion" ? Math.max(16, Math.round(size * 0.64)) : size}
+          size={appearance === "medallion" && iconSource !== "UPLOAD" ? Math.max(16, Math.round(size * 0.64)) : size}
           alt={label}
         />
         {/* Hover-only pencil overlay — desktop affordance. The always-

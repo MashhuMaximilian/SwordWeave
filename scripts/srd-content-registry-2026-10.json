@@ -1,0 +1,5870 @@
+[
+  {
+    "kind": "primitive",
+    "id": 23371,
+    "name": "Threshold Physical Save +2",
+    "seedOrigin": "system:v14:research-expansion:primitive:threshold-physical-save-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 23372,
+    "name": "Surveyed Route Fieldcraft +2",
+    "seedOrigin": "system:v14:research-expansion:primitive:surveyed-route-fieldcraft-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 30,
+    "name": "Structure Tier III",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23373,
+    "name": "Wrapped Handle Attack +1",
+    "seedOrigin": "system:v14:research-expansion:primitive:wrapped-handle-attack-1"
+  },
+  {
+    "kind": "primitive",
+    "id": 23374,
+    "name": "Slick Surface Finesse +2",
+    "seedOrigin": "system:v14:research-expansion:primitive:slick-surface-finesse-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 53,
+    "name": "Attribute Increment",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23375,
+    "name": "Fine Task Finesse +2",
+    "seedOrigin": "system:v14:research-expansion:primitive:fine-task-finesse-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 23376,
+    "name": "Contact Listening Awareness +2",
+    "seedOrigin": "system:v14:research-expansion:primitive:contact-listening-awareness-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 23377,
+    "name": "Rehearsed Route Walking +5",
+    "seedOrigin": "system:v14:research-expansion:primitive:rehearsed-route-walking-5"
+  },
+  {
+    "kind": "primitive",
+    "id": 23378,
+    "name": "Secured Float Swimming +10",
+    "seedOrigin": "system:v14:research-expansion:primitive:secured-float-swimming-10"
+  },
+  {
+    "kind": "primitive",
+    "id": 23379,
+    "name": "Field Triage Knowledge +2",
+    "seedOrigin": "system:v14:research-expansion:primitive:field-triage-knowledge-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 22404,
+    "name": "Domain of Stone",
+    "seedOrigin": "system:v12:domain-access-1:stone"
+  },
+  {
+    "kind": "primitive",
+    "id": 23380,
+    "name": "Witnessed Negotiation Influence +2",
+    "seedOrigin": "system:v14:research-expansion:primitive:witnessed-negotiation-influence-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 23381,
+    "name": "Stone Brace Prowess +2",
+    "seedOrigin": "system:v14:research-expansion:primitive:stone-brace-prowess-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 23382,
+    "name": "Survey Tool Fieldcraft +PB",
+    "seedOrigin": "system:v14:research-expansion:primitive:survey-tool-fieldcraft-pb"
+  },
+  {
+    "kind": "primitive",
+    "id": 23164,
+    "name": "Attack Bonus +2",
+    "seedOrigin": "system:v12:curated:attack:54:2"
+  },
+  {
+    "kind": "primitive",
+    "id": 23383,
+    "name": "Fresh Scent Awareness +3",
+    "seedOrigin": "system:v14:research-expansion:primitive:fresh-scent-awareness-3"
+  },
+  {
+    "kind": "primitive",
+    "id": 23384,
+    "name": "Fitted Fin Swimming +5",
+    "seedOrigin": "system:v14:research-expansion:primitive:fitted-fin-swimming-5"
+  },
+  {
+    "kind": "primitive",
+    "id": 23165,
+    "name": "Attack Bonus +3",
+    "seedOrigin": "system:v12:curated:attack:54:3"
+  },
+  {
+    "kind": "primitive",
+    "id": 23166,
+    "name": "Attack Bonus +5",
+    "seedOrigin": "system:v12:curated:attack:54:5"
+  },
+  {
+    "kind": "primitive",
+    "id": 23167,
+    "name": "Attack Bonus +PB",
+    "seedOrigin": "system:v12:curated:attack:54:pb"
+  },
+  {
+    "kind": "primitive",
+    "id": 23385,
+    "name": "Dry Rough Climbing +10",
+    "seedOrigin": "system:v14:research-expansion:primitive:dry-rough-climbing-10"
+  },
+  {
+    "kind": "primitive",
+    "id": 23386,
+    "name": "Fixed Anchor Physical Save +2",
+    "seedOrigin": "system:v14:research-expansion:primitive:fixed-anchor-physical-save-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 23387,
+    "name": "Held Passage DC +2",
+    "seedOrigin": "system:v14:research-expansion:primitive:held-passage-dc-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 23388,
+    "name": "Fevered Aim Attack +2",
+    "seedOrigin": "system:v14:research-expansion:primitive:fevered-aim-attack-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 23389,
+    "name": "Armor Seam DC +1",
+    "seedOrigin": "system:v14:research-expansion:primitive:armor-seam-dc-1"
+  },
+  {
+    "kind": "primitive",
+    "id": 23390,
+    "name": "Prepared Lift Prowess +PB",
+    "seedOrigin": "system:v14:research-expansion:primitive:prepared-lift-prowess-pb"
+  },
+  {
+    "kind": "primitive",
+    "id": 23391,
+    "name": "Soot Reading Awareness +2",
+    "seedOrigin": "system:v14:research-expansion:primitive:soot-reading-awareness-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 23172,
+    "name": "Vitality Core Augment +10",
+    "seedOrigin": "system:v12:curated:sheet:vitality-10"
+  },
+  {
+    "kind": "primitive",
+    "id": 23173,
+    "name": "Stride Extension +5",
+    "seedOrigin": "system:v12:curated:sheet:walk-5"
+  },
+  {
+    "kind": "primitive",
+    "id": 23174,
+    "name": "Stride Extension +20",
+    "seedOrigin": "system:v12:curated:sheet:walk-20"
+  },
+  {
+    "kind": "primitive",
+    "id": 23392,
+    "name": "Maintained Watch Awareness +2",
+    "seedOrigin": "system:v14:research-expansion:primitive:maintained-watch-awareness-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 23393,
+    "name": "Guarded Descent Physical Save +2",
+    "seedOrigin": "system:v14:research-expansion:primitive:guarded-descent-physical-save-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 31,
+    "name": "Structure Tier IV",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 55,
+    "name": "Defensive Save Upgrade",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23394,
+    "name": "Patient Reassurance Influence +2",
+    "seedOrigin": "system:v14:research-expansion:primitive:patient-reassurance-influence-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 23395,
+    "name": "Directed Loose-Object Pull",
+    "seedOrigin": "system:v14:research-expansion:primitive:directed-loose-object-pull"
+  },
+  {
+    "kind": "primitive",
+    "id": 23396,
+    "name": "Consenting Guard Handoff",
+    "seedOrigin": "system:v14:research-expansion:primitive:consenting-guard-handoff"
+  },
+  {
+    "kind": "primitive",
+    "id": 23397,
+    "name": "Prepared Two-Action Sequence",
+    "seedOrigin": "system:v14:research-expansion:primitive:prepared-two-action-sequence"
+  },
+  {
+    "kind": "primitive",
+    "id": 23398,
+    "name": "Bounded Returning Trajectory",
+    "seedOrigin": "system:v14:research-expansion:primitive:bounded-returning-trajectory"
+  },
+  {
+    "kind": "primitive",
+    "id": 23399,
+    "name": "Split Visible Delivery",
+    "seedOrigin": "system:v14:research-expansion:primitive:split-visible-delivery"
+  },
+  {
+    "kind": "primitive",
+    "id": 23400,
+    "name": "Adjacent Deflection",
+    "seedOrigin": "system:v14:research-expansion:primitive:adjacent-deflection"
+  },
+  {
+    "kind": "primitive",
+    "id": 23401,
+    "name": "Ordinary Flame Dampening",
+    "seedOrigin": "system:v14:research-expansion:primitive:ordinary-flame-dampening"
+  },
+  {
+    "kind": "primitive",
+    "id": 23402,
+    "name": "Bounded Echo Placement",
+    "seedOrigin": "system:v14:research-expansion:primitive:bounded-echo-placement"
+  },
+  {
+    "kind": "primitive",
+    "id": 23403,
+    "name": "Prepared Scent Mark",
+    "seedOrigin": "system:v14:research-expansion:primitive:prepared-scent-mark"
+  },
+  {
+    "kind": "primitive",
+    "id": 23404,
+    "name": "Partial Object Impression",
+    "seedOrigin": "system:v14:research-expansion:primitive:partial-object-impression"
+  },
+  {
+    "kind": "primitive",
+    "id": 23405,
+    "name": "Small Messenger Bond",
+    "seedOrigin": "system:v14:research-expansion:primitive:small-messenger-bond"
+  },
+  {
+    "kind": "primitive",
+    "id": 23406,
+    "name": "Consent-Based Prepared Remedy",
+    "seedOrigin": "system:v14:research-expansion:primitive:consent-based-prepared-remedy"
+  },
+  {
+    "kind": "primitive",
+    "id": 23407,
+    "name": "Temporary Cover Placement",
+    "seedOrigin": "system:v14:research-expansion:primitive:temporary-cover-placement"
+  },
+  {
+    "kind": "primitive",
+    "id": 23408,
+    "name": "Fine Mechanism Quieting",
+    "seedOrigin": "system:v14:research-expansion:primitive:fine-mechanism-quieting"
+  },
+  {
+    "kind": "primitive",
+    "id": 23409,
+    "name": "Bounded Surface Fracture",
+    "seedOrigin": "system:v14:research-expansion:primitive:bounded-surface-fracture"
+  },
+  {
+    "kind": "primitive",
+    "id": 23410,
+    "name": "Small Material Join",
+    "seedOrigin": "system:v14:research-expansion:primitive:small-material-join"
+  },
+  {
+    "kind": "primitive",
+    "id": 23411,
+    "name": "Heat Screen Interposition",
+    "seedOrigin": "system:v14:research-expansion:primitive:heat-screen-interposition"
+  },
+  {
+    "kind": "primitive",
+    "id": 23412,
+    "name": "Contextual Soot Obscuration",
+    "seedOrigin": "system:v14:research-expansion:primitive:contextual-soot-obscuration"
+  },
+  {
+    "kind": "primitive",
+    "id": 23413,
+    "name": "Declared Rhythm Interruption",
+    "seedOrigin": "system:v14:research-expansion:primitive:declared-rhythm-interruption"
+  },
+  {
+    "kind": "primitive",
+    "id": 194,
+    "name": "Reaction Pulse",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23,
+    "name": "Verb Access Tier IV",
+    "seedOrigin": "system:v12:expression:verb-access-4"
+  },
+  {
+    "kind": "primitive",
+    "id": 43,
+    "name": "Instant Duration",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 49,
+    "name": "Physical Interaction Tag",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 48,
+    "name": "Permanent Duration",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 38,
+    "name": "World Range",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 24,
+    "name": "Domain of Metal",
+    "seedOrigin": "system:v12:domain-access-1:metal"
+  },
+  {
+    "kind": "primitive",
+    "id": 62,
+    "name": "Vitality Core Augment II",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 47,
+    "name": "Persistent Duration",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 34,
+    "name": "Near Range",
+    "seedOrigin": "system:v12:expression:range-near"
+  },
+  {
+    "kind": "primitive",
+    "id": 35,
+    "name": "Far Range",
+    "seedOrigin": "system:v12:expression:range-far"
+  },
+  {
+    "kind": "primitive",
+    "id": 36,
+    "name": "Very Far Range",
+    "seedOrigin": "system:v12:expression:range-very-far"
+  },
+  {
+    "kind": "primitive",
+    "id": 33,
+    "name": "Close Range",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 19,
+    "name": "Minor Die Block",
+    "seedOrigin": "system:v12:expression:die-d4"
+  },
+  {
+    "kind": "primitive",
+    "id": 27,
+    "name": "Domain Access Tier IV",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 181,
+    "name": "Direct Executive Override / Matrix Redaction",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 40,
+    "name": "Fast Execution",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 226,
+    "name": "Selective Focus",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 221,
+    "name": "Aero Unlock",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 50,
+    "name": "Sensory & Physiological Tag",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 65,
+    "name": "Precise Vector Alignment (Global Attack Modifier)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 41,
+    "name": "Instant Execution",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 197,
+    "name": "Interceptive Priority",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 218,
+    "name": "Stride Extension",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 22689,
+    "name": "Systemic Rule Structure",
+    "seedOrigin": "system:v12:structure-4:systemic-rule"
+  },
+  {
+    "kind": "primitive",
+    "id": 198,
+    "name": "Heuristic Buffer",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 61,
+    "name": "Vitality Core Augment I",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 188,
+    "name": "Reactive Expansion (Guardian Vector)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 207,
+    "name": "Chronological Echo",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 385,
+    "name": "Universal Aegis (DEFENSIVE)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 233,
+    "name": "Global Field",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 389,
+    "name": "Standard Die Block (1d6)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23230,
+    "name": "Climbing Speed +5",
+    "seedOrigin": "system:v12:curated:core:speed-climbing-5"
+  },
+  {
+    "kind": "primitive",
+    "id": 395,
+    "name": "Legendary Cadence II",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23231,
+    "name": "Climbing Speed +10",
+    "seedOrigin": "system:v12:curated:core:speed-climbing-10"
+  },
+  {
+    "kind": "primitive",
+    "id": 18,
+    "name": "Vector Split",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 217,
+    "name": "Tactile Echo (Blindsight 30ft)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23232,
+    "name": "Climbing Speed +20",
+    "seedOrigin": "system:v12:curated:core:speed-climbing-20"
+  },
+  {
+    "kind": "primitive",
+    "id": 195,
+    "name": "Reaction Reflex",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 63,
+    "name": "Vitality Core Augment III",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23233,
+    "name": "Swimming Speed +5",
+    "seedOrigin": "system:v12:curated:core:speed-swimming-5"
+  },
+  {
+    "kind": "primitive",
+    "id": 23234,
+    "name": "Swimming Speed +10",
+    "seedOrigin": "system:v12:curated:core:speed-swimming-10"
+  },
+  {
+    "kind": "primitive",
+    "id": 23235,
+    "name": "Swimming Speed +20",
+    "seedOrigin": "system:v12:curated:core:speed-swimming-20"
+  },
+  {
+    "kind": "primitive",
+    "id": 174,
+    "name": "Existential Clarity Qualifier",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 176,
+    "name": "Velocity Arrest / Standard Vector",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 219,
+    "name": "Aquatic Unlock",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 203,
+    "name": "Domain Lock Shield",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23236,
+    "name": "Flying Speed +15",
+    "seedOrigin": "system:v12:curated:core:speed-flying-15"
+  },
+  {
+    "kind": "primitive",
+    "id": 23237,
+    "name": "Flying Speed +30",
+    "seedOrigin": "system:v12:curated:core:speed-flying-30"
+  },
+  {
+    "kind": "primitive",
+    "id": 23238,
+    "name": "Flying Speed +60",
+    "seedOrigin": "system:v12:curated:core:speed-flying-60"
+  },
+  {
+    "kind": "primitive",
+    "id": 23239,
+    "name": "Burrowing Speed +5",
+    "seedOrigin": "system:v12:curated:core:speed-burrowing-5"
+  },
+  {
+    "kind": "primitive",
+    "id": 23240,
+    "name": "Burrowing Speed +15",
+    "seedOrigin": "system:v12:curated:core:speed-burrowing-15"
+  },
+  {
+    "kind": "primitive",
+    "id": 23241,
+    "name": "Burrowing Speed +30",
+    "seedOrigin": "system:v12:curated:core:speed-burrowing-30"
+  },
+  {
+    "kind": "primitive",
+    "id": 28,
+    "name": "Structure Tier I",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 44,
+    "name": "Short Duration",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 25,
+    "name": "Domain of Pressure",
+    "seedOrigin": "system:v12:domain-access-1:pressure"
+  },
+  {
+    "kind": "primitive",
+    "id": 45,
+    "name": "Medium Duration",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 52,
+    "name": "System & Identity Tag",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23254,
+    "name": "Attack Bonus +2 below half Vitality",
+    "seedOrigin": "system:v12:curated:conditional:attack-2-low-vitality"
+  },
+  {
+    "kind": "primitive",
+    "id": 22,
+    "name": "Verb Access Tier III",
+    "seedOrigin": "system:v12:expression:verb-access-3"
+  },
+  {
+    "kind": "primitive",
+    "id": 32,
+    "name": "Touch Range",
+    "seedOrigin": "system:v12:expression:range-touch"
+  },
+  {
+    "kind": "primitive",
+    "id": 232,
+    "name": "Volume Scaling I",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 46,
+    "name": "Long Duration",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 171,
+    "name": "Environmental Translation Qualifier",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 54,
+    "name": "Attack Bonus Increment",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 13643,
+    "name": "Fire Damage resistance",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 229,
+    "name": "Stationary Zone",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 201,
+    "name": "Vitality Shielding",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 20,
+    "name": "Verb Access Tier I",
+    "seedOrigin": "system:v12:expression:verb-access-1"
+  },
+  {
+    "kind": "primitive",
+    "id": 22692,
+    "name": "Impact Die Block",
+    "seedOrigin": "system:v12:expression:die-d10"
+  },
+  {
+    "kind": "primitive",
+    "id": 210,
+    "name": "Duration Anchor",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 51,
+    "name": "Cognitive & Agency Tag",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23270,
+    "name": "Slashing Resistance",
+    "seedOrigin": "system:v12:curated:damage-defense:resistance:slashing"
+  },
+  {
+    "kind": "primitive",
+    "id": 225,
+    "name": "Collateral Buffer",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23272,
+    "name": "Slashing Immunity",
+    "seedOrigin": "system:v12:curated:damage-defense:immunity:slashing"
+  },
+  {
+    "kind": "primitive",
+    "id": 23273,
+    "name": "Piercing Resistance",
+    "seedOrigin": "system:v12:curated:damage-defense:resistance:piercing"
+  },
+  {
+    "kind": "primitive",
+    "id": 37,
+    "name": "Extreme Range",
+    "seedOrigin": "system:v12:expression:range-extreme"
+  },
+  {
+    "kind": "primitive",
+    "id": 228,
+    "name": "Kinetic Sphere",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23274,
+    "name": "Piercing Immunity",
+    "seedOrigin": "system:v12:curated:damage-defense:immunity:piercing"
+  },
+  {
+    "kind": "primitive",
+    "id": 29,
+    "name": "Structure Tier II",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 60,
+    "name": "Reliable Practice",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 390,
+    "name": "Heavy Die Block (1d8)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 392,
+    "name": "Calamity Die Block (1d12)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 391,
+    "name": "Impact Die Block (1d10)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 39,
+    "name": "Standard Execution",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 230,
+    "name": "Mobile Aura",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 208,
+    "name": "Dormant Trigger Hook",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 211,
+    "name": "Perpetual Lock",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 170,
+    "name": "Interceptive Causal Trigger",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 22401,
+    "name": "Domain of Water",
+    "seedOrigin": "system:v12:domain-access-1:water"
+  },
+  {
+    "kind": "primitive",
+    "id": 23275,
+    "name": "Bludgeoning Resistance",
+    "seedOrigin": "system:v12:curated:damage-defense:resistance:bludgeoning"
+  },
+  {
+    "kind": "primitive",
+    "id": 224,
+    "name": "Bouncing Vector",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 398,
+    "name": "Mythic Safeguard (Legendary Resistance 3x/Day)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 57,
+    "name": "Focused Edge",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 387,
+    "name": "Structural Hardening (Domain Resistance)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23276,
+    "name": "Bludgeoning Immunity",
+    "seedOrigin": "system:v12:curated:damage-defense:immunity:bludgeoning"
+  },
+  {
+    "kind": "primitive",
+    "id": 169,
+    "name": "Conditional Informational Trigger",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 182,
+    "name": "Existential Allegiance Bind / Informational Absolutism",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 184,
+    "name": "Volumetric Scale Shift",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23277,
+    "name": "Fire Resistance",
+    "seedOrigin": "system:v12:curated:damage-defense:resistance:fire"
+  },
+  {
+    "kind": "primitive",
+    "id": 196,
+    "name": "Clash Dominance",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 202,
+    "name": "Condition Insulation",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 206,
+    "name": "CV Matrix Trap",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 185,
+    "name": "State Transmutation",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23278,
+    "name": "Fire Immunity",
+    "seedOrigin": "system:v12:curated:damage-defense:immunity:fire"
+  },
+  {
+    "kind": "primitive",
+    "id": 162,
+    "name": "Positive Bias II — Named Practice",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 165,
+    "name": "Negative Bias III — Core Attribute",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 386,
+    "name": "Reactive Bulwark (DEFENSIVE)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23279,
+    "name": "Cold Resistance",
+    "seedOrigin": "system:v12:curated:damage-defense:resistance:cold"
+  },
+  {
+    "kind": "primitive",
+    "id": 23280,
+    "name": "Cold Immunity",
+    "seedOrigin": "system:v12:curated:damage-defense:immunity:cold"
+  },
+  {
+    "kind": "primitive",
+    "id": 23281,
+    "name": "Lightning Resistance",
+    "seedOrigin": "system:v12:curated:damage-defense:resistance:lightning"
+  },
+  {
+    "kind": "primitive",
+    "id": 199,
+    "name": "Systemic Sink",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 212,
+    "name": "Kinetic Stasis",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23282,
+    "name": "Lightning Immunity",
+    "seedOrigin": "system:v12:curated:damage-defense:immunity:lightning"
+  },
+  {
+    "kind": "primitive",
+    "id": 190,
+    "name": "Absolute Timeline Deprivation (Stun Vector)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 388,
+    "name": "Absolute Insulation (Domain Immunity)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 383,
+    "name": "Warding Shell (DEFENSIVE)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23283,
+    "name": "Thunder Resistance",
+    "seedOrigin": "system:v12:curated:damage-defense:resistance:thunder"
+  },
+  {
+    "kind": "primitive",
+    "id": 23284,
+    "name": "Thunder Immunity",
+    "seedOrigin": "system:v12:curated:damage-defense:immunity:thunder"
+  },
+  {
+    "kind": "primitive",
+    "id": 23285,
+    "name": "Acid Resistance",
+    "seedOrigin": "system:v12:curated:damage-defense:resistance:acid"
+  },
+  {
+    "kind": "primitive",
+    "id": 222,
+    "name": "Phase Slip",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 223,
+    "name": "Hover Precision",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 397,
+    "name": "Existential Imperative (Legendary Resistance 1x/Day)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 220,
+    "name": "Subterranean Bore",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 231,
+    "name": "Structural Wall",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 161,
+    "name": "Negative Bias I — Narrative Focus",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 163,
+    "name": "Negative Bias II — Named Practice",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 164,
+    "name": "Positive Bias III — Core Attribute",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 166,
+    "name": "Causal Override (Fate Replacement)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23286,
+    "name": "Acid Immunity",
+    "seedOrigin": "system:v12:curated:damage-defense:immunity:acid"
+  },
+  {
+    "kind": "primitive",
+    "id": 23287,
+    "name": "Poison Resistance",
+    "seedOrigin": "system:v12:curated:damage-defense:resistance:poison"
+  },
+  {
+    "kind": "primitive",
+    "id": 394,
+    "name": "Legendary Cadence I",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 396,
+    "name": "Legendary Cadence III",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 384,
+    "name": "Psychic Firewall (DEFENSIVE)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23288,
+    "name": "Poison Immunity",
+    "seedOrigin": "system:v12:curated:damage-defense:immunity:poison"
+  },
+  {
+    "kind": "primitive",
+    "id": 187,
+    "name": "Timeline Shift / Minor Window Grant",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 393,
+    "name": "Existential Tear (1d20)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 382,
+    "name": "Kinetic Hardening (DEFENSIVE)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23289,
+    "name": "Radiant Resistance",
+    "seedOrigin": "system:v12:curated:damage-defense:resistance:radiant"
+  },
+  {
+    "kind": "primitive",
+    "id": 200,
+    "name": "Volatile Vent",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23290,
+    "name": "Radiant Immunity",
+    "seedOrigin": "system:v12:curated:damage-defense:immunity:radiant"
+  },
+  {
+    "kind": "primitive",
+    "id": 168,
+    "name": "Systemic Threshold Trigger",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 172,
+    "name": "Systemic Resonance Qualifier",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 173,
+    "name": "Non-Material Translation Qualifier",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 177,
+    "name": "Advanced Vector Manipulation",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 178,
+    "name": "Systemic Kinetic Override",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 175,
+    "name": "Minor Linear Displacement",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 179,
+    "name": "Impulse Nudge / Point Transmission",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 160,
+    "name": "Positive Bias I — Narrative Focus",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 180,
+    "name": "Behavioral Directive / Data Trace Masking",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 183,
+    "name": "Composition Tuning",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 191,
+    "name": "Track Acceleration",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 189,
+    "name": "Core Action Multiplication (Haste Vector)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 193,
+    "name": "Timeline Anchor",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 209,
+    "name": "Timeline Tether",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 215,
+    "name": "Substrate Echo (Tremorsense 30ft)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 192,
+    "name": "Heavy Compactor",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 205,
+    "name": "Narrative Pivot",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 227,
+    "name": "Linear / Conical Vector",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23291,
+    "name": "Necrotic Resistance",
+    "seedOrigin": "system:v12:curated:damage-defense:resistance:necrotic"
+  },
+  {
+    "kind": "primitive",
+    "id": 23292,
+    "name": "Necrotic Immunity",
+    "seedOrigin": "system:v12:curated:damage-defense:immunity:necrotic"
+  },
+  {
+    "kind": "primitive",
+    "id": 23293,
+    "name": "Psychic Resistance",
+    "seedOrigin": "system:v12:curated:damage-defense:resistance:psychic"
+  },
+  {
+    "kind": "primitive",
+    "id": 23294,
+    "name": "Psychic Immunity",
+    "seedOrigin": "system:v12:curated:damage-defense:immunity:psychic"
+  },
+  {
+    "kind": "primitive",
+    "id": 23295,
+    "name": "Force Resistance",
+    "seedOrigin": "system:v12:curated:damage-defense:resistance:force"
+  },
+  {
+    "kind": "primitive",
+    "id": 214,
+    "name": "Umbral Sight I (Darkvision 60ft)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23296,
+    "name": "Force Immunity",
+    "seedOrigin": "system:v12:curated:damage-defense:immunity:force"
+  },
+  {
+    "kind": "primitive",
+    "id": 23298,
+    "name": "Controlled Glide",
+    "seedOrigin": "system:v12:curated:permission:controlled-glide"
+  },
+  {
+    "kind": "primitive",
+    "id": 23299,
+    "name": "Adhesive Grip",
+    "seedOrigin": "system:v12:curated:permission:adhesive-grip"
+  },
+  {
+    "kind": "primitive",
+    "id": 23300,
+    "name": "Ground Contact Echo (10 ft)",
+    "seedOrigin": "system:v12:curated:permission:short-ground-echo"
+  },
+  {
+    "kind": "primitive",
+    "id": 23301,
+    "name": "Prehensile Tail",
+    "seedOrigin": "system:v12:curated:permission:prehensile-tail"
+  },
+  {
+    "kind": "primitive",
+    "id": 23302,
+    "name": "Retractable Carapace",
+    "seedOrigin": "system:v12:curated:permission:retractable-carapace"
+  },
+  {
+    "kind": "primitive",
+    "id": 23303,
+    "name": "Shed-Skin Decoy",
+    "seedOrigin": "system:v12:curated:permission:shed-skin-decoy"
+  },
+  {
+    "kind": "primitive",
+    "id": 23304,
+    "name": "Vocal Mimicry",
+    "seedOrigin": "system:v12:curated:permission:vocal-mimicry"
+  },
+  {
+    "kind": "primitive",
+    "id": 23305,
+    "name": "Scent Signaling",
+    "seedOrigin": "system:v12:curated:permission:scent-signaling"
+  },
+  {
+    "kind": "primitive",
+    "id": 23306,
+    "name": "Touch Memory Impression",
+    "seedOrigin": "system:v12:curated:permission:touch-memory-impression"
+  },
+  {
+    "kind": "primitive",
+    "id": 23307,
+    "name": "Vitality Core Augment +5",
+    "seedOrigin": "system:v12:curated:sheet:vitality-5"
+  },
+  {
+    "kind": "primitive",
+    "id": 23311,
+    "name": "Bounded Practical Permission",
+    "seedOrigin": "system:v13:heritage-shelf:practical-parent"
+  },
+  {
+    "kind": "primitive",
+    "id": 42,
+    "name": "Reaction Execution",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 167,
+    "name": "Direct Material Trigger",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 213,
+    "name": "Temporal Isolate",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 216,
+    "name": "Umbral Sight II (Darkvision 120ft)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 186,
+    "name": "Polymorphic Template Overwrite",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 204,
+    "name": "Hazard Transmutation",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 22358,
+    "name": "Domain Access Tier III",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 22406,
+    "name": "Domain of Ice",
+    "seedOrigin": "system:v12:domain-access-1:ice"
+  },
+  {
+    "kind": "primitive",
+    "id": 22475,
+    "name": "Domain of Reality",
+    "seedOrigin": "system:v12:domain-access-4:reality"
+  },
+  {
+    "kind": "primitive",
+    "id": 23152,
+    "name": "Attribute Increment +2 Physical",
+    "seedOrigin": "system:v12:curated:attribute:22492:2"
+  },
+  {
+    "kind": "primitive",
+    "id": 22493,
+    "name": "Mental Attribute Increment",
+    "seedOrigin": "system:v12:attribute-increment:mental"
+  },
+  {
+    "kind": "primitive",
+    "id": 22494,
+    "name": "Magical Attribute Increment",
+    "seedOrigin": "system:v12:attribute-increment:magical"
+  },
+  {
+    "kind": "primitive",
+    "id": 23153,
+    "name": "Attribute Increment +3 Physical",
+    "seedOrigin": "system:v12:curated:attribute:22492:3"
+  },
+  {
+    "kind": "primitive",
+    "id": 22495,
+    "name": "Physical Saving Throw Proficiency",
+    "seedOrigin": "system:v12:defensive-save-upgrade:physical"
+  },
+  {
+    "kind": "primitive",
+    "id": 22405,
+    "name": "Domain of Wood",
+    "seedOrigin": "system:v12:domain-access-1:wood"
+  },
+  {
+    "kind": "primitive",
+    "id": 23154,
+    "name": "Attribute Increment +5 Physical",
+    "seedOrigin": "system:v12:curated:attribute:22492:5"
+  },
+  {
+    "kind": "primitive",
+    "id": 23155,
+    "name": "Attribute Increment +PB Physical",
+    "seedOrigin": "system:v12:curated:attribute:22492:pb"
+  },
+  {
+    "kind": "primitive",
+    "id": 23156,
+    "name": "Attribute Increment +2 Mental",
+    "seedOrigin": "system:v12:curated:attribute:22493:2"
+  },
+  {
+    "kind": "primitive",
+    "id": 23157,
+    "name": "Attribute Increment +3 Mental",
+    "seedOrigin": "system:v12:curated:attribute:22493:3"
+  },
+  {
+    "kind": "primitive",
+    "id": 23328,
+    "name": "Anchored Safety Line",
+    "seedOrigin": "system:v13:heritage-shelf:permission:anchored-safety-line"
+  },
+  {
+    "kind": "primitive",
+    "id": 22395,
+    "name": "Practice Proficiency",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 22411,
+    "name": "Domain of Motion",
+    "seedOrigin": "system:v12:domain-access-1:motion"
+  },
+  {
+    "kind": "primitive",
+    "id": 22418,
+    "name": "Domain of Smell",
+    "seedOrigin": "system:v12:domain-access-1:smell"
+  },
+  {
+    "kind": "primitive",
+    "id": 22412,
+    "name": "Domain of Force",
+    "seedOrigin": "system:v12:domain-access-1:force"
+  },
+  {
+    "kind": "primitive",
+    "id": 22413,
+    "name": "Domain of Sound",
+    "seedOrigin": "system:v12:domain-access-1:sound"
+  },
+  {
+    "kind": "primitive",
+    "id": 23158,
+    "name": "Attribute Increment +5 Mental",
+    "seedOrigin": "system:v12:curated:attribute:22493:5"
+  },
+  {
+    "kind": "primitive",
+    "id": 23159,
+    "name": "Attribute Increment +PB Mental",
+    "seedOrigin": "system:v12:curated:attribute:22493:pb"
+  },
+  {
+    "kind": "primitive",
+    "id": 23160,
+    "name": "Attribute Increment +2 Magical",
+    "seedOrigin": "system:v12:curated:attribute:22494:2"
+  },
+  {
+    "kind": "primitive",
+    "id": 22461,
+    "name": "Domain of Societal Structures",
+    "seedOrigin": "system:v12:domain-access-3:societal-structures"
+  },
+  {
+    "kind": "primitive",
+    "id": 22469,
+    "name": "Domain of Coherence",
+    "seedOrigin": "system:v12:domain-access-3:coherence"
+  },
+  {
+    "kind": "primitive",
+    "id": 22416,
+    "name": "Domain of Friction",
+    "seedOrigin": "system:v12:domain-access-1:friction"
+  },
+  {
+    "kind": "primitive",
+    "id": 22417,
+    "name": "Domain of Vibration",
+    "seedOrigin": "system:v12:domain-access-1:vibration"
+  },
+  {
+    "kind": "primitive",
+    "id": 23161,
+    "name": "Attribute Increment +3 Magical",
+    "seedOrigin": "system:v12:curated:attribute:22494:3"
+  },
+  {
+    "kind": "primitive",
+    "id": 23162,
+    "name": "Attribute Increment +5 Magical",
+    "seedOrigin": "system:v12:curated:attribute:22494:5"
+  },
+  {
+    "kind": "primitive",
+    "id": 23163,
+    "name": "Attribute Increment +PB Magical",
+    "seedOrigin": "system:v12:curated:attribute:22494:pb"
+  },
+  {
+    "kind": "primitive",
+    "id": 22476,
+    "name": "Domain of Causality Global",
+    "seedOrigin": "system:v12:domain-access-4:causality-global"
+  },
+  {
+    "kind": "primitive",
+    "id": 22478,
+    "name": "Domain of Space Global",
+    "seedOrigin": "system:v12:domain-access-4:space-global"
+  },
+  {
+    "kind": "primitive",
+    "id": 22423,
+    "name": "Domain of Biological Tissue",
+    "seedOrigin": "system:v12:domain-access-1:biological-tissue"
+  },
+  {
+    "kind": "primitive",
+    "id": 22424,
+    "name": "Domain of Ecosystems Simple",
+    "seedOrigin": "system:v12:domain-access-1:ecosystems-simple"
+  },
+  {
+    "kind": "primitive",
+    "id": 22425,
+    "name": "Domain of Life",
+    "seedOrigin": "system:v12:domain-access-2:life"
+  },
+  {
+    "kind": "primitive",
+    "id": 22426,
+    "name": "Domain of Decay",
+    "seedOrigin": "system:v12:domain-access-2:decay"
+  },
+  {
+    "kind": "primitive",
+    "id": 22427,
+    "name": "Domain of Growth",
+    "seedOrigin": "system:v12:domain-access-2:growth"
+  },
+  {
+    "kind": "primitive",
+    "id": 23168,
+    "name": "Save DC +2",
+    "seedOrigin": "system:v12:curated:dc:22391:2"
+  },
+  {
+    "kind": "primitive",
+    "id": 22431,
+    "name": "Domain of Space Local",
+    "seedOrigin": "system:v12:domain-access-2:space-local"
+  },
+  {
+    "kind": "primitive",
+    "id": 22432,
+    "name": "Domain of Disease",
+    "seedOrigin": "system:v12:domain-access-2:disease"
+  },
+  {
+    "kind": "primitive",
+    "id": 22433,
+    "name": "Domain of Evolution",
+    "seedOrigin": "system:v12:domain-access-2:evolution"
+  },
+  {
+    "kind": "primitive",
+    "id": 22434,
+    "name": "Domain of Energy Systems",
+    "seedOrigin": "system:v12:domain-access-2:energy-systems"
+  },
+  {
+    "kind": "primitive",
+    "id": 22435,
+    "name": "Domain of Magnetism",
+    "seedOrigin": "system:v12:domain-access-2:magnetism"
+  },
+  {
+    "kind": "primitive",
+    "id": 23169,
+    "name": "Save DC +3",
+    "seedOrigin": "system:v12:curated:dc:22391:3"
+  },
+  {
+    "kind": "primitive",
+    "id": 23170,
+    "name": "Save DC +5",
+    "seedOrigin": "system:v12:curated:dc:22391:5"
+  },
+  {
+    "kind": "primitive",
+    "id": 23171,
+    "name": "Save DC +PB",
+    "seedOrigin": "system:v12:curated:dc:22391:pb"
+  },
+  {
+    "kind": "primitive",
+    "id": 23329,
+    "name": "Resonant Alarm",
+    "seedOrigin": "system:v13:heritage-shelf:permission:resonant-alarm"
+  },
+  {
+    "kind": "primitive",
+    "id": 22479,
+    "name": "Domain of Identity Existential",
+    "seedOrigin": "system:v12:domain-access-4:identity-existential"
+  },
+  {
+    "kind": "primitive",
+    "id": 22438,
+    "name": "Domain of Order",
+    "seedOrigin": "system:v12:domain-access-2:order"
+  },
+  {
+    "kind": "primitive",
+    "id": 22439,
+    "name": "Domain of Perception",
+    "seedOrigin": "system:v12:domain-access-2:perception"
+  },
+  {
+    "kind": "primitive",
+    "id": 22440,
+    "name": "Domain of Language",
+    "seedOrigin": "system:v12:domain-access-2:language"
+  },
+  {
+    "kind": "primitive",
+    "id": 22441,
+    "name": "Domain of Motion Systems",
+    "seedOrigin": "system:v12:domain-access-2:motion-systems"
+  },
+  {
+    "kind": "primitive",
+    "id": 22487,
+    "name": "Domain of Termination States",
+    "seedOrigin": "system:v12:domain-access-4:termination-states"
+  },
+  {
+    "kind": "primitive",
+    "id": 22488,
+    "name": "Domain of Reality Layers",
+    "seedOrigin": "system:v12:domain-access-4:reality-layers"
+  },
+  {
+    "kind": "primitive",
+    "id": 22489,
+    "name": "Domain of Ontological Hierarchy",
+    "seedOrigin": "system:v12:domain-access-4:ontological-hierarchy"
+  },
+  {
+    "kind": "primitive",
+    "id": 22499,
+    "name": "Finesse Proficiency",
+    "seedOrigin": "system:v12:practice-proficiency:finesse"
+  },
+  {
+    "kind": "primitive",
+    "id": 23175,
+    "name": "Carry Capacity Augment +20",
+    "seedOrigin": "system:v12:curated:sheet:carry-20"
+  },
+  {
+    "kind": "primitive",
+    "id": 23176,
+    "name": "Carry Capacity Augment +50",
+    "seedOrigin": "system:v12:curated:sheet:carry-50"
+  },
+  {
+    "kind": "primitive",
+    "id": 23330,
+    "name": "Weather Shelter Frame",
+    "seedOrigin": "system:v13:heritage-shelf:permission:weather-shelter-frame"
+  },
+  {
+    "kind": "primitive",
+    "id": 22414,
+    "name": "Domain of Heat",
+    "seedOrigin": "system:v12:domain-access-1:heat"
+  },
+  {
+    "kind": "primitive",
+    "id": 22419,
+    "name": "Domain of Taste",
+    "seedOrigin": "system:v12:domain-access-1:taste"
+  },
+  {
+    "kind": "primitive",
+    "id": 22503,
+    "name": "Knowledge Proficiency",
+    "seedOrigin": "system:v12:practice-proficiency:knowledge"
+  },
+  {
+    "kind": "primitive",
+    "id": 23177,
+    "name": "Equipment Slot Augment +2",
+    "seedOrigin": "system:v12:curated:sheet:equip-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 23331,
+    "name": "Breach Survey",
+    "seedOrigin": "system:v13:heritage-shelf:permission:breach-survey"
+  },
+  {
+    "kind": "primitive",
+    "id": 23332,
+    "name": "Small Air Pocket",
+    "seedOrigin": "system:v13:heritage-shelf:permission:small-air-pocket"
+  },
+  {
+    "kind": "primitive",
+    "id": 23358,
+    "name": "Improvised Rations",
+    "seedOrigin": "system:v13:heritage-shelf:permission:improvised-rations"
+  },
+  {
+    "kind": "primitive",
+    "id": 22420,
+    "name": "Domain of Touch",
+    "seedOrigin": "system:v12:domain-access-1:touch"
+  },
+  {
+    "kind": "primitive",
+    "id": 22436,
+    "name": "Domain of Entropy",
+    "seedOrigin": "system:v12:domain-access-2:entropy"
+  },
+  {
+    "kind": "primitive",
+    "id": 22442,
+    "name": "Domain of Adaptation",
+    "seedOrigin": "system:v12:domain-access-2:adaptation"
+  },
+  {
+    "kind": "primitive",
+    "id": 22443,
+    "name": "Domain of Transformation",
+    "seedOrigin": "system:v12:domain-access-2:transformation"
+  },
+  {
+    "kind": "primitive",
+    "id": 22446,
+    "name": "Domain of Balance",
+    "seedOrigin": "system:v12:domain-access-2:balance"
+  },
+  {
+    "kind": "primitive",
+    "id": 22504,
+    "name": "Influence Proficiency",
+    "seedOrigin": "system:v12:practice-proficiency:influence"
+  },
+  {
+    "kind": "primitive",
+    "id": 22505,
+    "name": "Mysticism Proficiency",
+    "seedOrigin": "system:v12:practice-proficiency:mysticism"
+  },
+  {
+    "kind": "primitive",
+    "id": 23178,
+    "name": "Prowess Check +1",
+    "seedOrigin": "system:v12:curated:core:practice-prowess-1"
+  },
+  {
+    "kind": "primitive",
+    "id": 23179,
+    "name": "Prowess Check +2",
+    "seedOrigin": "system:v12:curated:core:practice-prowess-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 23180,
+    "name": "Prowess Check +3",
+    "seedOrigin": "system:v12:curated:core:practice-prowess-3"
+  },
+  {
+    "kind": "primitive",
+    "id": 23181,
+    "name": "Prowess Check +5",
+    "seedOrigin": "system:v12:curated:core:practice-prowess-5"
+  },
+  {
+    "kind": "primitive",
+    "id": 22447,
+    "name": "Domain of Instability",
+    "seedOrigin": "system:v12:domain-access-2:instability"
+  },
+  {
+    "kind": "primitive",
+    "id": 22448,
+    "name": "Domain of Consciousness",
+    "seedOrigin": "system:v12:domain-access-3:consciousness"
+  },
+  {
+    "kind": "primitive",
+    "id": 22449,
+    "name": "Domain of Identity",
+    "seedOrigin": "system:v12:domain-access-3:identity"
+  },
+  {
+    "kind": "primitive",
+    "id": 22450,
+    "name": "Domain of Will",
+    "seedOrigin": "system:v12:domain-access-3:will"
+  },
+  {
+    "kind": "primitive",
+    "id": 22451,
+    "name": "Domain of Intent",
+    "seedOrigin": "system:v12:domain-access-3:intent"
+  },
+  {
+    "kind": "primitive",
+    "id": 21708,
+    "name": "Domain of Thought",
+    "seedOrigin": "system:v12:domain-access-3:thought"
+  },
+  {
+    "kind": "primitive",
+    "id": 23182,
+    "name": "Finesse Check +1",
+    "seedOrigin": "system:v12:curated:core:practice-finesse-1"
+  },
+  {
+    "kind": "primitive",
+    "id": 23183,
+    "name": "Finesse Check +2",
+    "seedOrigin": "system:v12:curated:core:practice-finesse-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 23184,
+    "name": "Finesse Check +3",
+    "seedOrigin": "system:v12:curated:core:practice-finesse-3"
+  },
+  {
+    "kind": "primitive",
+    "id": 22452,
+    "name": "Domain of Belief",
+    "seedOrigin": "system:v12:domain-access-3:belief"
+  },
+  {
+    "kind": "primitive",
+    "id": 22453,
+    "name": "Domain of Information",
+    "seedOrigin": "system:v12:domain-access-3:information"
+  },
+  {
+    "kind": "primitive",
+    "id": 22454,
+    "name": "Domain of Probability Local",
+    "seedOrigin": "system:v12:domain-access-3:probability-local"
+  },
+  {
+    "kind": "primitive",
+    "id": 23185,
+    "name": "Finesse Check +5",
+    "seedOrigin": "system:v12:curated:core:practice-finesse-5"
+  },
+  {
+    "kind": "primitive",
+    "id": 23186,
+    "name": "Fieldcraft Check +1",
+    "seedOrigin": "system:v12:curated:core:practice-fieldcraft-1"
+  },
+  {
+    "kind": "primitive",
+    "id": 22402,
+    "name": "Domain of Air",
+    "seedOrigin": "system:v12:domain-access-1:air"
+  },
+  {
+    "kind": "primitive",
+    "id": 22403,
+    "name": "Domain of Earth",
+    "seedOrigin": "system:v12:domain-access-1:earth"
+  },
+  {
+    "kind": "primitive",
+    "id": 23187,
+    "name": "Fieldcraft Check +2",
+    "seedOrigin": "system:v12:curated:core:practice-fieldcraft-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 23188,
+    "name": "Fieldcraft Check +3",
+    "seedOrigin": "system:v12:curated:core:practice-fieldcraft-3"
+  },
+  {
+    "kind": "primitive",
+    "id": 22408,
+    "name": "Domain of Light",
+    "seedOrigin": "system:v12:domain-access-1:light"
+  },
+  {
+    "kind": "primitive",
+    "id": 22455,
+    "name": "Domain of Fate",
+    "seedOrigin": "system:v12:domain-access-3:fate"
+  },
+  {
+    "kind": "primitive",
+    "id": 22456,
+    "name": "Domain of Causality Bounded",
+    "seedOrigin": "system:v12:domain-access-3:causality-bounded"
+  },
+  {
+    "kind": "primitive",
+    "id": 849,
+    "name": "Minor Obstruction (Cover Tier I)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23189,
+    "name": "Fieldcraft Check +5",
+    "seedOrigin": "system:v12:curated:core:practice-fieldcraft-5"
+  },
+  {
+    "kind": "primitive",
+    "id": 23190,
+    "name": "Awareness Check +1",
+    "seedOrigin": "system:v12:curated:core:practice-awareness-1"
+  },
+  {
+    "kind": "primitive",
+    "id": 23191,
+    "name": "Awareness Check +2",
+    "seedOrigin": "system:v12:curated:core:practice-awareness-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 22409,
+    "name": "Domain of Darkness",
+    "seedOrigin": "system:v12:domain-access-1:darkness"
+  },
+  {
+    "kind": "primitive",
+    "id": 22410,
+    "name": "Domain of Gravity Local",
+    "seedOrigin": "system:v12:domain-access-1:gravity-local"
+  },
+  {
+    "kind": "primitive",
+    "id": 22415,
+    "name": "Domain of Cold",
+    "seedOrigin": "system:v12:domain-access-1:cold"
+  },
+  {
+    "kind": "primitive",
+    "id": 22422,
+    "name": "Domain of Terrain",
+    "seedOrigin": "system:v12:domain-access-1:terrain"
+  },
+  {
+    "kind": "primitive",
+    "id": 22457,
+    "name": "Domain of Narrative Structure",
+    "seedOrigin": "system:v12:domain-access-3:narrative-structure"
+  },
+  {
+    "kind": "primitive",
+    "id": 22702,
+    "name": "Equipment Slot Augment",
+    "seedOrigin": "system:v12:expression:equip-slot-1"
+  },
+  {
+    "kind": "primitive",
+    "id": 22428,
+    "name": "Domain of Memory",
+    "seedOrigin": "system:v12:domain-access-2:memory"
+  },
+  {
+    "kind": "primitive",
+    "id": 22429,
+    "name": "Domain of Emotion",
+    "seedOrigin": "system:v12:domain-access-2:emotion"
+  },
+  {
+    "kind": "primitive",
+    "id": 22465,
+    "name": "Domain of Corruption",
+    "seedOrigin": "system:v12:domain-access-3:corruption"
+  },
+  {
+    "kind": "primitive",
+    "id": 23192,
+    "name": "Awareness Check +3",
+    "seedOrigin": "system:v12:curated:core:practice-awareness-3"
+  },
+  {
+    "kind": "primitive",
+    "id": 23193,
+    "name": "Awareness Check +5",
+    "seedOrigin": "system:v12:curated:core:practice-awareness-5"
+  },
+  {
+    "kind": "primitive",
+    "id": 22467,
+    "name": "Domain of Synchronization",
+    "seedOrigin": "system:v12:domain-access-3:synchronization"
+  },
+  {
+    "kind": "primitive",
+    "id": 23194,
+    "name": "Reason Check +1",
+    "seedOrigin": "system:v12:curated:core:practice-reason-1"
+  },
+  {
+    "kind": "primitive",
+    "id": 23195,
+    "name": "Reason Check +2",
+    "seedOrigin": "system:v12:curated:core:practice-reason-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 22468,
+    "name": "Domain of Divergence",
+    "seedOrigin": "system:v12:domain-access-3:divergence"
+  },
+  {
+    "kind": "primitive",
+    "id": 22430,
+    "name": "Domain of Time Local",
+    "seedOrigin": "system:v12:domain-access-2:time-local"
+  },
+  {
+    "kind": "primitive",
+    "id": 22470,
+    "name": "Domain of Entropy Systems",
+    "seedOrigin": "system:v12:domain-access-3:entropy-systems"
+  },
+  {
+    "kind": "primitive",
+    "id": 22471,
+    "name": "Domain of Dimensional Interfaces",
+    "seedOrigin": "system:v12:domain-access-3:dimensional-interfaces"
+  },
+  {
+    "kind": "primitive",
+    "id": 22472,
+    "name": "Domain of Symbolic Systems",
+    "seedOrigin": "system:v12:domain-access-3:symbolic-systems"
+  },
+  {
+    "kind": "primitive",
+    "id": 22473,
+    "name": "Domain of Existence",
+    "seedOrigin": "system:v12:domain-access-4:existence"
+  },
+  {
+    "kind": "primitive",
+    "id": 23196,
+    "name": "Reason Check +3",
+    "seedOrigin": "system:v12:curated:core:practice-reason-3"
+  },
+  {
+    "kind": "primitive",
+    "id": 23197,
+    "name": "Reason Check +5",
+    "seedOrigin": "system:v12:curated:core:practice-reason-5"
+  },
+  {
+    "kind": "primitive",
+    "id": 23198,
+    "name": "Knowledge Check +1",
+    "seedOrigin": "system:v12:curated:core:practice-knowledge-1"
+  },
+  {
+    "kind": "primitive",
+    "id": 23199,
+    "name": "Knowledge Check +2",
+    "seedOrigin": "system:v12:curated:core:practice-knowledge-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 22407,
+    "name": "Domain of Lightning",
+    "seedOrigin": "system:v12:domain-access-1:lightning"
+  },
+  {
+    "kind": "primitive",
+    "id": 22703,
+    "name": "Item Load 1",
+    "seedOrigin": "system:v12:expression:item-load-1"
+  },
+  {
+    "kind": "primitive",
+    "id": 23200,
+    "name": "Knowledge Check +3",
+    "seedOrigin": "system:v12:curated:core:practice-knowledge-3"
+  },
+  {
+    "kind": "primitive",
+    "id": 23201,
+    "name": "Knowledge Check +5",
+    "seedOrigin": "system:v12:curated:core:practice-knowledge-5"
+  },
+  {
+    "kind": "primitive",
+    "id": 23202,
+    "name": "Influence Check +1",
+    "seedOrigin": "system:v12:curated:core:practice-influence-1"
+  },
+  {
+    "kind": "primitive",
+    "id": 23203,
+    "name": "Influence Check +2",
+    "seedOrigin": "system:v12:curated:core:practice-influence-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 22437,
+    "name": "Domain of Chaos Local",
+    "seedOrigin": "system:v12:domain-access-2:chaos-local"
+  },
+  {
+    "kind": "primitive",
+    "id": 22444,
+    "name": "Domain of Networks",
+    "seedOrigin": "system:v12:domain-access-2:networks"
+  },
+  {
+    "kind": "primitive",
+    "id": 22458,
+    "name": "Domain of Collective Memory",
+    "seedOrigin": "system:v12:domain-access-3:collective-memory"
+  },
+  {
+    "kind": "primitive",
+    "id": 22352,
+    "name": "Verb Access Tier I",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 22477,
+    "name": "Domain of Time Absolute",
+    "seedOrigin": "system:v12:domain-access-4:time-absolute"
+  },
+  {
+    "kind": "primitive",
+    "id": 23204,
+    "name": "Influence Check +3",
+    "seedOrigin": "system:v12:curated:core:practice-influence-3"
+  },
+  {
+    "kind": "primitive",
+    "id": 23205,
+    "name": "Influence Check +5",
+    "seedOrigin": "system:v12:curated:core:practice-influence-5"
+  },
+  {
+    "kind": "primitive",
+    "id": 23369,
+    "name": "Ring Opening Read",
+    "seedOrigin": "system:v13:heritage-shelf:permission:ring-opening-read"
+  },
+  {
+    "kind": "primitive",
+    "id": 22480,
+    "name": "Domain of Probability Fields",
+    "seedOrigin": "system:v12:domain-access-4:probability-fields"
+  },
+  {
+    "kind": "primitive",
+    "id": 22481,
+    "name": "Domain of Narrative Authority",
+    "seedOrigin": "system:v12:domain-access-4:narrative-authority"
+  },
+  {
+    "kind": "primitive",
+    "id": 22486,
+    "name": "Domain of Origin States",
+    "seedOrigin": "system:v12:domain-access-4:origin-states"
+  },
+  {
+    "kind": "primitive",
+    "id": 22391,
+    "name": "Focused Presence (Global DC Modifier)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 850,
+    "name": "Half Cover (Cover Tier II)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23206,
+    "name": "Mysticism Check +1",
+    "seedOrigin": "system:v12:curated:core:practice-mysticism-1"
+  },
+  {
+    "kind": "primitive",
+    "id": 23207,
+    "name": "Mysticism Check +2",
+    "seedOrigin": "system:v12:curated:core:practice-mysticism-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 22464,
+    "name": "Domain of Hierarchy",
+    "seedOrigin": "system:v12:domain-access-3:hierarchy"
+  },
+  {
+    "kind": "primitive",
+    "id": 23208,
+    "name": "Mysticism Check +3",
+    "seedOrigin": "system:v12:curated:core:practice-mysticism-3"
+  },
+  {
+    "kind": "primitive",
+    "id": 22474,
+    "name": "Domain of Non Existence",
+    "seedOrigin": "system:v12:domain-access-4:non-existence"
+  },
+  {
+    "kind": "primitive",
+    "id": 23209,
+    "name": "Mysticism Check +5",
+    "seedOrigin": "system:v12:curated:core:practice-mysticism-5"
+  },
+  {
+    "kind": "primitive",
+    "id": 23333,
+    "name": "Animal Signal Reading",
+    "seedOrigin": "system:v13:heritage-shelf:permission:animal-signal-reading"
+  },
+  {
+    "kind": "primitive",
+    "id": 22500,
+    "name": "Fieldcraft Proficiency",
+    "seedOrigin": "system:v12:practice-proficiency:fieldcraft"
+  },
+  {
+    "kind": "primitive",
+    "id": 23210,
+    "name": "Communion Check +1",
+    "seedOrigin": "system:v12:curated:core:practice-communion-1"
+  },
+  {
+    "kind": "primitive",
+    "id": 23211,
+    "name": "Communion Check +2",
+    "seedOrigin": "system:v12:curated:core:practice-communion-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 23212,
+    "name": "Communion Check +3",
+    "seedOrigin": "system:v12:curated:core:practice-communion-3"
+  },
+  {
+    "kind": "primitive",
+    "id": 23213,
+    "name": "Communion Check +5",
+    "seedOrigin": "system:v12:curated:core:practice-communion-5"
+  },
+  {
+    "kind": "primitive",
+    "id": 23214,
+    "name": "Intuition Check +1",
+    "seedOrigin": "system:v12:curated:core:practice-intuition-1"
+  },
+  {
+    "kind": "primitive",
+    "id": 23334,
+    "name": "Canopy Footing",
+    "seedOrigin": "system:v13:heritage-shelf:permission:canopy-footing"
+  },
+  {
+    "kind": "primitive",
+    "id": 23215,
+    "name": "Intuition Check +2",
+    "seedOrigin": "system:v12:curated:core:practice-intuition-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 23216,
+    "name": "Intuition Check +3",
+    "seedOrigin": "system:v12:curated:core:practice-intuition-3"
+  },
+  {
+    "kind": "primitive",
+    "id": 22693,
+    "name": "Calamity Die Block",
+    "seedOrigin": "system:v12:expression:die-d12"
+  },
+  {
+    "kind": "primitive",
+    "id": 22694,
+    "name": "Existential Tear",
+    "seedOrigin": "system:v12:expression:die-d20"
+  },
+  {
+    "kind": "primitive",
+    "id": 23217,
+    "name": "Intuition Check +5",
+    "seedOrigin": "system:v12:curated:core:practice-intuition-5"
+  },
+  {
+    "kind": "primitive",
+    "id": 23218,
+    "name": "Physical Saving Throw +1",
+    "seedOrigin": "system:v12:curated:core:save-physical-1"
+  },
+  {
+    "kind": "primitive",
+    "id": 23219,
+    "name": "Physical Saving Throw +2",
+    "seedOrigin": "system:v12:curated:core:save-physical-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 22466,
+    "name": "Domain of Purity",
+    "seedOrigin": "system:v12:domain-access-3:purity"
+  },
+  {
+    "kind": "primitive",
+    "id": 22687,
+    "name": "Multi-target Structure",
+    "seedOrigin": "system:v12:structure-2:multi-target"
+  },
+  {
+    "kind": "primitive",
+    "id": 23220,
+    "name": "Physical Saving Throw +3",
+    "seedOrigin": "system:v12:curated:core:save-physical-3"
+  },
+  {
+    "kind": "primitive",
+    "id": 23221,
+    "name": "Physical Saving Throw +5",
+    "seedOrigin": "system:v12:curated:core:save-physical-5"
+  },
+  {
+    "kind": "primitive",
+    "id": 23222,
+    "name": "Mental Saving Throw +1",
+    "seedOrigin": "system:v12:curated:core:save-mental-1"
+  },
+  {
+    "kind": "primitive",
+    "id": 23223,
+    "name": "Mental Saving Throw +2",
+    "seedOrigin": "system:v12:curated:core:save-mental-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 22396,
+    "name": "Expertise Upgrade",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23337,
+    "name": "Exact Testimony Record",
+    "seedOrigin": "system:v13:heritage-shelf:permission:exact-testimony-record"
+  },
+  {
+    "kind": "primitive",
+    "id": 23224,
+    "name": "Mental Saving Throw +3",
+    "seedOrigin": "system:v12:curated:core:save-mental-3"
+  },
+  {
+    "kind": "primitive",
+    "id": 22695,
+    "name": "Tiny Size",
+    "seedOrigin": "system:v12:expression:size-tiny"
+  },
+  {
+    "kind": "primitive",
+    "id": 23225,
+    "name": "Mental Saving Throw +5",
+    "seedOrigin": "system:v12:curated:core:save-mental-5"
+  },
+  {
+    "kind": "primitive",
+    "id": 852,
+    "name": "Spatial Anchor Cover (Cover Tier IV)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23226,
+    "name": "Magical Saving Throw +1",
+    "seedOrigin": "system:v12:curated:core:save-magical-1"
+  },
+  {
+    "kind": "primitive",
+    "id": 23227,
+    "name": "Magical Saving Throw +2",
+    "seedOrigin": "system:v12:curated:core:save-magical-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 23228,
+    "name": "Magical Saving Throw +3",
+    "seedOrigin": "system:v12:curated:core:save-magical-3"
+  },
+  {
+    "kind": "primitive",
+    "id": 22490,
+    "name": "Domain of System Authorship",
+    "seedOrigin": "system:v12:domain-access-4:system-authorship"
+  },
+  {
+    "kind": "primitive",
+    "id": 23229,
+    "name": "Magical Saving Throw +5",
+    "seedOrigin": "system:v12:curated:core:save-magical-5"
+  },
+  {
+    "kind": "primitive",
+    "id": 22356,
+    "name": "Domain Access Tier I",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 22357,
+    "name": "Domain Access Tier II",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 22463,
+    "name": "Domain of Law",
+    "seedOrigin": "system:v12:domain-access-3:law"
+  },
+  {
+    "kind": "primitive",
+    "id": 854,
+    "name": "Last Breath (Tenacity Trigger)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 22701,
+    "name": "Carry Capacity Augment",
+    "seedOrigin": "system:v12:expression:carry-capacity-10"
+  },
+  {
+    "kind": "primitive",
+    "id": 22421,
+    "name": "Domain of Weather Basic",
+    "seedOrigin": "system:v12:domain-access-1:weather-basic"
+  },
+  {
+    "kind": "primitive",
+    "id": 23335,
+    "name": "Fine Glasswork",
+    "seedOrigin": "system:v13:heritage-shelf:permission:fine-glasswork"
+  },
+  {
+    "kind": "primitive",
+    "id": 22688,
+    "name": "Adaptive Spatial Structure",
+    "seedOrigin": "system:v12:structure-3:adaptive-spatial"
+  },
+  {
+    "kind": "primitive",
+    "id": 22491,
+    "name": "Domain of Fundamental Laws",
+    "seedOrigin": "system:v12:domain-access-4:fundamental-laws"
+  },
+  {
+    "kind": "primitive",
+    "id": 23242,
+    "name": "Attribute Increment +1 Physical below half Vitality",
+    "seedOrigin": "system:v12:curated:conditional:attribute-physical-1-low-vitality"
+  },
+  {
+    "kind": "primitive",
+    "id": 23243,
+    "name": "Attribute Increment +1 Mental below half Vitality",
+    "seedOrigin": "system:v12:curated:conditional:attribute-mental-1-low-vitality"
+  },
+  {
+    "kind": "primitive",
+    "id": 23244,
+    "name": "Attribute Increment +2 Mental below half Vitality",
+    "seedOrigin": "system:v12:curated:conditional:attribute-mental-2-low-vitality"
+  },
+  {
+    "kind": "primitive",
+    "id": 22459,
+    "name": "Domain of Archetypes",
+    "seedOrigin": "system:v12:domain-access-3:archetypes"
+  },
+  {
+    "kind": "primitive",
+    "id": 22482,
+    "name": "Domain of Rule Logic",
+    "seedOrigin": "system:v12:domain-access-4:rule-logic"
+  },
+  {
+    "kind": "primitive",
+    "id": 22483,
+    "name": "Domain of Paradox",
+    "seedOrigin": "system:v12:domain-access-4:paradox"
+  },
+  {
+    "kind": "primitive",
+    "id": 22484,
+    "name": "Domain of Void Structures",
+    "seedOrigin": "system:v12:domain-access-4:void-structures"
+  },
+  {
+    "kind": "primitive",
+    "id": 22485,
+    "name": "Domain of Infinity",
+    "seedOrigin": "system:v12:domain-access-4:infinity"
+  },
+  {
+    "kind": "primitive",
+    "id": 23245,
+    "name": "Attribute Increment +1 Magical below half Vitality",
+    "seedOrigin": "system:v12:curated:conditional:attribute-magical-1-low-vitality"
+  },
+  {
+    "kind": "primitive",
+    "id": 23246,
+    "name": "Attribute Increment +2 Magical below half Vitality",
+    "seedOrigin": "system:v12:curated:conditional:attribute-magical-2-low-vitality"
+  },
+  {
+    "kind": "primitive",
+    "id": 22460,
+    "name": "Domain of Emotional Ecosystems",
+    "seedOrigin": "system:v12:domain-access-3:emotional-ecosystems"
+  },
+  {
+    "kind": "primitive",
+    "id": 23247,
+    "name": "Prowess Check +2 below half Vitality",
+    "seedOrigin": "system:v12:curated:conditional:practice-prowess-2-low-vitality"
+  },
+  {
+    "kind": "primitive",
+    "id": 22462,
+    "name": "Domain of Conflict",
+    "seedOrigin": "system:v12:domain-access-3:conflict"
+  },
+  {
+    "kind": "primitive",
+    "id": 23336,
+    "name": "Plant Grafting",
+    "seedOrigin": "system:v13:heritage-shelf:permission:plant-grafting"
+  },
+  {
+    "kind": "primitive",
+    "id": 22400,
+    "name": "Domain of Fire",
+    "seedOrigin": "system:v12:domain-access-1:fire"
+  },
+  {
+    "kind": "primitive",
+    "id": 22686,
+    "name": "Single-point Structure",
+    "seedOrigin": "system:v12:structure-1:single-point"
+  },
+  {
+    "kind": "primitive",
+    "id": 23248,
+    "name": "Fieldcraft Check +2 below half Vitality",
+    "seedOrigin": "system:v12:curated:conditional:practice-fieldcraft-2-low-vitality"
+  },
+  {
+    "kind": "primitive",
+    "id": 22445,
+    "name": "Domain of Resonance",
+    "seedOrigin": "system:v12:domain-access-2:resonance"
+  },
+  {
+    "kind": "primitive",
+    "id": 23249,
+    "name": "Awareness Check +2 below half Vitality",
+    "seedOrigin": "system:v12:curated:conditional:practice-awareness-2-low-vitality"
+  },
+  {
+    "kind": "primitive",
+    "id": 23250,
+    "name": "Reason Check +2 below half Vitality",
+    "seedOrigin": "system:v12:curated:conditional:practice-reason-2-low-vitality"
+  },
+  {
+    "kind": "primitive",
+    "id": 23251,
+    "name": "Influence Check +2 below half Vitality",
+    "seedOrigin": "system:v12:curated:conditional:practice-influence-2-low-vitality"
+  },
+  {
+    "kind": "primitive",
+    "id": 23252,
+    "name": "Awareness Check +1 while tracking",
+    "seedOrigin": "system:v12:curated:conditional:practice-awareness-1-tracking"
+  },
+  {
+    "kind": "primitive",
+    "id": 22492,
+    "name": "Physical Attribute Increment",
+    "seedOrigin": "system:v12:attribute-increment:physical"
+  },
+  {
+    "kind": "primitive",
+    "id": 22506,
+    "name": "Communion Proficiency",
+    "seedOrigin": "system:v12:practice-proficiency:communion"
+  },
+  {
+    "kind": "primitive",
+    "id": 23253,
+    "name": "Awareness Check +2 while tracking",
+    "seedOrigin": "system:v12:curated:conditional:practice-awareness-2-tracking"
+  },
+  {
+    "kind": "primitive",
+    "id": 23255,
+    "name": "Save DC +2 below half Vitality",
+    "seedOrigin": "system:v12:curated:conditional:dc-2-low-vitality"
+  },
+  {
+    "kind": "primitive",
+    "id": 23338,
+    "name": "Local Weather Reading",
+    "seedOrigin": "system:v13:heritage-shelf:permission:local-weather-reading"
+  },
+  {
+    "kind": "primitive",
+    "id": 23256,
+    "name": "Physical Saving Throw +2 below half Vitality",
+    "seedOrigin": "system:v12:curated:conditional:save-physical-2-low-vitality"
+  },
+  {
+    "kind": "primitive",
+    "id": 23339,
+    "name": "Ordinary Lock Familiarity",
+    "seedOrigin": "system:v13:heritage-shelf:permission:ordinary-lock-familiarity"
+  },
+  {
+    "kind": "primitive",
+    "id": 23340,
+    "name": "Careful Body Preparation",
+    "seedOrigin": "system:v13:heritage-shelf:permission:careful-body-preparation"
+  },
+  {
+    "kind": "primitive",
+    "id": 23341,
+    "name": "Structural Stone Shaping",
+    "seedOrigin": "system:v13:heritage-shelf:permission:structural-stone-shaping"
+  },
+  {
+    "kind": "primitive",
+    "id": 851,
+    "name": "Total Cover (Cover Tier III)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 22697,
+    "name": "Medium Size",
+    "seedOrigin": "system:v12:expression:size-medium"
+  },
+  {
+    "kind": "primitive",
+    "id": 22698,
+    "name": "Large Size",
+    "seedOrigin": "system:v12:expression:size-large"
+  },
+  {
+    "kind": "primitive",
+    "id": 23257,
+    "name": "Prowess Check +PB",
+    "seedOrigin": "system:v12:curated:core:practice-prowess-PB"
+  },
+  {
+    "kind": "primitive",
+    "id": 23258,
+    "name": "Finesse Check +PB",
+    "seedOrigin": "system:v12:curated:core:practice-finesse-PB"
+  },
+  {
+    "kind": "primitive",
+    "id": 23259,
+    "name": "Fieldcraft Check +PB",
+    "seedOrigin": "system:v12:curated:core:practice-fieldcraft-PB"
+  },
+  {
+    "kind": "primitive",
+    "id": 23260,
+    "name": "Awareness Check +PB",
+    "seedOrigin": "system:v12:curated:core:practice-awareness-PB"
+  },
+  {
+    "kind": "primitive",
+    "id": 22699,
+    "name": "Huge Size",
+    "seedOrigin": "system:v12:expression:size-huge"
+  },
+  {
+    "kind": "primitive",
+    "id": 22700,
+    "name": "Gargantuan Size",
+    "seedOrigin": "system:v12:expression:size-gargantuan"
+  },
+  {
+    "kind": "primitive",
+    "id": 23261,
+    "name": "Reason Check +PB",
+    "seedOrigin": "system:v12:curated:core:practice-reason-PB"
+  },
+  {
+    "kind": "primitive",
+    "id": 23262,
+    "name": "Knowledge Check +PB",
+    "seedOrigin": "system:v12:curated:core:practice-knowledge-PB"
+  },
+  {
+    "kind": "primitive",
+    "id": 23342,
+    "name": "Kiln-Cured Teeth",
+    "seedOrigin": "system:v13:heritage-shelf:permission:kiln-cured-teeth"
+  },
+  {
+    "kind": "primitive",
+    "id": 22498,
+    "name": "Prowess Proficiency",
+    "seedOrigin": "system:v12:practice-proficiency:prowess"
+  },
+  {
+    "kind": "primitive",
+    "id": 23263,
+    "name": "Influence Check +PB",
+    "seedOrigin": "system:v12:curated:core:practice-influence-PB"
+  },
+  {
+    "kind": "primitive",
+    "id": 23264,
+    "name": "Mysticism Check +PB",
+    "seedOrigin": "system:v12:curated:core:practice-mysticism-PB"
+  },
+  {
+    "kind": "primitive",
+    "id": 23265,
+    "name": "Communion Check +PB",
+    "seedOrigin": "system:v12:curated:core:practice-communion-PB"
+  },
+  {
+    "kind": "primitive",
+    "id": 22496,
+    "name": "Mental Saving Throw Proficiency",
+    "seedOrigin": "system:v12:defensive-save-upgrade:mental"
+  },
+  {
+    "kind": "primitive",
+    "id": 22497,
+    "name": "Magical Saving Throw Proficiency",
+    "seedOrigin": "system:v12:defensive-save-upgrade:magical"
+  },
+  {
+    "kind": "primitive",
+    "id": 22501,
+    "name": "Awareness Proficiency",
+    "seedOrigin": "system:v12:practice-proficiency:awareness"
+  },
+  {
+    "kind": "primitive",
+    "id": 22507,
+    "name": "Intuition Proficiency",
+    "seedOrigin": "system:v12:practice-proficiency:intuition"
+  },
+  {
+    "kind": "primitive",
+    "id": 23266,
+    "name": "Intuition Check +PB",
+    "seedOrigin": "system:v12:curated:core:practice-intuition-PB"
+  },
+  {
+    "kind": "primitive",
+    "id": 23267,
+    "name": "Physical Saving Throw +PB",
+    "seedOrigin": "system:v12:curated:core:save-physical-PB"
+  },
+  {
+    "kind": "primitive",
+    "id": 23268,
+    "name": "Mental Saving Throw +PB",
+    "seedOrigin": "system:v12:curated:core:save-mental-PB"
+  },
+  {
+    "kind": "primitive",
+    "id": 22353,
+    "name": "Verb Access Tier II",
+    "seedOrigin": "system:v12:expression:verb-access-2"
+  },
+  {
+    "kind": "primitive",
+    "id": 23269,
+    "name": "Magical Saving Throw +PB",
+    "seedOrigin": "system:v12:curated:core:save-magical-PB"
+  },
+  {
+    "kind": "primitive",
+    "id": 22502,
+    "name": "Reason Proficiency",
+    "seedOrigin": "system:v12:practice-proficiency:reason"
+  },
+  {
+    "kind": "primitive",
+    "id": 22690,
+    "name": "Standard Die Block",
+    "seedOrigin": "system:v12:expression:die-d6"
+  },
+  {
+    "kind": "primitive",
+    "id": 22691,
+    "name": "Heavy Die Block",
+    "seedOrigin": "system:v12:expression:die-d8"
+  },
+  {
+    "kind": "primitive",
+    "id": 23357,
+    "name": "Rigged Counterweight",
+    "seedOrigin": "system:v13:heritage-shelf:permission:rigged-counterweight"
+  },
+  {
+    "kind": "primitive",
+    "id": 22696,
+    "name": "Small Size",
+    "seedOrigin": "system:v12:expression:size-small"
+  },
+  {
+    "kind": "primitive",
+    "id": 22349,
+    "name": "Stabilize (Fieldcraft Aid)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 855,
+    "name": "Tether of Being (Sustained Tenacity)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23343,
+    "name": "Spoken Doubt",
+    "seedOrigin": "system:v13:heritage-shelf:permission:spoken-doubt"
+  },
+  {
+    "kind": "primitive",
+    "id": 22393,
+    "name": "Broad Familiarity",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "primitive",
+    "id": 23344,
+    "name": "Practiced Aimed Shot",
+    "seedOrigin": "system:v13:heritage-shelf:permission:practiced-aimed-shot"
+  },
+  {
+    "kind": "primitive",
+    "id": 23345,
+    "name": "Driving Strike",
+    "seedOrigin": "system:v13:heritage-shelf:permission:driving-strike"
+  },
+  {
+    "kind": "primitive",
+    "id": 23346,
+    "name": "Animal Messenger Cue",
+    "seedOrigin": "system:v13:heritage-shelf:permission:animal-messenger-cue"
+  },
+  {
+    "kind": "primitive",
+    "id": 23347,
+    "name": "Braced Position",
+    "seedOrigin": "system:v13:heritage-shelf:permission:braced-position"
+  },
+  {
+    "kind": "primitive",
+    "id": 23348,
+    "name": "Root Feeding",
+    "seedOrigin": "system:v13:heritage-shelf:permission:root-feeding"
+  },
+  {
+    "kind": "primitive",
+    "id": 23349,
+    "name": "Crystal Trace",
+    "seedOrigin": "system:v13:heritage-shelf:permission:crystal-trace"
+  },
+  {
+    "kind": "primitive",
+    "id": 23350,
+    "name": "Ferry Passage Reading",
+    "seedOrigin": "system:v13:heritage-shelf:permission:ferry-passage-reading"
+  },
+  {
+    "kind": "primitive",
+    "id": 23351,
+    "name": "Unstable Ground Salvage",
+    "seedOrigin": "system:v13:heritage-shelf:permission:unstable-ground-salvage"
+  },
+  {
+    "kind": "primitive",
+    "id": 23352,
+    "name": "Water Source Survey",
+    "seedOrigin": "system:v13:heritage-shelf:permission:water-source-survey"
+  },
+  {
+    "kind": "primitive",
+    "id": 23353,
+    "name": "Useful Field Map",
+    "seedOrigin": "system:v13:heritage-shelf:permission:useful-field-map"
+  },
+  {
+    "kind": "primitive",
+    "id": 23354,
+    "name": "Waterproof Message Wrap",
+    "seedOrigin": "system:v13:heritage-shelf:permission:waterproof-message-wrap"
+  },
+  {
+    "kind": "primitive",
+    "id": 23355,
+    "name": "Small Salvage Recovery",
+    "seedOrigin": "system:v13:heritage-shelf:permission:small-salvage-recovery"
+  },
+  {
+    "kind": "primitive",
+    "id": 23356,
+    "name": "Bell Tuning",
+    "seedOrigin": "system:v13:heritage-shelf:permission:bell-tuning"
+  },
+  {
+    "kind": "primitive",
+    "id": 23308,
+    "name": "Carry Capacity Augment +10",
+    "seedOrigin": "system:v12:curated:sheet:carry-10"
+  },
+  {
+    "kind": "primitive",
+    "id": 23309,
+    "name": "Carry Capacity Augment +100",
+    "seedOrigin": "system:v12:curated:sheet:carry-100"
+  },
+  {
+    "kind": "primitive",
+    "id": 23310,
+    "name": "Equipment Slot Augment +1",
+    "seedOrigin": "system:v12:curated:sheet:equip-1"
+  },
+  {
+    "kind": "primitive",
+    "id": 23312,
+    "name": "Ordinary Smoke Filtration",
+    "seedOrigin": "system:v13:heritage-shelf:permission:ordinary-smoke-filtration"
+  },
+  {
+    "kind": "primitive",
+    "id": 23313,
+    "name": "Water Pressure Sense",
+    "seedOrigin": "system:v13:heritage-shelf:permission:water-pressure-sense"
+  },
+  {
+    "kind": "primitive",
+    "id": 23314,
+    "name": "Slow Facial Reshaping",
+    "seedOrigin": "system:v13:heritage-shelf:permission:slow-facial-reshaping"
+  },
+  {
+    "kind": "primitive",
+    "id": 23315,
+    "name": "Still-Surface Camouflage",
+    "seedOrigin": "system:v13:heritage-shelf:permission:still-surface-camouflage"
+  },
+  {
+    "kind": "primitive",
+    "id": 23316,
+    "name": "Spark-Shedding Skin",
+    "seedOrigin": "system:v13:heritage-shelf:permission:spark-shedding-skin"
+  },
+  {
+    "kind": "primitive",
+    "id": 23317,
+    "name": "Soil Disturbance Sense",
+    "seedOrigin": "system:v13:heritage-shelf:permission:soil-disturbance-sense"
+  },
+  {
+    "kind": "primitive",
+    "id": 23318,
+    "name": "Electrical Contact Sense",
+    "seedOrigin": "system:v13:heritage-shelf:permission:electrical-contact-sense"
+  },
+  {
+    "kind": "primitive",
+    "id": 23319,
+    "name": "Dim-Light Acuity",
+    "seedOrigin": "system:v13:heritage-shelf:permission:dim-light-acuity"
+  },
+  {
+    "kind": "primitive",
+    "id": 23320,
+    "name": "Controlled Eye Light",
+    "seedOrigin": "system:v13:heritage-shelf:permission:controlled-eye-light"
+  },
+  {
+    "kind": "primitive",
+    "id": 23321,
+    "name": "Sensitive Branch Feelers",
+    "seedOrigin": "system:v13:heritage-shelf:permission:sensitive-branch-feelers"
+  },
+  {
+    "kind": "primitive",
+    "id": 23322,
+    "name": "Extended Hand Reach",
+    "seedOrigin": "system:v13:heritage-shelf:permission:extended-hand-reach"
+  },
+  {
+    "kind": "primitive",
+    "id": 23323,
+    "name": "Soft-Body Compression",
+    "seedOrigin": "system:v13:heritage-shelf:permission:soft-body-compression"
+  },
+  {
+    "kind": "primitive",
+    "id": 23324,
+    "name": "Visible Signal Code",
+    "seedOrigin": "system:v13:heritage-shelf:permission:visible-signal-code"
+  },
+  {
+    "kind": "primitive",
+    "id": 23325,
+    "name": "Durable Route Marking",
+    "seedOrigin": "system:v13:heritage-shelf:permission:durable-route-marking"
+  },
+  {
+    "kind": "primitive",
+    "id": 23326,
+    "name": "Witnessed Mark",
+    "seedOrigin": "system:v13:heritage-shelf:permission:witnessed-mark"
+  },
+  {
+    "kind": "primitive",
+    "id": 23327,
+    "name": "Temporary Material Patch",
+    "seedOrigin": "system:v13:heritage-shelf:permission:temporary-material-patch"
+  },
+  {
+    "kind": "primitive",
+    "id": 23359,
+    "name": "Ledger Trace",
+    "seedOrigin": "system:v13:heritage-shelf:permission:ledger-trace"
+  },
+  {
+    "kind": "primitive",
+    "id": 23360,
+    "name": "Hospitality Network",
+    "seedOrigin": "system:v13:heritage-shelf:permission:hospitality-network"
+  },
+  {
+    "kind": "primitive",
+    "id": 23361,
+    "name": "Focused Research",
+    "seedOrigin": "system:v13:heritage-shelf:permission:focused-research"
+  },
+  {
+    "kind": "primitive",
+    "id": 23362,
+    "name": "Night Sky Route",
+    "seedOrigin": "system:v13:heritage-shelf:permission:night-sky-route"
+  },
+  {
+    "kind": "primitive",
+    "id": 23363,
+    "name": "Reagent Preparation",
+    "seedOrigin": "system:v13:heritage-shelf:permission:reagent-preparation"
+  },
+  {
+    "kind": "primitive",
+    "id": 23364,
+    "name": "Bridge Hazard Call",
+    "seedOrigin": "system:v13:heritage-shelf:permission:bridge-hazard-call"
+  },
+  {
+    "kind": "primitive",
+    "id": 23365,
+    "name": "Archive Preservation",
+    "seedOrigin": "system:v13:heritage-shelf:permission:archive-preservation"
+  },
+  {
+    "kind": "primitive",
+    "id": 23366,
+    "name": "Stage Mask Craft",
+    "seedOrigin": "system:v13:heritage-shelf:permission:stage-mask-craft"
+  },
+  {
+    "kind": "primitive",
+    "id": 23367,
+    "name": "Salt Route Hazard Sense",
+    "seedOrigin": "system:v13:heritage-shelf:permission:salt-route-hazard-sense"
+  },
+  {
+    "kind": "primitive",
+    "id": 23368,
+    "name": "Household Count",
+    "seedOrigin": "system:v13:heritage-shelf:permission:household-count"
+  },
+  {
+    "kind": "primitive",
+    "id": 23370,
+    "name": "Portable Lantern Rig",
+    "seedOrigin": "system:v13:heritage-shelf:permission:portable-lantern-rig"
+  },
+  {
+    "kind": "effect",
+    "id": "8a39a2a7-8088-40a1-80d6-d453b9ee02cf",
+    "name": "Lantern Signal Found",
+    "seedOrigin": "system:v13:heritage-shelf:effect:lantern-signal-found"
+  },
+  {
+    "kind": "effect",
+    "id": "576cac0a-87b2-40eb-bb74-ce67a9a058c0",
+    "name": "Resonant Warning",
+    "seedOrigin": "system:v13:heritage-shelf:effect:resonant-warning"
+  },
+  {
+    "kind": "effect",
+    "id": "f92d23b2-d1b8-46c2-95f3-f9e13d4ce60c",
+    "name": "Marked Trail",
+    "seedOrigin": "system:v13:heritage-shelf:effect:marked-trail"
+  },
+  {
+    "kind": "effect",
+    "id": "03478ddd-684f-407b-8c20-7d232b005d7f",
+    "name": "Witnessed Oath",
+    "seedOrigin": "system:v13:heritage-shelf:effect:witnessed-oath"
+  },
+  {
+    "kind": "effect",
+    "id": "824cf98b-6b9d-4a20-87fb-214ca89e3f37",
+    "name": "Temporary Patch",
+    "seedOrigin": "system:v13:heritage-shelf:effect:temporary-patch"
+  },
+  {
+    "kind": "effect",
+    "id": "b66ce2e3-122d-47d1-9b65-66920b1b2cab",
+    "name": "Hail Shelter",
+    "seedOrigin": "system:v13:heritage-shelf:effect:hail-shelter"
+  },
+  {
+    "kind": "effect",
+    "id": "c44b9555-2039-4539-a9a6-744e66892381",
+    "name": "Held Air",
+    "seedOrigin": "system:v13:heritage-shelf:effect:held-air"
+  },
+  {
+    "kind": "effect",
+    "id": "f4d887ae-0476-4811-adac-5be45f82338c",
+    "name": "Observed Breach",
+    "seedOrigin": "system:v13:heritage-shelf:effect:observed-breach"
+  },
+  {
+    "kind": "effect",
+    "id": "c46cbcdc-f79d-4b3e-8a61-f41369fc7c44",
+    "name": "Mended Vitality",
+    "seedOrigin": "system:v13:heritage-shelf:effect:mended-vitality"
+  },
+  {
+    "kind": "effect",
+    "id": "b2c89542-f872-4730-aaaf-106ed47f323e",
+    "name": "Harrowing Word",
+    "seedOrigin": "system:v13:heritage-shelf:effect:harrowing-word"
+  },
+  {
+    "kind": "effect",
+    "id": "727440e6-348b-4df3-bf34-c9fab4c7cc1b",
+    "name": "Brace at the Threshold",
+    "seedOrigin": "system:v13:heritage-shelf:effect:brace-at-the-threshold"
+  },
+  {
+    "kind": "effect",
+    "id": "eff62ef6-a797-4040-8eef-caab05118bb7",
+    "name": "Stone Barrier",
+    "seedOrigin": "system:v13:heritage-shelf:effect:stone-barrier"
+  },
+  {
+    "kind": "effect",
+    "id": "57581dfd-b469-4660-a3f2-3e40e255e432",
+    "name": "Sheltered Square",
+    "seedOrigin": "system:v14:research-expansion:effect:sheltered-square"
+  },
+  {
+    "kind": "effect",
+    "id": "d722adb4-f5b9-46dd-9b22-e99af5cd9675",
+    "name": "Damped Flame",
+    "seedOrigin": "system:v14:research-expansion:effect:damped-flame"
+  },
+  {
+    "kind": "effect",
+    "id": "f7cc9e06-b4b5-4ad2-a625-7f70e23a6cca",
+    "name": "Hollow Echo",
+    "seedOrigin": "system:v14:research-expansion:effect:hollow-echo"
+  },
+  {
+    "kind": "effect",
+    "id": "412040f4-48e7-4ad9-984a-974c7ca28b52",
+    "name": "Marked Scent",
+    "seedOrigin": "system:v14:research-expansion:effect:marked-scent"
+  },
+  {
+    "kind": "effect",
+    "id": "22669cc5-f840-4c31-bfbe-32113a7ed678",
+    "name": "Held Memory",
+    "seedOrigin": "system:v14:research-expansion:effect:held-memory"
+  },
+  {
+    "kind": "effect",
+    "id": "acd3db4b-bf5a-44d5-97b3-602dec8122f9",
+    "name": "Surveyed Passage",
+    "seedOrigin": "system:v13:heritage-shelf:effect:surveyed-passage"
+  },
+  {
+    "kind": "effect",
+    "id": "aba9b5ab-3cf6-4531-9a6a-fa5d05f591b9",
+    "name": "Tethered Safety",
+    "seedOrigin": "system:v13:heritage-shelf:effect:tethered-safety"
+  },
+  {
+    "kind": "effect",
+    "id": "43d93945-c47c-4b2a-97f4-308795031a2d",
+    "name": "Clear Crossing",
+    "seedOrigin": "system:v14:research-expansion:effect:clear-crossing"
+  },
+  {
+    "kind": "effect",
+    "id": "2ca462e0-64ea-4fca-9777-177da7827b6d",
+    "name": "Repaired Grip",
+    "seedOrigin": "system:v14:research-expansion:effect:repaired-grip"
+  },
+  {
+    "kind": "effect",
+    "id": "2c2ea520-10b3-4944-9e31-15684efd5ef5",
+    "name": "Salt-Wet Footing",
+    "seedOrigin": "system:v14:research-expansion:effect:salt-wet-footing"
+  },
+  {
+    "kind": "effect",
+    "id": "c855f406-3582-45a3-9014-848394f5d866",
+    "name": "Fevered Aim",
+    "seedOrigin": "system:v14:research-expansion:effect:fevered-aim"
+  },
+  {
+    "kind": "effect",
+    "id": "41829218-dd3c-47bd-b66b-c8ab2263d1e4",
+    "name": "Steady Hands",
+    "seedOrigin": "system:v14:research-expansion:effect:steady-hands"
+  },
+  {
+    "kind": "effect",
+    "id": "099e9bb0-c4dc-4441-b0a2-ed1c25955889",
+    "name": "Cracked Plate",
+    "seedOrigin": "system:v14:research-expansion:effect:cracked-plate"
+  },
+  {
+    "kind": "effect",
+    "id": "9e09dae7-640e-43b4-ad4f-6e43b847fd08",
+    "name": "Buoyant Pack",
+    "seedOrigin": "system:v14:research-expansion:effect:buoyant-pack"
+  },
+  {
+    "kind": "effect",
+    "id": "c834ddfa-1e2b-46ba-bddd-4e9e2792868e",
+    "name": "Focused Listening",
+    "seedOrigin": "system:v14:research-expansion:effect:focused-listening"
+  },
+  {
+    "kind": "effect",
+    "id": "e003823e-6c30-4fbf-865c-74832b09b0d0",
+    "name": "Measured Pace",
+    "seedOrigin": "system:v14:research-expansion:effect:measured-pace"
+  },
+  {
+    "kind": "effect",
+    "id": "9817eb0e-0bde-4829-a935-70644c28a75b",
+    "name": "Triage Focus",
+    "seedOrigin": "system:v14:research-expansion:effect:triage-focus"
+  },
+  {
+    "kind": "effect",
+    "id": "0b9a388d-c4b3-4952-8f06-c583c95c8b65",
+    "name": "Negotiation Witnesses",
+    "seedOrigin": "system:v14:research-expansion:effect:negotiation-witnesses"
+  },
+  {
+    "kind": "effect",
+    "id": "ddfa115f-3403-4db1-a0b4-62e6f15e94b6",
+    "name": "Blind Stun",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "effect",
+    "id": "5d4267a8-0c97-474f-aac0-058fd199af21",
+    "name": "Compelled Focus",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "effect",
+    "id": "60ded22a-4649-46ee-a17c-c9b5ef87db0d",
+    "name": "Corrosive Decay",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "effect",
+    "id": "30016446-0171-4c5a-aa1d-326ebf333c2f",
+    "name": "Shattered Composure",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "effect",
+    "id": "b196fa82-40a7-43d6-ae3f-4578d7ea0702",
+    "name": "Snared (Vine Bind)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "effect",
+    "id": "80bca164-faea-4d34-ac66-ecd051cdedef",
+    "name": "Staggered (Acid Corrosion)",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "effect",
+    "id": "5b37e8ff-3974-402a-8c3e-d6c0acff26b3",
+    "name": "System Freeze",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "effect",
+    "id": "dabe0a3f-5af2-4bfc-872c-398e9064f909",
+    "name": "Vertigo Spasms",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "effect",
+    "id": "34ed4583-3890-468d-a58b-54843b5a3e49",
+    "name": "Stone-Bound Exertion",
+    "seedOrigin": "system:v14:research-expansion:effect:stone-bound-exertion"
+  },
+  {
+    "kind": "effect",
+    "id": "6cc3c30f-19bd-4cf6-a73e-5fc0fc10fbaa",
+    "name": "Stored Remedy",
+    "seedOrigin": "system:v14:research-expansion:effect:stored-remedy"
+  },
+  {
+    "kind": "effect",
+    "id": "712da8f2-e40d-47c2-b1d6-bcf64f85c4cc",
+    "name": "Barbed Wound",
+    "seedOrigin": "system:v14:research-expansion:effect:barbed-wound"
+  },
+  {
+    "kind": "effect",
+    "id": "9dcce9a7-0498-4813-8f70-8dc59a6dc621",
+    "name": "Silenced Mechanism",
+    "seedOrigin": "system:v14:research-expansion:effect:silenced-mechanism"
+  },
+  {
+    "kind": "effect",
+    "id": "732f75eb-4a61-41ea-b45a-6c69d8156dfe",
+    "name": "Brittle Crossing",
+    "seedOrigin": "system:v14:research-expansion:effect:brittle-crossing"
+  },
+  {
+    "kind": "effect",
+    "id": "8fcd40ec-84e1-43ed-bb33-2689c223d42c",
+    "name": "Warm Shelter",
+    "seedOrigin": "system:v14:research-expansion:effect:warm-shelter"
+  },
+  {
+    "kind": "effect",
+    "id": "f5ab5240-94db-4d6a-9ffc-b83d8e509316",
+    "name": "Fractured Rhythm",
+    "seedOrigin": "system:v14:research-expansion:effect:fractured-rhythm"
+  },
+  {
+    "kind": "effect",
+    "id": "8f4dfc5f-f8ad-4575-8d76-1aedda43fa78",
+    "name": "Returning Shard",
+    "seedOrigin": "system:v14:research-expansion:effect:returning-shard"
+  },
+  {
+    "kind": "effect",
+    "id": "81843437-04c8-4ce2-87b1-4288e811dc9b",
+    "name": "Guard Relay",
+    "seedOrigin": "system:v14:research-expansion:effect:guard-relay"
+  },
+  {
+    "kind": "effect",
+    "id": "ff51cbde-9dee-48da-b540-721d50c6317f",
+    "name": "Drawn Loose Object",
+    "seedOrigin": "system:v14:research-expansion:effect:drawn-loose-object"
+  },
+  {
+    "kind": "effect",
+    "id": "082944ea-2b93-4492-b2cb-1c2a2a0eb3f1",
+    "name": "Signal Companion Task",
+    "seedOrigin": "system:v14:research-expansion:effect:signal-companion-task"
+  },
+  {
+    "kind": "effect",
+    "id": "e7516c50-cb51-45cb-8570-66cf95c3141f",
+    "name": "Joined Field Parts",
+    "seedOrigin": "system:v14:research-expansion:effect:joined-field-parts"
+  },
+  {
+    "kind": "effect",
+    "id": "c0129bbc-2117-488a-9321-52b61a170ae0",
+    "name": "Soot-Clouded Vision",
+    "seedOrigin": "system:v14:research-expansion:effect:soot-clouded-vision"
+  },
+  {
+    "kind": "effect",
+    "id": "215bc215-dc94-46ef-9c0d-709595830b45",
+    "name": "Bound Passage Guard",
+    "seedOrigin": "system:v14:research-expansion:effect:bound-passage-guard"
+  },
+  {
+    "kind": "effect",
+    "id": "9b3c8517-1110-4f63-8b66-e921c9bd448d",
+    "name": "Prepared Rhythm Record",
+    "seedOrigin": "system:v14:research-expansion:effect:prepared-rhythm-record"
+  },
+  {
+    "kind": "effect",
+    "id": "1a91b072-54ee-4443-bb43-b2453897d7de",
+    "name": "Supported Crossing",
+    "seedOrigin": "system:v14:research-expansion:effect:supported-crossing"
+  },
+  {
+    "kind": "capability",
+    "id": "b0b97b64-2f00-443b-8fd8-21e5b0bd20ca",
+    "name": "Aura Detective",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "capability",
+    "id": "598f8198-a534-4d49-90da-5b684e3dd234",
+    "name": "Blind Swordsman",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "capability",
+    "id": "352bd76e-6efb-4275-b203-93e464db543f",
+    "name": "Ghost Walk",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "capability",
+    "id": "2adef2f3-e609-4eb4-8a22-8a5c661a93a7",
+    "name": "Heavy Tactical Cover",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "capability",
+    "id": "05876879-9f93-4740-aea5-5f40035dc7aa",
+    "name": "Rusting Strike",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "capability",
+    "id": "9056720e-3dd2-4ef2-940a-c4cb401ab536",
+    "name": "Tornado Blast",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "capability",
+    "id": "a136e673-7c0a-447a-b4f6-796cf2662930",
+    "name": "Spell Counter-Disruption Shield",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "capability",
+    "id": "fb4abc89-8a9c-4ce4-b1f8-82c225723c04",
+    "name": "Aura of Total Enfeeblement",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "capability",
+    "id": "868fe5e6-e1f0-4a0d-865e-a1ff8bc1a5ff",
+    "name": "Greater Invisibility",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "capability",
+    "id": "e06c56e4-fb42-4435-90d2-4b6461a2b7c8",
+    "name": "Simulacrum",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "capability",
+    "id": "7a887e68-0063-4af1-9f2a-4b1ed9096960",
+    "name": "Temporal Stasis Trap",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "capability",
+    "id": "fbf5be1c-3b1b-4ebe-aa46-08568e9d35ec",
+    "name": "Shallow Escape Tunnel",
+    "seedOrigin": "system:v13:heritage-shelf:capability:shallow-escape-tunnel"
+  },
+  {
+    "kind": "capability",
+    "id": "5ffe91d2-c4da-42ba-bc44-d6fd46801129",
+    "name": "Stone Signal",
+    "seedOrigin": "system:v13:heritage-shelf:capability:stone-signal"
+  },
+  {
+    "kind": "capability",
+    "id": "81f75de9-79af-4d17-813d-5483babd1561",
+    "name": "Medusa's Gaze",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "capability",
+    "id": "5f7dd8ca-b4d7-4a94-8a18-d2590a5922c7",
+    "name": "Chamber Blackout Matrix",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "capability",
+    "id": "c6de8b1e-ca2d-41d5-be18-47635f4e34f1",
+    "name": "Aegis Shield",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "capability",
+    "id": "a451c819-9e67-489b-a15a-a2f2cde4b45b",
+    "name": "Archmage's Strain Redirection Plate",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "capability",
+    "id": "fd7dc79a-a877-4af7-ad18-ca29b249ad12",
+    "name": "Bloodhound Master",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "capability",
+    "id": "73d9ac79-af9f-4775-bc9e-aa0ca5ef5d25",
+    "name": "Vow of Enmity",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "capability",
+    "id": "80dd09d5-6916-416f-9cb3-bc54440fa3c2",
+    "name": "Cataclysmic Shockwave",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "capability",
+    "id": "704a1398-3376-4017-b7d0-68ce0e3f1823",
+    "name": "Strike",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "capability",
+    "id": "42cd612c-a265-4e7d-816f-9917f686f7ea",
+    "name": "Mind Scan",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "capability",
+    "id": "43ad665f-aedf-434c-a881-8bd3ff28059d",
+    "name": "Time Stop",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "capability",
+    "id": "3ac2706a-a9cb-4f0e-ba58-eba5e35d53cf",
+    "name": "Chronomantic Haste",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "capability",
+    "id": "9eb01658-3753-4368-953f-ddb627448ad2",
+    "name": "Gravity Anchor Trap",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "capability",
+    "id": "78145c25-e8d7-447c-9b8f-d3795a62d60a",
+    "name": "Hypnotic Suggester",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "capability",
+    "id": "b40309ef-3b22-4076-9709-0080dd84a03b",
+    "name": "Spore Choke",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "capability",
+    "id": "299fab42-9269-44ad-87d3-1c40fcfde8ef",
+    "name": "Deliberate Disguise",
+    "seedOrigin": "system:v13:heritage-shelf:capability:deliberate-disguise"
+  },
+  {
+    "kind": "capability",
+    "id": "15002687-9d9a-4d84-87d4-b9841890bf03",
+    "name": "Still Camouflage",
+    "seedOrigin": "system:v13:heritage-shelf:capability:still-camouflage"
+  },
+  {
+    "kind": "capability",
+    "id": "462e373c-6175-421a-999c-b2bb13946548",
+    "name": "Tinder Spark",
+    "seedOrigin": "system:v13:heritage-shelf:capability:tinder-spark"
+  },
+  {
+    "kind": "capability",
+    "id": "d875811b-2b70-4327-b0ce-131d2df39330",
+    "name": "Rooted Rest",
+    "seedOrigin": "system:v13:heritage-shelf:capability:rooted-rest"
+  },
+  {
+    "kind": "capability",
+    "id": "d25a2f26-7cc0-4b26-96f9-29da0cbea736",
+    "name": "Mineral Recollection",
+    "seedOrigin": "system:v13:heritage-shelf:capability:mineral-recollection"
+  },
+  {
+    "kind": "capability",
+    "id": "ab2b1a91-8432-4ff7-8a48-0d3f98b439c3",
+    "name": "Colony Message",
+    "seedOrigin": "system:v13:heritage-shelf:capability:colony-message"
+  },
+  {
+    "kind": "capability",
+    "id": "74918778-fe16-4080-b85e-c4fc71815e9f",
+    "name": "Circuit Trace",
+    "seedOrigin": "system:v13:heritage-shelf:capability:circuit-trace"
+  },
+  {
+    "kind": "capability",
+    "id": "9be799bb-4fcb-4891-b436-61b90cc14a76",
+    "name": "Coded Eye Beam",
+    "seedOrigin": "system:v13:heritage-shelf:capability:coded-eye-beam"
+  },
+  {
+    "kind": "capability",
+    "id": "0d550dca-5495-43e6-a271-e85463d38f05",
+    "name": "Wing-Catch Descent",
+    "seedOrigin": "system:v13:heritage-shelf:capability:wing-catch-descent"
+  },
+  {
+    "kind": "capability",
+    "id": "00b54c8c-6e2e-4276-a7e1-c4e12cf8f66e",
+    "name": "Delicate Retrieval",
+    "seedOrigin": "system:v13:heritage-shelf:capability:delicate-retrieval"
+  },
+  {
+    "kind": "capability",
+    "id": "24f6259c-6c3c-48cc-9836-b9eefcb2c403",
+    "name": "High-Ledge Recovery",
+    "seedOrigin": "system:v13:heritage-shelf:capability:high-ledge-recovery"
+  },
+  {
+    "kind": "capability",
+    "id": "1513fef9-5346-4cf1-b708-badb13bac0ee",
+    "name": "Narrow Passage",
+    "seedOrigin": "system:v13:heritage-shelf:capability:narrow-passage"
+  },
+  {
+    "kind": "capability",
+    "id": "1b9fa430-de37-4ace-9e6e-3d55c5489594",
+    "name": "Surveyed Traverse",
+    "seedOrigin": "system:v13:heritage-shelf:capability:surveyed-traverse"
+  },
+  {
+    "kind": "capability",
+    "id": "fbe8f2d6-26a1-423f-8457-b0c53cc0b45d",
+    "name": "Hand-Signal Lattice",
+    "seedOrigin": "system:v13:heritage-shelf:capability:hand-signal-lattice"
+  },
+  {
+    "kind": "capability",
+    "id": "92678e0a-d74b-4038-b24d-f900ad2368e5",
+    "name": "Resin Trail",
+    "seedOrigin": "system:v13:heritage-shelf:capability:resin-trail"
+  },
+  {
+    "kind": "capability",
+    "id": "43f4110c-3753-4146-8121-cf293f1f2831",
+    "name": "Witness Seal",
+    "seedOrigin": "system:v13:heritage-shelf:capability:witness-seal"
+  },
+  {
+    "kind": "capability",
+    "id": "5a98dbb2-9682-43ac-9c47-5af8a9092a1f",
+    "name": "Patch the Seam",
+    "seedOrigin": "system:v13:heritage-shelf:capability:patch-the-seam"
+  },
+  {
+    "kind": "capability",
+    "id": "8b4cdac6-648c-4cbc-93e2-f3ecfb58b4e1",
+    "name": "Line Catch",
+    "seedOrigin": "system:v13:heritage-shelf:capability:line-catch"
+  },
+  {
+    "kind": "capability",
+    "id": "0096af2f-2f22-4ddc-ace0-a1026c8919d0",
+    "name": "Crack Reader",
+    "seedOrigin": "system:v13:heritage-shelf:capability:crack-reader"
+  },
+  {
+    "kind": "capability",
+    "id": "76b26a66-3207-4abd-af95-100824e885b8",
+    "name": "Rapid Scaffold",
+    "seedOrigin": "system:v13:heritage-shelf:capability:rapid-scaffold"
+  },
+  {
+    "kind": "capability",
+    "id": "da0a34ab-7ec2-4328-8336-1e328398b4f9",
+    "name": "Breath Share",
+    "seedOrigin": "system:v13:heritage-shelf:capability:breath-share"
+  },
+  {
+    "kind": "capability",
+    "id": "fb3ea0fd-1977-499e-bea8-56ec840242fe",
+    "name": "Canopy Traverse",
+    "seedOrigin": "system:v13:heritage-shelf:capability:canopy-traverse"
+  },
+  {
+    "kind": "capability",
+    "id": "a7af1ca8-ca5d-4843-884f-f4a37c4aeede",
+    "name": "Current Reading",
+    "seedOrigin": "system:v13:heritage-shelf:capability:current-reading"
+  },
+  {
+    "kind": "capability",
+    "id": "dcafdcb0-673a-4e1a-889d-f7ce4abc3c35",
+    "name": "Plate Exchange",
+    "seedOrigin": "system:v13:heritage-shelf:capability:plate-exchange"
+  },
+  {
+    "kind": "capability",
+    "id": "d048a250-d74c-4502-ae9a-f7b03d4b8a03",
+    "name": "Splint and Rally",
+    "seedOrigin": "system:v13:heritage-shelf:capability:splint-and-rally"
+  },
+  {
+    "kind": "capability",
+    "id": "ec50e612-ec48-401e-9494-1202ca6fd153",
+    "name": "Doorway Brace",
+    "seedOrigin": "system:v13:heritage-shelf:capability:doorway-brace"
+  },
+  {
+    "kind": "capability",
+    "id": "285a6a95-ba64-442d-915a-34d1b5e88da6",
+    "name": "Hail Canopy",
+    "seedOrigin": "system:v13:heritage-shelf:capability:hail-canopy"
+  },
+  {
+    "kind": "capability",
+    "id": "1773ba5e-b665-4192-967e-7aaebe2c28ac",
+    "name": "Pressed Escape",
+    "seedOrigin": "system:v13:heritage-shelf:capability:pressed-escape"
+  },
+  {
+    "kind": "capability",
+    "id": "28c3e4d3-1a2d-4327-bda8-5c00ef7671d2",
+    "name": "Field Beacon",
+    "seedOrigin": "system:v13:heritage-shelf:capability:field-beacon"
+  },
+  {
+    "kind": "capability",
+    "id": "a7881335-976b-4e92-a5db-9edf26fedaef",
+    "name": "Stone Rampart",
+    "seedOrigin": "system:v13:heritage-shelf:capability:stone-rampart"
+  },
+  {
+    "kind": "capability",
+    "id": "f35943fc-4f3e-4151-a855-5bb2987cbc8b",
+    "name": "Harrowing Phrase",
+    "seedOrigin": "system:v13:heritage-shelf:capability:harrowing-phrase"
+  },
+  {
+    "kind": "capability",
+    "id": "102b2a7d-5ba5-4b9e-b7da-7b255ccb2964",
+    "name": "Deliberate Shot",
+    "seedOrigin": "system:v13:heritage-shelf:capability:deliberate-shot"
+  },
+  {
+    "kind": "capability",
+    "id": "a6d62487-9b95-4112-a1dd-281fa5d58324",
+    "name": "Driving Blow",
+    "seedOrigin": "system:v13:heritage-shelf:capability:driving-blow"
+  },
+  {
+    "kind": "capability",
+    "id": "582ef4c5-9430-45f4-8c45-065b5b79e659",
+    "name": "Messenger Cue",
+    "seedOrigin": "system:v13:heritage-shelf:capability:messenger-cue"
+  },
+  {
+    "kind": "capability",
+    "id": "d5b9c9e6-3b58-4cb3-abc9-1306562ba6af",
+    "name": "Stone Alarm",
+    "seedOrigin": "system:v13:heritage-shelf:capability:stone-alarm"
+  },
+  {
+    "kind": "capability",
+    "id": "f3718de5-9843-4b7f-a4d6-083e07d3f7bc",
+    "name": "Counterweight Lift",
+    "seedOrigin": "system:v13:heritage-shelf:capability:counterweight-lift"
+  },
+  {
+    "kind": "capability",
+    "id": "659fff65-c20b-4833-9c4e-760bc64afaa1",
+    "name": "Stage Mask Disguise",
+    "seedOrigin": "system:v13:heritage-shelf:capability:stage-mask-disguise"
+  },
+  {
+    "kind": "capability",
+    "id": "e28457c4-1516-4a6a-9f37-fd03fe879377",
+    "name": "Handle Wrap",
+    "seedOrigin": "system:v14:research-expansion:capability:handle-wrap"
+  },
+  {
+    "kind": "capability",
+    "id": "cb4d5bb0-6285-4659-9c32-fde3a35e0ab3",
+    "name": "Precision Bench",
+    "seedOrigin": "system:v14:research-expansion:capability:precision-bench"
+  },
+  {
+    "kind": "capability",
+    "id": "1d213290-0593-42be-8986-ab331496778d",
+    "name": "Float Lash",
+    "seedOrigin": "system:v14:research-expansion:capability:float-lash"
+  },
+  {
+    "kind": "capability",
+    "id": "3e3c5153-0451-4403-b93b-65766eed2391",
+    "name": "Smoke Reading",
+    "seedOrigin": "system:v14:research-expansion:capability:smoke-reading"
+  },
+  {
+    "kind": "capability",
+    "id": "bb33a356-d3a1-4047-947a-5add13e3ba66",
+    "name": "Pace Caller",
+    "seedOrigin": "system:v14:research-expansion:capability:pace-caller"
+  },
+  {
+    "kind": "capability",
+    "id": "27f9ee43-9372-4efa-822c-71a3328ac9ba",
+    "name": "Field Diagnosis",
+    "seedOrigin": "system:v14:research-expansion:capability:field-diagnosis"
+  },
+  {
+    "kind": "capability",
+    "id": "7957000b-198a-483b-be22-aabc29a3cf19",
+    "name": "Terms in View",
+    "seedOrigin": "system:v14:research-expansion:capability:terms-in-view"
+  },
+  {
+    "kind": "capability",
+    "id": "412e75cb-6185-4bf2-9249-359cc1c35abc",
+    "name": "Stone Counterbrace",
+    "seedOrigin": "system:v14:research-expansion:capability:stone-counterbrace"
+  },
+  {
+    "kind": "capability",
+    "id": "593cc636-bae2-4fb1-8b0e-419e0c49226b",
+    "name": "Measured Survey",
+    "seedOrigin": "system:v14:research-expansion:capability:measured-survey"
+  },
+  {
+    "kind": "capability",
+    "id": "b00daa05-a729-494d-9afc-7c5ba3a6f51e",
+    "name": "Scent Pursuit",
+    "seedOrigin": "system:v14:research-expansion:capability:scent-pursuit"
+  },
+  {
+    "kind": "capability",
+    "id": "cebfa822-229c-4c5b-b2f6-687c52caeb1a",
+    "name": "Fin-Assisted Ferry",
+    "seedOrigin": "system:v14:research-expansion:capability:fin-assisted-ferry"
+  },
+  {
+    "kind": "capability",
+    "id": "d322f7a9-c8ca-4fab-9ef4-c17e8595f310",
+    "name": "Dry Wall Traverse",
+    "seedOrigin": "system:v14:research-expansion:capability:dry-wall-traverse"
+  },
+  {
+    "kind": "capability",
+    "id": "c58f6e00-9224-430d-87bd-f44ba7780fdc",
+    "name": "Belayed Descent",
+    "seedOrigin": "system:v14:research-expansion:capability:belayed-descent"
+  },
+  {
+    "kind": "capability",
+    "id": "02e8f7f1-0af1-4a44-a466-29c7425922ed",
+    "name": "Anchored Stand",
+    "seedOrigin": "system:v14:research-expansion:capability:anchored-stand"
+  },
+  {
+    "kind": "capability",
+    "id": "e11f75bd-09af-4ad2-8f7b-30eb6c388d4d",
+    "name": "Shielded Passage",
+    "seedOrigin": "system:v14:research-expansion:capability:shielded-passage"
+  },
+  {
+    "kind": "capability",
+    "id": "47cbb11e-0502-411d-8157-c3f9aad96bf4",
+    "name": "Gentle Treatment",
+    "seedOrigin": "system:v14:research-expansion:capability:gentle-treatment"
+  },
+  {
+    "kind": "capability",
+    "id": "12e2713d-339b-4005-b50b-6e520127ed38",
+    "name": "Dose and Release",
+    "seedOrigin": "system:v14:research-expansion:capability:dose-and-release"
+  },
+  {
+    "kind": "capability",
+    "id": "196467e1-6e90-45e5-97fe-2ee1f32f453c",
+    "name": "Barb Placement",
+    "seedOrigin": "system:v14:research-expansion:capability:barb-placement"
+  },
+  {
+    "kind": "capability",
+    "id": "efd586cf-51ac-4fe8-85e8-2c1b10e3b9fa",
+    "name": "Pocket Barricade",
+    "seedOrigin": "system:v14:research-expansion:capability:pocket-barricade"
+  },
+  {
+    "kind": "capability",
+    "id": "efc0e606-e30a-4c30-bb03-0d574729ce7a",
+    "name": "Improvised Span",
+    "seedOrigin": "system:v14:research-expansion:capability:improvised-span"
+  },
+  {
+    "kind": "capability",
+    "id": "da26795d-c55d-4110-a96f-f499f46c7497",
+    "name": "Cooling Interpose",
+    "seedOrigin": "system:v14:research-expansion:capability:cooling-interpose"
+  },
+  {
+    "kind": "capability",
+    "id": "e60e6812-be2c-45de-bb83-d408c8455c79",
+    "name": "Ash-Cooling Veil",
+    "seedOrigin": "system:v14:research-expansion:capability:ash-cooling-veil"
+  },
+  {
+    "kind": "capability",
+    "id": "d3aeca38-8c92-4c46-a5e0-5461e0ae2973",
+    "name": "Quiet the Gear",
+    "seedOrigin": "system:v14:research-expansion:capability:quiet-the-gear"
+  },
+  {
+    "kind": "capability",
+    "id": "ce6d2269-a7d1-49b2-92b8-c455f3260188",
+    "name": "Fuel Quenching",
+    "seedOrigin": "system:v14:research-expansion:capability:fuel-quenching"
+  },
+  {
+    "kind": "capability",
+    "id": "8e2db298-d8e2-46b4-96c8-36b68fa9ea58",
+    "name": "Echo Off the Wall",
+    "seedOrigin": "system:v14:research-expansion:capability:echo-off-the-wall"
+  },
+  {
+    "kind": "capability",
+    "id": "7dabfbd0-97e8-459a-a59c-1f2c89818198",
+    "name": "Impression Reading",
+    "seedOrigin": "system:v14:research-expansion:capability:impression-reading"
+  },
+  {
+    "kind": "capability",
+    "id": "aa33330b-96e0-4414-88fe-bce025985578",
+    "name": "Messenger Route",
+    "seedOrigin": "system:v14:research-expansion:capability:messenger-route"
+  },
+  {
+    "kind": "capability",
+    "id": "c8c55d48-d248-4ac9-880d-3c9053a26a63",
+    "name": "Relay Guard",
+    "seedOrigin": "system:v14:research-expansion:capability:relay-guard"
+  },
+  {
+    "kind": "capability",
+    "id": "0676b89e-8d75-4b0a-a867-f2a4e2a6e39e",
+    "name": "Drawback Pulse",
+    "seedOrigin": "system:v14:research-expansion:capability:drawback-pulse"
+  },
+  {
+    "kind": "capability",
+    "id": "f4cacd7e-8349-456b-8d01-61de8a608651",
+    "name": "Deflecting Blow",
+    "seedOrigin": "system:v14:research-expansion:capability:deflecting-blow"
+  },
+  {
+    "kind": "capability",
+    "id": "9c42e0e3-2931-4264-ab3c-76952c3fe7f6",
+    "name": "Forking Lumen",
+    "seedOrigin": "system:v14:research-expansion:capability:forking-lumen"
+  },
+  {
+    "kind": "capability",
+    "id": "4a7ef285-29f9-48b5-9433-662e25ce83b4",
+    "name": "Return-Catch Throw",
+    "seedOrigin": "system:v14:research-expansion:capability:return-catch-throw"
+  },
+  {
+    "kind": "capability",
+    "id": "82e3ab39-354c-4d32-a53d-862998c9feee",
+    "name": "Third Beat",
+    "seedOrigin": "system:v14:research-expansion:capability:third-beat"
+  },
+  {
+    "kind": "capability",
+    "id": "678c8437-7935-48a0-8a05-a154ffbf0157",
+    "name": "Glassfall Spray",
+    "seedOrigin": "system:v14:research-expansion:capability:glassfall-spray"
+  },
+  {
+    "kind": "capability",
+    "id": "d449116a-a53b-4633-ad3b-1b0e76674181",
+    "name": "Rhythm Breaker",
+    "seedOrigin": "system:v14:research-expansion:capability:rhythm-breaker"
+  },
+  {
+    "kind": "capability",
+    "id": "b01ee347-cb04-4844-9188-8890234a81c9",
+    "name": "Groundline Scout",
+    "seedOrigin": "system:v14:research-expansion:capability:groundline-scout"
+  },
+  {
+    "kind": "capability",
+    "id": "8aeb546e-6cbc-496e-bf5a-8817bd116579",
+    "name": "Voice Relay",
+    "seedOrigin": "system:v14:research-expansion:capability:voice-relay"
+  },
+  {
+    "kind": "capability",
+    "id": "c63c0f1f-d121-409b-a4a9-e43639213799",
+    "name": "Scavenged Edge",
+    "seedOrigin": "system:v14:research-expansion:capability:scavenged-edge"
+  },
+  {
+    "kind": "capability",
+    "id": "1b69709d-b2ac-4a03-aeab-1508d9b46290",
+    "name": "Shared Route Crossing",
+    "seedOrigin": "system:v14:research-expansion:capability:shared-route-crossing"
+  },
+  {
+    "kind": "capability",
+    "id": "ff00916d-c225-4cb3-b5d7-84b8ab28936d",
+    "name": "Soot Screen Cast",
+    "seedOrigin": "system:v14:research-expansion:capability:soot-screen-cast"
+  },
+  {
+    "kind": "heritage",
+    "id": "382d39b5-4e43-42c9-b64b-fd3d021e7912",
+    "name": "Hearthspark",
+    "seedOrigin": "system:v14:early-heritage-base:lineage:hearthspark",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "e2deed82-d878-457a-a881-9fb8dddee039",
+    "name": "Duskling",
+    "seedOrigin": "system:v14:early-heritage-base:lineage:duskling",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "959edecc-579b-4efb-bac6-0517e0d1d8d3",
+    "name": "Griproot",
+    "seedOrigin": "system:v14:early-heritage-base:lineage:griproot",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "5363743e-4bd1-4809-b13f-9e7bfab612fe",
+    "name": "Whispercolony",
+    "seedOrigin": "system:v14:early-heritage-base:lineage:whispercolony",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "da200c14-62e8-4e76-bd22-d3723085427e",
+    "name": "Glidesprout",
+    "seedOrigin": "system:v14:early-heritage-base:lineage:glidesprout",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "5c2f96b3-62e4-46aa-94e8-b17ac36006f0",
+    "name": "Reachling",
+    "seedOrigin": "system:v14:early-heritage-base:lineage:reachling",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "bd33a87c-d964-49b3-bf0d-062043d7e701",
+    "name": "Roadside Errand Runner",
+    "seedOrigin": "system:v14:early-heritage-base:upbringing:roadside-errand-runner",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "262d9fba-6c16-4399-a8f9-40028b1bb110",
+    "name": "Mountainfolk",
+    "seedOrigin": "system",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "b9018435-3660-40e3-93d4-15a98d698093",
+    "name": "Workshop Sweeper",
+    "seedOrigin": "system:v14:early-heritage-base:upbringing:workshop-sweeper",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "fb2d5baa-57bf-4ed5-9561-33a9f4456b37",
+    "name": "Lantern Stall Helper",
+    "seedOrigin": "system:v14:early-heritage-base:upbringing:lantern-stall-helper",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "10261d34-9e0a-481c-a8fb-31deeedd5578",
+    "name": "Orchard Neighbor",
+    "seedOrigin": "system:v14:early-heritage-base:upbringing:orchard-neighbor",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "49dd6376-7932-4d89-90a9-ee5ad415a58a",
+    "name": "Agreement Recorder",
+    "seedOrigin": "system:v14:early-heritage-base:upbringing:agreement-recorder",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "ca74de5f-e253-463b-8b8c-5bfbe81e441f",
+    "name": "Harbor Rope Hand",
+    "seedOrigin": "system:v14:early-heritage-base:upbringing:harbor-rope-hand",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "a7cebe39-413a-45e4-8f18-a671958af4d9",
+    "name": "Steady Blade",
+    "seedOrigin": "system:v14:early-heritage-base:manifest:steady-blade",
+    "heritageKind": "MANIFEST"
+  },
+  {
+    "kind": "heritage",
+    "id": "6a568e89-a948-4f1f-9fc2-cac18c9b02df",
+    "name": "Doorwatch",
+    "seedOrigin": "system:v14:early-heritage-base:manifest:doorwatch",
+    "heritageKind": "MANIFEST"
+  },
+  {
+    "kind": "heritage",
+    "id": "2b56f2f1-ffab-4efb-91a4-416bde7b279e",
+    "name": "Quickstep",
+    "seedOrigin": "system:v14:early-heritage-base:manifest:quickstep",
+    "heritageKind": "MANIFEST"
+  },
+  {
+    "kind": "heritage",
+    "id": "83efc7b5-c68a-463b-8f81-25ded132cdc4",
+    "name": "Glimmer Caller",
+    "seedOrigin": "system:v14:early-heritage-base:manifest:glimmer-caller",
+    "heritageKind": "MANIFEST"
+  },
+  {
+    "kind": "heritage",
+    "id": "cfead155-dc23-4997-878b-2d1ca48796a3",
+    "name": "Stitchkeeper",
+    "seedOrigin": "system:v14:early-heritage-base:manifest:stitchkeeper",
+    "heritageKind": "MANIFEST"
+  },
+  {
+    "kind": "heritage",
+    "id": "10d8292a-fca5-4832-9512-36a49e0a208a",
+    "name": "Patchwright",
+    "seedOrigin": "system:v14:early-heritage-base:manifest:patchwright",
+    "heritageKind": "MANIFEST"
+  },
+  {
+    "kind": "heritage",
+    "id": "1ba649eb-08cd-41bc-bbdf-ef8a87548319",
+    "name": "Skyborn",
+    "seedOrigin": "system",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "c6c89112-7075-4cda-a8a6-64f06124ff8b",
+    "name": "Tidekin",
+    "seedOrigin": "system",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "7c96d9c4-32bc-49a1-8e67-364a7e84b0d6",
+    "name": "Ironborn",
+    "seedOrigin": "system",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "28e9b4d0-4dea-4359-b445-06608ba09138",
+    "name": "Forestkind",
+    "seedOrigin": "system",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "a4adc898-3303-43e8-b277-f901b06b67e6",
+    "name": "Ashlung",
+    "seedOrigin": "system:v13:heritage-shelf:lineage:ashlung",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "5cd603b2-0ce5-41b8-ba0d-dbc895825cf0",
+    "name": "Burrowhide",
+    "seedOrigin": "system:v13:heritage-shelf:lineage:burrowhide",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "abd9b70f-16ee-4a9c-92e1-f765c4035103",
+    "name": "Toneweft",
+    "seedOrigin": "system:v13:heritage-shelf:lineage:toneweft",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "839b3667-f358-4c89-95e9-564ec35a66a7",
+    "name": "Sporeveil",
+    "seedOrigin": "system:v13:heritage-shelf:lineage:sporeveil",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "ce69f9df-8eaa-43bc-a240-7bed73cffc4c",
+    "name": "Latticevein",
+    "seedOrigin": "system:v13:heritage-shelf:lineage:latticevein",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "adc3f403-71fb-48a2-bcfc-30ac28ac1985",
+    "name": "Human",
+    "seedOrigin": "system",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "48cb4a96-2994-4fb4-bc3f-d15892f406a0",
+    "name": "Claymold",
+    "seedOrigin": "system:v13:heritage-shelf:lineage:claymold",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "a7b0a438-aef1-46a9-bfdb-5c6951b7ad75",
+    "name": "Mirrorhide",
+    "seedOrigin": "system:v13:heritage-shelf:lineage:mirrorhide",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "045ef9d3-dccb-490e-89cc-a2b7bcf6da52",
+    "name": "Flintskin",
+    "seedOrigin": "system:v13:heritage-shelf:lineage:flintskin",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "7e203754-7f81-4cf7-8425-967d0cd52661",
+    "name": "Rootwaker",
+    "seedOrigin": "system:v13:heritage-shelf:lineage:rootwaker",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "8b7f411f-5bf9-4df4-9d5e-4c65a46fc160",
+    "name": "Antlerhand",
+    "seedOrigin": "system:v13:heritage-shelf:lineage:antlerhand",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "aee376cd-a16c-4898-b427-35e01e00ead6",
+    "name": "Chitterkin",
+    "seedOrigin": "system:v13:heritage-shelf:lineage:chitterkin",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "05f79a4d-c4ff-452f-b2a4-cb9b4199a53a",
+    "name": "Coppervein",
+    "seedOrigin": "system:v13:heritage-shelf:lineage:coppervein",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "a91655ae-7de7-4316-b96c-42b123141889",
+    "name": "Nightpupil",
+    "seedOrigin": "system:v13:heritage-shelf:lineage:nightpupil",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "c1179f30-45e5-46e0-969b-43854f6f094e",
+    "name": "Lantern-eyed",
+    "seedOrigin": "system:v13:heritage-shelf:lineage:lantern-eyed",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "9c7a32d0-b6c4-4c22-ab7f-8e00d1c883e3",
+    "name": "Longreach",
+    "seedOrigin": "system:v13:heritage-shelf:lineage:longreach",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "4dd05ac4-ba0c-461f-9f1e-9530ed5c7de7",
+    "name": "Hollowbone",
+    "seedOrigin": "system:v13:heritage-shelf:lineage:hollowbone",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "975e2850-05df-453c-bd2a-3b1b8cfd3a79",
+    "name": "Mirebody",
+    "seedOrigin": "system:v13:heritage-shelf:lineage:mirebody",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "4657df4f-edf6-4679-ac10-1d7c79ccbf75",
+    "name": "Kilnmaw",
+    "seedOrigin": "system:v13:heritage-shelf:lineage:kilnmaw",
+    "heritageKind": "LINEAGE"
+  },
+  {
+    "kind": "heritage",
+    "id": "65222466-1178-4a32-a0e7-10621cd465bc",
+    "name": "Wanderer",
+    "seedOrigin": "system",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "af1fbacb-1ff6-4ade-91bc-9f04cc1b09a8",
+    "name": "Ferry Ward",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:ferry-ward",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "dbbf7e13-4af7-4a08-b4a6-c78f1385decc",
+    "name": "Marsh Salvager",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:marsh-salvager",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "3dc74c4a-f4d4-43fd-8b38-5d4cfd7477ba",
+    "name": "Reef Courier",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:reef-courier",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "79cd0791-55f3-4f3d-863d-52fa50afc639",
+    "name": "Caravan Watermaster",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:caravan-watermaster",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "9d160f28-814f-44cc-9aa6-e031c38c7e75",
+    "name": "Cartographer's Apprentice",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:cartographer-s-apprentice",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "1c640bad-f350-4bc4-8936-eca51cabfa4b",
+    "name": "Wreck Diver",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:wreck-diver",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "b7b10a83-5f4b-4904-96ba-995de5421eca",
+    "name": "Road Warden",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:road-warden",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "eef57a4a-d8a6-4582-a58e-db1b53be8ad5",
+    "name": "Tinkerer",
+    "seedOrigin": "system",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "fa85950d-0661-450d-92fb-429896a7257b",
+    "name": "Bell Foundry Worker",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:bell-foundry-worker",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "e8e9a33c-68e5-4e75-9b46-1b148574c194",
+    "name": "Glasswright",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:glasswright",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "ba6d1537-5234-477a-b4d3-9c58b9feff55",
+    "name": "Quarry Rigger",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:quarry-rigger",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "5a901ebb-d9bf-4ccd-b3ac-d97593b0e3ca",
+    "name": "Orchard Tender",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:orchard-tender",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "a65de79c-a998-44d5-b542-59918b7634fa",
+    "name": "Ward Tailor",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:ward-tailor",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "e580a454-fbd0-4171-990a-aa79231daf4c",
+    "name": "Disaster Cook",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:disaster-cook",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "db5f770f-fbd0-4742-b75f-f95b25fbf21d",
+    "name": "Rooftop Rigger",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:rooftop-rigger",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "557d3cc1-67c8-4632-a275-3a53c109c1aa",
+    "name": "Courtier",
+    "seedOrigin": "system",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "7508c841-6c82-46bb-a691-ea43facef715",
+    "name": "Market Ledger Clerk",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:market-ledger-clerk",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "d71b4786-0601-4cf4-bdac-9c0cfa5ea1e1",
+    "name": "Canal Inspector",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:canal-inspector",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "083c8d92-5b0a-427b-aecb-75ad70baf590",
+    "name": "Witness Scribe",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:witness-scribe",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "ceea3f3e-6e30-45c6-8827-c568b44a6ca5",
+    "name": "City Alarm Keeper",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:city-alarm-keeper",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "8e69fe62-1da2-4a2a-9dca-1d6c58cf8e0f",
+    "name": "Village Mediator",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:village-mediator",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "0a7f9f89-ebf8-4137-970e-67402afc8f8c",
+    "name": "Tavern Keeper",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:tavern-keeper",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "9e5babfa-cbe3-464b-9970-7dad8e4f9160",
+    "name": "Smuggler's Lookout",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:smuggler-s-lookout",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "8b33a84e-756e-4dc1-9777-0f89cdf0c740",
+    "name": "Scholar",
+    "seedOrigin": "system",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "8759a801-3b88-420e-acb7-c1127ee7aca6",
+    "name": "Field Surgeon Apprentice",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:field-surgeon-apprentice",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "9596d3f7-61d4-4946-9551-079661900f76",
+    "name": "Archive Conservator",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:archive-conservator",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "9e5f6113-e617-473b-b609-f48e0c7464ff",
+    "name": "Weather Watcher",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:weather-watcher",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "a22ec848-6987-464d-a58b-26f74f9abeff",
+    "name": "Reliquary Keeper",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:reliquary-keeper",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "ce889ced-aa90-48d4-b331-9471faa8da63",
+    "name": "Beast Handler's Aide",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:beast-handler-s-aide",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "9398ddb3-d5a1-4c34-9340-ecf1dcaceff1",
+    "name": "Star Surveyor",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:star-surveyor",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "27831d18-d345-4060-b16b-e2a0d28523fb",
+    "name": "Apothecary Apprentice",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:apothecary-apprentice",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "cd60ecd5-71b0-4b00-845a-21c9cc96bb17",
+    "name": "Soldier",
+    "seedOrigin": "system",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "6e66a2c6-0a10-4361-a705-338b9bf98fc4",
+    "name": "Bridgewatch Veteran",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:bridgewatch-veteran",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "0b4794de-8efe-48c1-ba64-071d89f8a34b",
+    "name": "Siege Mason",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:siege-mason",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "d0607139-de71-441d-aa3b-aa27c192c764",
+    "name": "Firewatch Runner",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:firewatch-runner",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "b1fba286-80bf-4537-9005-907c24cf6da9",
+    "name": "Rescue Diver",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:rescue-diver",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "657cac3a-e999-44f4-8c82-8ee3b594d04d",
+    "name": "Prison Keykeeper",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:prison-keykeeper",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "4d1e43a1-4d80-4d1d-b3a1-5f1204ac8178",
+    "name": "Boundary Keeper",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:boundary-keeper",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "26980724-cbcb-4421-819b-cabc9878bdcb",
+    "name": "Funeral Tender",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:funeral-tender",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "e1fb37fd-f07e-458a-a77b-06551bae8b4c",
+    "name": "Theater Maskmaker",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:theater-maskmaker",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "d9dca226-e688-421b-83a9-53d026e1e1fb",
+    "name": "Salt-Road Exile",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:salt-road-exile",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "e80756c1-ee74-4864-9682-44b49ce6cbf9",
+    "name": "Pit Fighter",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:pit-fighter",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "da1f10f8-4003-4913-ac65-8802f9993118",
+    "name": "Festival Lantern Tender",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:festival-lantern-tender",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "697fd7f6-79f2-447b-8a27-3ad51997c39f",
+    "name": "Striker",
+    "seedOrigin": "system",
+    "heritageKind": "MANIFEST"
+  },
+  {
+    "kind": "heritage",
+    "id": "a942d4ab-f701-41f2-9166-b6a7c79b060f",
+    "name": "Guardian",
+    "seedOrigin": "system",
+    "heritageKind": "MANIFEST"
+  },
+  {
+    "kind": "heritage",
+    "id": "dd53a241-836f-4c4c-b9af-54b6d9c5e5b0",
+    "name": "Elemental Shaper",
+    "seedOrigin": "system:v13:heritage-shelf:manifest:elemental-shaper",
+    "heritageKind": "MANIFEST"
+  },
+  {
+    "kind": "heritage",
+    "id": "794ef1b1-954e-47ed-b063-6eb39e89da8e",
+    "name": "Hexwright",
+    "seedOrigin": "system:v13:heritage-shelf:manifest:hexwright",
+    "heritageKind": "MANIFEST"
+  },
+  {
+    "kind": "heritage",
+    "id": "a900a535-6a6e-4707-aa03-792d2e499260",
+    "name": "Beast Signal Keeper",
+    "seedOrigin": "system:v13:heritage-shelf:manifest:beast-signal-keeper",
+    "heritageKind": "MANIFEST"
+  },
+  {
+    "kind": "heritage",
+    "id": "1cf423a8-8269-446f-9207-e9c1385b5771",
+    "name": "Relic Seeker",
+    "seedOrigin": "system:v13:heritage-shelf:manifest:relic-seeker",
+    "heritageKind": "MANIFEST"
+  },
+  {
+    "kind": "heritage",
+    "id": "dea6034c-a651-484b-b2ad-3679ac62af1f",
+    "name": "Treaty Envoy",
+    "seedOrigin": "system:v13:heritage-shelf:manifest:treaty-envoy",
+    "heritageKind": "MANIFEST"
+  },
+  {
+    "kind": "heritage",
+    "id": "53e4217e-692f-45d3-916a-6ea7104831fc",
+    "name": "Longshot",
+    "seedOrigin": "system:v13:heritage-shelf:manifest:longshot",
+    "heritageKind": "MANIFEST"
+  },
+  {
+    "kind": "heritage",
+    "id": "4547a98a-dd03-4269-aa7b-80e68b6da353",
+    "name": "Echo Duelist",
+    "seedOrigin": "system:v13:heritage-shelf:manifest:echo-duelist",
+    "heritageKind": "MANIFEST"
+  },
+  {
+    "kind": "heritage",
+    "id": "7879a182-ac8a-425c-8005-9af1c23e9465",
+    "name": "Threshold Warden",
+    "seedOrigin": "system:v13:heritage-shelf:manifest:threshold-warden",
+    "heritageKind": "MANIFEST"
+  },
+  {
+    "kind": "heritage",
+    "id": "6b2eec9d-b812-4457-a451-a6ba264ec298",
+    "name": "Hollow-City Scavenger",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:hollow-city-scavenger",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "87b0e173-2219-425c-b901-8ce388364a61",
+    "name": "Night Census Taker",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:night-census-taker",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "7df979cf-5125-4cd8-a74e-1d2f38ab5331",
+    "name": "Plague Camp Volunteer",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:plague-camp-volunteer",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "0326267c-b06d-4b0a-a3f1-7e890d29a94c",
+    "name": "Oath Witness",
+    "seedOrigin": "system:v13:heritage-shelf:upbringing:oath-witness",
+    "heritageKind": "UPBRINGING"
+  },
+  {
+    "kind": "heritage",
+    "id": "bbf8c7f2-7547-43f4-a13c-9e656a1cd798",
+    "name": "Skirmisher",
+    "seedOrigin": "system",
+    "heritageKind": "MANIFEST"
+  },
+  {
+    "kind": "heritage",
+    "id": "cbe9acba-c3fd-4ea5-a37f-0b37cf70b0b4",
+    "name": "Mystic",
+    "seedOrigin": "system",
+    "heritageKind": "MANIFEST"
+  },
+  {
+    "kind": "heritage",
+    "id": "a73c1acc-b9d9-4561-af45-2ad3a1c30df7",
+    "name": "Artificer",
+    "seedOrigin": "system",
+    "heritageKind": "MANIFEST"
+  },
+  {
+    "kind": "heritage",
+    "id": "e9e614b4-4494-485e-8e5b-53ca7d43cb2b",
+    "name": "Field Medic",
+    "seedOrigin": "system:v13:heritage-shelf:manifest:field-medic",
+    "heritageKind": "MANIFEST"
+  },
+  {
+    "kind": "heritage",
+    "id": "0827fac4-7616-43c3-b669-9db11c3b3aad",
+    "name": "Thread Surgeon",
+    "seedOrigin": "system:v13:heritage-shelf:manifest:thread-surgeon",
+    "heritageKind": "MANIFEST"
+  },
+  {
+    "kind": "heritage",
+    "id": "f91edd4d-34fe-4823-b721-7c1324768364",
+    "name": "Terrain Architect",
+    "seedOrigin": "system:v13:heritage-shelf:manifest:terrain-architect",
+    "heritageKind": "MANIFEST"
+  },
+  {
+    "kind": "heritage",
+    "id": "0c6295ad-4276-4c10-a6d9-a48917279974",
+    "name": "Signal Captain",
+    "seedOrigin": "system:v13:heritage-shelf:manifest:signal-captain",
+    "heritageKind": "MANIFEST"
+  },
+  {
+    "kind": "heritage",
+    "id": "8aefd119-5417-4be2-ba61-638a55df95fe",
+    "name": "Veil Runner",
+    "seedOrigin": "system:v13:heritage-shelf:manifest:veil-runner",
+    "heritageKind": "MANIFEST"
+  },
+  {
+    "kind": "item",
+    "id": "247c01de-ad0a-4bc1-85f7-7cef4e26e779",
+    "name": "Oak Shield",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "item",
+    "id": "c19a7d77-f848-45b4-9b31-2a84baca9232",
+    "name": "Healing Tonic",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "item",
+    "id": "c92f5068-8a95-46a3-bd8e-6fa446fd0eb2",
+    "name": "Arcane Focus",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "item",
+    "id": "9045480e-d213-453f-b900-5aa62a103e28",
+    "name": "Traveler's Cloak",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "item",
+    "id": "b0ec4fa9-477b-4f74-802e-00702c0657ec",
+    "name": "Steel Longsword",
+    "seedOrigin": "system"
+  },
+  {
+    "kind": "item",
+    "id": "d3ba72ed-3091-4ae1-830c-aede3d91650a",
+    "name": "Gatewright Maul",
+    "seedOrigin": "system:v14:item-shelf:gatewright-maul"
+  },
+  {
+    "kind": "item",
+    "id": "ffae03f3-e018-489b-a1a7-f169ddcd970c",
+    "name": "Rivetbreaker Pick",
+    "seedOrigin": "system:v14:item-shelf:rivetbreaker-pick"
+  },
+  {
+    "kind": "item",
+    "id": "e2265dc8-e190-4eae-9647-07658d5ec14e",
+    "name": "Ferryhook Spear",
+    "seedOrigin": "system:v14:item-shelf:ferryhook-spear"
+  },
+  {
+    "kind": "item",
+    "id": "c4d95fee-d171-4ff6-ae3a-2f6a20420438",
+    "name": "Quarry Wedge Axe",
+    "seedOrigin": "system:v14:item-shelf:quarry-wedge-axe"
+  },
+  {
+    "kind": "item",
+    "id": "a9930355-15f2-467c-acf7-5e2331b0b3c6",
+    "name": "Bellface Cudgel",
+    "seedOrigin": "system:v14:item-shelf:bellface-cudgel"
+  },
+  {
+    "kind": "item",
+    "id": "50814c62-148a-403e-a404-d19d494bbea8",
+    "name": "Watchline Crossbow",
+    "seedOrigin": "system:v14:item-shelf:watchline-crossbow"
+  },
+  {
+    "kind": "item",
+    "id": "50eea5a2-6ccf-4120-a25a-cd0768c971d7",
+    "name": "Seamrunner Knife",
+    "seedOrigin": "system:v14:item-shelf:seamrunner-knife"
+  },
+  {
+    "kind": "item",
+    "id": "3903fab2-bba1-4aa8-af0e-4589d463609e",
+    "name": "Counterpoise Glaive",
+    "seedOrigin": "system:v14:item-shelf:counterpoise-glaive"
+  },
+  {
+    "kind": "item",
+    "id": "b7db5673-48a2-47b4-83b7-f77c9885c607",
+    "name": "Waymarker Hatchet",
+    "seedOrigin": "system:v14:item-shelf:waymarker-hatchet"
+  },
+  {
+    "kind": "item",
+    "id": "e324c3ca-004e-49ee-ab1b-f8cd6f7b9403",
+    "name": "Kilnspine Mace",
+    "seedOrigin": "system:v14:item-shelf:kilnspine-mace"
+  },
+  {
+    "kind": "item",
+    "id": "5abd2660-f93f-4b41-bb04-d1b303c6fb2e",
+    "name": "Tidefork Trident",
+    "seedOrigin": "system:v14:item-shelf:tidefork-trident"
+  },
+  {
+    "kind": "item",
+    "id": "f8746dff-cbc0-432a-aa9f-5fb207276bb2",
+    "name": "Ledgerguard Saber",
+    "seedOrigin": "system:v14:item-shelf:ledgerguard-saber"
+  },
+  {
+    "kind": "item",
+    "id": "3512b50b-0247-4e5f-8afd-e8fa2bd44d3d",
+    "name": "Splitgrip Staff",
+    "seedOrigin": "system:v14:item-shelf:splitgrip-staff"
+  },
+  {
+    "kind": "item",
+    "id": "61b6ea55-686a-475d-90e1-3144693c7f39",
+    "name": "Survey Bow",
+    "seedOrigin": "system:v14:item-shelf:survey-bow"
+  },
+  {
+    "kind": "item",
+    "id": "445c6620-3f4f-495e-95e0-4820c8be7c1e",
+    "name": "Siltbank Sling",
+    "seedOrigin": "system:v14:item-shelf:siltbank-sling"
+  },
+  {
+    "kind": "item",
+    "id": "e78805b5-86f2-4d7d-9032-ee8ec36d21cf",
+    "name": "Quarry Harpoon",
+    "seedOrigin": "system:v14:item-shelf:quarry-harpoon"
+  },
+  {
+    "kind": "item",
+    "id": "a9a3abf0-0c4f-4c8a-adb6-5512a2c9a1d7",
+    "name": "Canopy Shortbow",
+    "seedOrigin": "system:v14:item-shelf:canopy-shortbow"
+  },
+  {
+    "kind": "item",
+    "id": "97268bf1-b56f-418c-b5dd-8d60a46738d8",
+    "name": "Bellbolt Arbalest",
+    "seedOrigin": "system:v14:item-shelf:bellbolt-arbalest"
+  },
+  {
+    "kind": "item",
+    "id": "facc1cca-d71f-474d-ac8d-08d36da6d5d0",
+    "name": "Archive Dart Tube",
+    "seedOrigin": "system:v14:item-shelf:archive-dart-tube"
+  },
+  {
+    "kind": "item",
+    "id": "60e786c1-8ebe-46b0-8982-3458da91a5b3",
+    "name": "Reefline Thrower",
+    "seedOrigin": "system:v14:item-shelf:reefline-thrower"
+  },
+  {
+    "kind": "item",
+    "id": "004f4dee-8a9e-4a3a-8ff8-9e8c36cc8053",
+    "name": "Nightguide Longbow",
+    "seedOrigin": "system:v14:item-shelf:nightguide-longbow"
+  },
+  {
+    "kind": "item",
+    "id": "5fdd7317-8572-4bee-a45b-4611a71f1277",
+    "name": "Crackfinder Javelin",
+    "seedOrigin": "system:v14:item-shelf:crackfinder-javelin"
+  },
+  {
+    "kind": "item",
+    "id": "a10cfcc6-9544-46dd-bab9-a82af1e8dbfe",
+    "name": "Ferry Signal Launcher",
+    "seedOrigin": "system:v14:item-shelf:ferry-signal-launcher"
+  },
+  {
+    "kind": "item",
+    "id": "360aa358-d428-4105-81ff-2c245b6bd3e7",
+    "name": "Salvager's Hook Shot",
+    "seedOrigin": "system:v14:item-shelf:salvager-s-hook-shot"
+  },
+  {
+    "kind": "item",
+    "id": "ff07d22e-d299-4803-8ff5-97fdb60ed55c",
+    "name": "Doorbrace Shield",
+    "seedOrigin": "system:v14:item-shelf:doorbrace-shield"
+  },
+  {
+    "kind": "item",
+    "id": "718c7dc3-c084-4362-a31d-206ade1ac675",
+    "name": "Patchplate Vest",
+    "seedOrigin": "system:v14:item-shelf:patchplate-vest"
+  },
+  {
+    "kind": "item",
+    "id": "a4ddccd0-a7ce-40ca-b446-a9ac0082a67d",
+    "name": "Stormfold Mantle",
+    "seedOrigin": "system:v14:item-shelf:stormfold-mantle"
+  },
+  {
+    "kind": "item",
+    "id": "9703d6f8-0ad5-462a-a4c0-e011f5223d91",
+    "name": "Anchorback Harness",
+    "seedOrigin": "system:v14:item-shelf:anchorback-harness"
+  },
+  {
+    "kind": "item",
+    "id": "5e68f296-ca28-4122-a6c9-14a9a2f2fd64",
+    "name": "Smokework Veil",
+    "seedOrigin": "system:v14:item-shelf:smokework-veil"
+  },
+  {
+    "kind": "item",
+    "id": "420dd5ec-d96c-4153-9112-038d14e95082",
+    "name": "Reef Air Collar",
+    "seedOrigin": "system:v14:item-shelf:reef-air-collar"
+  },
+  {
+    "kind": "item",
+    "id": "931087b0-13a9-482f-b852-7920a354af45",
+    "name": "Bridgecall Buckler",
+    "seedOrigin": "system:v14:item-shelf:bridgecall-buckler"
+  },
+  {
+    "kind": "item",
+    "id": "6f03b1a2-be7d-4de0-88bf-d2ce4a6dc08c",
+    "name": "Crackwatch Cuirass",
+    "seedOrigin": "system:v14:item-shelf:crackwatch-cuirass"
+  },
+  {
+    "kind": "item",
+    "id": "57e583f8-393d-4a59-a160-1278e3f400fd",
+    "name": "Canopy Wraps",
+    "seedOrigin": "system:v14:item-shelf:canopy-wraps"
+  },
+  {
+    "kind": "item",
+    "id": "734d3120-5279-4c7c-8918-d8a32540ee78",
+    "name": "Ferryguard Coat",
+    "seedOrigin": "system:v14:item-shelf:ferryguard-coat"
+  },
+  {
+    "kind": "item",
+    "id": "eec6753c-da82-41ba-b8fd-2963691197ab",
+    "name": "Testimony Guard Sash",
+    "seedOrigin": "system:v14:item-shelf:testimony-guard-sash"
+  },
+  {
+    "kind": "item",
+    "id": "c4c98533-057e-4385-89e5-0651841f292f",
+    "name": "Counterweight Pavise",
+    "seedOrigin": "system:v14:item-shelf:counterweight-pavise"
+  },
+  {
+    "kind": "item",
+    "id": "f77d4f89-8b0d-43f4-b26c-6ea0fafa76cb",
+    "name": "Surveyor's Cord Kit",
+    "seedOrigin": "system:v14:item-shelf:surveyor-s-cord-kit"
+  },
+  {
+    "kind": "item",
+    "id": "b661bfd3-97ec-479a-9093-7a5e769ddc12",
+    "name": "Folded Span Frame",
+    "seedOrigin": "system:v14:item-shelf:folded-span-frame"
+  },
+  {
+    "kind": "item",
+    "id": "dbf9fb38-a854-4176-bf07-0c8850bc1f7f",
+    "name": "Boundary Marker Satchel",
+    "seedOrigin": "system:v14:item-shelf:boundary-marker-satchel"
+  },
+  {
+    "kind": "item",
+    "id": "f3f0e018-3839-47c3-a1e3-4499cbaf7fd2",
+    "name": "Counterweight Pack",
+    "seedOrigin": "system:v14:item-shelf:counterweight-pack"
+  },
+  {
+    "kind": "item",
+    "id": "da8334f2-27fc-4914-a78a-44760f7a96a3",
+    "name": "Night Route Compass",
+    "seedOrigin": "system:v14:item-shelf:night-route-compass"
+  },
+  {
+    "kind": "item",
+    "id": "7b313646-597d-411d-82de-4cdfb6e3594b",
+    "name": "Ferry Sounding Pole",
+    "seedOrigin": "system:v14:item-shelf:ferry-sounding-pole"
+  },
+  {
+    "kind": "item",
+    "id": "2500a08e-8c79-4082-9bbb-16b1a164ecca",
+    "name": "Canopy Safety Belt",
+    "seedOrigin": "system:v14:item-shelf:canopy-safety-belt"
+  },
+  {
+    "kind": "item",
+    "id": "73faa358-f930-4761-9db4-7c2b49974e8a",
+    "name": "Quarry Descent Rack",
+    "seedOrigin": "system:v14:item-shelf:quarry-descent-rack"
+  },
+  {
+    "kind": "item",
+    "id": "6b00bcc1-96d5-48ab-867f-5fbf029f9584",
+    "name": "Bridge Inspector's Chain",
+    "seedOrigin": "system:v14:item-shelf:bridge-inspector-s-chain"
+  },
+  {
+    "kind": "item",
+    "id": "baf484cb-aedd-433f-b6d4-f4e163eda51d",
+    "name": "Shelterfinder Roll",
+    "seedOrigin": "system:v14:item-shelf:shelterfinder-roll"
+  },
+  {
+    "kind": "item",
+    "id": "731865e0-ef70-4cd7-86d9-33f6c5d39378",
+    "name": "Salt Road Shoes",
+    "seedOrigin": "system:v14:item-shelf:salt-road-shoes"
+  },
+  {
+    "kind": "item",
+    "id": "1c3d90ca-384c-4a11-82cb-72e36af7113d",
+    "name": "Water Source Case",
+    "seedOrigin": "system:v14:item-shelf:water-source-case"
+  },
+  {
+    "kind": "item",
+    "id": "abe03ed8-3daf-4bd5-af95-b8e05c413952",
+    "name": "Shutter Beacon",
+    "seedOrigin": "system:v14:item-shelf:shutter-beacon"
+  },
+  {
+    "kind": "item",
+    "id": "89bcbc82-e301-47a2-a197-93ebbc23a80b",
+    "name": "Stonecall Peg",
+    "seedOrigin": "system:v14:item-shelf:stonecall-peg"
+  },
+  {
+    "kind": "item",
+    "id": "2a3211a7-b193-46cc-ba5a-666069326048",
+    "name": "Listening Tile",
+    "seedOrigin": "system:v14:item-shelf:listening-tile"
+  },
+  {
+    "kind": "item",
+    "id": "20782813-e407-47c7-830c-bc152b0ebcf8",
+    "name": "Waterline Reader",
+    "seedOrigin": "system:v14:item-shelf:waterline-reader"
+  },
+  {
+    "kind": "item",
+    "id": "704ab945-f57f-4e1e-ae5c-44518bb016bf",
+    "name": "Watchbell Set",
+    "seedOrigin": "system:v14:item-shelf:watchbell-set"
+  },
+  {
+    "kind": "item",
+    "id": "b539f56f-b368-462b-aa50-076baf84d6fa",
+    "name": "Message Moth Case",
+    "seedOrigin": "system:v14:item-shelf:message-moth-case"
+  },
+  {
+    "kind": "item",
+    "id": "7f08501b-70ef-43f5-9104-852144e9b571",
+    "name": "Waterproof Dispatch Tube",
+    "seedOrigin": "system:v14:item-shelf:waterproof-dispatch-tube"
+  },
+  {
+    "kind": "item",
+    "id": "6f5fae6e-3ec0-4d8f-be49-8e5f89779d9d",
+    "name": "Survey Slate",
+    "seedOrigin": "system:v14:item-shelf:survey-slate"
+  },
+  {
+    "kind": "item",
+    "id": "e9e57316-742f-460b-bcb5-7cafd7f9e95e",
+    "name": "Skywatch Lens",
+    "seedOrigin": "system:v14:item-shelf:skywatch-lens"
+  },
+  {
+    "kind": "item",
+    "id": "245d8eeb-b4e3-47d8-b82b-4ac39b71e152",
+    "name": "Animal Cue Whistle",
+    "seedOrigin": "system:v14:item-shelf:animal-cue-whistle"
+  },
+  {
+    "kind": "item",
+    "id": "ef067933-740d-4b42-b0ad-6920072a7aa6",
+    "name": "Lantern Moth Hood",
+    "seedOrigin": "system:v14:item-shelf:lantern-moth-hood"
+  },
+  {
+    "kind": "item",
+    "id": "e2c03791-26ad-4b52-ac84-17607633a0ca",
+    "name": "Tamper Witness Ribbon",
+    "seedOrigin": "system:v14:item-shelf:tamper-witness-ribbon"
+  },
+  {
+    "kind": "item",
+    "id": "f738869d-112e-46c9-83a3-8a83af795dca",
+    "name": "Field Splint Case",
+    "seedOrigin": "system:v14:item-shelf:field-splint-case"
+  },
+  {
+    "kind": "item",
+    "id": "be9f4417-15fa-449d-beec-f65f0b3c1388",
+    "name": "Rescue Line Spool",
+    "seedOrigin": "system:v14:item-shelf:rescue-line-spool"
+  },
+  {
+    "kind": "item",
+    "id": "a2211b0f-820a-4faa-8aef-94ac91402240",
+    "name": "Airshare Cup",
+    "seedOrigin": "system:v14:item-shelf:airshare-cup"
+  },
+  {
+    "kind": "item",
+    "id": "1a9a4b23-14af-442a-a7c5-ac09a4dc1c24",
+    "name": "Temporary Stitch Roll",
+    "seedOrigin": "system:v14:item-shelf:temporary-stitch-roll"
+  },
+  {
+    "kind": "item",
+    "id": "5351fc21-a81b-4ac0-b2fe-fbd345092506",
+    "name": "Rainward Stretcher",
+    "seedOrigin": "system:v14:item-shelf:rainward-stretcher"
+  },
+  {
+    "kind": "item",
+    "id": "b90fa4e0-a407-4581-9e95-4ad4b0efb2ae",
+    "name": "Bellwright Forks",
+    "seedOrigin": "system:v14:item-shelf:bellwright-forks"
+  },
+  {
+    "kind": "item",
+    "id": "e74b4f65-51f8-49c9-8381-0869c27ec7d0",
+    "name": "Counterlift Rescue Rig",
+    "seedOrigin": "system:v14:item-shelf:counterlift-rescue-rig"
+  },
+  {
+    "kind": "item",
+    "id": "cfbedca7-c6da-4f19-9aed-6299ecdd3e9d",
+    "name": "Body Preparation Kit",
+    "seedOrigin": "system:v14:item-shelf:body-preparation-kit"
+  },
+  {
+    "kind": "item",
+    "id": "2f9a452b-7b52-4973-891e-931168559b2d",
+    "name": "Triage Lantern",
+    "seedOrigin": "system:v14:item-shelf:triage-lantern"
+  },
+  {
+    "kind": "item",
+    "id": "f19fc6e9-a9ed-4361-937d-811239943de7",
+    "name": "Salvage Basket",
+    "seedOrigin": "system:v14:item-shelf:salvage-basket"
+  },
+  {
+    "kind": "item",
+    "id": "82d92008-370f-43c7-9009-d18e4ca8834b",
+    "name": "Cleanwater Sample Box",
+    "seedOrigin": "system:v14:item-shelf:cleanwater-sample-box"
+  },
+  {
+    "kind": "item",
+    "id": "0bcb7efd-3ad4-466b-be25-853e36eb184a",
+    "name": "Cold Shelter Wrap",
+    "seedOrigin": "system:v14:item-shelf:cold-shelter-wrap"
+  },
+  {
+    "kind": "item",
+    "id": "fef36abe-f785-49a7-86f0-e8d0bf70c86e",
+    "name": "Ration Recovery Tin",
+    "seedOrigin": "system:v14:item-shelf:ration-recovery-tin"
+  },
+  {
+    "kind": "item",
+    "id": "87eb5ff5-06fc-4310-b47f-1741f5fb1477",
+    "name": "Joining Frame",
+    "seedOrigin": "system:v14:item-shelf:joining-frame"
+  },
+  {
+    "kind": "item",
+    "id": "73cb97c7-a57c-4f50-81a2-70d036de8534",
+    "name": "Saltglass Sample Vials",
+    "seedOrigin": "system:v14:item-shelf:saltglass-sample-vials"
+  },
+  {
+    "kind": "item",
+    "id": "46af1060-4d7e-4203-8e2b-3849aec64fba",
+    "name": "Fineglass Bench Kit",
+    "seedOrigin": "system:v14:item-shelf:fineglass-bench-kit"
+  },
+  {
+    "kind": "item",
+    "id": "3fefb334-381c-40d7-908f-80bcd63dffec",
+    "name": "Graftkeeper Case",
+    "seedOrigin": "system:v14:item-shelf:graftkeeper-case"
+  },
+  {
+    "kind": "item",
+    "id": "9f34f84a-fd87-47f7-9b28-086dd22a3ce9",
+    "name": "Reagent Mortar",
+    "seedOrigin": "system:v14:item-shelf:reagent-mortar"
+  },
+  {
+    "kind": "item",
+    "id": "44dfc0b3-3a01-49d8-93f6-428f7d1df7a5",
+    "name": "Patchsmith Roll",
+    "seedOrigin": "system:v14:item-shelf:patchsmith-roll"
+  },
+  {
+    "kind": "item",
+    "id": "ffe11628-bbb9-4fec-86af-9af5a0ea1710",
+    "name": "Quarry Lift Blocks",
+    "seedOrigin": "system:v14:item-shelf:quarry-lift-blocks"
+  },
+  {
+    "kind": "item",
+    "id": "ea430a7b-76f9-42b9-9722-4e2f6d60f612",
+    "name": "Archive Dry Press",
+    "seedOrigin": "system:v14:item-shelf:archive-dry-press"
+  },
+  {
+    "kind": "item",
+    "id": "1cf2e88e-dd02-4e1d-9d01-35e9abe6f1aa",
+    "name": "Maskmaker's Molds",
+    "seedOrigin": "system:v14:item-shelf:maskmaker-s-molds"
+  },
+  {
+    "kind": "item",
+    "id": "c5ef0ea1-b96e-4c65-905e-f1b174011731",
+    "name": "Breach Survey Mirror",
+    "seedOrigin": "system:v14:item-shelf:breach-survey-mirror"
+  },
+  {
+    "kind": "item",
+    "id": "1e61fd74-eb8c-4e04-bce5-17eb683a338c",
+    "name": "Shelterwright Pins",
+    "seedOrigin": "system:v14:item-shelf:shelterwright-pins"
+  },
+  {
+    "kind": "item",
+    "id": "cf81809d-2821-4b05-af57-7fc58f27e111",
+    "name": "Oathseal Lens",
+    "seedOrigin": "system:v14:item-shelf:oathseal-lens"
+  },
+  {
+    "kind": "item",
+    "id": "989a1e31-c087-4345-84ec-52f0bbca06d1",
+    "name": "Bridge Census Ledger",
+    "seedOrigin": "system:v14:item-shelf:bridge-census-ledger"
+  },
+  {
+    "kind": "item",
+    "id": "f3aec716-1e60-4e45-9beb-5979b8c948f4",
+    "name": "Retort Folio",
+    "seedOrigin": "system:v14:item-shelf:retort-folio"
+  },
+  {
+    "kind": "item",
+    "id": "7a753444-8d42-40cf-83cf-35ce7b24c9b3",
+    "name": "Caravan Hospitality Token",
+    "seedOrigin": "system:v14:item-shelf:caravan-hospitality-token"
+  },
+  {
+    "kind": "item",
+    "id": "4fad0e7b-023c-427f-ad52-ba1d19b28a97",
+    "name": "Exact Witness Book",
+    "seedOrigin": "system:v14:item-shelf:exact-witness-book"
+  },
+  {
+    "kind": "item",
+    "id": "49cd9229-980f-4852-a934-f7d8043e9095",
+    "name": "Trade Trace Abacus",
+    "seedOrigin": "system:v14:item-shelf:trade-trace-abacus"
+  },
+  {
+    "kind": "item",
+    "id": "d0bcb61d-3fe3-4ece-ad38-2b69b702a7e6",
+    "name": "Stage Mask Set",
+    "seedOrigin": "system:v14:item-shelf:stage-mask-set"
+  },
+  {
+    "kind": "item",
+    "id": "47e7f0a8-8b31-4805-b691-2a8037033a32",
+    "name": "Courier Seal Wallet",
+    "seedOrigin": "system:v14:item-shelf:courier-seal-wallet"
+  },
+  {
+    "kind": "item",
+    "id": "834c612f-3ac1-4a4c-b89e-e9daf3db1c0e",
+    "name": "Archive Reference Tabs",
+    "seedOrigin": "system:v14:item-shelf:archive-reference-tabs"
+  },
+  {
+    "kind": "item",
+    "id": "de6a1cf4-8af2-4003-8aff-b7ba7395343c",
+    "name": "Pact Boundary Cord",
+    "seedOrigin": "system:v14:item-shelf:pact-boundary-cord"
+  },
+  {
+    "kind": "item",
+    "id": "cb5a3e2b-f6b1-43d4-96db-e850cc7e64d4",
+    "name": "Household Counter Kit",
+    "seedOrigin": "system:v14:item-shelf:household-counter-kit"
+  },
+  {
+    "kind": "item",
+    "id": "da68d9ef-dd30-4125-aa01-89950fd15c8c",
+    "name": "Quiet Role Mantle",
+    "seedOrigin": "system:v14:item-shelf:quiet-role-mantle"
+  },
+  {
+    "kind": "item",
+    "id": "f2d02057-6a3a-4045-abf0-e4fe38a32dc9",
+    "name": "Hearthproof Work Apron",
+    "seedOrigin": "system:v14:item-shelf:hearthproof-work-apron"
+  },
+  {
+    "kind": "item",
+    "id": "bf0c4830-2b48-4bdf-ba43-79abdc48d734",
+    "name": "Hailbreak Canopy",
+    "seedOrigin": "system:v14:item-shelf:hailbreak-canopy"
+  },
+  {
+    "kind": "item",
+    "id": "e76571a4-c1a2-4bf4-84d0-36636de477a9",
+    "name": "Weatherwatch Pendants",
+    "seedOrigin": "system:v14:item-shelf:weatherwatch-pendants"
+  },
+  {
+    "kind": "item",
+    "id": "db13fcb2-9d17-41d3-99b7-a298f972e7c3",
+    "name": "Ration Weaver Basket",
+    "seedOrigin": "system:v14:item-shelf:ration-weaver-basket"
+  },
+  {
+    "kind": "item",
+    "id": "57474914-c882-4e53-8fd9-b8290bf8266f",
+    "name": "Smokeclear Camp Hood",
+    "seedOrigin": "system:v14:item-shelf:smokeclear-camp-hood"
+  },
+  {
+    "kind": "item",
+    "id": "ce40cb0c-e3c6-4f15-bee4-ecc1d32ab688",
+    "name": "Ground Test Stakes",
+    "seedOrigin": "system:v14:item-shelf:ground-test-stakes"
+  },
+  {
+    "kind": "item",
+    "id": "5e34f5a4-1eca-432a-8552-238e6a4925e1",
+    "name": "Waterwatch Camp Case",
+    "seedOrigin": "system:v14:item-shelf:waterwatch-camp-case"
+  },
+  {
+    "kind": "item",
+    "id": "c5c44409-b5af-44f0-b969-6b96157b5a22",
+    "name": "Routefire Lantern",
+    "seedOrigin": "system:v14:item-shelf:routefire-lantern"
+  },
+  {
+    "kind": "item",
+    "id": "8d71778c-0f3a-4d5f-ba5f-2405697fa7cf",
+    "name": "Dry Record Roll",
+    "seedOrigin": "system:v14:item-shelf:dry-record-roll"
+  },
+  {
+    "kind": "item",
+    "id": "1aa129eb-04bf-44de-b1d4-47401fdcf97c",
+    "name": "Stormcall Bell",
+    "seedOrigin": "system:v14:item-shelf:stormcall-bell"
+  },
+  {
+    "kind": "item",
+    "id": "7d9e3eef-8b32-4629-8529-efc5a7d75ccb",
+    "name": "Ferrycamp Awning",
+    "seedOrigin": "system:v14:item-shelf:ferrycamp-awning"
+  },
+  {
+    "kind": "item",
+    "id": "065bf181-1c40-4e17-bf40-84a0c609f9f7",
+    "name": "Lastwatch Beacon",
+    "seedOrigin": "system:v14:item-shelf:lastwatch-beacon"
+  },
+  {
+    "kind": "item",
+    "id": "c839571d-0f7c-40f4-b185-ab28e7cdd2a6",
+    "name": "Glassbreath Flask",
+    "seedOrigin": "system:v14:item-shelf:glassbreath-flask"
+  },
+  {
+    "kind": "item",
+    "id": "df466044-a66b-453d-9ac1-20abc05ea764",
+    "name": "Patchpaste Ampoule",
+    "seedOrigin": "system:v14:item-shelf:patchpaste-ampoule"
+  },
+  {
+    "kind": "item",
+    "id": "09871b5f-87ee-4d4c-9560-8d445bfcc1cf",
+    "name": "Rally Dressing",
+    "seedOrigin": "system:v14:item-shelf:rally-dressing"
+  },
+  {
+    "kind": "item",
+    "id": "9c89eae9-2931-4b17-b26a-a1fff2243752",
+    "name": "Signal Wick",
+    "seedOrigin": "system:v14:item-shelf:signal-wick"
+  },
+  {
+    "kind": "item",
+    "id": "f529de8d-37b3-4112-b2cd-e0c46ea38edc",
+    "name": "Witness Wax Pellet",
+    "seedOrigin": "system:v14:item-shelf:witness-wax-pellet"
+  },
+  {
+    "kind": "item",
+    "id": "2e15ad4e-a257-496a-ba00-accb627da364",
+    "name": "Trail Chalk Capsule",
+    "seedOrigin": "system:v14:item-shelf:trail-chalk-capsule"
+  },
+  {
+    "kind": "item",
+    "id": "a17095b2-1197-41b4-ade1-8d46c1b85240",
+    "name": "Reagent Starter Phial",
+    "seedOrigin": "system:v14:item-shelf:reagent-starter-phial"
+  },
+  {
+    "kind": "item",
+    "id": "e9b85bfb-47e1-4943-b470-69fbee321c21",
+    "name": "Dryleaf Ration Base",
+    "seedOrigin": "system:v14:item-shelf:dryleaf-ration-base"
+  },
+  {
+    "kind": "item",
+    "id": "7c405961-4b2f-421a-9f68-5fc58b97a5a4",
+    "name": "Smoke Filter Sachet",
+    "seedOrigin": "system:v14:item-shelf:smoke-filter-sachet"
+  },
+  {
+    "kind": "item",
+    "id": "87527234-a8fe-4e10-b339-efae07a8ce11",
+    "name": "Crack Dye Dropper",
+    "seedOrigin": "system:v14:item-shelf:crack-dye-dropper"
+  },
+  {
+    "kind": "item",
+    "id": "6d1c6735-10cb-4861-8f31-8e9a3931ca3e",
+    "name": "Graft Seal Salve",
+    "seedOrigin": "system:v14:item-shelf:graft-seal-salve"
+  },
+  {
+    "kind": "item",
+    "id": "c020549b-845c-4a04-96b3-a8bee4aad6aa",
+    "name": "Archive Drying Packet",
+    "seedOrigin": "system:v14:item-shelf:archive-drying-packet"
+  },
+  {
+    "kind": "item",
+    "id": "0577ce6e-3754-4e34-9117-082a8b825cff",
+    "name": "Splice Rod",
+    "seedOrigin": "system:v14:item-shelf:splice-rod"
+  },
+  {
+    "kind": "item",
+    "id": "4a3a6fa8-d19a-42d4-a6e7-aed436c5d51b",
+    "name": "Tide Listener Bowl",
+    "seedOrigin": "system:v14:item-shelf:tide-listener-bowl"
+  },
+  {
+    "kind": "item",
+    "id": "5a5634db-a6a1-46c5-be01-b53cda300fec",
+    "name": "Rampart Seal",
+    "seedOrigin": "system:v14:item-shelf:rampart-seal"
+  },
+  {
+    "kind": "item",
+    "id": "ee7ad64d-5fce-4838-afba-bfca2e265c7e",
+    "name": "Echo Locket",
+    "seedOrigin": "system:v14:item-shelf:echo-locket"
+  },
+  {
+    "kind": "item",
+    "id": "560dfa68-c2ef-4d78-a889-4a8c5cd61782",
+    "name": "Lastlight Sash",
+    "seedOrigin": "system:v14:item-shelf:lastlight-sash"
+  },
+  {
+    "kind": "item",
+    "id": "39bf4f99-5ad4-4fa5-b4b7-455f49c433ff",
+    "name": "Memory Witness Tile",
+    "seedOrigin": "system:v14:item-shelf:memory-witness-tile"
+  },
+  {
+    "kind": "item",
+    "id": "ac3cbe13-cbfc-4f74-b7fb-43ea9df1a303",
+    "name": "Rootwork Baton",
+    "seedOrigin": "system:v14:item-shelf:rootwork-baton"
+  },
+  {
+    "kind": "item",
+    "id": "63aa80cf-6af7-4758-832f-085729c55475",
+    "name": "Crackvoice Reed",
+    "seedOrigin": "system:v14:item-shelf:crackvoice-reed"
+  },
+  {
+    "kind": "item",
+    "id": "b6d7b76a-79fb-4412-956c-94ea02d02ddc",
+    "name": "Airkeeper Orb",
+    "seedOrigin": "system:v14:item-shelf:airkeeper-orb"
+  },
+  {
+    "kind": "item",
+    "id": "8a9f620d-74f8-41c4-950f-fc36816d8898",
+    "name": "Beaconwright Ring",
+    "seedOrigin": "system:v14:item-shelf:beaconwright-ring"
+  },
+  {
+    "kind": "item",
+    "id": "5ccbf122-c35f-40c7-a5ef-725761d02f52",
+    "name": "Thread Surgeon Needle",
+    "seedOrigin": "system:v14:item-shelf:thread-surgeon-needle"
+  },
+  {
+    "kind": "item",
+    "id": "d0d0508a-fbd7-46c2-b3de-383a096b219e",
+    "name": "Threshold Chime",
+    "seedOrigin": "system:v14:item-shelf:threshold-chime"
+  },
+  {
+    "kind": "item",
+    "id": "e93a0e24-11a8-46ca-b5ef-509dfae20000",
+    "name": "Variable Grip Bracer",
+    "seedOrigin": "system:v14:item-shelf:variable-grip-bracer"
+  },
+  {
+    "kind": "item",
+    "id": "54c15bf5-1e0c-40d8-b142-e67f49627aed",
+    "name": "Joining Clamp Gauntlet",
+    "seedOrigin": "system:v14:item-shelf:joining-clamp-gauntlet"
+  },
+  {
+    "kind": "item",
+    "id": "ade4997a-5925-42ca-9a75-9a18c3c71f27",
+    "name": "Counterturn Winch",
+    "seedOrigin": "system:v14:item-shelf:counterturn-winch"
+  },
+  {
+    "kind": "item",
+    "id": "9d156cab-f5c2-4b82-a13e-260ea9938ec9",
+    "name": "Splitbeam Lantern",
+    "seedOrigin": "system:v14:item-shelf:splitbeam-lantern"
+  },
+  {
+    "kind": "item",
+    "id": "38b3f2ae-5656-4ed1-b9b6-55492234416d",
+    "name": "Silt Sampler Arm",
+    "seedOrigin": "system:v14:item-shelf:silt-sampler-arm"
+  },
+  {
+    "kind": "item",
+    "id": "4881374c-ba19-4277-afdc-546d3136b7e6",
+    "name": "Folding Work Screen",
+    "seedOrigin": "system:v14:item-shelf:folding-work-screen"
+  },
+  {
+    "kind": "item",
+    "id": "238e5052-ce84-4dcb-9442-4f7717f0c303",
+    "name": "Messenger Return Box",
+    "seedOrigin": "system:v14:item-shelf:messenger-return-box"
+  },
+  {
+    "kind": "item",
+    "id": "96c81b48-55cb-4d33-af5b-02d08ce10d3f",
+    "name": "Portable Reference Wheel",
+    "seedOrigin": "system:v14:item-shelf:portable-reference-wheel"
+  },
+  {
+    "kind": "item",
+    "id": "ac0c0450-7c55-4381-91b8-77791a759cb4",
+    "name": "Tidegate Probe",
+    "seedOrigin": "system:v14:item-shelf:tidegate-probe"
+  },
+  {
+    "kind": "item",
+    "id": "d2bdf77f-978e-433e-a9f9-f3b5d14bed3e",
+    "name": "Witness Camera Frame",
+    "seedOrigin": "system:v14:item-shelf:witness-camera-frame"
+  },
+  {
+    "kind": "item",
+    "id": "0ffd6660-ace4-495f-bd5d-2b3f6e43675f",
+    "name": "Storm Stitch Machine",
+    "seedOrigin": "system:v14:item-shelf:storm-stitch-machine"
+  },
+  {
+    "kind": "item",
+    "id": "2d851105-ad29-459f-8da0-5ca6fcedeecd",
+    "name": "Salvage Sorting Tray",
+    "seedOrigin": "system:v14:item-shelf:salvage-sorting-tray"
+  },
+  {
+    "kind": "character",
+    "id": "aae2fea8-e17b-4887-afbe-a59bea94ad97",
+    "name": "Demo · 25 BU · Hearth Road Blade",
+    "seedOrigin": "system:v14:library-demo:25-blade"
+  },
+  {
+    "kind": "character",
+    "id": "3dc39799-1494-4bda-ad5d-6be77c754dad",
+    "name": "Demo · 25 BU · Dusk Lantern Caller",
+    "seedOrigin": "system:v14:library-demo:25-beacon"
+  },
+  {
+    "kind": "character",
+    "id": "1b0c24e4-3d37-46c5-b483-d45a887ecf29",
+    "name": "Demo · 50 BU · Harbor Doorwatch",
+    "seedOrigin": "system:v14:library-demo:50-guard"
+  },
+  {
+    "kind": "character",
+    "id": "bc6b699e-df72-49f0-bf70-4f78cf356c96",
+    "name": "Demo · 50 BU · Orchard Surveyor",
+    "seedOrigin": "system:v14:library-demo:50-surveyor"
+  },
+  {
+    "kind": "character",
+    "id": "1662962b-14c5-4433-994e-6273b3f7ca57",
+    "name": "Demo · 100 BU · Ashlung Stitch Medic",
+    "seedOrigin": "system:v14:library-demo:100-medic"
+  },
+  {
+    "kind": "character",
+    "id": "92bb790c-0bf8-4696-bea0-c8a49959a719",
+    "name": "Demo · 100 BU · Canopy Ground Scout",
+    "seedOrigin": "system:v14:library-demo:100-scout"
+  },
+  {
+    "kind": "character",
+    "id": "1da4e351-da76-4822-bf1f-632d2e657145",
+    "name": "Demo · 200 BU · Iron Terrain Architect",
+    "seedOrigin": "system:v14:library-demo:200-architect"
+  },
+  {
+    "kind": "character",
+    "id": "4a17c742-101c-493e-b2c9-d4764a1d7c87",
+    "name": "Demo · 200 BU · Sky Signal Voyager",
+    "seedOrigin": "system:v14:library-demo:200-sky"
+  }
+]

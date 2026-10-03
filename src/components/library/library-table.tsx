@@ -1,4 +1,5 @@
 "use client";
+import { libraryHeritageArt } from "@/lib/heritage/lineage-art";
 
 // =============================================================================
 // LibraryTable — the canonical library listing.
@@ -227,7 +228,7 @@ function ListItem({
   const inner = compact ? (
     <>
       <span className="sheet-library-entry-icon" aria-hidden="true">
-        <IconDisplay iconSource={item.iconSource || "GAME_ICONS"} iconKey={item.iconKey || "lorc/cubes"} iconUrl={item.iconUrl} iconColor={item.iconColor} size={24} alt="" />
+        <IconDisplay portraitUrl={libraryHeritageArt(item)} iconSource={item.iconSource || "GAME_ICONS"} iconKey={item.iconKey || "lorc/cubes"} iconUrl={item.iconUrl} iconColor={item.iconColor} size={24} alt="" />
       </span>
       <div className="sheet-library-entry-copy">
         <div className="sheet-library-entry-heading">
@@ -247,9 +248,10 @@ function ListItem({
           muted glyph when no icon is set, so the layout doesn't shift
           between rows. */}
       <div className={cn("flex shrink-0 flex-col items-center gap-1", isAtelier ? "w-11" : "w-12")}>
-        {item.iconSource ? (
+        {item.iconSource || libraryHeritageArt(item) ? (
           <span className={cn(isAtelier && "sw-entity-medallion grid size-10 place-items-center rounded-full border border-[#a97830] bg-black/30 shadow-[inset_0_0_0_3px_rgba(8,13,20,0.9)]")}>
             <IconDisplay
+              portraitUrl={libraryHeritageArt(item)}
               iconSource={item.iconSource}
               iconKey={item.iconKey}
               iconUrl={item.iconUrl}
@@ -384,9 +386,10 @@ function GridCard({
           explicit class per tier. */}
       <header className="flex items-start gap-2">
         <div className="flex w-10 shrink-0 flex-col items-center gap-1">
-          {item.iconSource ? (
+          {item.iconSource || libraryHeritageArt(item) ? (
             <span className={cn(isAtelier && "sw-entity-medallion grid size-9 place-items-center rounded-full border border-[#a97830] bg-black/30 shadow-[inset_0_0_0_3px_rgba(8,13,20,0.9)]")}>
               <IconDisplay
+              portraitUrl={libraryHeritageArt(item)}
                 iconSource={item.iconSource}
                 iconKey={item.iconKey}
                 iconUrl={item.iconUrl}

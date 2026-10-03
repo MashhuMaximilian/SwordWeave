@@ -1,3 +1,4 @@
+import { seedOrigin } from "./srd-seed-identity";
 /** Read-only content integrity audit. --design checks staged recipes before saving. */
 import {db,pool} from "@/db/client";
 import {items,itemPrimitives,itemCapabilities,itemEffects,itemVersions,publications} from "@/db/schema";
@@ -17,7 +18,7 @@ async function main(){
  assert(pending.length===0,"Expansion dependency shelf not saved");
  const [rows,ps,cs,es,vs,pubs]=await Promise.all([db.select().from(items),db.select().from(itemPrimitives),db.select().from(itemCapabilities),db.select().from(itemEffects),db.select().from(itemVersions),db.select().from(publications)]);
  for(const x of plan){
-  const row=rows.find(r=>r.sourceOrigin===x.sourceOrigin);assert(row,`Missing item ${x.name}`);if(!row)continue;
+  const row=rows.find(r=>seedOrigin(r)===seedOrigin(x));assert(row,`Missing item ${x.name}`);if(!row)continue;
   assert(row.isPublic&&row.userId===null,`Item ownership ${x.name}`);assert(row.description===x.description&&row.buCost===x.buCost&&row.slotCost===x.slotCost&&row.size===x.size,`Item content drift ${x.name}`);
   assert(row.iconSource==="GAME_ICONS"&&row.iconKey===x.iconKey&&row.iconColor==="#d8ad54",`Icon drift ${x.name}`);
   assert(row.isTwoHanded===x.isTwoHanded&&(!row.isTwoHanded||row.slotCost>=2),`Two-handed minimum ${x.name}`);assert(row.isNotEquippable===x.isNotEquippable&&row.isConsumable===x.isConsumable,`Equipment flags ${x.name}`);

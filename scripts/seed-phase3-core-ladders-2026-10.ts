@@ -1,3 +1,4 @@
+import { seedSourceCondition } from "./srd-seed-identity";
 /** Named practice, saving throw, and locomotion forks. Dry-run unless --apply. */
 import { config } from "dotenv";
 import { and, eq } from "drizzle-orm";
@@ -135,7 +136,7 @@ async function main(): Promise<void> {
     const row = candidate(parent.row, v);
     verify(row, v);
     const hash = await hashPrimitiveContent(buildCanonicalPrimitivePayload(row));
-    const [existing] = await db.select().from(primitives).where(eq(primitives.sourceOrigin, origin(v))).limit(1);
+    const [existing] = await db.select().from(primitives).where(seedSourceCondition(primitives.sourceOrigin, primitives.id, origin(v))).limit(1);
     if (existing) {
       const [version] = await db.select().from(primitiveVersions).where(and(eq(primitiveVersions.primitiveId, existing.id), eq(primitiveVersions.isLatest, true))).limit(1);
       const [edge] = await db.select().from(forks).where(and(eq(forks.sourceTargetType, "PRIMITIVE"), eq(forks.sourceTargetId, String(v.parentId)), eq(forks.forkedTargetType, "PRIMITIVE"), eq(forks.forkedTargetId, String(existing.id)))).limit(1);

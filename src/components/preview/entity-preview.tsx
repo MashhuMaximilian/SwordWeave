@@ -1,4 +1,5 @@
 "use client";
+import { sourceDisplayLabel } from "@/lib/publishing/source-display";
 
 // =============================================================================
 // EntityPreview — THE unified preview for every SwordWeave entity, rendered
@@ -861,7 +862,7 @@ export function EntityPreview({
   // (authorId) is still set so internal tooling can trace edits.
   const eng = resolvedCallbacks.engagement;
   const isAdminAuthor = eng?.authorIsAdmin === true;
-  const isLegacySystemRow = rowSourceOrigin === "system";
+  const isLegacySystemRow = rowSourceOrigin === "SRD" || rowSourceOrigin === "system" || rowSourceOrigin?.startsWith("system:");
   const maskAuthor =
     isAdminAuthor ||
     isLegacySystemRow ||
@@ -980,6 +981,7 @@ function OwnerBar({ owner }: { owner: NonNullable<EntityPreviewProps["owner"]> }
   // and only build a profile link from a real-looking username.
   const isId = !!owner.authorUsername && /^user_|usr_/i.test(owner.authorUsername);
   const handle = !hasAuthor ? null : isId ? null : owner.authorUsername;
+  const publicSource = sourceDisplayLabel(owner.sourceOrigin, display === "System");
   const profileHref = handle ? `/u/${handle}` : null;
   // Generated avatar fallback when no uploaded picture exists. For system
   // entries we use a neutral seed so the avatar is consistent across
@@ -1025,12 +1027,12 @@ function OwnerBar({ owner }: { owner: NonNullable<EntityPreviewProps["owner"]> }
       ) : (
         <div className="flex items-center gap-2">{inner}</div>
       )}
-      {owner.sourceOrigin ? (
+      {publicSource ? (
         <span
           className="truncate rounded-full bg-secondary px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-secondary-foreground"
-          title={owner.sourceOrigin}
+          title={publicSource ?? undefined}
         >
-          Source: {owner.sourceOrigin}
+          Source: {publicSource}
         </span>
       ) : null}
     </div>
@@ -1185,7 +1187,7 @@ function EffectBody({
         chips={
           <>
             <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-mono font-semibold text-primary">{totalBu} BU</span>
-            {row.sourceOrigin ? <span className="rounded-full bg-secondary px-2 py-0.5 font-medium uppercase tracking-wide text-secondary-foreground">{row.sourceOrigin}</span> : null}
+            {row.sourceOrigin ? <span className="rounded-full bg-secondary px-2 py-0.5 font-medium uppercase tracking-wide text-secondary-foreground">{sourceDisplayLabel(row.sourceOrigin)}</span> : null}
             <VisibilityPill isPublic={row.isPublic} />
           </>
         }
@@ -1407,6 +1409,7 @@ function TemplateBody({
     <div className="v12-composite-preview-body space-y-4">
       <div className="v12-composite-preview-primary">
         <Header
+        portraitUrl={lineageArtUrl(row)}
         fallback="TPL"
         iconSource={row.iconSource}
         iconKey={row.iconKey}
@@ -1586,7 +1589,7 @@ function ItemBody({
             {row.isTwoHanded ? <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">Two-handed</span> : null}
             {row.isConsumable ? <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">Consumable</span> : null}
             {row.actsAsFocus ? <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">Focus</span> : null}
-            {row.sourceOrigin ? <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">{row.sourceOrigin}</span> : null}
+            {row.sourceOrigin ? <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">{sourceDisplayLabel(row.sourceOrigin)}</span> : null}
             <VisibilityPill isPublic={row.isPublic} />
           </>
         }
@@ -1627,7 +1630,9 @@ function Header({
   iconColor,
   label,
   chips,
+  portraitUrl,
 }: {
+  portraitUrl?: string | null;
   fallback: string;
   iconSource: string | null;
   iconKey: string | null;
@@ -1638,9 +1643,9 @@ function Header({
 }) {
   return (
     <div className="v12-preview-identity flex items-center gap-2">
-      <div className="v12-preview-medallion"><IconTile
+      <div className={`v12-preview-medallion${portraitUrl ? " is-portrait" : ""}`}>{portraitUrl ? <IconDisplay portraitUrl={portraitUrl} size={112} alt="Heritage portrait"/> : <IconTile
         row={{ iconSource, iconKey, iconUrl, iconColor, fallback }}
-      /></div>
+      />}</div>
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 text-xs">
         <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
           {label}

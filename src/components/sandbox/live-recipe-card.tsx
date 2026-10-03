@@ -1,4 +1,5 @@
 "use client";
+import { sourceDisplayLabel } from "@/lib/publishing/source-display";
 
 import type { ReactNode } from "react";
 import { IconDisplay } from "@/components/icons/icon-display";
@@ -20,7 +21,8 @@ export type LiveEffect = {
   primitiveLinks?: LivePrimitiveSlot[];
 };
 
-export function LiveRecipeCard({ name, kind, icon, badges, description, sourceOrigin, tags, children }: {
+export function LiveRecipeCard({ name, kind, icon, badges, description, sourceOrigin, tags, children, portraitUrl }: {
+  portraitUrl?:string|null;
   name: string; kind: string;
   icon: { iconSource: string | null; iconKey: string | null; iconUrl: string | null; iconColor: string };
   badges: ReactNode; description?: string; sourceOrigin: string; tags: string;
@@ -28,11 +30,11 @@ export function LiveRecipeCard({ name, kind, icon, badges, description, sourceOr
 }) {
   const fallback = kind === "Item" ? "lorc/battle-gear" : kind === "Effect" ? "lorc/cubes" : kind === "Capability" ? "lorc/cubeforce" : kind === "Lineage" ? "lorc/dna2" : kind === "Upbringing" ? "delapouite/plant-roots" : "caro-asercion/tarot-11-justice";
   return <article className="v12-live-recipe">
-    <header className="v12-live-identity"><div className="v12-live-emblem" aria-hidden="true"><IconDisplay iconSource={icon.iconSource === "UPLOAD" ? "UPLOAD" : "GAME_ICONS"} iconKey={icon.iconSource ? icon.iconKey : fallback} iconUrl={icon.iconUrl} iconColor={icon.iconSource ? icon.iconColor : "#64c7c1"} size={48} alt="" /></div>
+    <header className="v12-live-identity"><div className="v12-live-emblem" aria-hidden="true"><IconDisplay portraitUrl={portraitUrl} iconSource={icon.iconSource === "UPLOAD" ? "UPLOAD" : "GAME_ICONS"} iconKey={icon.iconSource ? icon.iconKey : fallback} iconUrl={icon.iconUrl} iconColor={icon.iconSource ? icon.iconColor : "#64c7c1"} size={portraitUrl ? 140 : 48} alt="" /></div>
     <div className="v12-live-identity-copy"><p className="v12-kicker">{kind} · live draft</p><h2>{name || `Untitled ${kind.toLowerCase()}`}</h2><div className="v12-live-badges">{badges}</div></div></header>
     {description ? <div className="v12-live-description"><Markdown copyRole="narrative">{description}</Markdown></div> : null}
     {children}
-    {sourceOrigin || tags ? <footer className="v12-live-provenance">{sourceOrigin ? <p><span className="v12-kicker">Source</span>{sourceOrigin}</p> : null}{tags ? <div className="v12-live-badges" aria-label="Tags">{[...new Set(tags.split(",").map(tag => tag.trim()).filter(Boolean))].map(tag => <span key={tag}>{tag}</span>)}</div> : null}</footer> : null}
+    {sourceOrigin || tags ? <footer className="v12-live-provenance">{sourceOrigin ? <p><span className="v12-kicker">Source</span>{sourceDisplayLabel(sourceOrigin)}</p> : null}{tags ? <div className="v12-live-badges" aria-label="Tags">{[...new Set(tags.split(",").map(tag => tag.trim()).filter(Boolean))].map(tag => <span key={tag}>{tag}</span>)}</div> : null}</footer> : null}
   </article>;
 }
 

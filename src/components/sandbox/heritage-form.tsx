@@ -26,6 +26,7 @@ import type {
 } from "./heritage-form-preview";
 import { useCharacterAuthoring, useCharacterFormRecovery } from "./character-authoring-context";
 import { AuthorPublishFields } from "./author-publish-fields";
+import { PortraitInput } from "@/components/characters/portrait-input";
 import { IconSlot } from "@/components/icons/icon-slot";
 import type { IconSource } from "@/components/icons/icon-display";
 import { saveIntentLabel } from "@/lib/publishing/save-intent";
@@ -738,17 +739,11 @@ export function HeritageForm({
         />
       </label>
 
-      <label className="block text-sm font-medium">
-        Image URL (optional)
-        <input
-          type="url"
-          className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
-          value={form.imageUrl}
-          onChange={(e) => updateForm("imageUrl", e.target.value)}
-          placeholder="https://..."
-        />
-      </label>
-
+      <section aria-label="Heritage portrait" className="sw-heritage-art-input">
+        <h3 className="text-sm font-medium">Portrait (optional)</h3>
+        <p className="text-xs text-muted-foreground">Use a portrait instead of the icon. Uploaded images and image links keep their original colors.</p>
+        <PortraitInput value={form.imageUrl} onChange={(value) => updateForm("imageUrl", value)} characterName={form.name} label="Heritage portrait" frame={{x:50,y:20,zoom:1}} />
+      </section>
 
       <label className="block text-sm font-medium">
         Description / Lore

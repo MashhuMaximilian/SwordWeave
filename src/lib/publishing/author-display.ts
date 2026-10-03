@@ -45,7 +45,7 @@ function isSystemAuthored(item: AuthorDisplayInput): boolean {
   if (item.authorIsAdmin === true) return true;
   // Legacy row stamped with system sourceOrigin = system, even if
   // user_id is set to a real user.
-  if (item.sourceOrigin === "system") return true;
+  if (item.sourceOrigin === "SRD" || item.sourceOrigin === "system" || item.sourceOrigin?.startsWith("system:")) return true;
   return false;
 }
 
@@ -87,6 +87,6 @@ export function isSystemAuthoredServer(opts: {
   // Admin user = system.
   if (opts.author?.isAdmin === true) return true;
   // Legacy row stamped with system sourceOrigin = system.
-  if (opts.sourceOrigin === "system") return true;
+  if (opts.sourceOrigin === "SRD" || opts.sourceOrigin === "system" || opts.sourceOrigin?.startsWith("system:")) return true;
   return false;
 }

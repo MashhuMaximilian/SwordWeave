@@ -1,0 +1,548 @@
+[
+  {
+    "id": "a7cebe39-413a-45e4-8f18-a671958af4d9",
+    "name": "Steady Blade",
+    "kind": "MANIFEST",
+    "sourceOrigin": "system:v14:early-heritage-base:manifest:steady-blade",
+    "imageUrl": "/images/heritages/manifests/steady-blade-graphic-v1.webp"
+  },
+  {
+    "id": "bd33a87c-d964-49b3-bf0d-062043d7e701",
+    "name": "Roadside Errand Runner",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v14:early-heritage-base:upbringing:roadside-errand-runner",
+    "imageUrl": "/images/heritages/upbringings/roadside-errand-runner-graphic-v1.webp"
+  },
+  {
+    "id": "b9018435-3660-40e3-93d4-15a98d698093",
+    "name": "Workshop Sweeper",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v14:early-heritage-base:upbringing:workshop-sweeper",
+    "imageUrl": "/images/heritages/upbringings/workshop-sweeper-graphic-v1.webp"
+  },
+  {
+    "id": "fb2d5baa-57bf-4ed5-9561-33a9f4456b37",
+    "name": "Lantern Stall Helper",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v14:early-heritage-base:upbringing:lantern-stall-helper",
+    "imageUrl": "/images/heritages/upbringings/lantern-stall-helper-graphic-v1.webp"
+  },
+  {
+    "id": "10261d34-9e0a-481c-a8fb-31deeedd5578",
+    "name": "Orchard Neighbor",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v14:early-heritage-base:upbringing:orchard-neighbor",
+    "imageUrl": "/images/heritages/upbringings/orchard-neighbor-graphic-v1.webp"
+  },
+  {
+    "id": "49dd6376-7932-4d89-90a9-ee5ad415a58a",
+    "name": "Agreement Recorder",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v14:early-heritage-base:upbringing:agreement-recorder",
+    "imageUrl": "/images/heritages/upbringings/agreement-recorder-graphic-v1.webp"
+  },
+  {
+    "id": "ca74de5f-e253-463b-8b8c-5bfbe81e441f",
+    "name": "Harbor Rope Hand",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v14:early-heritage-base:upbringing:harbor-rope-hand",
+    "imageUrl": "/images/heritages/upbringings/harbor-rope-hand-graphic-v1.webp"
+  },
+  {
+    "id": "6a568e89-a948-4f1f-9fc2-cac18c9b02df",
+    "name": "Doorwatch",
+    "kind": "MANIFEST",
+    "sourceOrigin": "system:v14:early-heritage-base:manifest:doorwatch",
+    "imageUrl": "/images/heritages/manifests/doorwatch-graphic-v1.webp"
+  },
+  {
+    "id": "2b56f2f1-ffab-4efb-91a4-416bde7b279e",
+    "name": "Quickstep",
+    "kind": "MANIFEST",
+    "sourceOrigin": "system:v14:early-heritage-base:manifest:quickstep",
+    "imageUrl": "/images/heritages/manifests/quickstep-graphic-v1.webp"
+  },
+  {
+    "id": "83efc7b5-c68a-463b-8f81-25ded132cdc4",
+    "name": "Glimmer Caller",
+    "kind": "MANIFEST",
+    "sourceOrigin": "system:v14:early-heritage-base:manifest:glimmer-caller",
+    "imageUrl": "/images/heritages/manifests/glimmer-caller-graphic-v1.webp"
+  },
+  {
+    "id": "cfead155-dc23-4997-878b-2d1ca48796a3",
+    "name": "Stitchkeeper",
+    "kind": "MANIFEST",
+    "sourceOrigin": "system:v14:early-heritage-base:manifest:stitchkeeper",
+    "imageUrl": "/images/heritages/manifests/stitchkeeper-graphic-v1.webp"
+  },
+  {
+    "id": "10d8292a-fca5-4832-9512-36a49e0a208a",
+    "name": "Patchwright",
+    "kind": "MANIFEST",
+    "sourceOrigin": "system:v14:early-heritage-base:manifest:patchwright",
+    "imageUrl": "/images/heritages/manifests/patchwright-graphic-v1.webp"
+  },
+  {
+    "id": "65222466-1178-4a32-a0e7-10621cd465bc",
+    "name": "Wanderer",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system",
+    "imageUrl": "/images/heritages/upbringings/wanderer-graphic-v1.webp"
+  },
+  {
+    "id": "af1fbacb-1ff6-4ade-91bc-9f04cc1b09a8",
+    "name": "Ferry Ward",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:ferry-ward",
+    "imageUrl": "/images/heritages/upbringings/ferry-ward-graphic-v1.webp"
+  },
+  {
+    "id": "dbbf7e13-4af7-4a08-b4a6-c78f1385decc",
+    "name": "Marsh Salvager",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:marsh-salvager",
+    "imageUrl": "/images/heritages/upbringings/marsh-salvager-graphic-v1.webp"
+  },
+  {
+    "id": "3dc74c4a-f4d4-43fd-8b38-5d4cfd7477ba",
+    "name": "Reef Courier",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:reef-courier",
+    "imageUrl": "/images/heritages/upbringings/reef-courier-graphic-v1.webp"
+  },
+  {
+    "id": "79cd0791-55f3-4f3d-863d-52fa50afc639",
+    "name": "Caravan Watermaster",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:caravan-watermaster",
+    "imageUrl": "/images/heritages/upbringings/caravan-watermaster-graphic-v1.webp"
+  },
+  {
+    "id": "9d160f28-814f-44cc-9aa6-e031c38c7e75",
+    "name": "Cartographer's Apprentice",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:cartographer-s-apprentice",
+    "imageUrl": "/images/heritages/upbringings/cartographer-s-apprentice-graphic-v1.webp"
+  },
+  {
+    "id": "1c640bad-f350-4bc4-8936-eca51cabfa4b",
+    "name": "Wreck Diver",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:wreck-diver",
+    "imageUrl": "/images/heritages/upbringings/wreck-diver-graphic-v1.webp"
+  },
+  {
+    "id": "b7b10a83-5f4b-4904-96ba-995de5421eca",
+    "name": "Road Warden",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:road-warden",
+    "imageUrl": "/images/heritages/upbringings/road-warden-graphic-v1.webp"
+  },
+  {
+    "id": "eef57a4a-d8a6-4582-a58e-db1b53be8ad5",
+    "name": "Tinkerer",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system",
+    "imageUrl": "/images/heritages/upbringings/tinkerer-graphic-v1.webp"
+  },
+  {
+    "id": "fa85950d-0661-450d-92fb-429896a7257b",
+    "name": "Bell Foundry Worker",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:bell-foundry-worker",
+    "imageUrl": "/images/heritages/upbringings/bell-foundry-worker-graphic-v1.webp"
+  },
+  {
+    "id": "e8e9a33c-68e5-4e75-9b46-1b148574c194",
+    "name": "Glasswright",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:glasswright",
+    "imageUrl": "/images/heritages/upbringings/glasswright-graphic-v1.webp"
+  },
+  {
+    "id": "ba6d1537-5234-477a-b4d3-9c58b9feff55",
+    "name": "Quarry Rigger",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:quarry-rigger",
+    "imageUrl": "/images/heritages/upbringings/quarry-rigger-graphic-v1.webp"
+  },
+  {
+    "id": "a65de79c-a998-44d5-b542-59918b7634fa",
+    "name": "Ward Tailor",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:ward-tailor",
+    "imageUrl": "/images/heritages/upbringings/ward-tailor-graphic-v1.webp"
+  },
+  {
+    "id": "e580a454-fbd0-4171-990a-aa79231daf4c",
+    "name": "Disaster Cook",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:disaster-cook",
+    "imageUrl": "/images/heritages/upbringings/disaster-cook-graphic-v1.webp"
+  },
+  {
+    "id": "db5f770f-fbd0-4742-b75f-f95b25fbf21d",
+    "name": "Rooftop Rigger",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:rooftop-rigger",
+    "imageUrl": "/images/heritages/upbringings/rooftop-rigger-graphic-v1.webp"
+  },
+  {
+    "id": "557d3cc1-67c8-4632-a275-3a53c109c1aa",
+    "name": "Courtier",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system",
+    "imageUrl": "/images/heritages/upbringings/courtier-graphic-v1.webp"
+  },
+  {
+    "id": "7508c841-6c82-46bb-a691-ea43facef715",
+    "name": "Market Ledger Clerk",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:market-ledger-clerk",
+    "imageUrl": "/images/heritages/upbringings/market-ledger-clerk-graphic-v1.webp"
+  },
+  {
+    "id": "d71b4786-0601-4cf4-bdac-9c0cfa5ea1e1",
+    "name": "Canal Inspector",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:canal-inspector",
+    "imageUrl": "/images/heritages/upbringings/canal-inspector-graphic-v1.webp"
+  },
+  {
+    "id": "083c8d92-5b0a-427b-aecb-75ad70baf590",
+    "name": "Witness Scribe",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:witness-scribe",
+    "imageUrl": "/images/heritages/upbringings/witness-scribe-graphic-v1.webp"
+  },
+  {
+    "id": "ceea3f3e-6e30-45c6-8827-c568b44a6ca5",
+    "name": "City Alarm Keeper",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:city-alarm-keeper",
+    "imageUrl": "/images/heritages/upbringings/city-alarm-keeper-graphic-v1.webp"
+  },
+  {
+    "id": "8e69fe62-1da2-4a2a-9dca-1d6c58cf8e0f",
+    "name": "Village Mediator",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:village-mediator",
+    "imageUrl": "/images/heritages/upbringings/village-mediator-graphic-v1.webp"
+  },
+  {
+    "id": "0a7f9f89-ebf8-4137-970e-67402afc8f8c",
+    "name": "Tavern Keeper",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:tavern-keeper",
+    "imageUrl": "/images/heritages/upbringings/tavern-keeper-graphic-v1.webp"
+  },
+  {
+    "id": "9e5babfa-cbe3-464b-9970-7dad8e4f9160",
+    "name": "Smuggler's Lookout",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:smuggler-s-lookout",
+    "imageUrl": "/images/heritages/upbringings/smuggler-s-lookout-graphic-v1.webp"
+  },
+  {
+    "id": "8b33a84e-756e-4dc1-9777-0f89cdf0c740",
+    "name": "Scholar",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system",
+    "imageUrl": "/images/heritages/upbringings/scholar-graphic-v1.webp"
+  },
+  {
+    "id": "8759a801-3b88-420e-acb7-c1127ee7aca6",
+    "name": "Field Surgeon Apprentice",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:field-surgeon-apprentice",
+    "imageUrl": "/images/heritages/upbringings/field-surgeon-apprentice-graphic-v1.webp"
+  },
+  {
+    "id": "9596d3f7-61d4-4946-9551-079661900f76",
+    "name": "Archive Conservator",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:archive-conservator",
+    "imageUrl": "/images/heritages/upbringings/archive-conservator-graphic-v1.webp"
+  },
+  {
+    "id": "9e5f6113-e617-473b-b609-f48e0c7464ff",
+    "name": "Weather Watcher",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:weather-watcher",
+    "imageUrl": "/images/heritages/upbringings/weather-watcher-graphic-v1.webp"
+  },
+  {
+    "id": "a22ec848-6987-464d-a58b-26f74f9abeff",
+    "name": "Reliquary Keeper",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:reliquary-keeper",
+    "imageUrl": "/images/heritages/upbringings/reliquary-keeper-graphic-v1.webp"
+  },
+  {
+    "id": "ce889ced-aa90-48d4-b331-9471faa8da63",
+    "name": "Beast Handler's Aide",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:beast-handler-s-aide",
+    "imageUrl": "/images/heritages/upbringings/beast-handler-s-aide-graphic-v1.webp"
+  },
+  {
+    "id": "9398ddb3-d5a1-4c34-9340-ecf1dcaceff1",
+    "name": "Star Surveyor",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:star-surveyor",
+    "imageUrl": "/images/heritages/upbringings/star-surveyor-graphic-v1.webp"
+  },
+  {
+    "id": "27831d18-d345-4060-b16b-e2a0d28523fb",
+    "name": "Apothecary Apprentice",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:apothecary-apprentice",
+    "imageUrl": "/images/heritages/upbringings/apothecary-apprentice-graphic-v1.webp"
+  },
+  {
+    "id": "cd60ecd5-71b0-4b00-845a-21c9cc96bb17",
+    "name": "Soldier",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system",
+    "imageUrl": "/images/heritages/upbringings/soldier-graphic-v1.webp"
+  },
+  {
+    "id": "6e66a2c6-0a10-4361-a705-338b9bf98fc4",
+    "name": "Bridgewatch Veteran",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:bridgewatch-veteran",
+    "imageUrl": "/images/heritages/upbringings/bridgewatch-veteran-graphic-v1.webp"
+  },
+  {
+    "id": "0b4794de-8efe-48c1-ba64-071d89f8a34b",
+    "name": "Siege Mason",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:siege-mason",
+    "imageUrl": "/images/heritages/upbringings/siege-mason-graphic-v1.webp"
+  },
+  {
+    "id": "d0607139-de71-441d-aa3b-aa27c192c764",
+    "name": "Firewatch Runner",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:firewatch-runner",
+    "imageUrl": "/images/heritages/upbringings/firewatch-runner-graphic-v1.webp"
+  },
+  {
+    "id": "b1fba286-80bf-4537-9005-907c24cf6da9",
+    "name": "Rescue Diver",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:rescue-diver",
+    "imageUrl": "/images/heritages/upbringings/rescue-diver-graphic-v1.webp"
+  },
+  {
+    "id": "657cac3a-e999-44f4-8c82-8ee3b594d04d",
+    "name": "Prison Keykeeper",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:prison-keykeeper",
+    "imageUrl": "/images/heritages/upbringings/prison-keykeeper-graphic-v1.webp"
+  },
+  {
+    "id": "4d1e43a1-4d80-4d1d-b3a1-5f1204ac8178",
+    "name": "Boundary Keeper",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:boundary-keeper",
+    "imageUrl": "/images/heritages/upbringings/boundary-keeper-graphic-v1.webp"
+  },
+  {
+    "id": "26980724-cbcb-4421-819b-cabc9878bdcb",
+    "name": "Funeral Tender",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:funeral-tender",
+    "imageUrl": "/images/heritages/upbringings/funeral-tender-graphic-v1.webp"
+  },
+  {
+    "id": "e1fb37fd-f07e-458a-a77b-06551bae8b4c",
+    "name": "Theater Maskmaker",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:theater-maskmaker",
+    "imageUrl": "/images/heritages/upbringings/theater-maskmaker-graphic-v1.webp"
+  },
+  {
+    "id": "d9dca226-e688-421b-83a9-53d026e1e1fb",
+    "name": "Salt-Road Exile",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:salt-road-exile",
+    "imageUrl": "/images/heritages/upbringings/salt-road-exile-graphic-v1.webp"
+  },
+  {
+    "id": "e80756c1-ee74-4864-9682-44b49ce6cbf9",
+    "name": "Pit Fighter",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:pit-fighter",
+    "imageUrl": "/images/heritages/upbringings/pit-fighter-graphic-v1.webp"
+  },
+  {
+    "id": "da1f10f8-4003-4913-ac65-8802f9993118",
+    "name": "Festival Lantern Tender",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:festival-lantern-tender",
+    "imageUrl": "/images/heritages/upbringings/festival-lantern-tender-graphic-v1.webp"
+  },
+  {
+    "id": "697fd7f6-79f2-447b-8a27-3ad51997c39f",
+    "name": "Striker",
+    "kind": "MANIFEST",
+    "sourceOrigin": "system",
+    "imageUrl": "/images/heritages/manifests/striker-graphic-v1.webp"
+  },
+  {
+    "id": "a942d4ab-f701-41f2-9166-b6a7c79b060f",
+    "name": "Guardian",
+    "kind": "MANIFEST",
+    "sourceOrigin": "system",
+    "imageUrl": "/images/heritages/manifests/guardian-graphic-v1.webp"
+  },
+  {
+    "id": "dd53a241-836f-4c4c-b9af-54b6d9c5e5b0",
+    "name": "Elemental Shaper",
+    "kind": "MANIFEST",
+    "sourceOrigin": "system:v13:heritage-shelf:manifest:elemental-shaper",
+    "imageUrl": "/images/heritages/manifests/elemental-shaper-graphic-v1.webp"
+  },
+  {
+    "id": "794ef1b1-954e-47ed-b063-6eb39e89da8e",
+    "name": "Hexwright",
+    "kind": "MANIFEST",
+    "sourceOrigin": "system:v13:heritage-shelf:manifest:hexwright",
+    "imageUrl": "/images/heritages/manifests/hexwright-graphic-v1.webp"
+  },
+  {
+    "id": "a900a535-6a6e-4707-aa03-792d2e499260",
+    "name": "Beast Signal Keeper",
+    "kind": "MANIFEST",
+    "sourceOrigin": "system:v13:heritage-shelf:manifest:beast-signal-keeper",
+    "imageUrl": "/images/heritages/manifests/beast-signal-keeper-graphic-v1.webp"
+  },
+  {
+    "id": "1cf423a8-8269-446f-9207-e9c1385b5771",
+    "name": "Relic Seeker",
+    "kind": "MANIFEST",
+    "sourceOrigin": "system:v13:heritage-shelf:manifest:relic-seeker",
+    "imageUrl": "/images/heritages/manifests/relic-seeker-graphic-v1.webp"
+  },
+  {
+    "id": "dea6034c-a651-484b-b2ad-3679ac62af1f",
+    "name": "Treaty Envoy",
+    "kind": "MANIFEST",
+    "sourceOrigin": "system:v13:heritage-shelf:manifest:treaty-envoy",
+    "imageUrl": "/images/heritages/manifests/treaty-envoy-graphic-v1.webp"
+  },
+  {
+    "id": "53e4217e-692f-45d3-916a-6ea7104831fc",
+    "name": "Longshot",
+    "kind": "MANIFEST",
+    "sourceOrigin": "system:v13:heritage-shelf:manifest:longshot",
+    "imageUrl": "/images/heritages/manifests/longshot-graphic-v1.webp"
+  },
+  {
+    "id": "4547a98a-dd03-4269-aa7b-80e68b6da353",
+    "name": "Echo Duelist",
+    "kind": "MANIFEST",
+    "sourceOrigin": "system:v13:heritage-shelf:manifest:echo-duelist",
+    "imageUrl": "/images/heritages/manifests/echo-duelist-graphic-v1.webp"
+  },
+  {
+    "id": "7879a182-ac8a-425c-8005-9af1c23e9465",
+    "name": "Threshold Warden",
+    "kind": "MANIFEST",
+    "sourceOrigin": "system:v13:heritage-shelf:manifest:threshold-warden",
+    "imageUrl": "/images/heritages/manifests/threshold-warden-graphic-v1.webp"
+  },
+  {
+    "id": "6b2eec9d-b812-4457-a451-a6ba264ec298",
+    "name": "Hollow-City Scavenger",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:hollow-city-scavenger",
+    "imageUrl": "/images/heritages/upbringings/hollow-city-scavenger-graphic-v1.webp"
+  },
+  {
+    "id": "87b0e173-2219-425c-b901-8ce388364a61",
+    "name": "Night Census Taker",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:night-census-taker",
+    "imageUrl": "/images/heritages/upbringings/night-census-taker-graphic-v1.webp"
+  },
+  {
+    "id": "7df979cf-5125-4cd8-a74e-1d2f38ab5331",
+    "name": "Plague Camp Volunteer",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:plague-camp-volunteer",
+    "imageUrl": "/images/heritages/upbringings/plague-camp-volunteer-graphic-v1.webp"
+  },
+  {
+    "id": "0326267c-b06d-4b0a-a3f1-7e890d29a94c",
+    "name": "Oath Witness",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:oath-witness",
+    "imageUrl": "/images/heritages/upbringings/oath-witness-graphic-v1.webp"
+  },
+  {
+    "id": "bbf8c7f2-7547-43f4-a13c-9e656a1cd798",
+    "name": "Skirmisher",
+    "kind": "MANIFEST",
+    "sourceOrigin": "system",
+    "imageUrl": "/images/heritages/manifests/skirmisher-graphic-v1.webp"
+  },
+  {
+    "id": "cbe9acba-c3fd-4ea5-a37f-0b37cf70b0b4",
+    "name": "Mystic",
+    "kind": "MANIFEST",
+    "sourceOrigin": "system",
+    "imageUrl": "/images/heritages/manifests/mystic-graphic-v1.webp"
+  },
+  {
+    "id": "a73c1acc-b9d9-4561-af45-2ad3a1c30df7",
+    "name": "Artificer",
+    "kind": "MANIFEST",
+    "sourceOrigin": "system",
+    "imageUrl": "/images/heritages/manifests/artificer-graphic-v1.webp"
+  },
+  {
+    "id": "e9e614b4-4494-485e-8e5b-53ca7d43cb2b",
+    "name": "Field Medic",
+    "kind": "MANIFEST",
+    "sourceOrigin": "system:v13:heritage-shelf:manifest:field-medic",
+    "imageUrl": "/images/heritages/manifests/field-medic-graphic-v1.webp"
+  },
+  {
+    "id": "0827fac4-7616-43c3-b669-9db11c3b3aad",
+    "name": "Thread Surgeon",
+    "kind": "MANIFEST",
+    "sourceOrigin": "system:v13:heritage-shelf:manifest:thread-surgeon",
+    "imageUrl": "/images/heritages/manifests/thread-surgeon-graphic-v1.webp"
+  },
+  {
+    "id": "f91edd4d-34fe-4823-b721-7c1324768364",
+    "name": "Terrain Architect",
+    "kind": "MANIFEST",
+    "sourceOrigin": "system:v13:heritage-shelf:manifest:terrain-architect",
+    "imageUrl": "/images/heritages/manifests/terrain-architect-graphic-v1.webp"
+  },
+  {
+    "id": "0c6295ad-4276-4c10-a6d9-a48917279974",
+    "name": "Signal Captain",
+    "kind": "MANIFEST",
+    "sourceOrigin": "system:v13:heritage-shelf:manifest:signal-captain",
+    "imageUrl": "/images/heritages/manifests/signal-captain-graphic-v1.webp"
+  },
+  {
+    "id": "8aefd119-5417-4be2-ba61-638a55df95fe",
+    "name": "Veil Runner",
+    "kind": "MANIFEST",
+    "sourceOrigin": "system:v13:heritage-shelf:manifest:veil-runner",
+    "imageUrl": "/images/heritages/manifests/veil-runner-graphic-v1.webp"
+  },
+  {
+    "id": "5a901ebb-d9bf-4ccd-b3ac-d97593b0e3ca",
+    "name": "Orchard Tender",
+    "kind": "UPBRINGING",
+    "sourceOrigin": "system:v13:heritage-shelf:upbringing:orchard-tender",
+    "imageUrl": "/images/heritages/upbringings/orchard-tender-graphic-v1.webp"
+  }
+]

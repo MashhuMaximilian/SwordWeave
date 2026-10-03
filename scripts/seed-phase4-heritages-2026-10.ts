@@ -1,3 +1,4 @@
+import { seedOrigin } from "./srd-seed-identity";
 /** Curated 24/48/18 heritage shelf. Dry-run by default; --apply writes versioned content. */
 import { readFileSync } from "node:fs";
 import { and, eq } from "drizzle-orm";
@@ -123,7 +124,7 @@ async function main(): Promise<void> {
   const p = new Map<string, Primitive>();
   const pById = new Map(originalPrimitives.map(x => [x.id, x]));
   for (const row of originalPrimitives.filter(x => x.isPublic)) {
-    if (!p.has(row.name) || row.sourceOrigin?.startsWith("system") && !p.get(row.name)!.sourceOrigin?.startsWith("system")) p.set(row.name, row);
+    if (!p.has(row.name) || seedOrigin(row)?.startsWith("system") && !p.get(row.name)!.sourceOrigin?.startsWith("system")) p.set(row.name, row);
   }
   // Names with a legacy duplicate require an explicit, audited canonical id.
   for (const [name, id] of [["Broad Familiarity",22393],["Focused Presence (Global DC Modifier)",22391],["Verb Access Tier I",20]] as const) {
@@ -157,7 +158,7 @@ async function main(): Promise<void> {
   await withDatabaseTransaction(async () => {
     // A private generic parent captures the base authoring family for
     // occupational/narrative permissions, without adding a purchasable row.
-    let practical = originalPrimitives.find(x => x.sourceOrigin === `${prefix}practical-parent`);
+    let practical = originalPrimitives.find(x => seedOrigin(x) === `${prefix}practical-parent`);
     if (!practical) {
       const source = pById.get(21351)!;
       const candidate: Primitive = { ...source, id: 0, name: "Bounded Practical Permission", userId: null, isPublic: false,
@@ -177,7 +178,7 @@ async function main(): Promise<void> {
     pById.set(practical.id, practical);
     for (const idea of permissions) {
       const origin = `${prefix}permission:${slug(idea.name)}`;
-      const existing = originalPrimitives.find(x => x.sourceOrigin === origin);
+      const existing = originalPrimitives.find(x => seedOrigin(x) === origin);
       if (existing) { p.set(idea.name,existing); continue; }
       if (p.has(idea.name)) throw new Error(`Public primitive name collision ${idea.name}`);
       const parentSpec = parentFor(idea.name);
@@ -207,7 +208,7 @@ async function main(): Promise<void> {
     const e = new Map<string,Effect>();
     for (const idea of effectIdeas) {
       const origin = `${prefix}effect:${slug(idea.name)}`;
-      const existing = originalEffects.find(x=>x.sourceOrigin===origin);
+      const existing = originalEffects.find(x=>seedOrigin(x)===origin);
       if (!existing&&originalEffects.some(x=>x.name===idea.name&&x.isPublic)) throw new Error(`Effect name collision ${idea.name}`);
       const ids = unique(idea.primitives.map(name=>p.get(name)?.id ?? 0));
       if (ids.includes(0)) throw new Error(`Unresolved effect ${idea.name}`);
@@ -230,7 +231,7 @@ async function main(): Promise<void> {
     const c = new Map<string,Capability>();
     for (const idea of capabilityIdeas) {
       const origin = `${prefix}capability:${slug(idea.name)}`;
-      const existing=originalCaps.find(x=>x.sourceOrigin===origin);
+      const existing=originalCaps.find(x=>seedOrigin(x)===origin);
       if(!existing&&originalCaps.some(x=>x.name===idea.name&&x.isPublic))throw new Error(`Capability name collision ${idea.name}`);
       const prims=unique(idea.primitives.map(name=>p.get(name)?.id??0));
       const effectIds=unique((idea.effects??[]).map(name=>e.get(name)?.id??""));

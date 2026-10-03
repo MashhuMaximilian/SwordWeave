@@ -12,11 +12,13 @@ interface PortraitInputProps {
   onFrameChange?: (value: PortraitFrame) => void;
   characterName?: string;
   className?: string;
+  label?: string;
 }
 
 export function PortraitInput({
   value,
   onChange,
+  label = "Character portrait",
   frame = { x: 50, y: 50, zoom: 1 },
   onFrameChange,
   characterName,
@@ -103,11 +105,11 @@ export function PortraitInput({
           // Portraits may be authenticated local blob-proxy URLs or arbitrary
           // user links, so Next Image cannot safely predeclare their host.
           // eslint-disable-next-line @next/next/no-img-element
-          <img ref={imageRef} src={value} alt={characterName ? `${characterName} portrait` : "Character portrait"} draggable={false} style={portraitFrameStyle(frame)} />
+          <img ref={imageRef} src={value} alt={characterName ? `${characterName} portrait` : label} draggable={false} style={portraitFrameStyle(frame)} />
         ) : (
           <div className="sw-portrait-input__empty">
             <ImagePlus aria-hidden />
-            <strong>Character portrait</strong>
+            <strong>{label}</strong>
             <span>Drop an image here or choose a file</span>
           </div>
         )}
@@ -138,7 +140,7 @@ export function PortraitInput({
         />
         <label className="sw-portrait-input__url">
           <span><Link2 aria-hidden /> Or use an image link</span>
-          <input type="url" value={value.startsWith("/api/") ? "" : value} onChange={(event) => onChange(event.target.value)} placeholder="https://…" />
+          <input type="url" value={value.startsWith("/") ? "" : value} onChange={(event) => onChange(event.target.value)} placeholder="https://…" />
         </label>
       </div>
       {error ? <p className="sw-forge-error" role="alert">{error}</p> : null}

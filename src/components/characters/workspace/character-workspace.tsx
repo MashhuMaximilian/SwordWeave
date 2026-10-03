@@ -44,6 +44,7 @@ import {
 import type { SlotSource } from "@/lib/versions/slot-source";
 import { libraryFamilyLabel } from "@/components/library/library-market-rail";
 import { formatEquationValue } from "@/lib/engine/equation-formatter";
+import { lineageArtUrl } from "@/lib/heritage/lineage-art";
 import { IconDisplay } from "@/components/icons/icon-display";
 import { mechanicalDescriptionFromModifiers } from "@/lib/primitives/mechanical-rule";
 import { flipOperation } from "@/lib/engine/mirror";
@@ -1834,6 +1835,7 @@ function WorkspaceRow({
           </button>
           <span className="v12-source-medallion" aria-hidden="true">
             <IconDisplay
+              portraitUrl={lineageArtUrl({...node.data, name:node.name} as Parameters<typeof lineageArtUrl>[0])}
               iconSource={node.data["iconSource"] === "UPLOAD" ? "UPLOAD" : "GAME_ICONS"}
               iconKey={typeof node.data["iconKey"] === "string" && node.data["iconKey"] ? node.data["iconKey"] : String(node.data["kind"]).toUpperCase() === "LINEAGE" ? "lorc/dna2" : String(node.data["kind"]).toUpperCase() === "UPBRINGING" ? "delapouite/plant-roots" : "caro-asercion/tarot-11-justice"}
               iconUrl={typeof node.data["iconUrl"] === "string" ? node.data["iconUrl"] : null}

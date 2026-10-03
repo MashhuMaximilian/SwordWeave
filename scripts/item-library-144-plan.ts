@@ -1,3 +1,4 @@
+import { seedOrigin } from "./srd-seed-identity";
 import { readFileSync } from "node:fs";
 import { db } from "@/db/client";
 import {capabilities,capabilityEffects,capabilityPrimitives,effectPrimitives,effects,items,primitives} from "@/db/schema";
@@ -6,7 +7,7 @@ import {expansionPrimitives,expansionEffects,expansionCapabilities} from "./phas
 export const itemSlug=(name:string)=>name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 export async function planItemShelf(){
  const [ps,es,cs,eps,cps,ces,existing]=await Promise.all([db.select().from(primitives),db.select().from(effects),db.select().from(capabilities),db.select().from(effectPrimitives),db.select().from(capabilityPrimitives),db.select().from(capabilityEffects),db.select().from(items)]);
- const prefer=<T extends {name:string;isPublic:boolean;sourceOrigin:string|null}>(rows:T[])=>new Map(rows.filter(x=>x.isPublic).sort((a,b)=>Number(!!a.sourceOrigin?.startsWith("system"))-Number(!!b.sourceOrigin?.startsWith("system"))).map(x=>[x.name,x]));
+ const prefer=<T extends {name:string;isPublic:boolean;sourceOrigin:string|null}>(rows:T[])=>new Map(rows.filter(x=>x.isPublic).sort((a,b)=>Number(!!seedOrigin(a)?.startsWith("system"))-Number(!!seedOrigin(b)?.startsWith("system"))).map(x=>[x.name,x]));
  const p=prefer(ps),e=prefer(es),c=prefer(cs);
  const knownP=new Map(expansionPrimitives.map(x=>[x.name,x])),knownE=new Map(expansionEffects.map(x=>[x.name,x])),knownC=new Map(expansionCapabilities.map(x=>[x.name,x]));
  const iconJSON=JSON.parse(readFileSync("src/lib/icons/game-icons-index.json","utf8"));

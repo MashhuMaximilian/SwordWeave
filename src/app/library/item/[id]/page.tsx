@@ -1,3 +1,4 @@
+import { sourceDisplayLabel } from "@/lib/publishing/source-display";
 // =============================================================================
 // /library/item/[id] — public detail view for a library item
 // id format: `<type>:<id>` e.g. "PRIMITIVE:42", "CAPABILITY:abc-uuid",
@@ -542,6 +543,7 @@ function DetailShell({
   iconKey,
   iconUrl,
   iconColor,
+  portraitUrl,
 }: {
   children: React.ReactNode;
   backHref: string;
@@ -618,6 +620,7 @@ function DetailShell({
     forkedAt: Date | string;
   } | null;
   // Phase 8: per-entity iconography
+  portraitUrl?: string | null;
   iconSource?: "GAME_ICONS" | "UPLOAD" | null;
   iconKey?: string | null;
   iconUrl?: string | null;
@@ -646,14 +649,15 @@ function DetailShell({
           <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
             <div className="flex items-start gap-3 min-w-0 flex-1">
               {/* Phase 8: entity icon in the detail header. */}
-              {iconSource ? (
-                <span className="grid size-12 shrink-0 place-items-center rounded-full border border-[#a97830] bg-background/70 p-2 shadow-[inset_0_0_0_3px_rgba(8,13,20,0.75)]">
+              {iconSource || portraitUrl ? (
+                <span className={`sw-entity-medallion grid shrink-0 place-items-center rounded-full border border-[#a97830] bg-background/70 ${portraitUrl ? "size-28 overflow-hidden" : "size-12 p-2"}`}>
                   <IconDisplay
+                    portraitUrl={portraitUrl}
                     iconSource={iconSource}
                     iconKey={iconKey ?? null}
                     iconUrl={iconUrl ?? null}
                     iconColor={iconColor ?? "#ffffff"}
-                    size={32}
+                    size={portraitUrl ? 112 : 32}
                     className="border-0 shadow-none"
                     alt={name}
                   />
@@ -1046,7 +1050,7 @@ async function CapabilityDetail({
         <DataField label="Type" value={row.type} />
         <DataField label="Source" value={row.sourceType} />
         {row.sourceOrigin && (
-          <DataField label="Origin" value={row.sourceOrigin} />
+          <DataField label="Origin" value={sourceDisplayLabel(row.sourceOrigin) ?? "SRD"} />
         )}
       </section>
 
@@ -1325,6 +1329,7 @@ async function TemplateDetail({
       flagDistribution={flagDistribution}
       flagNotes={flagNotes}
       forkSource={forkSource}
+    portraitUrl={lineageArtUrl(row)}
     iconSource={row.iconSource}
     iconKey={row.iconKey}
     iconUrl={row.iconUrl}

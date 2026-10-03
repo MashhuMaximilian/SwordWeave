@@ -1,4 +1,5 @@
 "use client";
+import { sourceDisplayLabel } from "@/lib/publishing/source-display";
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -139,7 +140,7 @@ export function LibraryEffectsView({
               <h3 className="font-semibold">{effect.name}</h3>
               {effect.sourceOrigin && (
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Source: {effect.sourceOrigin}
+                  Source: {sourceDisplayLabel(effect.sourceOrigin)}
                 </p>
               )}
               {effect.narrativeDescription && (
