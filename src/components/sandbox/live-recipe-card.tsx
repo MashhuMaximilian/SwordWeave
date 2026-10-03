@@ -1,4 +1,5 @@
 "use client";
+import { collectMechanicalSummary } from "@/lib/primitives/mechanical-summary";
 import { sourceDisplayLabel } from "@/lib/publishing/source-display";
 
 import type { ReactNode } from "react";
@@ -63,6 +64,6 @@ export function LiveEffectRules({ effects }: { effects: LiveEffect[] }) {
 }
 
 export function LiveMechanicalSummary({slots}:{slots:LivePrimitiveSlot[]}) {
-  const rules = slots.map(slot => ({ text: slot.primitive.mechanicalOutputText || slot.primitive.narrativeRule, mechanical: Boolean(slot.primitive.mechanicalOutputText) })).filter(rule => Boolean(rule.text));
+  const rules = collectMechanicalSummary({ primitiveLinks: slots });
   return rules.length ? <section className="v12-live-mechanics" aria-label="Mechanical summary">{rules.map((rule,index)=><div data-readable-rule key={index}><Markdown copyRole={rule.mechanical ? "mechanical" : "narrative"}>{rule.text || ""}</Markdown></div>)}</section> : null;
 }

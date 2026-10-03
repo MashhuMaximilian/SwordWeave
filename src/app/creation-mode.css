@@ -1,0 +1,136 @@
+/* The two entry paths use the same engraved chassis as the guided forge. */
+body[data-ui="v12"] .sw-creation-choice {
+  max-width:1120px;
+  padding:clamp(24px,4vw,48px);
+  border:2px solid transparent;
+  border-radius:8px;
+  background:linear-gradient(145deg,#171c21,#080c11 74%) padding-box,
+    linear-gradient(130deg,#67421c 0%,#fff1b8 10%,#bd8842 24%,#626b70 51%,#f7d98f 78%,#865623 100%) border-box;
+  box-shadow:0 0 0 3px #07090c,0 20px 56px #0007,inset 0 1px #fff1b533;
+  color:var(--v12-soft);
+}
+body[data-ui="v12"] .sw-creation-choice__eyebrow {
+  display:block;
+  color:var(--v12-gold-hi);
+  font:500 12px/1.4 var(--font-system);
+  letter-spacing:.14em;
+}
+body[data-ui="v12"] .sw-creation-choice h2 {
+  max-width:24ch;
+  margin:12px 0 14px;
+  color:#fff1bd;
+  font:400 clamp(32px,3.8vw,48px)/1.08 var(--font-title);
+  letter-spacing:.025em;
+}
+body[data-ui="v12"] .sw-creation-choice > p {
+  margin:0;
+  max-width:65ch;
+  color:#d0c9bc;
+  font:400 18px/1.45 var(--font-body);
+}
+body[data-ui="v12"] .sw-creation-choice__options {
+  gap:22px;
+  margin-top:32px;
+}
+body[data-ui="v12"] .sw-creation-choice__options > button {
+  isolation:isolate;
+  overflow:hidden;
+  min-width:0;
+  min-height:270px;
+  padding:26px 28px 55px;
+  gap:13px;
+  border:1px solid transparent;
+  border-radius:5px;
+  background:linear-gradient(135deg,#272624,#111922 72%) padding-box,
+    var(--v12-brass-edge) border-box;
+  box-shadow:inset 0 1px #ffe3ad42,0 8px 24px #0004;
+  color:#f3ead5;
+  transition:border-color .15s,box-shadow .15s,background-color .15s;
+}
+body[data-ui="v12"] .sw-creation-choice__options > button:nth-child(2) {
+  background:linear-gradient(135deg,#252a2c,#111922 72%) padding-box,
+    var(--v12-silver-edge) border-box;
+}
+body[data-ui="v12"] .sw-creation-choice__options > button::before {
+  content:"";
+  position:absolute;
+  z-index:-1;
+  inset:0;
+  opacity:.45;
+  pointer-events:none;
+  background:linear-gradient(120deg,#efd19d14,transparent 50%),
+    linear-gradient(90deg,transparent calc(100% - 39px),#e3cf9b0d calc(100% - 39px));
+}
+body[data-ui="v12"] .sw-creation-choice__options > button:hover {
+  border-color:#e6c47d;
+  background:linear-gradient(135deg,#34312a,#151e27 72%) padding-box,
+    var(--v12-brass-edge) border-box;
+  box-shadow:inset 0 1px #fff1b54d,0 9px 28px #0007;
+}
+body[data-ui="v12"] .sw-creation-choice__options > button:focus-visible {
+  outline:3px solid var(--v12-teal);
+  outline-offset:5px;
+}
+body[data-ui="v12"] .sw-creation-choice__options > button > span {
+  width:100%;
+  padding-bottom:13px;
+  margin-bottom:2px;
+  border-bottom:1px solid #d5b47745;
+  color:#f2d58d;
+  font:500 11px/1.5 var(--font-system);
+  letter-spacing:.08em;
+}
+body[data-ui="v12"] .sw-creation-choice__options strong {
+  color:#fff1bd;
+  font:400 clamp(26px,2.7vw,34px)/1.15 var(--font-subtitle);
+  letter-spacing:.015em;
+}
+body[data-ui="v12"] .sw-creation-choice__options em {
+  color:#e2d7c0;
+  font:400 18px/1.3 var(--font-body);
+  font-style:normal;
+}
+body[data-ui="v12"] .sw-creation-choice__options small {
+  max-width:37ch;
+  color:#beb9ae;
+  font:400 13px/1.5 var(--font-system);
+}
+body[data-ui="v12"] .sw-creation-choice__options svg {
+  right:25px;
+  bottom:22px;
+  width:24px;
+  height:24px;
+  color:#f2d58d;
+}
+@media (max-width:767px) {
+  body[data-ui="v12"] .sw-creation-choice { padding:24px 18px; }
+  body[data-ui="v12"] .sw-creation-choice__options { grid-template-columns:minmax(0,1fr);gap:16px;margin-top:24px; }
+  body[data-ui="v12"] .sw-creation-choice__options > button { min-height:224px;padding:22px 22px 48px;gap:11px; }
+  body[data-ui="v12"] .sw-creation-choice h2 { font-size:32px; }
+}
+
+/* Native option popups do not consistently inherit the app's dark field paint.
+   Give the browser a dark palette and explicit paired foreground/background.
+   This applies only to native selects, never custom listboxes or menus. */
+body[data-ui="v12"] select {
+  color-scheme:dark;
+}
+body[data-ui="v12"] select :is(option,optgroup) {
+  color:#f4f1e9;
+  background-color:#141b23;
+}
+body[data-ui="v12"] select option:disabled {
+  color:#a8adb4;
+}
+body[data-ui="v12"] select option:checked {
+  color:#f8f4e9;
+  background-color:#254547;
+}
+@media (forced-colors:active) {
+  body[data-ui="v12"] select { color-scheme:light dark; }
+  body[data-ui="v12"] select :is(option,optgroup) { color:CanvasText;background-color:Canvas; }
+  body[data-ui="v12"] select option:disabled { color:GrayText; }
+  body[data-ui="v12"] select option:checked { color:HighlightText;background-color:Highlight; }
+  body[data-ui="v12"] .sw-creation-choice__options > button { border-color:ButtonBorder; }
+  body[data-ui="v12"] .sw-creation-choice__options > button:focus-visible { outline-color:Highlight; }
+}

@@ -71,7 +71,7 @@ export function TemplatePreview({ row }: { row: HeritageRow }) {
           />
         ) : null}
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {kindLabel(row.kind)} Template
+          {kindLabel(row.kind)}
         </p>
         <h2 className="text-2xl font-semibold leading-tight">{row.name}</h2>
         <div className="flex flex-wrap items-center gap-2 text-xs">

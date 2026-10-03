@@ -27,6 +27,7 @@
  */
 
 import { and, eq, inArray } from "drizzle-orm";
+import { adoptCreationPurchases } from "@/lib/character/creation-primitives";
 import { withExistingTransaction, type db as DbType } from "@/db/client";
 import { readWorkspace } from "@/lib/character/workspace/read";
 import { materializeWorkspace } from "@/lib/character/workspace/materialize";
@@ -450,13 +451,10 @@ export async function saveCharacterBundles(
     const links=await tx.select().from(effectPrimitives).where(inArray(effectPrimitives.effectId,standaloneEffects.map(e=>e.effectId)));
     for(const effect of standaloneEffects)expansionInput.effects.push({id:effect.effectId,source:effect.category as BundleExpansionInput['effects'][number]['source'],primitiveLinks:links.filter(p=>p.effectId===effect.effectId).map(p=>({primitiveId:p.primitiveId,isMirrored:p.isMirrored}))});
   }
-  const expansion = expandBundles(expansionInput);
-  const combinedDirectSources=new Map<number,typeof previousPrimitives[number]['source']>();
-  for(const previous of previousPrimitives.filter(p=>p.directSource&&!p.isMirrored)){
-    const inherited=expansion.primitives.find(p=>p.primitiveId===previous.primitiveId&&!p.isMirrored&&(p.originHeritageId||p.originCapabilityId||p.originEffectId));
-    const direct=expansion.primitives.findIndex(p=>p.primitiveId===previous.primitiveId&&!p.isMirrored&&!p.originHeritageId&&!p.originCapabilityId&&!p.originEffectId);
-    if(inherited&&direct>=0){combinedDirectSources.set(previous.primitiveId,expansion.primitives[direct]!.source);expansion.primitives.splice(direct,1);}
-  }
+  const expansion = adoptCreationPurchases(expandBundles(expansionInput));
+  const combinedDirectSources = new Map(
+    expansion.primitives.flatMap(p => p.directSource ? [[p.primitiveId, p.directSource] as const] : []),
+  );
   const claimedInstances=new Set<string>();
 
   // -----------------------------------------------------------------

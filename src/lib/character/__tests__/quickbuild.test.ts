@@ -66,10 +66,10 @@ describe("Quickbuild bundle accounting and size", () => {
       size: "SMALL",
     });
   });
-  it("retains a separately purchased occurrence", () => {
+  it("reuses a direct package reference already owned through a heritage", () => {
     expect(quickbuildCost(catalog, all, [1])).toMatchObject({
-      positiveCost: 24,
-      primitiveCount: 4,
+      positiveCost: 18,
+      primitiveCount: 3,
     });
   });
   it("keeps a direct mirrored occurrence separate from inherited paid rules", () => {
@@ -130,7 +130,7 @@ describe("Quickbuild bundle accounting and size", () => {
     );
     expect(pick.UPBRINGING).toBe("u");
     expect(pick.MANIFEST).toBe("m");
-    expect(pick.LINEAGE).toBe("");
+    expect(pick.LINEAGE).toBe("l");
   });
   it("counts optional packages and weaknesses when shuffling", () => {
     const pick = shuffleQuickbuild(
@@ -144,7 +144,7 @@ describe("Quickbuild bundle accounting and size", () => {
       4,
     );
     expect(quickbuildCost(catalog, pick, [1], [2])).toMatchObject({
-      netCost: 20,
+      netCost: 14,
       mirrorCredit: 4,
     });
   });

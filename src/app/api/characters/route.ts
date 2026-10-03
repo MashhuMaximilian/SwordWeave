@@ -1,4 +1,5 @@
 import { creationSize } from "@/lib/heritage/lineage-size";
+import { adoptCreationPurchases, FREE_CREATION_PRIMITIVES, missingCreationAccess } from "@/lib/character/creation-primitives";
 import { parseBackstory } from "@/lib/character/character-backstory";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
@@ -24,6 +25,7 @@ import {
 import { validateAttributes, type Attribute } from "@/lib/engine/practices";
 import { validateMirrorSet } from "@/lib/api/volatility";
 import { cumulativeBuForLevel } from "@/lib/engine/bu";
+import { creationBudget } from "@/lib/character/creation-budget";
 import { autoPublishOnCreate } from "@/lib/publishing/auto-publish";
 import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 import {
@@ -136,8 +138,9 @@ export async function GET(request: Request) {
  *   - buBudget (optional, default null) — when set, used as the
  *     startingBu override (buBudget mode). Server validates the
  *     typed value against cumulative(level) and the debt ceiling.
- *   - buSpent (default 0) — must be <= max(startingBu,
- *     cumulative(level)) + dm_bonus_bu
+ *   - buSpent — derived from selected primitive purchases, not trusted
+ *     from the caller. After drawback credit it may exceed the agreed
+ *     budget, but cannot exceed cumulative(level + 1) + dm_bonus_bu.
  *   - dmBonusBu (default 0)
  *   - enforceTemplateCaps (default false)
  *   - isPublic (default false)
@@ -234,21 +237,6 @@ export async function POST(request: Request) {
     // wins when it exceeds canon for that implied level).
     const progressionPool =
       Math.max(startingBu, cumulativeBuForLevel(level)) + dmBonusBu;
-    // Phase 8.1 batch 13.6 follow-up (Mashu 2026-07-22):
-        // "When a player is above budget soft warning only."
-        //
-        // Migration 0047 dropped the DB CHECK constraint so this soft-warn
-        // path is now the only enforcement. The client renders a red BU
-        // footer when buSpent > progressionPool; the server just logs so
-        // we can spot bad builds in dev. Mirror debt still hard-fails
-        // (see maxBuDebtForLevel on client + server) because that breaks
-        // canon mechanics.
-        if (!quick && buSpent > progressionPool) {
-          console.warn(
-            `[characters POST] soft warning: buSpent=${buSpent} > progressionPool=${progressionPool} (character "${name}")`,
-          );
-        }
-
     const enforceTemplateCaps = Boolean(values["enforceTemplateCaps"]);
     const isPublic = Boolean(values["isPublic"]);
     const sourceOrigin = String(values["sourceOrigin"] ?? "").trim() || "manual";
@@ -680,7 +668,30 @@ export async function POST(request: Request) {
     }
 
     // Run the expander.
-    const expansion = expandBundles(expansionInput);
+    let expansion = adoptCreationPurchases(expandBundles(expansionInput));
+    const selectedIds = [...new Set(expansion.primitives.map(p => p.primitiveId))];
+    const selectedDefinitions = selectedIds.length ? await db.select({ id: primitives.id, name: primitives.name, category: primitives.category, buCost: primitives.buCost, mirrorBuCredit: primitives.mirrorBuCredit, isPublic: primitives.isPublic, userId: primitives.userId }).from(primitives).where(inArray(primitives.id, selectedIds)) : [];
+    const missingAccess = missingCreationAccess(expansion, selectedDefinitions);
+    if (missingAccess.length) return NextResponse.json({ error: `Choose a ${missingAccess.join(" and a ")} in starting access or a heritage before creating your character.` }, { status: 400 });
+
+    // Touch and the minor output die are free foundations, not a compulsory
+    // paid package. A selected higher tier already covers that category.
+    const positiveIds = new Set(expansion.primitives.filter(p => !p.isMirrored).map(p => p.primitiveId));
+    const positiveCategories = new Set(selectedDefinitions.filter(p => positiveIds.has(p.id)).map(p => p.category));
+    const missingFree = FREE_CREATION_PRIMITIVES.filter(name => !positiveCategories.has(name === "Touch Range" ? "RANGE" : "INTENSITY_DICE"));
+    const freeCandidates = missingFree.length ? await db.select({ id: primitives.id, name: primitives.name, category: primitives.category, buCost: primitives.buCost, mirrorBuCredit: primitives.mirrorBuCredit, isPublic: primitives.isPublic, userId: primitives.userId, sourceOrigin: primitives.sourceOrigin }).from(primitives).where(and(inArray(primitives.name, [...missingFree]), eq(primitives.buCost, 0), eq(primitives.isPublic, true))) : [];
+    const freeRows = missingFree.flatMap(name => {
+      const canonicalId = name === "Touch Range" ? 32 : 19;
+      const category = name === "Touch Range" ? "RANGE" : "INTENSITY_DICE";
+      const candidates = freeCandidates.filter(p => p.name === name && p.category === category && p.buCost === 0 && p.isPublic);
+      // Public forks may share names; prefer the stable SRD definition instead
+      // of granting arbitrary community content or failing on a duplicate.
+      const canonical = candidates.find(p => p.id === canonicalId) ?? candidates.find(p => p.sourceOrigin === "SRD" || p.userId === null);
+      return canonical ? [canonical] : [];
+    });
+    if (freeRows.length !== missingFree.length) return NextResponse.json({ error: "The free Touch Range and Minor Die Block foundations are unavailable. Please try again after the library is repaired." }, { status: 400 });
+    for (const row of freeRows) expansionInput.primitives.push({ primitiveId: row.id, source: "PERSONAL", isMirrored: false });
+    if (freeRows.length) expansion = adoptCreationPurchases(expandBundles(expansionInput));
     const expandedPrimitiveIds = expansion.primitives.map(
       (p) => p.primitiveId,
     );
@@ -688,11 +699,24 @@ export async function POST(request: Request) {
       (c) => c.capabilityId,
     );
 
-    if (quick && expandedPrimitiveIds.length) {
-      const costRows = await db.select({id:primitives.id,buCost:primitives.buCost,mirrorBuCredit:primitives.mirrorBuCredit,isPublic:primitives.isPublic,userId:primitives.userId}).from(primitives).where(inArray(primitives.id,expandedPrimitiveIds));
+    let mirrorCredit = 0;
+    if (expandedPrimitiveIds.length) {
+      const expandedIds = new Set(expandedPrimitiveIds);
+      const costRows = [...new Map([...selectedDefinitions, ...freeRows].filter(p => expandedIds.has(p.id)).map(p => [p.id, p])).values()];
       if (new Set(expandedPrimitiveIds).size !== costRows.length || expansionInput.primitives.some(slot => !costRows.some(row => row.id === slot.primitiveId && (row.isPublic || row.userId === userId)))) return NextResponse.json({error:"A selected starting primitive is unavailable."},{status:400});
-      buSpent = summarizeExpansionCost(expansion,new Map(costRows.map(p=>[p.id,p.buCost])),new Map(costRows.map(p=>[p.id,p.mirrorBuCredit]))).positiveCost;
-    } else if (quick) buSpent=0;
+      const costs = summarizeExpansionCost(expansion,new Map(costRows.map(p=>[p.id,p.buCost])),new Map(costRows.map(p=>[p.id,p.mirrorBuCredit])));
+      buSpent = costs.positiveCost;
+      mirrorCredit = costs.mirrorCredit;
+    } else buSpent=0;
+
+    const budgetStatus = creationBudget({ level, budget: progressionPool, positiveSpent: buSpent, mirrorCredit, dmBonusBu });
+    if (budgetStatus.aboveNextLevel) {
+      return NextResponse.json({
+        error: `This build exceeds the next-level budget of ${budgetStatus.nextLevelBudget} BU after drawback credit. Reduce purchases or choose a higher level.`,
+        nextLevelBudget: budgetStatus.nextLevelBudget,
+        netSpent: budgetStatus.netSpent,
+      }, { status: 400 });
+    }
 
     // Validate volatility ceiling BEFORE writing (fail fast).
     // We validate against the EXPANDED primitive set so any
@@ -793,6 +817,7 @@ export async function POST(request: Request) {
               originHeritageId: p.originHeritageId,
               originCapabilityId: p.originCapabilityId,
               originEffectId: p.originEffectId,
+              directSource: p.directSource ?? null,
             };
           }),
         );

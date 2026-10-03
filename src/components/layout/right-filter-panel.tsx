@@ -122,6 +122,7 @@ export function RightFilterPanel() {
       {/* Panel */}
       <aside
         ref={panelRef}
+        style={!filterPanelOpen ? { display: "none" } : undefined}
         role="dialog"
         aria-modal={filterPanelOpen}
         aria-hidden={!filterPanelOpen}

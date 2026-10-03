@@ -69,6 +69,7 @@ import { loadLibraryFlagCounts } from "@/lib/engagement/library-flag-counts";
 import { primitiveMechanicFacets } from "./primitive-discovery-facets";
 import { sortLibraryItems } from "./sort-library-items";
 import type { HardModifier } from "@/types/swordweave";
+import { computeTransitiveBu } from "@/lib/engine/transitive-bu";
 
 export type LibrarySort =
   | "LIKES"
@@ -1435,6 +1436,14 @@ async function fetchItems(q: LibraryFetchQuery): Promise<LibraryItem[]> {
 
   return rows.map((r) => {
     const icon = resolveIcon(r);
+    // Match ItemBody: direct primitives, capabilities and their effects,
+    // then direct effects. The stored item cost is the additional cost.
+    const pathRank = (path: LibraryCompositionPath) => path.containers.length === 0 ? 0
+      : path.containers[0]?.targetType === "CAPABILITY" ? path.containers.length : 3;
+    const itemComposition = computeTransitiveBu({ primitiveLinks:
+      [...(compositionPaths.get(r.id) ?? [])].sort((a, b) => pathRank(a) - pathRank(b))
+        .map(path => ({ primitiveId: path.primitiveId, quantity: path.quantity,
+          primitive: { id: path.primitiveId, buCost: path.buCost } })) });
     return {
       id: `ITEM:${r.id}`,
       targetType: "ITEM" as const,
@@ -1445,7 +1454,7 @@ async function fetchItems(q: LibraryFetchQuery): Promise<LibraryItem[]> {
       compositionPaths: compositionPaths.get(r.id) ?? [],
       verboseDescription: r.description || null,
       category: r.itemType,
-      buCost: r.buCost,
+      buCost: r.buCost + Math.abs(itemComposition.transitiveBu),
       authorId: r.userId ?? null,
       authorUsername: null,
       authorDisplayName: null,

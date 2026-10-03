@@ -60,6 +60,21 @@ function graph(edges: WorkspaceEdge[]): WorkspaceGraph {
   };
 }
 describe("membership cost previews", () => {
+  it("charges only the new 30 BU in a 40 BU capability when its shared 10 BU rule is owned", () => {
+    const before = graph([direct]);
+    before.nodes[0]!.bu = 10;
+    const after = structuredClone(before);
+    after.nodes.push({ ...after.nodes[0]!, key: "primitive:2", id: "2", bu: 30, name: "New rule" });
+    after.edges.push(bundle, member, { ...member, id: "new-rule", child: "primitive:2" });
+    expect(membershipCostChange(before, after).characterBuDelta).toBe(30);
+  });
+  it("counts a shared rule supplied by two bundles only once", () => {
+    const before = graph([bundle, member]);
+    const after = structuredClone(before);
+    after.nodes.push({ ...after.nodes[1]!, id: "second", key: "effect:second" });
+    after.edges.push({ ...bundle, id: "second-bundle", child: "effect:second" }, { ...member, id: "second-member", parent: "effect:second" });
+    expect(membershipCostChange(before, after).characterBuDelta).toBe(0);
+  });
   it("reuses a direct piece when it gains a bundle supply", () =>
     expect(
       membershipCostChange(graph([direct]), graph([direct, bundle, member]))

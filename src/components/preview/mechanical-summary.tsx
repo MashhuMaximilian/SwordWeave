@@ -7,7 +7,7 @@ export function MechanicalSummary({ row }: { row: unknown }) {
   if (!rules.length) return null;
   return <details className="sw-mechanical-summary" open>
     <summary><span>Mechanical summary</span><span>{rules.length} {rules.length === 1 ? "rule" : "rules"}</span></summary>
-    <ul>{rules.map((rule, index) => <li key={`${rule.path}:${index}`} title={rule.path}>
+    <ul>{rules.map((rule, index) => <li key={`${rule.path}:${index}`} title={rule.path} data-copy={rule.mechanical ? "mechanical" : "narrative"}>
       <Markdown copyRole={rule.mechanical ? "mechanical" : "narrative"}>{rule.text}</Markdown>
       {rule.quantity > 1 || rule.mirrored ? <small>{[rule.quantity > 1 ? `×${rule.quantity}` : "", rule.mirrored ? "Mirrored" : ""].filter(Boolean).join(" · ")}</small> : null}
     </li>)}</ul>

@@ -1,5 +1,7 @@
 "use client";
 import { CHARACTER_SIZES } from "@/lib/heritage/lineage-size";
+import { SIZE_BASE_SPEED, SIZE_CAPACITY } from "@/lib/engine/encumbrance";
+import "@/app/heritage-author-identity.css";
 import { PhonePiecePicker } from "./phone-piece-picker";
 import { PhonePieceDetails } from "./phone-piece-details";
 import { readJsonResponse } from "@/lib/http/read-json-response";
@@ -712,48 +714,60 @@ export function HeritageForm({
 
         </AuthorChapter>
         <AuthorChapter id="identity" title="Identity">
-      {form.kind === "LINEAGE" ? <label className="grid gap-2 text-sm">Default size
-        <select value={form.defaultSize ?? "MEDIUM"} onChange={event => updateForm("defaultSize", event.target.value)} className="rounded-md border border-border bg-background p-2">
-          {CHARACTER_SIZES.map(size => <option key={size} value={size}>{size.charAt(0) + size.slice(1).toLowerCase()}</option>)}
-        </select>
-        <span className="text-xs text-muted-foreground">New Quickbuild characters use this size. Size primitives can change it later.</span>
-      </label> : null}
-      {/* Phase 8: per-entity iconography */}
-      <IconSlot
-        appearance="medallion"
-        iconSource={(form.iconSource as IconSource | null) ?? null}
-        iconKey={form.iconKey}
-        iconUrl={form.iconUrl}
-        iconColor={form.iconColor}
-        onChange={(next) =>
-          setForm({
-            ...form,
-            iconSource: next.iconSource,
-            iconKey: next.iconKey ?? null,
-            iconUrl: next.iconUrl ?? null,
-            iconColor: next.iconColor,
-          })
-        }
-        size={56}
-        label="Icon"
-        helper="Pick from game-icons.net or upload your own."
-      />
-
-      <label className="block text-sm font-medium">
-        Name
-        <input
-          className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
-          value={form.name}
-          onChange={(e) => updateForm("name", e.target.value)}
-          placeholder={`e.g. ${form.kind === "LINEAGE" ? "High Elf" : form.kind === "UPBRINGING" ? "Sellsword" : "Glass Cannon Mage"}`}
-          required
+      <section aria-label="Heritage identity" className="sw-heritage-identity">
+        <PortraitInput
+          value={form.imageUrl}
+          onChange={(value) => updateForm("imageUrl", value)}
+          characterName={form.name}
+          label="Heritage portrait"
+          frame={{ x: 50, y: 20, zoom: 1 }}
+          layout="identity"
+          identityFields={<>
+            <label className="sw-heritage-identity__field">
+              <span>Name</span>
+              <input
+                value={form.name}
+                onChange={(event) => updateForm("name", event.target.value)}
+                placeholder={`e.g. ${form.kind === "LINEAGE" ? "Ironborn" : form.kind === "UPBRINGING" ? "Sellsword" : "Stormweaver"}`}
+                required
+              />
+            </label>
+            {form.kind === "LINEAGE" ? <label className="sw-heritage-identity__field">
+              <span>Default size</span>
+              <select value={form.defaultSize ?? "MEDIUM"} onChange={event => updateForm("defaultSize", event.target.value)}>
+                {CHARACTER_SIZES.map(size => <option key={size} value={size}>
+                  {size.charAt(0) + size.slice(1).toLowerCase()} · {SIZE_CAPACITY[size]} Load · {SIZE_BASE_SPEED[size]} ft walk · {Math.ceil(SIZE_BASE_SPEED[size] / 2)} ft swim/climb
+                </option>)}
+              </select>
+              <small>
+                {CHARACTER_SIZES.filter(size => size === (form.defaultSize ?? "MEDIUM")).map(size => <span key={size}>
+                  {SIZE_CAPACITY[size]} base Load · {SIZE_BASE_SPEED[size]} ft walk · {Math.ceil(SIZE_BASE_SPEED[size] / 2)} ft swim/climb. {" "}
+                </span>)}
+                Physical and primitives can add to these values. Quickbuild inherits this size.
+              </small>
+            </label> : null}
+            <p className="sw-heritage-identity__hint">A portrait keeps its original colors. Leave it empty to use the icon.</p>
+          </>}
         />
-      </label>
-
-      <section aria-label="Heritage portrait" className="sw-heritage-art-input">
-        <h3 className="text-sm font-medium">Portrait (optional)</h3>
-        <p className="text-xs text-muted-foreground">Use a portrait instead of the icon. Uploaded images and image links keep their original colors.</p>
-        <PortraitInput value={form.imageUrl} onChange={(value) => updateForm("imageUrl", value)} characterName={form.name} label="Heritage portrait" frame={{x:50,y:20,zoom:1}} />
+        <div className="sw-heritage-identity__icon">
+          <IconSlot
+            appearance="medallion"
+            iconSource={(form.iconSource as IconSource | null) ?? null}
+            iconKey={form.iconKey}
+            iconUrl={form.iconUrl}
+            iconColor={form.iconColor}
+            onChange={(next) => setForm({
+              ...form,
+              iconSource: next.iconSource,
+              iconKey: next.iconKey ?? null,
+              iconUrl: next.iconUrl ?? null,
+              iconColor: next.iconColor,
+            })}
+            size={40}
+            label="Fallback icon"
+            helper="Used when there is no portrait."
+          />
+        </div>
       </section>
 
       <label className="block text-sm font-medium">

@@ -7,6 +7,7 @@ import {
   parseLineageSize,
   type CharacterSize,
 } from "@/lib/heritage/lineage-size";
+import { adoptCreationPurchases } from "./creation-primitives";
 
 export const QUICKBUILD_KINDS = ["LINEAGE", "UPBRINGING", "MANIFEST"] as const;
 export type QuickbuildKind = (typeof QUICKBUILD_KINDS)[number];
@@ -18,6 +19,7 @@ export const EMPTY_QUICKBUILD: QuickbuildSelection = {
 };
 export interface QuickbuildPrimitive {
   id: number;
+  category?: string;
   buCost: number;
   mirrorBuCredit: number;
 }
@@ -27,6 +29,14 @@ export type QuickbuildHeritage = BundleExpansionInput["heritages"][number] & {
   imageUrl: string | null;
   defaultSize: CharacterSize | null;
   cost: number;
+  rules?: Array<{
+    primitiveId: number;
+    name: string;
+    text: string;
+    mechanical: boolean;
+    source: "primitive" | "capability" | "effect";
+    isMirrored: boolean;
+  }>;
 };
 export interface QuickbuildCatalog {
   heritages: QuickbuildHeritage[];
@@ -45,7 +55,7 @@ export function quickbuildCost(
     );
     return row ? [row] : [];
   });
-  const expansion = expandBundles({
+  const expansion = adoptCreationPurchases(expandBundles({
     heritages: selected,
     capabilities: [],
     effects: [],
@@ -61,7 +71,7 @@ export function quickbuildCost(
         isMirrored: true,
       })),
     ],
-  });
+  }));
   return {
     ...summarizeExpansionCost(
       expansion,
@@ -76,6 +86,13 @@ export function quickbuildCost(
   };
 }
 
+export interface QuickbuildShuffleLimits {
+  mode: "total" | "each";
+  /** Null uses the character's current BU budget. */
+  bu: number | null;
+  overrides: Partial<Record<QuickbuildKind, number>>;
+}
+
 /** Fits the joint bundle cost, including shared inherited rules and optional direct purchases. */
 export function shuffleQuickbuild(
   catalog: QuickbuildCatalog,
@@ -86,10 +103,19 @@ export function shuffleQuickbuild(
   only?: QuickbuildKind,
   random = Math.random,
   maxMirrorCredit = Infinity,
+  limits?: QuickbuildShuffleLimits,
 ): QuickbuildSelection {
   const affordable = (selection: QuickbuildSelection) => {
     const cost = quickbuildCost(catalog, selection, direct, mirrored);
-    return cost.netCost <= budget && cost.mirrorCredit <= maxMirrorCredit;
+    const limit = limits?.bu ?? budget;
+    const heritageCost = quickbuildCost(catalog, selection).netCost;
+    const withinTotal = limits?.mode !== "total" || heritageCost <= limit;
+    const withinEach = (only ? [only] : QUICKBUILD_KINDS).every(kind => {
+      const cap = limits?.overrides[kind] ?? (limits?.mode === "each" ? limit : Infinity);
+      const heritage = catalog.heritages.find(h => h.id === selection[kind] && h.kind === kind);
+      return !heritage || heritage.cost <= cap;
+    });
+    return cost.netCost <= budget && cost.mirrorCredit <= maxMirrorCredit && withinTotal && withinEach;
   };
   const kinds = only ? [only] : [...QUICKBUILD_KINDS];
   let best = only ? { ...current } : { ...EMPTY_QUICKBUILD };

@@ -12,6 +12,7 @@ import {
 } from "@/db/schema";
 import { lineageArtUrl } from "@/lib/heritage/lineage-art";
 import { parseLineageSize } from "@/lib/heritage/lineage-size";
+import { mirrorConsequence } from "@/lib/character/mirror-suggestions";
 import {
   quickbuildCost,
   EMPTY_QUICKBUILD,
@@ -91,14 +92,26 @@ export async function GET() {
     ? await db
         .select({
           id: primitives.id,
+          category: primitives.category,
+          mechanicalRule: primitives.mechanicalRule,
           buCost: primitives.buCost,
           mirrorBuCredit: primitives.mirrorBuCredit,
+          name: primitives.name,
+          mechanicalOutputText: primitives.mechanicalOutputText,
+          narrativeRule: primitives.narrativeRule,
+          hardModifiers: primitives.hardModifiers,
+          mirrorVector: primitives.mirrorVector,
         })
         .from(primitives)
         .where(inArray(primitives.id, primitiveIds))
     : [];
   const catalog: QuickbuildCatalog = {
-    primitives: costs,
+    primitives: costs.map(({ id, category, buCost, mirrorBuCredit }) => ({
+      id,
+      category,
+      buCost,
+      mirrorBuCredit,
+    })),
     heritages: rows.map((row) => ({
       id: row.id,
       kind: row.kind,
@@ -135,11 +148,36 @@ export async function GET() {
         })),
     })),
   };
-  for (const h of catalog.heritages)
-    h.cost = quickbuildCost(catalog, {
+  const rulesById = new Map(costs.map((p) => [p.id, p]));
+  for (const h of catalog.heritages) {
+    const resolved = quickbuildCost(catalog, {
       ...EMPTY_QUICKBUILD,
       [h.kind]: h.id,
-    }).netCost;
+    });
+    h.cost = resolved.netCost;
+    h.rules = resolved.expansion.primitives.flatMap((slot) => {
+      const p = rulesById.get(slot.primitiveId);
+      if (!p) return [];
+      const descriptive = (p.mechanicalRule as { family?: string } | null)?.family === "DESCRIPTIVE";
+      const mechanicalText = descriptive ? "" : p.mechanicalOutputText.trim();
+      return [
+        {
+          primitiveId: p.id,
+          name: p.name,
+          mechanical: !descriptive && Boolean(mechanicalText || p.hardModifiers.length),
+          text: slot.isMirrored
+            ? mirrorConsequence(p)
+            : mechanicalText || p.narrativeRule.trim() || p.mechanicalOutputText.trim() || p.name,
+          source: slot.originEffectId
+            ? ("effect" as const)
+            : slot.originCapabilityId
+              ? ("capability" as const)
+              : ("primitive" as const),
+          isMirrored: slot.isMirrored,
+        },
+      ];
+    });
+  }
   return NextResponse.json(catalog, {
     headers: { "Cache-Control": "private, max-age=60" },
   });

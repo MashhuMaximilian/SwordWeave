@@ -1,4 +1,5 @@
 "use client";
+import { heritageKindLabel, isHeritageKind } from "@/lib/heritage/labels";
 
 // =============================================================================
 // LibrarySplitView — two-pane resizable split for /library/browse.
@@ -100,7 +101,7 @@ export function LibrarySplitView({
           title={selectedItem?.name ?? "Preview"}
           {...(selectedItem
             ? {
-                subtitle: `${selectedItem.targetType.toLowerCase()} · ${formatKind(selectedItem.category)}`,
+                subtitle: isHeritageKind(selectedItem.targetType) ? heritageKindLabel(selectedItem.targetType) : `${selectedItem.targetType.toLowerCase()} · ${formatKind(selectedItem.category)}`,
               }
             : {})}
           size="lg"

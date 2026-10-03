@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, type ReactNode } from "react";
 import { ImagePlus, Link2, Loader2, Minus, Move, Plus, RotateCcw, Upload, X } from "lucide-react";
 import { portraitFrameStyle, type PortraitFrame } from "@/lib/character/portrait-frame";
 export type { PortraitFrame } from "@/lib/character/portrait-frame";
@@ -13,6 +13,9 @@ interface PortraitInputProps {
   characterName?: string;
   className?: string;
   label?: string;
+  /** Fields placed alongside the portrait, before its URL/upload controls. */
+  identityFields?: ReactNode;
+  layout?: "stacked" | "identity";
 }
 
 export function PortraitInput({
@@ -23,6 +26,8 @@ export function PortraitInput({
   onFrameChange,
   characterName,
   className = "",
+  identityFields,
+  layout = "stacked",
 }: PortraitInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -57,7 +62,8 @@ export function PortraitInput({
   }, [onChange]);
 
   return (
-    <div className={`sw-portrait-input ${className}`}>
+    <div className={`sw-portrait-input${layout === "identity" ? " sw-portrait-input--identity" : ""} ${className}`}>
+      <div className="sw-portrait-input__art">
       <div
         ref={previewRef}
         className={`sw-portrait-input__preview${fileDragging ? " is-dragging" : ""}${panning ? " is-panning" : ""}`}
@@ -123,6 +129,9 @@ export function PortraitInput({
 
       {value && onFrameChange ? <div className="sw-portrait-input__framing"><span>Frame portrait</span><button type="button" onClick={() => onFrameChange({ ...frame, zoom: Math.max(0.5, Math.round((frame.zoom - 0.1) * 10) / 10) })} aria-label="Zoom out"><Minus aria-hidden /></button><input type="range" min="0.5" max="3" step="0.05" value={frame.zoom} style={{ "--portrait-progress": `${((frame.zoom - 0.5) / 2.5) * 100}%` } as React.CSSProperties} onChange={(event) => onFrameChange({ ...frame, zoom: Number(event.target.value) })} aria-label="Portrait zoom" /><button type="button" onClick={() => onFrameChange({ ...frame, zoom: Math.min(3, Math.round((frame.zoom + 0.1) * 10) / 10) })} aria-label="Zoom in"><Plus aria-hidden /></button><output>{Math.round(frame.zoom * 100)}%</output><button type="button" onClick={() => onFrameChange({ x: 50, y: 50, zoom: 1 })} aria-label="Reset portrait framing"><RotateCcw aria-hidden /></button></div> : null}
 
+      </div>
+      <div className="sw-portrait-input__details">
+      {identityFields}
       <div className="sw-portrait-input__controls">
         <button type="button" className="sw-metal-button sw-metal-button--secondary" onClick={() => inputRef.current?.click()} disabled={uploading}>
           {uploading ? <Loader2 className="animate-spin" aria-hidden /> : <Upload aria-hidden />}
@@ -132,7 +141,7 @@ export function PortraitInput({
           ref={inputRef}
           type="file"
           accept="image/png,image/jpeg,image/webp,image/gif"
-          className="sr-only"
+          style={{ display: "none" }}
           onChange={(event) => {
             const file = event.target.files?.[0];
             if (file) void upload(file);
@@ -144,6 +153,7 @@ export function PortraitInput({
         </label>
       </div>
       {error ? <p className="sw-forge-error" role="alert">{error}</p> : null}
+      </div>
     </div>
   );
 }

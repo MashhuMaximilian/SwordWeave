@@ -1,4 +1,5 @@
 "use client";
+import { heritageKindLabel } from "@/lib/heritage/labels";
 import { sourceDisplayLabel } from "@/lib/publishing/source-display";
 
 // =============================================================================
@@ -212,7 +213,7 @@ function sectionLabel(item: SandboxPreviewItem): string {
     case "capability":
       return `Capability · ${item.row.type}`;
     case "heritage":
-      return `Template · ${item.row.kind}`;
+      return heritageKindLabel(item.row.kind);
     case "item":
       return `Item · ${item.row.itemType}`;
   }

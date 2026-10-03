@@ -8,10 +8,12 @@ const record = (value: unknown): RecordValue | null => value !== null && typeof 
 const prose = (value: unknown) => typeof value === "string" ? value.trim() : "";
 
 /** Walk relation payloads (including older links with primitives beside effect).
- * Repeated rules in distinct branches are retained: they describe distinct grants.
- * Path-local cycle protection avoids dropping legitimately shared primitives. */
+ * A purchased primitive is shown once across composition paths. Its normal and
+ * mirrored forms stay distinct, and different primitives with identical copy
+ * are never merged. First occurrence supplies the displayed path and quantity. */
 export function collectMechanicalSummary(value: unknown): MechanicalSummaryRule[] {
   const result: MechanicalSummaryRule[] = [];
+  const seen = new Map<unknown, Set<boolean>>();
   const walk = (node: RecordValue, path: string[], mirrored: boolean, quantity: number, ancestors: Set<object>) => {
     if (ancestors.has(node)) return;
     const visited = new Set(ancestors).add(node);
@@ -25,11 +27,17 @@ export function collectMechanicalSummary(value: unknown): MechanicalSummaryRule[
         const isMirrored = mirrored || link["isMirrored"] === true;
         const count = typeof link["quantity"] === "number" && Number.isFinite(link["quantity"]) && link["quantity"] > 0 ? link["quantity"] : 1;
         if (kind === "primitive") {
+          const identity = link["primitiveId"] ?? child["id"] ?? child;
+          const variants = seen.get(identity) ?? new Set<boolean>();
+          if (variants.has(isMirrored)) continue;
+          variants.add(isMirrored);
+          seen.set(identity, variants);
           const modifiers = Array.isArray(child["hardModifiers"]) ? child["hardModifiers"].filter(value => record(value) && typeof value.operation === "string") as HardModifier[] : [];
           const vector = prose(child["mirrorVector"]) || "VARIABLE_VECTOR";
           const generated = modifiers.length ? mechanicalDescriptionFromModifiers(isMirrored && vector === "VARIABLE_VECTOR" ? modifiers.map(modifier => readMirrorMeta(modifier)?.optedOut ? modifier : ({ ...modifier, operation: (flipOperation(modifier.operation) ?? modifier.operation) as HardModifier["operation"] })) : modifiers) : "";
-          const mechanical = (isMirrored ? generated : "") || prose(child["mechanicalOutputText"]) || generated;
-          const fallback = prose(child["narrativeRule"]).split(/\s+/).filter(Boolean);
+          const descriptive = record(child["mechanicalRule"])?.["family"] === "DESCRIPTIVE";
+          const mechanical = descriptive ? "" : (isMirrored ? generated : "") || prose(child["mechanicalOutputText"]) || generated;
+          const fallback = (prose(child["narrativeRule"]) || (descriptive ? prose(child["mechanicalOutputText"]) : "")).split(/\s+/).filter(Boolean);
           const text = mechanical || fallback.slice(0, 30).join(" ") + (fallback.length > 30 ? "…" : "");
           if (text) result.push({ text, mechanical: Boolean(mechanical), path: nextPath.join(" › "), quantity: quantity * count, mirrored: isMirrored });
         } else {

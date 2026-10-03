@@ -38,10 +38,13 @@ export async function GET(req: NextRequest) {
   const offset = parseInt(sp.get("offset") ?? "0", 10) || 0;
   const origin = sp.get("origin");
   const tier = sp.get("tier");
+  // Creation pickers browse the public catalogue even for an authenticated
+  // author. Do not widen their result set with owner/follower visibility.
+  const publicOnly = sp.get("publicOnly") === "1";
 
   try {
     const result = await queryLibrary({
-      ...(clerkUserId ? { viewerClerkId: clerkUserId } : {}),
+      ...(clerkUserId && !publicOnly ? { viewerClerkId: clerkUserId } : {}),
       ...(origin === "system" || origin === "community" ? { origin } : {}),
       ...(tier !== null && tier !== "" && Number.isInteger(Number(tier)) && Number(tier) >= 0 ? { tier: Number(tier) } : {}),
       ...(targetType && parseType(targetType) !== "ALL" ? { targetType: parseType(targetType) as never } : {}),

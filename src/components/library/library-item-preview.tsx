@@ -1,4 +1,5 @@
 "use client";
+import { heritageKindLabel } from "@/lib/heritage/labels";
 
 // =============================================================================
 // LibraryItemPreview — thin wrapper that renders the UNIFIED EntityPreview.
@@ -266,7 +267,7 @@ function previewHeadingLabel(item: SandboxPreviewItem): string {
     case "capability":
       return `Capability · ${item.row.type}`;
     case "heritage":
-      return `Template · ${item.row.kind}`;
+      return heritageKindLabel(item.row.kind);
     case "item":
       return `Item · ${item.row.itemType}`;
   }

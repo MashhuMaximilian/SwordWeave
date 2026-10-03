@@ -1,4 +1,5 @@
 "use client";
+import { heritageKindLabel, isHeritageKind } from "@/lib/heritage/labels";
 import { libraryHeritageArt } from "@/lib/heritage/lineage-art";
 
 // =============================================================================
@@ -307,8 +308,8 @@ function ListItem({
         <div className="flex flex-wrap items-baseline gap-1.5">
           <h3 className={cn("truncate font-semibold leading-tight", isAtelier ? "text-[15px]" : "text-sm")}>{item.name}</h3>
           <span className="text-xs uppercase tracking-wide text-muted-foreground">
-            {item.targetType.replace(/_/g, " ").toLowerCase()}
-            {item.category ? ` · ${item.category.replace(/_/g, " ")}` : ""}
+            {isHeritageKind(item.targetType) ? heritageKindLabel(item.targetType) : item.targetType.replace(/_/g, " ").toLowerCase()}
+            {item.category && !isHeritageKind(item.targetType) ? ` · ${item.category.replace(/_/g, " ")}` : ""}
           </span>
         </div>
         {item.description && (
@@ -444,9 +445,9 @@ function GridCard({
           </h3>
           <p className="mt-0 flex min-w-0 flex-wrap items-center gap-1 text-xs uppercase tracking-wide text-muted-foreground">
             <span data-library-meta="type">
-              {item.targetType.replace(/_/g, " ").toLowerCase()}
+              {isHeritageKind(item.targetType) ? heritageKindLabel(item.targetType) : item.targetType.replace(/_/g, " ").toLowerCase()}
             </span>
-            {item.category ? (
+            {item.category && !isHeritageKind(item.targetType) ? (
               <span data-library-meta="category">
                 {item.category.replace(/_/g, " ")}
               </span>
