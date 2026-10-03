@@ -29,12 +29,14 @@ import {
   NAV_LINKS,
   type FabItem,
 } from "./fab-speed-dial";
+import { PlayGuide } from "@/components/rules/play-guide";
 import { RightFilterPanel } from "./right-filter-panel";
 import { BuildPreviewDrawer } from "./build-preview-drawer";
 import { usePathname } from "next/navigation";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { useCharacterModal } from "@/components/character-modal/character-modal-store";
 import {
+  BookOpen,
   Columns2,
   LogOut,
   Maximize2,
@@ -403,7 +405,10 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
   // the icon grid (split/fullscreen/dark/build/filters) from the list view.
   const items = useMemo<FabItem[]>(() => {
     const list: FabItem[] = [
-      ...NAV_LINKS,
+      ...NAV_LINKS.map(item => item.key === "rules" && isCharacterSheetRoute && pathname !== "/characters/new" ? {
+        kind: "action" as const, key: "rules", label: "Rules & play guide", icon: <BookOpen size={22} />,
+        onClick: () => { stack.push({ key: "play-guide", label: "Rules & play guide", category: "At the table", global: true, content: <PlayGuide embedded /> }); },
+      } : item),
       {
         kind: "divider",
         key: "div-functions",
@@ -522,6 +527,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
     toggleDark,
     pathname,
     isCharacterSheetRoute,
+    stack,
   ]);
 
   const ctxValue: GlobalControlsState = {

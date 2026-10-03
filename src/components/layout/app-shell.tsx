@@ -48,6 +48,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 SwordWeave · Open-source TTRPG engine
               </span>
               <div className="flex items-center gap-4">
+                <a href="/rules" className="hover:text-foreground hover:underline">Rules & play guide</a>
                 <a
                   href="/attributions"
                   className="hover:text-foreground hover:underline"

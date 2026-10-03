@@ -34,11 +34,13 @@ interface ForkCharacterButtonProps {
   characterId: string;
   /** Optional compact variant for use in tight rows. */
   compact?: boolean;
+  roster?: boolean;
 }
 
 export function ForkCharacterButton({
   characterId,
   compact = false,
+  roster = false,
 }: ForkCharacterButtonProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -76,7 +78,7 @@ export function ForkCharacterButton({
         type="button"
         onClick={handleFork}
         disabled={isPending}
-        className={`flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 ${
+        className={roster ? "v12-roster-open" : `flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 ${
           compact ? "px-2 py-1" : ""
         }`}
         title="Fork this character into your roster — you'll own the copy"

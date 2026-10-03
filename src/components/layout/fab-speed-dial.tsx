@@ -23,6 +23,7 @@
 // =============================================================================
 
 import {
+  BookOpen,
   Columns2,
   Maximize2,
   Menu,
@@ -556,6 +557,7 @@ export const NAV_LINKS: FabItem[] = [
     ),
     href: "/characters",
   },
+  { kind: "link", key: "rules", label: "Rules & play guide", icon: <BookOpen size={22} />, href: "/rules" },
 ];
 
 /** Profile row at the bottom — opens the user menu modal. */

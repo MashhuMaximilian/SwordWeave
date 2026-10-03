@@ -9279,3 +9279,10 @@ body[data-ui="v12"] .v12-rule-starter-grid button span { font-family:var(--font-
 .v12-table-optional input{appearance:auto!important;width:24px!important;height:24px!important;accent-color:#64c8c0;flex:0 0 24px}
 .generated-reference-slots{grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem;margin:.7rem 0}.generated-reference-slot{padding:.55rem .7rem;gap:.18rem;border-radius:8px;min-width:0}.generated-reference-slot small{font-size:.7rem;letter-spacing:.04em}.generated-reference-slot strong{font-size:.95rem;line-height:1.25;overflow-wrap:anywhere}.generated-reference-slot span{font-size:.7rem}.v12-live-composition[aria-label="Capability foundation slots"]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))!important}
 .v12-dedicated-slot-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important}.v12-dedicated-slot-grid>div{min-width:0}.generated-scaling{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.3rem;margin:0}.generated-scaling>div{padding:.35rem .5rem;border:1px solid #5e777c;border-radius:6px;background:#0b171d}.generated-scaling dt{font-size:.65rem;color:#b3c0c3}.generated-scaling dd{margin:0;font-size:.85rem}.generated-resolution{padding:.45rem .65rem;border-left:2px solid #70c9c2;background:#25454533}.generated-resolution p{font-size:.85rem;margin:.3rem 0}.generated-idea-preview h4,.generated-resolution h4{font-size:.8rem;color:#e7c985;margin:.7rem 0 .3rem}
+
+/* Every roster tab shares the owned-sheet card; permissions/actions vary. */
+body[data-ui="v12"] .v12-roster-attribution {display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-top:8px;color:var(--v12-soft);font:500 9px/1.3 var(--font-system);}
+body[data-ui="v12"] .v12-roster-permission {display:inline-flex;align-items:center;gap:4px;color:var(--v12-gold-hi);}
+body[data-ui="v12"] .v12-roster-permission svg {width:12px;height:12px;}
+body[data-ui="v12"] .v12-roster-card-actions {gap:8px;flex-wrap:wrap;margin-top:auto;}
+body[data-ui="v12"] .v12-roster-card-actions :is(a,button) {min-height:36px;}

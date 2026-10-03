@@ -1,0 +1,60 @@
+/* Shared rulebook: scoped to the guide so existing contextual help stays intact. */
+.sw-rules-page { padding: 0 clamp(12px, 3vw, 48px) 48px; }
+.sw-rules-header { max-width: 1320px; margin: 0 auto; padding: 108px 0 28px; }
+.sw-rules-header h1 { font-family: var(--font-sword-display); font-size: clamp(32px, 4vw, 58px); color: var(--v12-brass-hi); margin: 8px 0; }
+.sw-rules-header > p:last-child { color: var(--v12-soft); max-width: 65ch; }
+.sw-play-guide { display: grid; grid-template-columns: 280px minmax(0, 1fr); max-width: 1320px; margin: 0 auto; border: 1px solid var(--v12-brass); border-radius: 14px; overflow: clip; background: var(--card); color: var(--foreground); }
+.sw-play-guide-index { padding: 20px; background: linear-gradient(140deg, color-mix(in srgb, var(--v12-brass) 8%, var(--card)), var(--card)); border-right: 1px solid var(--v12-line-subtle); }
+.sw-play-guide-search { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--v12-silver); border-radius: 8px; background: var(--background); color: var(--v12-brass); }
+.sw-play-guide-search:focus-within { outline: 2px solid var(--v12-teal); outline-offset: 3px; }
+.sw-play-guide-search input { min-width: 0; width: 100%; background: transparent; border: 0; outline: none; font-size: 14px; color: var(--foreground); }
+.sw-play-guide-search button { padding: 2px; }
+.sw-play-guide-index-label { font-family: var(--font-v12-subtitle); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--v12-brass); margin: 24px 0 10px; }
+.sw-play-guide-index nav { display: grid; gap: 4px; }
+.sw-play-guide-index nav button { display: flex; justify-content: space-between; align-items: center; gap: 8px; text-align: left; font-family: var(--font-v12-subtitle); font-size: 13px; padding: 12px; border: 1px solid transparent; border-radius: 6px; min-height: 44px; }
+.sw-play-guide-index nav button svg { flex: 0 0 auto; }
+.sw-play-guide-index nav button:hover { background: var(--muted); }
+.sw-play-guide-index nav button[aria-current] { color: var(--v12-brass-hi); border-color: var(--v12-brass); background: linear-gradient(120deg, color-mix(in srgb, var(--v12-brass) 22%, var(--card)), var(--background)); }
+.sw-play-guide button:focus-visible, .sw-play-guide a:focus-visible { outline: 2px solid var(--v12-teal); outline-offset: 3px; }
+.sw-play-guide-reading { scroll-margin-top: 84px; min-width: 0; padding: clamp(20px, 3vw, 42px); }
+.sw-play-guide-topic-head { border-bottom: 1px solid var(--v12-brass); padding-bottom: 24px; margin-bottom: 24px; }
+.sw-play-guide-topic-head > span { display: flex; align-items: center; gap: 8px; font-family: var(--font-v12-subtitle); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--v12-brass); }
+.sw-play-guide-topic-head h2 { font-family: var(--font-sword-display); font-size: clamp(28px, 3vw, 40px); line-height: 1.1; margin: 16px 0 12px; color: var(--v12-brass-hi); }
+.sw-play-guide-topic-head p { color: var(--v12-soft); }
+.sw-play-guide-blocks { display: grid; gap: 28px; }
+.sw-play-guide-block-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+.sw-play-guide-block-head > span { color: var(--v12-brass); font-family: var(--font-v12-subtitle); font-size: 12px; }
+.sw-play-guide-block h3 { font-family: var(--font-v12-subtitle); font-size: 18px; margin: 0; }
+.sw-play-guide p, .sw-play-guide li { font-size: 18px; line-height: 1.65; max-width: 76ch; }
+.sw-play-guide-mechanics { padding: 16px 18px 16px 36px; margin-top: 14px; border: 1px solid var(--v12-copper); border-left-width: 3px; border-radius: 6px; background: color-mix(in srgb, var(--v12-copper) 5%, var(--background)); list-style: disc; }
+.sw-play-guide-mechanics li { color: var(--v12-copper-hi); }
+.sw-play-guide-example { padding: 16px 18px; margin-top: 14px; border-left: 2px solid var(--v12-teal); background: color-mix(in srgb, var(--v12-teal) 5%, var(--background)); }
+.sw-play-guide-example strong { display: block; color: var(--v12-teal); font-family: var(--font-v12-subtitle); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 6px; }
+.sw-play-guide-sources { margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--v12-line-subtle); color: var(--v12-soft); }
+.sw-play-guide-sources summary { cursor: pointer; font-size: 14px; }
+.sw-play-guide-sources p { font-size: 14px; margin: 12px 0; }
+.sw-play-guide-sources a, .sw-play-guide-page-link { display: flex; align-items: center; gap: 8px; color: var(--v12-teal); font-size: 13px; padding: 8px 0; }
+.sw-play-guide-page-link { margin-top: 20px; }
+.sw-play-guide-next { margin-top: 28px; }
+.sw-play-guide-next button, .sw-play-guide-empty button { display: flex; align-items: center; gap: 10px; border: 1px solid var(--v12-brass); border-radius: 6px; color: var(--v12-brass-hi); padding: 12px 16px; font-family: var(--font-v12-subtitle); font-size: 13px; }
+.sw-play-guide--embedded { border: 0; border-radius: 0; max-width: none; }
+.sw-play-guide--embedded .sw-play-guide-index, .sw-play-guide--embedded .sw-play-guide-reading { max-height: 70dvh; overflow-y: auto; }
+.sw-play-guide-empty { min-height: 300px; display: grid; align-content: start; justify-items: start; gap: 16px; }
+html:not(.dark) .sw-play-guide-topic-head h2, html:not(.dark) .sw-rules-header h1, html:not(.dark) .sw-play-guide-index nav button[aria-current], html:not(.dark) .sw-play-guide-next button { color: var(--v12-brass); }
+html:not(.dark) .sw-play-guide-mechanics li { color: var(--v12-copper); }
+@media (max-width: 760px) {
+  .sw-play-guide { grid-template-columns: minmax(0, 1fr); }
+  .sw-play-guide-index { border-right: 0; border-bottom: 1px solid var(--v12-line-subtle); padding: 14px; }
+  .sw-play-guide-index nav { display: flex; overflow-x: auto; gap: 8px; padding: 2px 3px 8px; }
+  .sw-play-guide-index nav button { flex: 0 0 auto; max-width: 240px; padding: 10px 12px; }
+  .sw-play-guide-index nav button svg { display: none; }
+  .sw-play-guide-index-label { margin: 14px 0 8px; }
+  .sw-play-guide-page-link { margin-top: 4px; }
+  .sw-play-guide--embedded .sw-play-guide-index, .sw-play-guide--embedded .sw-play-guide-reading { max-height: none; overflow-y: visible; }
+  .sw-play-guide p, .sw-play-guide li { font-size: 17px; }
+}
+@media (prefers-reduced-motion: reduce) { .sw-play-guide * { scroll-behavior: auto; } }
+body[data-ui="v12"] .sw-play-guide .sw-play-guide-search input { border: 0; box-shadow: none; padding: 0; min-height: 0; height: auto; background: transparent; border-radius: 0; }
+.sw-play-guide-index-label .sw-play-guide-phone-hint { display: none; }
+@media (max-width: 760px) { .sw-play-guide-index-label .sw-play-guide-phone-hint { display: inline; } }
+body[data-ui="v12"] .v12-instrument-dialog .sw-play-guide-topic-head h2 { font-size: clamp(28px, 3vw, 40px) !important; line-height: 1.15 !important; }

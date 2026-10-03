@@ -22,10 +22,6 @@
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { SharedCharacterCard } from "@/components/characters/shared-character-card";
-import { PublicCharacterCard } from "@/components/characters/public-character-card";
-import type { SharedCharacterRow } from "@/lib/character/list-shared-characters";
-import type { LibraryItem } from "@/lib/publishing/library-query";
 
 export type CharacterTab = "mine" | "shared" | "public";
 
@@ -33,9 +29,11 @@ interface CharacterListTabsProps {
   /** Server-rendered My Characters grid (unchanged from before). */
   mineContent: React.ReactNode;
   /** Server-rendered Shared-with-me rows (already joined to granter info). */
-  sharedRows: SharedCharacterRow[];
+  sharedContent: React.ReactNode;
+  sharedCount: number;
   /** Server-rendered Public-library LibraryItems (CHARACTER type). */
-  publicItems: LibraryItem[];
+  publicContent: React.ReactNode;
+  publicCount: number;
   /** Initial active tab from URL (?tab=shared etc). */
   initialTab?: CharacterTab;
   /** Server-rendered empty state for My Characters (so we don't
@@ -45,8 +43,10 @@ interface CharacterListTabsProps {
 
 export function CharacterListTabs({
   mineContent,
-  sharedRows,
-  publicItems,
+  sharedContent,
+  sharedCount,
+  publicContent,
+  publicCount,
   initialTab = "mine",
   mineEmptyState,
 }: CharacterListTabsProps) {
@@ -80,8 +80,8 @@ export function CharacterListTabs({
         active={activeTab}
         counts={{
           mine: null, // unknown until server renders
-          shared: sharedRows.length,
-          public: publicItems.length,
+          shared: sharedCount,
+          public: publicCount,
         }}
         onChange={setTab}
       />
@@ -93,10 +93,10 @@ export function CharacterListTabs({
           </div>
         )}
         {activeTab === "shared" && (
-          <SharedGrid rows={sharedRows} />
+          sharedContent
         )}
         {activeTab === "public" && (
-          <PublicGrid items={publicItems} />
+          publicContent
         )}
       </div>
     </div>
@@ -154,44 +154,3 @@ function TabStrip({ active, counts, onChange }: TabStripProps) {
   );
 }
 
-function SharedGrid({ rows }: { rows: SharedCharacterRow[] }) {
-  if (rows.length === 0) {
-    return (
-      <div className="v12-roster-empty">
-        <h2 className="text-2xl font-semibold">No characters shared with you yet</h2>
-        <p className="mt-2 max-w-md text-sm text-muted-foreground">
-          When someone shares a character with you, it shows up here. (Part C
-          adds the invite-by-username flow on the character sheet.)
-        </p>
-      </div>
-    );
-  }
-  return (
-    <div className="v12-roster-grid">
-      {rows.map((row) => (
-        <SharedCharacterCard key={row.id} row={row} />
-      ))}
-    </div>
-  );
-}
-
-function PublicGrid({ items }: { items: LibraryItem[] }) {
-  if (items.length === 0) {
-    return (
-      <div className="v12-roster-empty">
-        <h2 className="text-2xl font-semibold">No public characters yet</h2>
-        <p className="mt-2 max-w-md text-sm text-muted-foreground">
-          The codex is empty. Make one of your own characters public from the
-          sheet header to seed it.
-        </p>
-      </div>
-    );
-  }
-  return (
-    <div className="v12-roster-grid">
-      {items.map((item) => (
-        <PublicCharacterCard key={item.id} item={item} />
-      ))}
-    </div>
-  );
-}
