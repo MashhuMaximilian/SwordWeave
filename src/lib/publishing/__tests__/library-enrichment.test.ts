@@ -7,8 +7,8 @@ const state = vi.hoisted(() => ({
 vi.mock("@/db/client", async () => {
   const { builds } = await import("@/db/schema");
   const rows = [
-    { id: "new", name: "New", userId: "community", createdAt: new Date("2026-09-30") },
-    { id: "popular", name: "Popular", userId: "staff", createdAt: new Date("2026-09-01") },
+    { id: "new", name: "New", userId: "community", startingBu: 10, createdAt: new Date("2026-09-30") },
+    { id: "popular", name: "Popular", userId: "staff", startingBu: 50, createdAt: new Date("2026-09-01") },
   ];
   return { db: {
     query: { users: { findMany: state.authorReads } },
@@ -19,6 +19,7 @@ vi.mock("@/db/client", async () => {
         where: () => chain,
         leftJoin: () => chain,
         limit: async () => source === builds ? rows : [],
+        then: (resolve: (value: unknown[]) => unknown) => Promise.resolve(source === builds ? rows : []).then(resolve),
       };
       return chain;
     },
@@ -53,6 +54,15 @@ describe("batched library enrichment", () => {
     expect(result.items.map(item => item.targetId)).toEqual(["popular"]);
   });
 
+  it("filters BU before slicing and sorts BU independently of engagement", async () => {
+    const result = await queryLibrary({ targetType: "BUILD_TEMPLATE", sort: "BU", minBu: 0, maxBu: 20, limit: 1 });
+    expect(result.total).toBe(1);
+    expect(result.items[0]?.targetId).toBe("new");
+  });
+  it("filters inclusive dates and minimum forks across the complete result", async () => {
+    const result = await queryLibrary({ targetType: "BUILD_TEMPLATE", fromDate: "2026-09-01", toDate: "2026-09-01", minForks: 3 });
+    expect(result.items.map(item => item.targetId)).toEqual(["popular"]);
+  });
   it("batches metadata across the full type union", async () => {
     await queryLibrary({});
     expect(state.authorReads).toHaveBeenCalledTimes(1);

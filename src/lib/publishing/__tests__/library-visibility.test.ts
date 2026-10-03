@@ -10,12 +10,12 @@ vi.mock("@/lib/engagement/engagement-aggregates", () => ({ resolveEngagementMap:
 import { queryCompleteLibrary, queryLibrary, visibilityCondition } from "../library-query";
 const dialect = new PgDialect();
 describe("Library and Add share the canonical visibility gate", () => {
-  it("removes the prefilter cap only for complete internal catalog reads", async () => {
+  it("never truncates the authorized corpus before filters and ordering", async () => {
     captured.limits = [];
     await queryCompleteLibrary({ targetType: "PRIMITIVE", viewerClerkId: "viewer" });
     expect(captured.limits).toEqual([]);
     await queryLibrary({ targetType: "PRIMITIVE", viewerClerkId: "viewer" });
-    expect(captured.limits).toEqual([500]);
+    expect(captured.limits).toEqual([]);
   });
   it("uses publication precedence and explicit legacy-public compatibility", async () => {
     captured.conditions = [];

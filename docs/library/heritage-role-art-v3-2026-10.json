@@ -1,0 +1,27 @@
+{
+  "generator": "built-in image_gen",
+  "status": "full-canvas composition samples",
+  "records": [
+    {
+      "name": "Courtier",
+      "kind": "UPBRINGING",
+      "subject": "A shadowy court envoy wearing structured formal brocade, high asymmetrical collar, shoulder cape and an angular featureless ceremonial half-veil. NO hood. An unreadable face in dark shadow; gloved hand holding a sealed document. Tall palace windows, a long table and hanging geometric banners frame a full scene.",
+      "prompt": "Use case: stylized-concept. Create an original square full-canvas SwordWeave UPBRINGING illustration for Courtier. Image1 is ONLY a reference for angular graphic ink style, palette and canvas framing; do not reproduce its visible face or human anatomy. A shadowy court envoy wearing structured formal brocade, high asymmetrical collar, shoulder cape and an featureless dark fabric face veil. NO hood. An unreadable face in dark shadow; gloved hand holding a sealed document. Tall palace windows, a long table and hanging geometric banners frame a full scene. Waist-up figure with fully obscured lineage, no face, ears, exposed skin or anatomy identifying species. Soft cloth gloves, supple fabric sleeves, leather and woven garments, absolutely NO robot arms, metallic fingers or armored face. Bold stylized angular color planes and screenprinted grain; navy, parchment gold, rust, muted teal. Full richly designed background extends edge to edge, square canvas like the lineage artwork. No circles or halos or medallions, border, vignette, logos, words, photorealism. Shadow and fabrics hide identity, varied civilian clothing explains profession.",
+      "sourcePath": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-afd2f950-b415-415b-935c-1141527263c0.png"
+    },
+    {
+      "name": "Orchard Tender",
+      "kind": "UPBRINGING",
+      "subject": "A shadowy orchard caretaker in a broad flat woven work hat, patchwork apron and loose workwear. Shaded face beneath hat brim with no face features, gloved hands holding a basket of fruit. No hood. Twisted orchard branches and terraced stone pathways occupy the entire background.",
+      "prompt": "Use case: stylized-concept. Create an original square full-canvas SwordWeave UPBRINGING illustration for Orchard Tender. Image1 is ONLY a reference for angular graphic ink style, palette and canvas framing; do not reproduce its visible face or human anatomy. A shadowy orchard caretaker in a broad flat woven work hat, patchwork apron and loose workwear. Shaded face beneath hat brim with no face features, gloved hands holding a basket of fruit. No hood. Twisted orchard branches and terraced stone pathways occupy the entire background. Waist-up figure with fully obscured lineage, no face, ears, exposed skin or anatomy identifying species. Soft cloth gloves, supple fabric sleeves, leather and woven garments, absolutely NO robot arms, metallic fingers or armored face. Bold stylized angular color planes and screenprinted grain; navy, parchment gold, rust, muted teal. Full richly designed background extends edge to edge, square canvas like the lineage artwork. No circles or halos or medallions, border, vignette, logos, words, photorealism. Shadow and fabrics hide identity, varied civilian clothing explains profession.",
+      "sourcePath": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-5db5a852-b181-4e6a-b829-2692fd417bd5.png"
+    },
+    {
+      "name": "Elemental Shaper",
+      "kind": "MANIFEST",
+      "subject": "A shadowy arcane craftsperson wearing a rigid geometric visor and layered practical tunic, exposed face hidden completely in darkness, no identifiable ears or skin. NO hood. Both hands direct floating angular rock fragments and thin geometric fire streams in a monumental ruined courtyard.",
+      "prompt": "Use case: stylized-concept. Create an original square full-canvas SwordWeave MANIFEST illustration for Elemental Shaper. Image1 is ONLY a reference for angular graphic ink style, palette and canvas framing; do not reproduce its visible face or human anatomy. A shadowy arcane craftsperson wearing a dark fabric eye-wrap and a broad sculptural collar and layered practical tunic, exposed face hidden completely in darkness, no identifiable ears or skin. NO hood. Both hands direct floating angular rock fragments and thin geometric fire streams in a monumental ruined courtyard. Waist-up figure with fully obscured lineage, no face, ears, exposed skin or anatomy identifying species. Soft cloth gloves, supple fabric sleeves, leather and woven garments, absolutely NO robot arms, metallic fingers or armored face. Bold stylized angular color planes and screenprinted grain; navy, parchment gold, rust, muted teal. Full richly designed background extends edge to edge, square canvas like the lineage artwork. No circles or halos or medallions, border, vignette, logos, words, photorealism. Shadow and fabrics hide identity, varied civilian clothing explains profession.",
+      "sourcePath": "/Users/max/.codex/generated_images/01a0e890-f33d-7fc2-b7ed-b72d4c37de6e/exec-cd99b2af-5731-43d4-8244-d27317557a4c.png"
+    }
+  ]
+}

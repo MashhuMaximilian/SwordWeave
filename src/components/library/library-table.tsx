@@ -21,6 +21,7 @@ import { libraryHeritageArt } from "@/lib/heritage/lineage-art";
 // =============================================================================
 
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight, ExternalLink, SearchX, User as UserIcon } from "lucide-react";
 import { Markdown } from "@/components/ui/markdown";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -41,7 +42,7 @@ type LibraryEngagement = {
 
 export type { LibraryEngagement };
 
-interface LibraryTableProps {
+export interface LibraryTableProps {
   items: LibraryItem[];
   view: LibraryView;
   engagement: LibraryEngagement;
@@ -98,6 +99,28 @@ export function LibraryTable({
   renderActions,
   compact = false,
 }: LibraryTableProps) {
+  // Incremental mounting keeps initial source lists light without changing
+  // selection or the editor draft. A changed result order restarts the window.
+  const resultKey = items.map(item => item.id).join("|");
+  const [window, setWindow] = useState({ key: resultKey, count: 48 });
+  const count = window.key === resultKey ? window.count : 48;
+  const sentinel = useRef<HTMLDivElement>(null);
+  const hasMore = count < items.length;
+  const shownItems = items.slice(0, count);
+  const loadMore = () => setWindow(previous => ({ key: resultKey, count: Math.min(items.length, (previous.key === resultKey ? previous.count : 48) + 48) }));
+  useEffect(() => {
+    const node = sentinel.current;
+    if (!node || !hasMore || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) {
+        observer.disconnect();
+        setWindow(previous => ({ key: resultKey, count: Math.min(items.length, (previous.key === resultKey ? previous.count : 48) + 48) }));
+      }
+    }, { rootMargin: "400px" });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [resultKey, count, hasMore, items.length]);
+  const loadingTail = hasMore ? <div ref={sentinel} className="flex justify-center py-3"><button type="button" onClick={loadMore} className="rounded-md border border-border px-3 py-2 text-xs">Show more ({shownItems.length} of {items.length})</button></div> : null;
   if (items.length === 0) {
     return (
       <EmptyState
@@ -135,8 +158,8 @@ export function LibraryTable({
   if (view === "LIST") {
     return (
       <div className="space-y-2">
-        {items.map((item) => (
-          <div key={item.id} className={renderActions ? "v12-library-action-row" : "contents"}>
+        {shownItems.map((item) => (
+          <div key={item.id} className={renderActions ? "v12-library-action-row" : "v12-library-result-row"} style={{ contentVisibility: "auto", containIntrinsicSize: view === "LIST" ? "auto 110px" : "auto 180px" }}>
           <ListItem
             item={item}
             engagement={engagement}
@@ -149,6 +172,7 @@ export function LibraryTable({
           {renderActions ? <div className="v12-library-row-additions">{item.mechanicalDescription ? <p data-copy-role="mechanical">{item.mechanicalDescription}</p> : null}<div className="v12-library-row-buttons">{renderActions(item)}</div></div> : null}
           </div>
         ))}
+        {loadingTail}
         {pagination}
       </div>
     );
@@ -181,8 +205,8 @@ export function LibraryTable({
             gridAutoRows: "minmax(7rem, auto)",
           }}
         >
-          {items.map((item) => (
-            <div key={item.id} className={renderActions ? "v12-library-action-row" : "contents"}>
+          {shownItems.map((item) => (
+            <div key={item.id} className={renderActions ? "v12-library-action-row" : "v12-library-result-row"} style={{ contentVisibility: "auto", containIntrinsicSize: "auto 180px" }}>
             <GridCard
               item={item}
               engagement={engagement}
@@ -195,6 +219,7 @@ export function LibraryTable({
             </div>
           ))}
         </div>
+        {loadingTail}
         {pagination}
       </div>
     </div>
@@ -495,7 +520,9 @@ function GridCard({
           initialLikes={item.likesCount}
           initialDislikes={item.dislikesCount}
           initialForks={item.forkCount}
-          initialUserReaction={engagement.reactions[item.id] ?? null}
+          initialFlags={item.flagCount}
+          initialUserReaction={item.viewerReaction !== undefined ? item.viewerReaction : engagement.reactions[item.id] ?? null}
+          initialFollowing={item.viewerFollowing ?? (item.authorId ? engagement.following[item.authorId] : false) ?? false}
           authorId={item.authorId}
           authorUsername={item.authorUsername}
           currentUserId={currentUserInternalId}

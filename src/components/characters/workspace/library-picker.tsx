@@ -1,12 +1,15 @@
 "use client";
-import { readJsonResponse } from "@/lib/http/read-json-response";
-import { useEffect, useState } from "react";
+import { useInfiniteLibrary } from "@/lib/hooks/use-infinite-library";
+import { InfiniteLibraryResults } from "@/components/library/infinite-library-results";
+import { LibraryDiscoveryFilters, EMPTY_DISCOVERY_FILTERS, discoveryFilterParams } from "./library-discovery-filters";
+import { useEffect, useRef, useState } from "react";
+import { MARKET_FAMILIES } from "@/lib/primitives/canonical-market";
 import { EntityPreview } from "@/components/preview/entity-preview";
 import { LibraryTable } from "@/components/library/library-table";
 import type { SandboxPreviewItem } from "@/components/library/library-item-preview";
 import { loadEntityPreview, previewKind } from "./workspace-entity-preview";
 import type { EntityKind, EntityKey } from "@/lib/character/workspace/model";
-import type { LibraryItem } from "@/lib/publishing/library-query";
+
 export function WorkspaceLibraryPicker({
   kinds,
   category,
@@ -21,16 +24,20 @@ export function WorkspaceLibraryPicker({
   const [previewPath, setPreviewPath] = useState<SandboxPreviewItem[]>([]);
   const [selectedLibraryId, setSelectedLibraryId] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const previewRequest = useRef(0);
   async function openPreview(type: EntityKind, id: string, nested = false) {
+    const token = ++previewRequest.current;
     setPreviewLoading(true);
     try {
       const item = await loadEntityPreview(type, id);
+      if (token !== previewRequest.current) return;
       setPreviewPath((previous) => (nested ? [...previous, item] : [item]));
       setError("");
     } catch (e) {
+      if (token !== previewRequest.current) return;
       setError(e instanceof Error ? e.message : "Preview unavailable.");
     } finally {
-      setPreviewLoading(false);
+      if (token === previewRequest.current) setPreviewLoading(false);
     }
   }
   const [heritageType, setHeritageType] = useState(
@@ -38,7 +45,13 @@ export function WorkspaceLibraryPicker({
   );
   const [kind, setKind] = useState<EntityKind>(kinds[0] ?? "primitive");
   const [query, setQuery] = useState("");
-  const [items, setItems] = useState<LibraryItem[]>([]);
+  const [sort, setSort] = useState("ALPHABETICAL");
+  const [filters, setFilters] = useState(EMPTY_DISCOVERY_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [origin, setOrigin] = useState("all");
+  const [family, setFamily] = useState("");
+  const [tier, setTier] = useState("");
+  const filterKey = new URLSearchParams({ targetType: kind === "heritage" ? `${heritageType}_TEMPLATE` : kind.toUpperCase(), q: query, sort, origin, tier, category: kind === "primitive" ? family : "", ...discoveryFilterParams(kind === "primitive" ? filters : { ...filters, definitionKind: "", mirrorableOnly: false, mechanicTarget: "", recipient: "", conditionMode: "", minMagnitude: "", maxMagnitude: "" }) }).toString();
   const [revision, setRevision] = useState(0);
   useEffect(() => {
     const refresh = () => setRevision((r) => r + 1);
@@ -50,36 +63,7 @@ export function WorkspaceLibraryPicker({
     };
   }, []);
   const [error, setError] = useState("");
-  useEffect(() => {
-    const abort = new AbortController();
-    const type =
-      kind === "heritage" ? `${heritageType}_TEMPLATE` : kind.toUpperCase();
-    const params = new URLSearchParams({
-      targetType: type,
-      q: query,
-      limit: "50",
-    });
-    const timer = setTimeout(() => {
-      void fetch(`/api/library?${params}`, {
-        cache: "no-store",
-        signal: abort.signal,
-      })
-        .then(async (response) => {
-          const value = await readJsonResponse(response);
-          if (!response.ok)
-            throw new Error(value.error ?? "Library unavailable.");
-          setItems(value.items ?? []);
-          setError("");
-        })
-        .catch((e) => {
-          if (!abort.signal.aborted) setError(e.message);
-        });
-    }, 200);
-    return () => {
-      clearTimeout(timer);
-      abort.abort();
-    };
-  }, [kind, query, heritageType, revision]);
+  const results = useInfiniteLibrary(filterKey, { revision });
   return (
     <div className="v12-workspace-library space-y-3 rounded-lg border border-border p-4">
       <header className="v12-workspace-library-head">
@@ -117,12 +101,14 @@ export function WorkspaceLibraryPicker({
           placeholder="Search the Library…"
         />
       </div>
+      <button type="button" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(!filtersOpen)}>Filters & sorting · {results.total} entries</button>
+      {filtersOpen && <div className="space-y-3"><LibraryDiscoveryFilters value={filters} onChange={setFilters} primitive={kind === "primitive"} sort={sort} onSortChange={setSort}/>{kind === "primitive" && <label className="sheet-field">Market family<select value={family} onChange={(event) => setFamily(event.target.value)}><option value="">All families</option>{MARKET_FAMILIES.map((entry) => <option key={entry.key} value={entry.key}>{entry.label}</option>)}</select></label>}<label className="sheet-field">Tier<select value={tier} onChange={(event) => setTier(event.target.value)}><option value="">All tiers</option>{[0,1,2,3,4,5].map((value) => <option key={value} value={value}>Tier {value}</option>)}</select></label><label className="sheet-field">Origin<select value={origin} onChange={(event) => setOrigin(event.target.value)}><option value="all">All origins</option><option value="system">System / SRD</option><option value="community">Community</option></select></label><button type="button" onClick={() => { setQuery(""); setFilters(EMPTY_DISCOVERY_FILTERS); setSort("ALPHABETICAL"); setOrigin("all"); setFamily(""); setTier(""); }}>Clear filters</button></div>}
       {error && <p role="alert">{error}</p>}
       <div className="v12-character-library-workbench" data-has-preview={previewPath.length > 0}>
         <div className="v12-character-library-corpus">
           {previewLoading && <p className="v12-library-loading" role="status">Loading canonical preview…</p>}
-          <LibraryTable
-            items={items}
+          <InfiniteLibraryResults key={filterKey} items={results.items} hasMore={results.hasMore} loading={results.loading} error={results.error} loadMore={results.loadMore} retry={results.retry} render={(batch) => <LibraryTable
+            items={batch}
             view="LIST"
             engagement={{ reactions: {}, following: {} }}
             currentUserInternalId={null}
@@ -133,9 +119,10 @@ export function WorkspaceLibraryPicker({
             emptyDescription="Change the piece type or broaden the search."
             onSelect={(item) => {
               setSelectedLibraryId(item.id);
-              void openPreview(kind, String(item.targetId));
+              void openPreview(previewKind(item.targetType), String(item.targetId));
             }}
-          />
+          />}/>
+          {!results.loading && !results.error && !results.items.length && <p>No compatible Library entries. Try fewer filters.</p>}
         </div>
         <aside className="v12-character-library-inspector" aria-label="Library preview and placement">
           {previewPath.length > 0 ? (

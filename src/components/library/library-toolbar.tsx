@@ -44,6 +44,12 @@ export interface LibraryToolbarState {
   /** "ANY" (default), "PUBLIC", or "PRIVATE". */
   visibility?: "ANY" | "PUBLIC" | "PRIVATE";
   mirrorableOnly?: boolean;
+  definitionKind?: "" | "TEMPLATE" | "EXPRESSION";
+  mechanicTarget?: string;
+  recipient?: "" | "self" | "target" | "scene";
+  conditionMode?: "" | "conditional" | "always";
+  minMagnitude?: string;
+  maxMagnitude?: string;
   /** Comma-separated tag list. */
   tags?: string;
 }
@@ -123,6 +129,7 @@ interface LibraryToolbarProps {
    * Defaults to true.
    */
   showAdvancedFilters?: boolean;
+  showVisibilityFilter?: boolean;
   /**
    * If true, render the search bar. Defaults to true.
    */
@@ -146,9 +153,9 @@ const DEFAULT_TYPE_CHIPS: LibraryTypeChip[] = [
   { key: "CAPABILITY", label: "Capabilities" },
   { key: "EFFECT", label: "Effects" },
   { key: "ITEM", label: "Items" },
-  { key: "LINEAGE_TEMPLATE", label: "Races" },
-  { key: "UPBRINGING_TEMPLATE", label: "Backgrounds" },
-  { key: "MANIFEST_TEMPLATE", label: "Archetypes" },
+  { key: "LINEAGE_TEMPLATE", label: "Lineages" },
+  { key: "UPBRINGING_TEMPLATE", label: "Upbringings" },
+  { key: "MANIFEST_TEMPLATE", label: "Manifests" },
   // Mashu 2026-07-09: builds surfaced as a public library browse
   // option. The chip label is "Builds"; the URL value remains
   // "BUILD_TEMPLATE" so it matches the engagement enum + library-query.
@@ -199,6 +206,7 @@ export function LibraryToolbar({
   itemTags = [],
   activeTags = [],
   showAdvancedFilters = true,
+  showVisibilityFilter = true,
   showSearch = true,
   searchPlaceholder = "Search by name…",
   forceExpandFilters = false,
@@ -249,7 +257,7 @@ export function LibraryToolbar({
     state.category !== "" ||
     state.author !== "" ||
     state.minLikes !== "" ||
-    state.hasForks ||
+    state.hasForks || state.search !== "" || !!state.minBu || !!state.maxBu || !!state.minForks || !!state.fromDate || !!state.toDate || !!state.mirrorableOnly || !!state.definitionKind || !!state.mechanicTarget || !!state.recipient || !!state.conditionMode || !!state.minMagnitude || !!state.maxMagnitude || !!state.tier || (state.origin ?? "all") !== "all" || (state.visibility ?? "ANY") !== "ANY" ||
     state.sort !== "ENGAGEMENT" ||
     activeSubKinds.length > 0 ||
     tagState.length > 0;
@@ -354,12 +362,14 @@ export function LibraryToolbar({
           <div className="flex flex-wrap gap-1">
             {(
               [
-                ["ENGAGEMENT", "Engagement"],
+                ["ENGAGEMENT", "Popular"],
                 ["LIKES", "Most liked"],
                 ["FORKS", "Most forked"],
                 ["RECENT", "Recent"],
                 ["ALPHABETICAL", "A → Z"],
-                ["BU", "BU cost"],
+                ["ALPHABETICAL_DESC", "Z → A"],
+                ["BU", "BU low → high"],
+                ["BU_DESC", "BU high → low"],
               ] as const
             ).map(([key, label]) => {
               const active = state.sort === key;
@@ -408,6 +418,14 @@ export function LibraryToolbar({
               List
             </button>
           </div>
+        </div>
+
+        <div className="flex flex-wrap items-end gap-2 rounded-md border border-border p-2">
+          <label className="flex flex-col gap-1 text-xs">Source<select aria-label="Source" value={state.origin ?? "all"} onChange={event => update("origin", event.target.value as "all" | "system" | "community")} className="rounded border border-input bg-background p-1.5"><option value="all">All sources</option><option value="system">System / SRD</option><option value="community">Community</option></select></label>
+          {(state.typeFilter === "ALL" || state.typeFilter === "PRIMITIVE" || state.typeFilter === "GROUP_MECHANICS") ? <label className="flex flex-col gap-1 text-xs">Tier<select aria-label="Tier" value={state.tier ?? ""} onChange={event => update("tier", event.target.value)} className="rounded border border-input bg-background p-1.5"><option value="">All tiers</option>{[1,2,3,4,5].map(tier => <option key={tier} value={tier}>Tier {tier}</option>)}</select></label> : null}
+          <label className="flex flex-col gap-1 text-xs">Within BU<input aria-label="Maximum BU" type="number" min="0" value={state.maxBu ?? ""} placeholder="Any budget" onChange={event => update("maxBu", event.target.value)} className="w-24 rounded border border-input bg-background p-1.5" /></label>
+          <button type="button" aria-pressed={state.maxBu === "0" && !state.minBu} onClick={() => onStateChange({...state,minBu:"",maxBu:state.maxBu === "0" ? "" : "0"})} className="rounded border border-border px-2 py-1.5 text-xs">Free entries</button>
+          {hasActiveFilters ? <button type="button" onClick={() => onStateChange({...EMPTY_LIBRARY_TOOLBAR_STATE,view:state.view,sort:state.sort,origin:"all",tier:"",definitionKind:"",mechanicTarget:"",recipient:"",conditionMode:"",minMagnitude:"",maxMagnitude:""})} className="ml-auto rounded border border-border px-2 py-1.5 text-xs">Clear filters</button> : null}
         </div>
 
         {/* Tag chips (visible only when the active type is ITEM and the
@@ -552,6 +570,14 @@ export function LibraryToolbar({
                 </FilterField>
               ) : null}
 
+              {(state.typeFilter === "PRIMITIVE" || state.typeFilter === "ALL" || state.typeFilter === "GROUP_MECHANICS") ? <FilterField label="Primitive role" id="filter-definition-kind"><select id="filter-definition-kind" value={state.definitionKind ?? ""} onChange={event => update("definitionKind", event.target.value as LibraryToolbarState["definitionKind"])} className="h-8 rounded border border-input bg-background px-2 text-xs"><option value="">Families and ready-to-use entries</option><option value="TEMPLATE">Base families to fork</option><option value="EXPRESSION">Ready-to-use expressions</option></select></FilterField> : null}
+              {(state.typeFilter === "PRIMITIVE" || state.typeFilter === "ALL" || state.typeFilter === "GROUP_MECHANICS") ? <>
+                <FilterField label="What it changes" id="filter-mechanic-target" hint="Search tracked result names, for example physical, speed, slots or vitality."><input id="filter-mechanic-target" value={state.mechanicTarget ?? ""} onChange={event => update("mechanicTarget",event.target.value)} placeholder="Result or permission" className="h-8 rounded border border-input bg-background px-2 text-xs" /></FilterField>
+                <FilterField label="Recipient" id="filter-recipient"><select id="filter-recipient" value={state.recipient ?? ""} onChange={event => update("recipient",event.target.value as NonNullable<LibraryToolbarState["recipient"]>)} className="h-8 rounded border border-input bg-background px-2 text-xs"><option value="">Anyone</option><option value="self">Self</option><option value="target">Target</option><option value="scene">Scene</option></select></FilterField>
+                <FilterField label="When it applies" id="filter-condition"><select id="filter-condition" value={state.conditionMode ?? ""} onChange={event => update("conditionMode",event.target.value as NonNullable<LibraryToolbarState["conditionMode"]>)} className="h-8 rounded border border-input bg-background px-2 text-xs"><option value="">Any trigger</option><option value="always">Always active</option><option value="conditional">Has an authored condition</option></select></FilterField>
+                <FilterField label="Minimum fixed value" id="filter-min-magnitude" hint="Signed authored number; formulas and dice have no fixed value."><input id="filter-min-magnitude" type="number" value={state.minMagnitude ?? ""} onChange={event => update("minMagnitude",event.target.value)} className="h-8 rounded border border-input bg-background px-2 text-xs" /></FilterField>
+                <FilterField label="Maximum fixed value" id="filter-max-magnitude"><input id="filter-max-magnitude" type="number" value={state.maxMagnitude ?? ""} onChange={event => update("maxMagnitude",event.target.value)} className="h-8 rounded border border-input bg-background px-2 text-xs" /></FilterField>
+              </> : null}
               {/* Author username */}
               <FilterField label="Author" id="filter-author">
                 <input
@@ -633,7 +659,7 @@ export function LibraryToolbar({
               </FilterField>
 
               {/* Visibility: Public / Private / Any */}
-              <FilterField label="Visibility" id="filter-visibility">
+              {showVisibilityFilter ? <FilterField label="Visibility" id="filter-visibility">
                 <div className="flex flex-wrap gap-1">
                   {(["ANY", "PUBLIC", "PRIVATE"] as const).map((v) => (
                     <button
@@ -651,7 +677,7 @@ export function LibraryToolbar({
                     </button>
                   ))}
                 </div>
-              </FilterField>
+              </FilterField> : null}
 
               {/* Mirrorable toggle */}
               <FilterField label="Mirrorable" id="filter-mirrorable">
@@ -696,7 +722,7 @@ export function LibraryToolbar({
                   type="text"
                   value={state.tags ?? ""}
                   onChange={(e) => update("tags", e.target.value)}
-                  placeholder="comma-separated"
+                  placeholder="All required tags, comma-separated"
                   className="h-7 w-full rounded border border-input bg-background px-2 text-[11px] outline-none focus:border-primary"
                 />
               </FilterField>
@@ -708,6 +734,12 @@ export function LibraryToolbar({
                   onClick={() =>
                     onStateChange({
                       ...state,
+                      search: "",
+                      typeFilter: "ALL",
+                      origin: "all",
+                      tier: "",
+                      definitionKind: "",
+                      mechanicTarget: "",recipient: "",conditionMode: "",minMagnitude: "",maxMagnitude: "",
                       category: "",
                       author: "",
                       minLikes: "",

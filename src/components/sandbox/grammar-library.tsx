@@ -17,21 +17,17 @@ import { PhoneLibraryFilters } from "@/components/library/phone-library-filters"
 // Pristine mode: clicks swap silently via the parent's onSelect.
 // Dirty mode: parent's guardedLibrarySelect opens the unsaved modal.
 
-import {
-  canonicalLibraryCategory,
-  libraryOrigin,
-  libraryTier,
-} from "@/lib/publishing/library-classification";
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useSandboxSaveHandler } from "./use-sandbox-save-handler";
 import { LibraryToolbar, type LibraryToolbarState } from "@/components/library/library-toolbar";
-import { LibraryTable } from "@/components/library/library-table";
+import { WindowedLibraryTable as LibraryTable } from "@/components/library/windowed-library-table";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
 import {
   authorDisplayName,
   authorDisplayUsername,
 } from "@/lib/publishing/author-display";
 import type { LibraryItem, LibraryTargetType } from "@/lib/publishing/library-query";
+import { matchesLibraryFilters } from "@/lib/publishing/filter-library-items";
 import { sortLibraryItems } from "@/lib/publishing/sort-library-items";
 import { useFilterSlot } from "@/components/layout/right-filter-panel";
 import { useGlobalControls } from "@/components/layout/global-controls";
@@ -196,14 +192,6 @@ const GLOBAL_TYPES: Array<{ key: LibraryTargetType | "ALL"; label: string }> = [
   { key: "MANIFEST_TEMPLATE", label: "Manifest" },
   { key: "ITEM", label: "Items" },
 ];
-
-// Group filters: a single chip that matches several concrete types. Used by
-// the "All mechanics" / "All heritages" quick-filter chips. The typeFilter
-// state can hold a group key; TYPE_GROUPS resolves it to concrete types.
-const TYPE_GROUPS: Record<string, LibraryTargetType[]> = {
-  GROUP_MECHANICS: ["PRIMITIVE", "EFFECT", "CAPABILITY"],
-  GROUP_HERITAGES: ["LINEAGE_TEMPLATE", "UPBRINGING_TEMPLATE", "MANIFEST_TEMPLATE"],
-};
 
 /**
  * Phase 8.1 batch 11 (Mashu 2026-07-22): decide which character
@@ -483,108 +471,13 @@ export function GrammarLibrary({
     }
   }, [libraryItems, optimisticItems, flushOptimisticIfMatched]);
 
+  const deferredToolbarState = useDeferredValue(toolbarState);
   const filteredItems = useMemo(() => {
-    const filtered = combinedItems.filter((item) => {
-      if (toolbarState.origin && toolbarState.origin !== "all" && libraryOrigin(item) !== toolbarState.origin) return false;
-      if (toolbarState.tier && libraryTier(item) !== Number(toolbarState.tier)) return false;
-      // Only show items of the types available in this build mode.
-      const allowedKeys = availableTypes.map((t) => t.key);
-      if (!allowedKeys.includes(item.targetType) && !allowedKeys.includes("ALL")) {
-        return false;
-      }
-      // Apply toolbar text search across ALL discoverable fields
-      // (name, description, tags, category, targetType). Previously
-      // (Mashu 2026-09-06) only `name` was matched — searching for a
-      // tag or a substring of the mechanical output found nothing.
-      if (toolbarState.search) {
-        const q = toolbarState.search.toLowerCase();
-        const haystack = [
-          item.name,
-          item.description ?? "",
-          item.mechanicalDescription ?? "",
-          item.mechanicalTemplate ?? "",
-          item.verboseDescription ?? "",
-          item.category ?? "",
-          item.familyKey ?? "",
-          item.familyLabel ?? "",
-          item.targetType,
-          ...(item.tags ?? []),
-        ]
-          .join("\n")
-          .toLowerCase();
-        if (!haystack.includes(q)) return false;
-      }
-      // Apply type filter. "ALL" = everything available in this build
-      // mode. Group keys (GROUP_MECHANICS / GROUP_HERITAGES) match a set
-      // of concrete types. Otherwise it's a single concrete type.
-      const tf = toolbarState.typeFilter;
-      if (tf !== "ALL") {
-        const group = TYPE_GROUPS[tf as keyof typeof TYPE_GROUPS];
-        const allowedTf =
-          group && group.length ? group : [tf as LibraryTargetType];
-        if (!allowedTf.includes(item.targetType as LibraryTargetType)) {
-          return false;
-        }
-      }
-      // The rail is keyed by BU Market family. A primitive's raw category
-      // can be a member of that family (for example DOMAIN_ACCESS belongs
-      // to DOMAIN), so compare the normalized family rather than the raw
-      // category. This keeps category, search, source, and tier filters
-      // composable instead of producing a misleading empty list.
-      if (
-        toolbarState.category &&
-        item.targetType === "PRIMITIVE" &&
-        (item.familyKey ?? canonicalLibraryCategory(item.category ?? "")) !==
-          canonicalLibraryCategory(toolbarState.category)
-      ) {
-        return false;
-      }
-      // Author username — LibraryItem exposes authorUsername.
-      if (
-        toolbarState.author &&
-        (!item.authorUsername ||
-          !item.authorUsername
-            .toLowerCase()
-            .includes(toolbarState.author.toLowerCase()))
-      ) {
-        return false;
-      }
-      // minLikes / minForks — LibraryItem doesn't carry counts in the
-      // browse payload, so these are best-effort: if the field is present
-      // (populated by a future query), honour it; otherwise pass through.
-      if (toolbarState.minLikes) {
-        const min = Number(toolbarState.minLikes);
-        if (!Number.isNaN(min) && (item.likesCount ?? 0) < min) return false;
-      }
-      if (toolbarState.minForks) {
-        const min = Number(toolbarState.minForks);
-        if (!Number.isNaN(min) && (item.forkCount ?? 0) < min) return false;
-      }
-      if (toolbarState.minBu) {
-        const min = Number(toolbarState.minBu);
-        if (!Number.isNaN(min) && (item.buCost ?? 0) < min) return false;
-      }
-      if (toolbarState.maxBu) {
-        const max = Number(toolbarState.maxBu);
-        if (!Number.isNaN(max) && (item.buCost ?? 0) > max) return false;
-      }
-      // hasForks — same caveat as minLikes.
-      if (toolbarState.hasForks && (item.forkCount ?? 0) < 1) return false;
-      // Tags — comma-separated. Match any.
-      if (toolbarState.tags) {
-        const wanted = toolbarState.tags
-          .split(",")
-          .map((s) => s.trim().toLowerCase())
-          .filter(Boolean);
-        if (wanted.length > 0) {
-          const itemTags = (item.tags ?? []).map((t) => t.toLowerCase());
-          if (!wanted.some((t) => itemTags.includes(t))) return false;
-        }
-      }
-      return true;
-    });
-    return sortLibraryItems(filtered, toolbarState.sort);
-  }, [combinedItems, availableTypes, toolbarState, primitives]);
+    const allowedKeys = availableTypes.map(type => type.key);
+    return sortLibraryItems(combinedItems.filter(item =>
+      (allowedKeys.includes("ALL") || allowedKeys.includes(item.targetType)) &&
+      matchesLibraryFilters(item, deferredToolbarState)), deferredToolbarState.sort);
+  }, [combinedItems, availableTypes, deferredToolbarState]);
 
   // Right-side filter panel slot: render the full toolbar inside it.
   // The search bar is duplicated in the column header for quick access.
@@ -619,7 +512,13 @@ export function GrammarLibrary({
     toolbarState.author !== "" ||
     toolbarState.minLikes !== "" ||
     toolbarState.hasForks ||
-    toolbarState.sort !== "ENGAGEMENT";
+    toolbarState.sort !== "ENGAGEMENT" ||
+    !!toolbarState.minBu || !!toolbarState.maxBu || !!toolbarState.minForks ||
+    !!toolbarState.fromDate || !!toolbarState.toDate || !!toolbarState.tags ||
+    !!toolbarState.definitionKind || !!toolbarState.mirrorableOnly ||
+    !!toolbarState.mechanicTarget || !!toolbarState.recipient || !!toolbarState.conditionMode ||
+    !!toolbarState.minMagnitude || !!toolbarState.maxMagnitude || !!toolbarState.tier ||
+    (toolbarState.origin ?? "all") !== "all" || (toolbarState.visibility ?? "ANY") !== "ANY";
 
   // Card click → push to modal stack. The "Load into build" action still
   // calls the parent's onSelect; we pop the stack afterwards.
@@ -849,8 +748,8 @@ export function GrammarLibrary({
             }}
             {...(editingKey !== null ? { selectedKey: editingKey } : {})}
             showClearFilters={false}
-            emptyTitle="No grammar entries yet"
-            emptyDescription="Build primitives, effects, and capabilities to see them here."
+            emptyTitle="No entries match"
+            emptyDescription="Try a wider BU range, another family, or clear a filter to find more entries."
           />
           </div> : null}
         </section>

@@ -36,6 +36,8 @@ export const dynamic = "force-dynamic";
 
 interface PageProps {
   searchParams: Promise<{
+    mechanicTarget?: string; recipient?: string; conditionMode?: string; minMagnitude?: string; maxMagnitude?: string;
+    minBu?: string; maxBu?: string; minForks?: string; fromDate?: string; toDate?: string; definitionKind?: string; mirrorableOnly?: string;
     origin?: string;
     tier?: string;
     type?: string;
@@ -57,7 +59,7 @@ interface PageProps {
   }>;
 }
 
-const PAGE_SIZE = 24;
+const PAGE_SIZE = 30;
 
 export default async function LibraryBrowsePage({ searchParams }: PageProps) {
   const params = await searchParams;
@@ -67,7 +69,7 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
   const sort = parseSort(params.sort ?? null) ?? prefs.sort;
   const view = parseView(params.view ?? null) ?? prefs.view;
   const targetType = parseType(params.type ?? "PRIMITIVE");
-  const page = Math.max(0, parseInt(params.page ?? "0", 10) || 0);
+  const page = 0;
   const offset = page * PAGE_SIZE;
   const search = params.q ?? "";
   const category = params.category ? canonicalLibraryCategory(params.category) : "";
@@ -112,6 +114,15 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
       ...(params.minLikes ? { minLikes: parseInt(params.minLikes, 10) } : {}),
       origin: params.origin === "system" || params.origin === "community" ? params.origin : "all",
       ...(Number(params.tier) > 0 ? { tier: Number(params.tier) } : {}),
+      mechanicTarget: params.mechanicTarget, recipient: params.recipient, conditionMode: params.conditionMode === "conditional" ? "conditional" : params.conditionMode === "always" ? "always" : undefined,
+      minMagnitude: params.minMagnitude?.trim() && Number.isFinite(Number(params.minMagnitude)) ? Number(params.minMagnitude) : undefined,
+      maxMagnitude: params.maxMagnitude?.trim() && Number.isFinite(Number(params.maxMagnitude)) ? Number(params.maxMagnitude) : undefined,
+      minBu: params.minBu?.trim() && Number.isFinite(Number(params.minBu)) ? Number(params.minBu) : undefined,
+      maxBu: params.maxBu?.trim() && Number.isFinite(Number(params.maxBu)) ? Number(params.maxBu) : undefined,
+      minForks: params.minForks?.trim() && Number.isFinite(Number(params.minForks)) ? Number(params.minForks) : undefined,
+      fromDate: params.fromDate, toDate: params.toDate,
+      definitionKind: params.definitionKind === "TEMPLATE" ? "TEMPLATE" : params.definitionKind === "EXPRESSION" ? "EXPRESSION" : undefined,
+      mirrorableOnly: params.mirrorableOnly === "1",
       hasForks: params.hasForks === "1",
       // Tag filter — only honoured for ITEM target type. Other types
       // (primitive/capability/effect/template) don't have a tag array
@@ -145,6 +156,11 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
     ...EMPTY_LIBRARY_TOOLBAR_STATE,
     origin: params.origin === "system" || params.origin === "community" ? params.origin : "all",
     tier: params.tier ?? "",
+    mechanicTarget: params.mechanicTarget ?? "", recipient: ["self", "target", "scene"].includes(params.recipient ?? "") ? params.recipient as "self" | "target" | "scene" : "", conditionMode: params.conditionMode === "conditional" || params.conditionMode === "always" ? params.conditionMode : "", minMagnitude: params.minMagnitude ?? "", maxMagnitude: params.maxMagnitude ?? "",
+    minBu: params.minBu ?? "", maxBu: params.maxBu ?? "", minForks: params.minForks ?? "",
+    fromDate: params.fromDate ?? "", toDate: params.toDate ?? "",
+    definitionKind: params.definitionKind === "TEMPLATE" || params.definitionKind === "EXPRESSION" ? params.definitionKind : "",
+    mirrorableOnly: params.mirrorableOnly === "1",
     search,
     sort,
     view,

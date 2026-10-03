@@ -22,10 +22,13 @@
  * adds the matching one for heritage.
  */
 
-import { useEffect, useState, useCallback } from "react";
-import { X, Loader2, Plus, Check } from "lucide-react";
+import { useState, useCallback } from "react";
+import { X, Loader2, Plus } from "lucide-react";
 import type { LibraryItem } from "@/lib/publishing/library-query";
 import { Markdown } from "@/components/ui/markdown";
+import { useInfiniteLibrary } from "@/lib/hooks/use-infinite-library";
+import { InfiniteLibraryResults } from "@/components/library/infinite-library-results";
+import { LibraryDiscoveryFilters, EMPTY_DISCOVERY_FILTERS, discoveryFilterParams } from "./workspace/library-discovery-filters";
 
 export type LibraryEntityType = "heritage" | "capability" | "effect" | "item";
 
@@ -60,72 +63,18 @@ export function LibraryAttachSheet({
   onClose,
   onAttached,
 }: LibraryAttachSheetProps) {
-  const [items, setItems] = useState<LibraryItem[]>([]);
+
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(false);
+
   const [attachingId, setAttachingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch the library whenever the sheet opens or the query changes.
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        // Map entityType → library targetType query string.
-        // The library route reads `targetType=` (NOT `type=`
-        // — that's an unrelated param). Heritages split into
-        // three concrete types; the active accordion decides
-        // which one we ask for.
-        const url = new URL(
-          `/api/library`,
-          typeof window === "undefined"
-            ? "http://localhost"
-            : window.location.origin,
-        );
-        if (search.trim()) url.searchParams.set("q", search.trim());
-        if (entityType === "heritage") {
-          url.searchParams.set(
-            "targetType",
-            accordion === "LINEAGE"
-              ? "LINEAGE_TEMPLATE"
-              : accordion === "UPBRINGING"
-                ? "UPBRINGING_TEMPLATE"
-                : "MANIFEST_TEMPLATE",
-          );
-        } else if (entityType === "capability") {
-          url.searchParams.set("targetType", "CAPABILITY");
-        } else if (entityType === "effect") {
-          url.searchParams.set("targetType", "EFFECT");
-        } else if (entityType === "item") {
-          url.searchParams.set("targetType", "ITEM");
-        }
-        url.searchParams.set("limit", "24");
-        const res = await fetch(url.pathname + url.search, {
-          cache: "no-store",
-        });
-        if (!res.ok) {
-          throw new Error(`library fetch failed (${res.status})`);
-        }
-        const data = (await res.json()) as { items?: LibraryItem[] };
-        if (cancelled) return;
-        setItems(data.items ?? []);
-      } catch (err) {
-        if (!cancelled) {
-          setError(
-            err instanceof Error ? err.message : "Failed to load library.",
-          );
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [open, entityType, accordion, search]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filters, setFilters] = useState(EMPTY_DISCOVERY_FILTERS);
+  const [sort, setSort] = useState("ALPHABETICAL");
+  const [origin, setOrigin] = useState("all");
+  const filterKey = new URLSearchParams({ targetType: entityType === "heritage" ? `${accordion}_TEMPLATE` : entityType.toUpperCase(), q: search, origin, sort, ...discoveryFilterParams(filters) }).toString();
+  const results = useInfiniteLibrary(filterKey, { enabled: open });
 
   const attach = useCallback(
     async (item: LibraryItem) => {
@@ -219,6 +168,8 @@ export function LibraryAttachSheet({
             onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
           />
+          <button type="button" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(!filtersOpen)}>Filters & sorting · {results.total} entries</button>
+          {filtersOpen && <div className="mt-3 space-y-3"><LibraryDiscoveryFilters value={filters} onChange={setFilters} primitive={false} sort={sort} onSortChange={setSort}/><label className="sheet-field">Origin<select value={origin} onChange={(event) => setOrigin(event.target.value)}><option value="all">All origins</option><option value="system">System / SRD</option><option value="community">Community</option></select></label><button type="button" onClick={() => { setSearch(""); setFilters(EMPTY_DISCOVERY_FILTERS); setSort("ALPHABETICAL"); setOrigin("all"); }}>Clear filters</button></div>}
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-3">
@@ -230,20 +181,10 @@ export function LibraryAttachSheet({
               {error}
             </p>
           )}
-          {loading && (
-            <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" />
-              Loading…
-            </div>
-          )}
-          {!loading && items.length === 0 && (
-            <p className="py-10 text-center text-sm text-muted-foreground">
-              No {label.plural} match your search.
-            </p>
-          )}
-          {!loading && items.length > 0 && (
+          {!results.loading && !results.error && results.items.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">No {label.plural} match these filters.</p>}
+          <InfiniteLibraryResults key={filterKey} items={results.items} hasMore={results.hasMore} loading={results.loading} error={results.error} loadMore={results.loadMore} retry={results.retry} render={(batch) => (
             <ul className="space-y-2">
-              {items.map((item) => {
+              {batch.map((item) => {
                 const busy = attachingId === item.id;
                 return (
                   <li
@@ -276,7 +217,7 @@ export function LibraryAttachSheet({
                 );
               })}
             </ul>
-          )}
+          )}/>
         </div>
       </div>
     </div>

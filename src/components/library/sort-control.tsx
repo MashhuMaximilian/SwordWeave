@@ -16,6 +16,8 @@ interface SortUrlMap {
   FORKS: string;
   ALPHABETICAL: string;
   BU: string;
+  BU_DESC?: string;
+  ALPHABETICAL_DESC?: string;
 }
 
 interface ViewUrlMap {
@@ -33,7 +35,7 @@ interface Props {
 }
 
 const SORT_OPTIONS: { key: LibrarySort; label: string; hint: string }[] = [
-  { key: "ENGAGEMENT", label: "Engagement", hint: "likes + forks" },
+  { key: "ENGAGEMENT", label: "Popular", hint: "likes + forks" },
   { key: "LIKES", label: "Most liked", hint: "like count" },
   { key: "FORKS", label: "Most forked", hint: "fork count" },
   { key: "RECENT", label: "Recent", hint: "newest first" },
@@ -65,7 +67,7 @@ export function LibrarySortControl({
           return (
             <Link
               key={opt.key}
-              href={sortUrls[opt.key]}
+              href={sortUrls[opt.key] ?? sortUrls.ALPHABETICAL}
               onClick={() => writeCookie(opt.key, currentView)}
               title={opt.hint}
               className={`rounded-md px-3 py-1.5 text-xs transition-colors ${

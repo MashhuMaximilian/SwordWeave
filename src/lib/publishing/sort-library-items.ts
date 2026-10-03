@@ -18,24 +18,34 @@ export function sortLibraryItems(
   sort: LibrarySort,
 ): LibraryItem[] {
   const arr = items.slice();
+  const tie = (a: LibraryItem, b: LibraryItem) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id);
+  const time = (item: LibraryItem) => item.publishedAt ? new Date(item.publishedAt).getTime() : 0;
   switch (sort) {
     case "BU":
       return arr.sort((a, b) => {
         const av = a.buCost ?? Number.POSITIVE_INFINITY;
         const bv = b.buCost ?? Number.POSITIVE_INFINITY;
-        return av - bv;
+        return av - bv || tie(a, b);
       });
+    case "BU_DESC":
+      return arr.sort((a, b) => {
+        if (a.buCost === null) return b.buCost === null ? tie(a,b) : 1;
+        if (b.buCost === null) return -1;
+        return b.buCost - a.buCost || tie(a,b);
+      });
+    case "ALPHABETICAL_DESC":
+      return arr.sort((a,b) => b.name.localeCompare(a.name) || a.id.localeCompare(b.id));
     case "ALPHABETICAL":
-      return arr.sort((a, b) => a.name.localeCompare(b.name));
+      return arr.sort((a, b) => tie(a,b));
     case "RECENT":
       return arr.sort(
         (a, b) =>
-          (b.publishedAt?.getTime() ?? 0) - (a.publishedAt?.getTime() ?? 0),
+          time(b) - time(a) || tie(a,b),
       );
     case "LIKES":
-      return arr.sort((a, b) => b.likesCount - a.likesCount);
+      return arr.sort((a, b) => b.likesCount - a.likesCount || time(b)-time(a) || tie(a,b));
     case "FORKS":
-      return arr.sort((a, b) => b.forkCount - a.forkCount);
+      return arr.sort((a, b) => b.forkCount - a.forkCount || b.likesCount-a.likesCount || tie(a,b));
     case "ENGAGEMENT":
     default:
       return arr.sort((a, b) => {
@@ -44,7 +54,7 @@ export function sortLibraryItems(
         return (
           bScore - aScore ||
           b.likesCount - a.likesCount ||
-          (b.publishedAt?.getTime() ?? 0) - (a.publishedAt?.getTime() ?? 0)
+          time(b) - time(a) || tie(a,b)
         );
       });
   }

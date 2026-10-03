@@ -64,6 +64,10 @@ import {
 import { mechanicalDescriptionFromModifiers } from "@/lib/primitives/mechanical-rule";
 import { resolveEngagementMap as sharedResolveEngagementMap } from "@/lib/engagement/engagement-aggregates";
 import { CANONICAL_EXPRESSIONS, MARKET_FAMILIES, MARKET_TEMPLATES } from "@/lib/primitives/canonical-market";
+import { isMirrorableOperation, readMirrorMeta } from "@/lib/engine/mirror";
+import { loadLibraryFlagCounts } from "@/lib/engagement/library-flag-counts";
+import { primitiveMechanicFacets } from "./primitive-discovery-facets";
+import { sortLibraryItems } from "./sort-library-items";
 import type { HardModifier } from "@/types/swordweave";
 
 export type LibrarySort =
@@ -72,7 +76,9 @@ export type LibrarySort =
   | "RECENT"
   | "FORKS"
   | "ALPHABETICAL"
-  | "BU";
+  | "BU"
+  | "BU_DESC"
+  | "ALPHABETICAL_DESC";
 export type LibraryTargetType =
   | "PRIMITIVE"
   | "CAPABILITY"
@@ -132,6 +138,19 @@ export interface LibraryQuery {
    * regardless of tier (they always see their own profile).
    */
   viewerClerkId?: string;
+  minBu?: number | undefined;
+  maxBu?: number | undefined;
+  minForks?: number | undefined;
+  fromDate?: string | undefined;
+  toDate?: string | undefined;
+  definitionKind?: "TEMPLATE" | "EXPRESSION" | undefined;
+  mirrorableOnly?: boolean;
+  recipient?: string | undefined;
+  conditionMode?: "conditional" | "always" | undefined;
+  mechanicTarget?: string | undefined;
+  magnitude?: number | undefined;
+  minMagnitude?: number | undefined;
+  maxMagnitude?: number | undefined;
   minLikes?: number;
   hasForks?: boolean;
   /**
@@ -166,7 +185,12 @@ export interface LibraryItem {
   mechanicalDescription?: string | null;
   mechanicalTemplate?: string | null;
   verboseDescription?: string | null;
-  definitionKind?: "TEMPLATE" | "EXPRESSION";
+  definitionKind?: "TEMPLATE" | "EXPRESSION" | undefined;
+  mirrorable?: boolean;
+  mechanicTargets?: string[];
+  recipients?: string[];
+  conditional?: boolean;
+  magnitudes?: number[];
   versionNumber?: number | null;
   bindings?: Record<string, unknown>;
   familyKey?: string | null;
@@ -188,6 +212,9 @@ export interface LibraryItem {
   likesCount: number;
   dislikesCount: number;
   forkCount: number;
+  flagCount?: number;
+  viewerReaction?: "LIKE" | "DISLIKE" | null;
+  viewerFollowing?: boolean;
   tags: string[];
   /**
    * Phase 9 follow-up: whether this row's author is a Clerk admin.
@@ -321,25 +348,30 @@ export async function queryCompleteLibrary(q: LibraryQuery): Promise<LibraryItem
 type LibraryFetchQuery = LibraryQuery & { complete?: boolean };
 
 async function queryLibraryResult(q: LibraryQuery, complete: boolean): Promise<LibraryResult> {
-  const limit = Math.min(q.limit ?? 24, 100);
-  const offset = q.offset ?? 0;
+  if (/^(system|srd)$/i.test(q.authorUsername?.trim() ?? "")) {
+    const { authorUsername: _author, ...rest } = q;
+    q = { ...rest, origin: "system" };
+  }
+  const limit = Math.max(1, Math.min(q.limit ?? 24, 100));
+  const offset = Math.max(0, q.offset ?? 0);
   const sort = q.sort ?? "LIKES";
 
   // Read authorized entity branches in parallel, then batch shared author and
   // engagement enrichment across the union below.
+  const fetchQuery = { ...q, ...(q.search?.trim() ? {search: q.search.trim().split(/\s+/)[0]!} : {}), complete };
   const wantAll = !q.targetType;
   const fetchJobs: Promise<LibraryItem[]>[] = [];
   if (wantAll || q.targetType === "PRIMITIVE") {
-    fetchJobs.push(fetchPrimitives({ ...q, complete }));
+    fetchJobs.push(fetchPrimitives(fetchQuery));
   }
   if (wantAll || q.targetType === "CAPABILITY") {
-    fetchJobs.push(fetchCapabilities({ ...q, complete }));
+    fetchJobs.push(fetchCapabilities(fetchQuery));
   }
   if (wantAll || q.targetType === "EFFECT") {
-    fetchJobs.push(fetchEffects({ ...q, complete }));
+    fetchJobs.push(fetchEffects(fetchQuery));
   }
   if (wantAll || q.targetType === "ITEM") {
-    fetchJobs.push(fetchItems({ ...q, complete }));
+    fetchJobs.push(fetchItems(fetchQuery));
   }
   if (
     wantAll ||
@@ -347,10 +379,10 @@ async function queryLibraryResult(q: LibraryQuery, complete: boolean): Promise<L
     q.targetType === "UPBRINGING_TEMPLATE" ||
     q.targetType === "MANIFEST_TEMPLATE"
   ) {
-    fetchJobs.push(fetchTemplates({ ...q, complete }));
+    fetchJobs.push(fetchTemplates(fetchQuery));
   }
   if (wantAll || q.targetType === "BUILD_TEMPLATE") {
-    fetchJobs.push(fetchBuilds({ ...q, complete }));
+    fetchJobs.push(fetchBuilds(fetchQuery));
   }
   // PLAN Eilxina Part A (Mashu 2026-09-09): surface CHARACTER rows
   // in the library codex. The type was already in LibraryTargetType
@@ -358,7 +390,7 @@ async function queryLibraryResult(q: LibraryQuery, complete: boolean): Promise<L
   // this addition, /library?targetType=CHARACTER + the browse page
   // finally return published characters.
   if (wantAll || q.targetType === "CHARACTER") {
-    fetchJobs.push(fetchCharacters({ ...q, complete }));
+    fetchJobs.push(fetchCharacters(fetchQuery));
   }
   const branches = await Promise.all(fetchJobs);
   const items: LibraryItem[] = branches.flat();
@@ -385,10 +417,27 @@ async function queryLibraryResult(q: LibraryQuery, complete: boolean): Promise<L
 
 
   // Sort the merged list (since each fetch already applies some ordering)
-  sortItems(items, sort);
+  const sorted = sortLibraryItems(items, sort);
 
   // Apply post-fetch engagement filters (uses joined aggregates)
-  const filtered = items.filter((it) => {
+  const filtered = sorted.filter((it) => {
+    if (q.minBu !== undefined && (it.buCost === null || it.buCost < q.minBu)) return false;
+    if (q.maxBu !== undefined && (it.buCost === null || it.buCost > q.maxBu)) return false;
+    if (q.minForks !== undefined && it.forkCount < q.minForks) return false;
+    if (q.definitionKind && it.definitionKind !== q.definitionKind) return false;
+    if (q.mirrorableOnly && !it.mirrorable) return false;
+    if (q.recipient && !it.recipients?.includes(q.recipient.toUpperCase())) return false;
+    if (q.conditionMode && it.conditional !== (q.conditionMode === "conditional")) return false;
+    if (q.mechanicTarget && !it.mechanicTargets?.some(target => target.toLowerCase().includes(q.mechanicTarget!.toLowerCase()))) return false;
+    if (q.magnitude !== undefined && !it.magnitudes?.includes(q.magnitude)) return false;
+    if ((q.minMagnitude !== undefined || q.maxMagnitude !== undefined) && !it.magnitudes?.some(value => (q.minMagnitude === undefined || value >= q.minMagnitude) && (q.maxMagnitude === undefined || value <= q.maxMagnitude))) return false;
+    if (q.fromDate && (!it.publishedAt || it.publishedAt.getTime() < Date.parse(q.fromDate + "T00:00:00Z"))) return false;
+    if (q.toDate && (!it.publishedAt || it.publishedAt.getTime() >= Date.parse(q.toDate + "T00:00:00Z") + 86400000)) return false;
+    if (q.tags?.length && !q.tags.every(tag => it.tags.some(value => value.toLowerCase() === tag.toLowerCase()))) return false;
+    if (q.search?.trim()) {
+      const text = [it.name, it.description, it.mechanicalDescription, it.mechanicalTemplate, it.verboseDescription, it.compositionSummary, it.category, it.familyKey, it.familyLabel, ...(it.mechanicTargets ?? []), ...(it.recipients ?? []), ...it.tags, ...(it.compositionPaths ?? []).map(path => `${path.primitiveName} ${path.mechanicalDescription}`)].join("\n").toLowerCase();
+      if (!q.search.trim().toLowerCase().split(/\s+/).every(word => text.includes(word))) return false;
+    }
     if (q.origin && q.origin !== "all" && libraryOrigin(it) !== q.origin) return false;
     if (q.tier && libraryTier(it) !== q.tier) return false;
     if (q.minLikes !== undefined && it.likesCount < q.minLikes) return false;
@@ -399,52 +448,9 @@ async function queryLibraryResult(q: LibraryQuery, complete: boolean): Promise<L
   const total = filtered.length;
   const paged = complete ? filtered : filtered.slice(offset, offset + limit);
 
+  const flagCounts = await loadLibraryFlagCounts(paged);
+  for (const item of paged) item.flagCount = flagCounts.get(item.id) ?? 0;
   return { items: paged, total, limit, offset };
-}
-
-function sortItems(items: LibraryItem[], sort: LibrarySort) {
-  switch (sort) {
-    case "RECENT":
-      items.sort((a, b) => {
-        const aT = a.publishedAt?.getTime() ?? 0;
-        const bT = b.publishedAt?.getTime() ?? 0;
-        return bT - aT;
-      });
-      break;
-    case "FORKS":
-      items.sort((a, b) => {
-        if (b.forkCount !== a.forkCount) return b.forkCount - a.forkCount;
-        return b.likesCount - a.likesCount;
-      });
-      break;
-    case "ALPHABETICAL":
-      items.sort((a, b) => a.name.localeCompare(b.name));
-      break;
-    case "ENGAGEMENT":
-      // Composite engagement uses the two positive community actions.
-      items.sort((a, b) => {
-        const aScore = a.likesCount * 2 + a.forkCount * 3;
-        const bScore = b.likesCount * 2 + b.forkCount * 3;
-        if (bScore !== aScore) return bScore - aScore;
-        if (b.likesCount !== a.likesCount) return b.likesCount - a.likesCount;
-        // Final tiebreaker: most recent
-        const aT = a.publishedAt?.getTime() ?? 0;
-        const bT = b.publishedAt?.getTime() ?? 0;
-        return bT - aT;
-      });
-      break;
-    case "LIKES":
-    default:
-      items.sort((a, b) => {
-        if (b.likesCount !== a.likesCount) {
-          return b.likesCount - a.likesCount;
-        }
-        const aT = a.publishedAt?.getTime() ?? 0;
-        const bT = b.publishedAt?.getTime() ?? 0;
-        return bT - aT;
-      });
-      break;
-  }
 }
 
 function compactComposition(parts: Array<string | null | undefined>): string | null {
@@ -693,7 +699,7 @@ async function fetchPrimitives(q: LibraryFetchQuery): Promise<LibraryItem[]> {
   const conditions: SQL[] = [];
   // Templates live in the canonical ladder; exact-entry results contain only
   // complete, executable expressions.
-  conditions.push(eq(primitives.definitionKind, "EXPRESSION"));
+  if (q.definitionKind) conditions.push(eq(primitives.definitionKind, q.definitionKind));
   if (q.authorClerkId) {
     conditions.push(eq(primitives.userId, q.authorClerkId));
     conditions.push(
@@ -755,6 +761,8 @@ async function fetchPrimitives(q: LibraryFetchQuery): Promise<LibraryItem[]> {
       buCost: primitives.buCost,
       costTier: primitives.costTier,
       hardModifiers: primitives.hardModifiers,
+      isMirrorable: primitives.isMirrorable,
+      mirrorVector: primitives.mirrorVector,
       mechanicalOutputText: primitives.mechanicalOutputText,
       mechanicalTemplateText: primitives.mechanicalTemplateText,
       definitionKind: primitives.definitionKind,
@@ -796,7 +804,7 @@ async function fetchPrimitives(q: LibraryFetchQuery): Promise<LibraryItem[]> {
       eq(lexiconFamilies.key, primitiveMarketClassifications.familyKey),
     )
     .where(and(...conditions));
-  const rows = await (q.complete ? entityQuery : entityQuery.limit(500));
+  const rows = await entityQuery;
 
   const lineageCounts = new Map<string, { direct: number; descendants: number }>();
   if (rows.length) {
@@ -848,6 +856,8 @@ async function fetchPrimitives(q: LibraryFetchQuery): Promise<LibraryItem[]> {
       mechanicalTemplate: r.mechanicalTemplateText,
       verboseDescription: r.narrativeRule,
       definitionKind: r.definitionKind,
+      ...primitiveMechanicFacets(r.hardModifiers),
+      mirrorable: r.isMirrorable && Array.isArray(r.hardModifiers) && r.hardModifiers.some((modifier: HardModifier) => (r.mirrorVector === "STRUCTURAL_FAULT" || r.mirrorVector === "COST_INSTABILITY" || isMirrorableOperation(modifier.operation)) && !readMirrorMeta(modifier)?.optedOut),
       versionNumber: r.versionNumber,
       bindings: r.bindings ?? {},
       familyKey: r.familyKey,
@@ -967,7 +977,7 @@ async function fetchCapabilities(q: LibraryFetchQuery): Promise<LibraryItem[]> {
     })
     .from(capabilities)
     .where(and(...conditions));
-  const rows = await (q.complete ? entityQuery : entityQuery.limit(500));
+  const rows = await entityQuery;
 
   // Compute BU totals by joining primitive_links + primitives
   const capabilityIds = rows.map((r) => r.id);
@@ -1115,7 +1125,7 @@ async function fetchCharacters(q: LibraryFetchQuery): Promise<LibraryItem[]> {
     })
     .from(characters)
     .where(and(...conditions));
-  const rows = await (q.complete ? entityQuery : entityQuery.limit(500));
+  const rows = await entityQuery;
 
 
   return rows.map((r) => {
@@ -1223,7 +1233,7 @@ async function fetchEffects(q: LibraryFetchQuery): Promise<LibraryItem[]> {
     })
     .from(effects)
     .where(and(...conditions));
-  const rows = await (q.complete ? entityQuery : entityQuery.limit(500));
+  const rows = await entityQuery;
 
 
   // Compute BU total via primitive_links (uses buCost × quantity)
@@ -1372,18 +1382,6 @@ async function fetchItems(q: LibraryFetchQuery): Promise<LibraryItem[]> {
     // Items store Clerk ID in user_id; SQL-level username filter needs a
     // join. Skip — filter in caller.
   }
-  if (q.tags && q.tags.length > 0) {
-    // AND-match across the supplied tag list. Postgres `&&` is array
-    // overlap (true when arrays share any element), but we want every
-    // supplied tag to be present — so we AND together multiple
-    // `tags @> ARRAY[<single>]` checks (the `@>` containment operator
-    // is true when the LEFT array contains every element of the RIGHT
-    // array).
-    for (const tag of q.tags) {
-      conditions.push(sql`${items.tags} @> ARRAY[${tag}]::text[]`);
-    }
-  }
-
   const entityQuery = db
     .select({
       id: items.id,
@@ -1409,7 +1407,7 @@ async function fetchItems(q: LibraryFetchQuery): Promise<LibraryItem[]> {
     })
     .from(items)
     .where(and(...conditions));
-  const rows = await (q.complete ? entityQuery : entityQuery.limit(500));
+  const rows = await entityQuery;
 
   const compositionMap = new Map<string, string[]>();
   const itemIds = rows.map((row) => row.id);
@@ -1586,7 +1584,7 @@ async function fetchTemplates(q: LibraryFetchQuery): Promise<LibraryItem[]> {
     })
     .from(heritage)
     .where(and(...conditions));
-  const rows = await (q.complete ? entityQuery : entityQuery.limit(500));
+  const rows = await entityQuery;
 
   const compositionMap = new Map<string, string[]>();
   const templateIds = rows.map((row) => row.id);
@@ -1745,7 +1743,7 @@ async function fetchBuilds(q: LibraryFetchQuery): Promise<LibraryItem[]> {
     })
     .from(builds)
     .where(and(...conditions));
-  const rows = await (q.complete ? entityQuery : entityQuery.limit(500));
+  const rows = await entityQuery;
 
 
   return rows.map((r) => {
@@ -1920,6 +1918,7 @@ export async function listPrimitiveFamilyTiers(
           ? eq(primitiveMarketClassifications.familyKey,catalogFamily.key)
           : inArray(primitives.category,libraryCategoryMembers(category) as never[]),
         or(eq(primitives.definitionKind, "TEMPLATE"), isNull(primitives.userId))!,
+        visibilityCondition("PRIMITIVE", sql`${primitives.id}`, sql`${primitives.userId}`, undefined, sql`${primitives.isPublic}`),
       ),
     )
     .orderBy(asc(primitives.buCost), asc(primitives.name));

@@ -3,6 +3,8 @@ import { libraryHeritageArt } from "@/lib/heritage/lineage-art";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { PhoneTypeChoices, PHONE_RECORD_TYPES } from "./phone-type-choices";
 import { PhoneLibraryFilters } from "./phone-library-filters";
+import { useInfiniteLibrary } from "@/lib/hooks/use-infinite-library";
+import { InfiniteLibraryResults } from "./infinite-library-results";
 import { LibraryTable } from "./library-table";
 
 // =============================================================================
@@ -21,7 +23,6 @@ import {
   libraryAuthorLabel,
   libraryOrigin,
 } from "@/lib/publishing/library-classification";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { LibraryToolbar } from "@/components/library/library-toolbar";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
@@ -35,7 +36,7 @@ import type {
   PrimitiveFamilyTier,
 } from "@/lib/publishing/library-query";
 import type { LibraryEngagement } from "@/components/library/library-table";
-import type { LibraryToolbarState } from "@/components/library/library-toolbar";
+import { EMPTY_LIBRARY_TOOLBAR_STATE, type LibraryToolbarState } from "@/components/library/library-toolbar";
 import {
   LibraryMarketRail,
   libraryFamilyLabel,
@@ -169,23 +170,49 @@ export function LibraryBrowseClient({
   currentUserInternalId,
 }: Props) {
   const phone = useIsMobile();
-  const router = useRouter();
   const [selection, setSelectedItem] = useState<LibraryItem | null>(
     initialItems[0] ?? null,
   );
-  const selectedItem = initialItems.find(item => item.id === selection?.id) ?? initialItems[0] ?? null;
+  const [state, setState] = useState<LibraryToolbarState>(initialState);
+  useEffect(() => setState(initialState), [initialState]);
+  const queryString = useMemo(() => {
+    const params = new URLSearchParams();
+    if (state.typeFilter !== "ALL" && !state.typeFilter.startsWith("GROUP_")) params.set("targetType", state.typeFilter);
+    for (const key of ["category", "origin", "tier", "sort", "minBu", "maxBu", "minForks", "fromDate", "toDate", "definitionKind", "minLikes", "mechanicTarget", "recipient", "conditionMode", "minMagnitude", "maxMagnitude"] as const) if (state[key]) params.set(key, String(state[key]));
+    if (state.search) params.set("q", state.search);
+    if (state.author) params.set("authorUsername", state.author);
+    if (state.tags) params.set("tags", state.tags);
+    if (state.hasForks) params.set("hasForks", "1");
+    if (state.mirrorableOnly) params.set("mirrorableOnly", "1");
+    return params.toString();
+  }, [state]);
+  const discovery = useInfiniteLibrary(queryString, { pageSize: 30, initialItems, initialTotal: total });
+  const items = discovery.items;
+  const selectedItem = items.find(item => item.id === selection?.id) ?? items[0] ?? null;
   const selectedForkTarget = selectedItem
     ? buildSandboxUrl(selectedItem.targetType, selectedItem.targetId, "fork")
     : null;
   const [detailOpen, setDetailOpen] = useState(false);
   const [nestedPreview, setNestedPreview] = useState<{targetType:string;targetId:string;name:string} | null>(null);
   const [familyExpanded, setFamilyExpanded] = useState(true);
+  const [visibleFamilyTiers, setVisibleFamilyTiers] = useState(familyTiers);
+  useEffect(() => {
+    if (state.category === initialState.category) { setVisibleFamilyTiers(familyTiers); return; }
+    setVisibleFamilyTiers([]);
+    if (!state.category) return;
+    const controller = new AbortController();
+    fetch(`/api/library/family-tiers?category=${encodeURIComponent(state.category)}`, {signal: controller.signal})
+      .then(response => response.ok ? response.json() : null)
+      .then(result => { if (!controller.signal.aborted) setVisibleFamilyTiers(result?.tiers ?? []); })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [state.category, initialState.category, familyTiers]);
   const workbenchRef = useRef<HTMLDivElement>(null);
   const [leftWidth, setLeftWidth] = useState(270);
   const [rightWidth, setRightWidth] = useState(330);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
-  const state = useMemo<LibraryToolbarState>(() => initialState, [initialState]);
+
   const isPrimitiveMode =
     state.typeFilter === "PRIMITIVE";
   const effectiveCategory = isPrimitiveMode
@@ -221,26 +248,20 @@ export function LibraryBrowseClient({
       ) {
         params.set("tag", next.tags);
       }
-      const nextPage = overridePage ?? 0;
-      if (nextPage > 0) params.set("page", String(nextPage));
+      for (const key of ["minBu", "maxBu", "minForks", "fromDate", "toDate", "definitionKind", "mechanicTarget", "recipient", "conditionMode", "minMagnitude", "maxMagnitude"] as const) if (next[key]) params.set(key, String(next[key]));
+      if (next.mirrorableOnly) params.set("mirrorableOnly", "1");
       const qs = params.toString();
-      router.push(qs ? `/library/browse?${qs}` : "/library/browse");
+      window.history.replaceState(null, "", qs ? `/library/browse?${qs}` : "/library/browse");
     },
-    [router, phone],
+    [phone],
   );
 
   const onStateChange = useCallback(
     (next: LibraryToolbarState) => {
+      setState(next);
       pushUrl(next, 0);
     },
     [pushUrl],
-  );
-
-  const onPageChange = useCallback(
-    (newPage: number) => {
-      pushUrl(state, newPage);
-    },
-    [pushUrl, state],
   );
 
   // When the user clicks a row, open the iframe detail modal.
@@ -275,6 +296,7 @@ export function LibraryBrowseClient({
           activeTags={activeTags}
           showSearch={true}
           showAdvancedFilters={true}
+          showVisibilityFilter={false}
           forceExpandFilters
         />
         </details>
@@ -404,9 +426,9 @@ export function LibraryBrowseClient({
               </div>
             ) : null}
           </div>
-          {familyExpanded && effectiveCategory && isPrimitiveMode && familyTiers.length ? (
+          {familyExpanded && effectiveCategory && isPrimitiveMode && visibleFamilyTiers.length ? (
             <div className="v12-tier-ladder" aria-label="Canonical cost tiers">
-              {familyTiers.map((tier) => (
+              {visibleFamilyTiers.map((tier) => (
                 <div key={`${tier.tier}:${tier.buCost}`}>
                   <span>{tier.tier ? `T${tier.tier}` : "—"}</span>
                   <div className="v12-tier-copy">
@@ -428,16 +450,30 @@ export function LibraryBrowseClient({
               <p className="v12-kicker">Exact entries</p>
               <h3>Canonical references and community expressions</h3>
             </div>}
-            <span>{total.toLocaleString()} records</span>
+            <span>{discovery.total.toLocaleString()} records</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5 px-2 py-2" aria-label="Active filters">
+            {([
+              ["search", "Search"], ["category", "Family"], ["tier", "Tier"], ["author", "Author"],
+              ["minBu", "Minimum BU"], ["maxBu", "Maximum BU"], ["mechanicTarget", "Result"],
+              ["recipient", "Recipient"], ["conditionMode", "Condition"], ["definitionKind", "Definition"],
+              ["minMagnitude", "Minimum value"], ["maxMagnitude", "Maximum value"], ["tags", "Tags"],
+              ["fromDate", "From"], ["toDate", "Until"], ["minLikes", "Minimum likes"], ["minForks", "Minimum forks"],
+            ] as const).filter(([key]) => Boolean(state[key])).map(([key, label]) => <button key={key} type="button" className="rounded-full border border-border px-2 py-1 text-xs hover:border-primary" onClick={() => onStateChange({...state,[key]: ""})} aria-label={`Remove ${label.toLowerCase()} filter`}>{label}: {String(state[key])} <span aria-hidden="true">×</span></button>)}
+            {state.origin && state.origin !== "all" ? <button type="button" className="rounded-full border border-border px-2 py-1 text-xs" onClick={() => onStateChange({...state,origin:"all"})}>Source: {state.origin} ×</button> : null}
+            {state.mirrorableOnly ? <button type="button" className="rounded-full border border-border px-2 py-1 text-xs" onClick={() => onStateChange({...state,mirrorableOnly:false})}>Mirrorable ×</button> : null}
+            {state.hasForks ? <button type="button" className="rounded-full border border-border px-2 py-1 text-xs" onClick={() => onStateChange({...state,hasForks:false})}>Has forks ×</button> : null}
+            <button type="button" className="rounded border border-border px-2 py-1 text-xs hover:border-primary" onClick={() => onStateChange({...EMPTY_LIBRARY_TOOLBAR_STATE,typeFilter:state.typeFilter,view:state.view,sort:state.sort})}>Clear filters</button>
           </div>
           <button type="button" className="phone-library-quick-filter" aria-expanded={phoneQuickFiltersOpen} onClick={()=>setPhoneQuickFiltersOpen(value=>!value)}>Tier & origin{state.tier ? ` · Tier ${state.tier}` : ""}{state.origin && state.origin !== "all" ? ` · ${state.origin}` : ""} <span aria-hidden="true">{phoneQuickFiltersOpen ? "−" : "+"}</span></button>
           <div className={`v12-browse-controls${phoneQuickFiltersOpen ? " phone-filters-open" : ""}`}>
             {isPrimitiveMode ? <div className="v12-tier-tabs" aria-label="Exact entry tiers">{["", "1", "2", "3", "4", "5"].map(tier => <button key={tier} type="button" aria-pressed={(state.tier ?? "") === tier} onClick={() => onStateChange({ ...state, tier })}>{tier ? `Tier ${["", "I", "II", "III", "IV", "V"][Number(tier)]}` : "All tiers"}</button>)}</div> : null}
             <div className="v12-origin-tabs" aria-label="Entry origin">{(["all", "system", "community"] as const).map(origin => <button type="button" key={origin} aria-pressed={(state.origin ?? "all") === origin} onClick={() => onStateChange({ ...state, origin })}>{origin === "all" ? "All origins" : origin === "system" ? "System" : "Community"}</button>)}</div>
           </div>
-          {initialItems.length && phone ? <LibraryTable items={initialItems} view="LIST" surface="atelier" compact engagement={engagement} currentUserInternalId={currentUserInternalId} onSelect={onRowSelect}/> : initialItems.length ? (
+          <InfiniteLibraryResults key={queryString} {...discovery} render={(visibleItems) => <>
+          {visibleItems.length && phone ? <LibraryTable items={visibleItems} view="LIST" surface="atelier" compact engagement={engagement} currentUserInternalId={currentUserInternalId} onSelect={onRowSelect}/> : visibleItems.length ? (
             <div className={isPrimitiveMode ? "v12-cluster-list" : "v12-creation-grid"}>
-              {[{ id: isPrimitiveMode ? "primitives" : "creations", entries: initialItems }].map(({ id, entries }) => <section className={`v12-entry-cluster${isPrimitiveMode ? " is-flat" : ""}`} key={id}>{entries.map((item) => (
+              {[{ id: isPrimitiveMode ? "primitives" : "creations", entries: visibleItems }].map(({ id, entries }) => <section className={`v12-entry-cluster${isPrimitiveMode ? " is-flat" : ""}`} key={id}>{entries.map((item) => (
                 <article
                   key={item.id}
                   data-library-row-id={item.id}
@@ -476,8 +512,9 @@ export function LibraryBrowseClient({
                           initialLikes={item.likesCount}
                           initialDislikes={item.dislikesCount}
                           initialForks={item.forkCount}
-                          initialUserReaction={engagement.reactions[item.id] ?? null}
-                          initialFollowing={engagement.following[item.id] ?? false}
+                          initialFlags={item.flagCount}
+                          initialUserReaction={item.viewerReaction !== undefined ? item.viewerReaction : engagement.reactions[item.id] ?? null}
+                          initialFollowing={item.viewerFollowing ?? (item.authorId ? engagement.following[item.authorId] : false) ?? false}
                           authorId={item.authorId}
                           authorUsername={libraryOrigin(item) === "system" ? null : item.authorUsername}
                           currentUserId={currentUserInternalId}
@@ -493,7 +530,7 @@ export function LibraryBrowseClient({
           ) : (
             <div className="v12-empty-state"><h3>No entries match</h3><p>Try a different filter, broader search, or another sort.</p></div>
           )}
-          {totalPages > 1 ? <Pagination page={page} totalPages={totalPages} total={total} onPageChange={onPageChange} /> : null}
+          </>} />
         </main>
         <div className="v12-library-resizer" role="separator" aria-label="Resize preview column" onPointerDown={(event) => startResize("right", event)} />
         <aside className="v12-library-inspector">
@@ -578,8 +615,8 @@ export function LibraryBrowseClient({
                     initialLikes={selectedItem.likesCount}
                     initialDislikes={selectedItem.dislikesCount}
                     initialForks={selectedItem.forkCount}
-                    initialUserReaction={engagement.reactions[selectedItem.id] ?? null}
-                    initialFollowing={engagement.following[selectedItem.id] ?? false}
+                    initialUserReaction={selectedItem.viewerReaction !== undefined ? selectedItem.viewerReaction : engagement.reactions[selectedItem.id] ?? null}
+                    initialFollowing={selectedItem.viewerFollowing ?? (selectedItem.authorId ? engagement.following[selectedItem.authorId] : false) ?? false}
                     authorId={selectedItem.authorId}
                     authorUsername={libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorUsername}
                     currentUserId={currentUserInternalId}
@@ -630,48 +667,6 @@ export function LibraryBrowseClient({
           </div>
         ) : null}
       </DetailModal>
-    </div>
-  );
-}
-
-function Pagination({
-  page,
-  totalPages,
-  total,
-  onPageChange,
-}: {
-  page: number;
-  totalPages: number;
-  total: number;
-  onPageChange: (page: number) => void;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-2 text-sm">
-      {page > 0 ? (
-        <button
-          type="button"
-          onClick={() => onPageChange(page - 1)}
-          className="text-muted-foreground hover:text-foreground"
-        >
-          ← Previous
-        </button>
-      ) : (
-        <span />
-      )}
-      <span className="text-xs text-muted-foreground">
-        Page {page + 1} of {totalPages} ({total.toLocaleString()} total)
-      </span>
-      {page + 1 < totalPages ? (
-        <button
-          type="button"
-          onClick={() => onPageChange(page + 1)}
-          className="text-muted-foreground hover:text-foreground"
-        >
-          Next →
-        </button>
-      ) : (
-        <span />
-      )}
     </div>
   );
 }

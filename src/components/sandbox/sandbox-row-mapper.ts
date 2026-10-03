@@ -14,6 +14,9 @@
 // If/when the sandbox wants engagement, swap to a queryLibrary() call here.
 // =============================================================================
 
+import { primitiveMechanicFacets } from "@/lib/publishing/primitive-discovery-facets";
+import { isMirrorableOperation, readMirrorMeta } from "@/lib/engine/mirror";
+import type { HardModifier } from "@/types/swordweave";
 import type { LibraryItem } from "@/lib/publishing/library-query";
 
 /** Normalise createdAt (string | Date | null) to a Date | null. Phase
@@ -47,6 +50,11 @@ function computeComposedBu(
 }
 
 type SandboxPrimitive = {
+  definitionKind?: "TEMPLATE" | "EXPRESSION";
+  hardModifiers?: unknown;
+  isMirrorable?: boolean;
+  mirrorVector?: string | null;
+  mechanicalTemplateText?: string | null;
   id: number;
   name: string;
   category: string;
@@ -224,6 +232,10 @@ export function primitiveToLibraryItem(
     name: row.name,
     description: row.narrativeRule ?? row.mechanicalOutputText ?? null,
     mechanicalDescription: row.mechanicalOutputText ?? null,
+    mechanicalTemplate: row.mechanicalTemplateText ?? null,
+    ...(row.definitionKind ? { definitionKind: row.definitionKind } : {}),
+    ...primitiveMechanicFacets(row.hardModifiers),
+    mirrorable: !!row.isMirrorable && Array.isArray(row.hardModifiers) && row.hardModifiers.some((modifier: HardModifier) => (row.mirrorVector === "STRUCTURAL_FAULT" || row.mirrorVector === "COST_INSTABILITY" || isMirrorableOperation(modifier.operation)) && !readMirrorMeta(modifier)?.optedOut),
     verboseDescription: row.narrativeRule ?? null,
     category: row.category,
     familyKey: row.familyKey ?? null,

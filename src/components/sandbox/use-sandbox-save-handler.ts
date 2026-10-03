@@ -21,6 +21,7 @@
 // and the retry window missed it. Optimistic prepend eliminates
 // the wait entirely.
 
+import { primitiveToLibraryItem, effectToLibraryItem, capabilityToLibraryItem, heritageToLibraryItem, itemToLibraryItem } from "./sandbox-row-mapper";
 import { useCallback, useEffect, useState } from "react";
 import type { LibraryItem } from "@/lib/publishing/library-query";
 
@@ -34,7 +35,7 @@ export type SandboxSaveKind =
 export interface SandboxSaveDetail {
   kind: SandboxSaveKind;
   id: string;
-  row?: LibraryItem;
+  row?: unknown;
 }
 
 const SW_SANDBOX_SAVED = "sw-sandbox-saved";
@@ -54,12 +55,15 @@ export function useSandboxSaveHandler(): {
       const e = event as CustomEvent<SandboxSaveDetail>;
       const detail = e.detail;
       if (!detail || !detail.id || !detail.row) return;
-      // Prepend, dedupe by id.
+      const mapper = detail.kind === "primitive" ? primitiveToLibraryItem : detail.kind === "effect" ? effectToLibraryItem : detail.kind === "capability" ? capabilityToLibraryItem : detail.kind === "heritage" ? heritageToLibraryItem : detail.kind === "item" ? itemToLibraryItem : null;
+      if (!mapper) return;
+      const item = mapper(detail.row as never);
+      // Prepend, dedupe by composite identity; saved events carry raw DB rows.
       setOptimisticItems((prev) => {
         const filtered = prev.filter(
-          (it) => String(it.id) !== String(detail.id),
+          (it) => String(it.id) !== item.id,
         );
-        return [detail.row as LibraryItem, ...filtered];
+        return [item, ...filtered];
       });
     };
     window.addEventListener(SW_SANDBOX_SAVED, handler);

@@ -1,8 +1,10 @@
 "use client";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
-import { readJsonResponse } from "@/lib/http/read-json-response";
+import { useInfiniteLibrary } from "@/lib/hooks/use-infinite-library";
+import { InfiniteLibraryResults } from "@/components/library/infinite-library-results";
+import { LibraryDiscoveryFilters, EMPTY_DISCOVERY_FILTERS, discoveryFilterParams } from "./library-discovery-filters";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ChevronDown, Plus } from "lucide-react";
 import { FabThemeIcon } from "@/components/layout/fab-theme-icon";
 import { useGlobalControls } from "@/components/layout/global-controls";
@@ -43,42 +45,19 @@ export function BuildLibrary({ kinds, destination, heritageCategory, onAdd, onAd
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [familiesOpen, setFamiliesOpen] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const [page, setPage] = useState({ key: "", offset: 0 });
+  const [extraFilters, setExtraFilters] = useState(EMPTY_DISCOVERY_FILTERS);
   const effectiveCategory = effectiveType === "PRIMITIVE" ? category : "";
-  const filterKey = JSON.stringify([query, effectiveType, origin, tier, effectiveCategory, sort, heritageCategory]);
-  const offset = page.key === filterKey ? page.offset : 0;
-  const [result, setResult] = useState<{ key: string; rows: LibraryItem[]; total: number }>({ key: "", rows: [], total: 0 });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const rows = result.key === filterKey ? result.rows.filter(item => matchesDiscoveryDestination(previewKind(item.targetType), item.targetType.replace("_TEMPLATE", ""), heritageCategory)) : [];
-  const pending = loading || result.key !== filterKey;
+  const effectiveExtras = effectiveType === "PRIMITIVE" ? extraFilters : { ...extraFilters, definitionKind: "", mirrorableOnly: false, mechanicTarget: "", recipient: "", conditionMode: "", minMagnitude: "", maxMagnitude: "" };
+  const filterKey = new URLSearchParams({ targetType: effectiveType, q: query, origin, tier, category: effectiveCategory, sort, ...discoveryFilterParams(effectiveExtras) }).toString();
+  const result = useInfiniteLibrary(filterKey);
+  const rows = result.items.filter(item => matchesDiscoveryDestination(previewKind(item.targetType), item.targetType.replace("_TEMPLATE", ""), heritageCategory));
+  const pending = result.loading;
+  const error = result.error;
   const currentFamily = MARKET_FAMILIES.find((family) => family.key === category);
-  const activeFilters = Boolean(query || origin !== "all" || tier || effectiveCategory || sort !== "ALPHABETICAL");
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const load = async () => {
-      setLoading(true); setError("");
-      try {
-        const params = new URLSearchParams({ targetType: effectiveType, q: query, origin, tier, category: effectiveCategory, limit: "30", offset: String(offset), sort });
-        const response = await fetch(`/api/library?${params}`, { signal: controller.signal });
-        const value = await readJsonResponse(response);
-        if (!response.ok) throw new Error(value.error ?? "Library unavailable.");
-        if (controller.signal.aborted) return;
-        setResult((previous) => {
-          const nextRows = offset && previous.key === filterKey ? [...previous.rows, ...value.items] : value.items;
-          return { key: filterKey, rows: [...new Map<string, LibraryItem>(nextRows.map((item: LibraryItem) => [item.id, item])).values()], total: value.total ?? nextRows.length };
-        });
-      } catch (cause) {
-        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Library unavailable.");
-      } finally { if (!controller.signal.aborted) setLoading(false); }
-    };
-    void load();
-    return () => controller.abort();
-  }, [effectiveType, query, origin, tier, effectiveCategory, sort, offset, filterKey]);
+  const activeFilters = Boolean(query || origin !== "all" || tier || effectiveCategory || sort !== "ALPHABETICAL" || Object.keys(discoveryFilterParams(effectiveExtras)).length);
 
   function resetFilters() {
-    setQuery(""); setOrigin("all"); setTier(""); setCategory(""); setSort("ALPHABETICAL");
+    setQuery(""); setOrigin("all"); setTier(""); setCategory(""); setSort("ALPHABETICAL"); setExtraFilters(EMPTY_DISCOVERY_FILTERS);
   }
 
   return <div className="sheet-build-library v12-source-browser">
@@ -90,7 +69,7 @@ export function BuildLibrary({ kinds, destination, heritageCategory, onAdd, onAd
     </div>
     {heritageCategory && kinds.includes("heritage") && <p className="sheet-library-status">Choose another root above to explore its heritage bundles.</p>}
     {filtersOpen && <div className="sheet-library-filters">
-      <label className="sheet-field">Sort entries<select value={sort} onChange={(event) => setSort(event.target.value)}><option value="ALPHABETICAL">Name</option><option value="RECENT">Newest</option><option value="LIKES">Most liked</option><option value="FORKS">Most adapted</option></select></label>
+      <LibraryDiscoveryFilters value={extraFilters} onChange={setExtraFilters} primitive={effectiveType === "PRIMITIVE"} sort={sort} onSortChange={setSort}/>
       <button type="button" className="v12-metal-button" disabled={!activeFilters} onClick={resetFilters}>Clear filters</button>
     </div>}
     {effectiveType === "PRIMITIVE" && <section className="v12-source-families sheet-library-families">
@@ -103,17 +82,13 @@ export function BuildLibrary({ kinds, destination, heritageCategory, onAdd, onAd
     <section className="v12-source-entries" aria-label="Library entries">
       {(!phone || filtersOpen) && <div className="v12-tier-tabs" aria-label="Source tiers">{TIERS.map((value) => <button type="button" key={value} aria-pressed={tier === value} onClick={() => setTier(value)}>{value ? `Tier ${ROMAN_TIERS[Number(value)]}` : "All tiers"}</button>)}</div>}
       {(!phone || filtersOpen) && <div className="v12-origin-tabs" aria-label="Source origin">{["all", "system", "community"].map((value) => <button type="button" key={value} aria-pressed={origin === value} onClick={() => setOrigin(value)}>{value === "all" ? "All origins" : value === "system" ? "System" : "Community"}</button>)}</div>}
-      <div className="v12-source-results-head"><p className="v12-kicker">Exact entries</p><span>{result.key === filterKey ? result.total : "…"}</span></div>
-      {error && <p role="alert">{error}</p>}
-      <div aria-busy={pending}>
-        {rows.length > 0 && <LibraryTable compact surface="atelier" items={rows} view="LIST" engagement={EMPTY_ENGAGEMENT} currentUserInternalId={null} selectedKey={selectedKey} onSelect={(item) => { setSelectedKey(item.id); onPreview(item); }} renderActions={(item) => <>
-          <button type="button" className="v12-metal-button" disabled={disabled || pending} onClick={() => onAdd(`${previewKind(item.targetType)}:${item.targetId}`, item.name)} title={`Add to ${destination}`} aria-label={`Add ${item.name} to ${destination}`}><Plus size={14}/> Add</button>
-          {onAddFocused && <button type="button" className="v12-metal-button" disabled={disabled || pending} onClick={() => onAddFocused(`${previewKind(item.targetType)}:${item.targetId}`, item.name)} title="Add and open Build & Preview" aria-label={`Add ${item.name} in Build & Preview`}><FabThemeIcon iconKey="lorc/anvil-impact" dark={dark}/> Add in Build & Preview</button>}
-        </>} />}
-      </div>
-      {pending && !error && <p role="status" className="sheet-library-status">Finding entries…</p>}
+      <div className="v12-source-results-head"><p className="v12-kicker">Exact entries</p><span>{pending && !rows.length ? "…" : result.total}</span></div>
+      <InfiniteLibraryResults key={filterKey} items={rows} hasMore={result.hasMore} loading={pending} error={error} loadMore={result.loadMore} retry={result.retry} render={(batch) => <LibraryTable compact surface="atelier" items={batch} view="LIST" engagement={EMPTY_ENGAGEMENT} currentUserInternalId={null} selectedKey={selectedKey} onSelect={(item) => { setSelectedKey(item.id); onPreview(item); }} renderActions={(item) => <>
+          <button type="button" className="v12-metal-button" disabled={disabled} onClick={() => onAdd(`${previewKind(item.targetType)}:${item.targetId}`, item.name)} title={`Add to ${destination}`} aria-label={`Add ${item.name} to ${destination}`}><Plus size={14}/> Add</button>
+          {onAddFocused && <button type="button" className="v12-metal-button" disabled={disabled} onClick={() => onAddFocused(`${previewKind(item.targetType)}:${item.targetId}`, item.name)} title="Add and open Build & Preview" aria-label={`Add ${item.name} in Build & Preview`}><FabThemeIcon iconKey="lorc/anvil-impact" dark={dark}/> Add in Build & Preview</button>}
+        </>} />}/>
       {!pending && !rows.length && !error && <div className="sheet-library-empty"><strong>No matching entries</strong><p>Try a broader description, another family, or fewer filters.</p><button type="button" className="v12-metal-button" onClick={resetFilters}>Clear filters</button></div>}
-      {rows.length > 0 && rows.length < result.total && <button type="button" className="sheet-button sheet-library-more" disabled={pending} onClick={() => setPage({ key: filterKey, offset: offset + 30 })}>Load more entries</button>}
+
     </section>
   </div>;
 }

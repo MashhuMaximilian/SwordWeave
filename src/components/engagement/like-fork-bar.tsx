@@ -46,6 +46,8 @@ export interface LikeForkBarProps {
   initialLikes: number;
   initialDislikes: number;
   initialForks: number;
+  /** Optional server-batched current-version count; prevents one request per listing card. */
+  initialFlags?: number | undefined;
   initialUserReaction?: "LIKE" | "DISLIKE" | null;
   initialFollowing?: boolean;
   authorId?: string | null;
@@ -128,7 +130,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
   } | null>(null);
   const [flagReason, setFlagReason] = useState<FlagReason | null>(null);
   const [flagNote, setFlagNote] = useState("");
-  const [flagCount, setFlagCount] = useState<number | null>(null);
+  const [flagCount, setFlagCount] = useState<number | null>(props.initialFlags ?? null);
   const [error, setError] = useState<string | null>(null);
   /**
    * After a successful fork, hold the result here so the
@@ -169,7 +171,8 @@ export function LikeForkBar(props: LikeForkBarProps) {
         }
       }
     };
-    void loadFlagCount();
+    if (props.initialFlags === undefined) void loadFlagCount();
+    else setFlagCount(props.initialFlags);
     const onFlagsChanged = (event: Event) => {
       const detail = (event as CustomEvent<{ targetType?: string; targetId?: string }>).detail;
       if (detail?.targetType === props.targetType && detail.targetId === props.targetId) {
@@ -181,7 +184,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
       controller.abort();
       window.removeEventListener("sw-flags-changed", onFlagsChanged);
     };
-  }, [props.targetId, props.targetType, props.versionId]);
+  }, [props.targetId, props.targetType, props.versionId, props.initialFlags]);
 
   // ---------- handlers ----------
 

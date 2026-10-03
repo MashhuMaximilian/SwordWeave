@@ -18,17 +18,17 @@ import { PhoneLibraryFilters } from "@/components/library/phone-library-filters"
 //
 // All filtering, sorting, and view-mode is owned by the LibraryToolbar.
 
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useSandboxSaveHandler } from "./use-sandbox-save-handler";
 import { LibraryToolbar, type LibraryToolbarState } from "@/components/library/library-toolbar";
-import { LibraryTable } from "@/components/library/library-table";
+import { WindowedLibraryTable as LibraryTable } from "@/components/library/windowed-library-table";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
 import {
   authorDisplayName,
   authorDisplayUsername,
 } from "@/lib/publishing/author-display";
 import type { LibraryItem, LibraryTargetType } from "@/lib/publishing/library-query";
-import { libraryOrigin } from "@/lib/publishing/library-classification";
+import { matchesLibraryFilters } from "@/lib/publishing/filter-library-items";
 import { sortLibraryItems } from "@/lib/publishing/sort-library-items";
 import { cn } from "@/lib/utils";
 import { useFilterSlot } from "@/components/layout/right-filter-panel";
@@ -120,9 +120,7 @@ interface HeritageLibraryProps {
 // in the heritage tab"). The sub-kind filter was redundant with the kind
 // filter — it has been removed.
 // Group chips: "All heritages" resolves to every template sub-kind.
-const TYPE_GROUPS: Record<string, LibraryTargetType[]> = {
-  GROUP_HERITAGES: ["LINEAGE_TEMPLATE", "UPBRINGING_TEMPLATE", "MANIFEST_TEMPLATE"],
-};
+
 
 const ALL_AVAILABLE_TYPES: Array<{
   key: LibraryTargetType | "ALL";
@@ -387,114 +385,11 @@ export function HeritageLibrary({
   // Filter items by toolbar search/typeFilter. The build-mode gate is
   // removed — the user can see any kind in the blueprint library per the
   // user's spec.
-  const filteredItems = useMemo(() => {
-    let items = combinedItems;
-
-    // Keep the shared right-panel source filter functional in the heritage
-    // browser too. The old implementation exposed the control but never
-    // applied it to this result set.
-    if (toolbarState.origin && toolbarState.origin !== "all") {
-      items = items.filter((item) => libraryOrigin(item) === toolbarState.origin);
-    }
-
-    // Toolbar text search across ALL discoverable fields (name,
-    // description, tags, category, targetType). Same fix as
-    // grammar-library.tsx — Mashu 2026-09-06.
-    if (toolbarState.search) {
-      const q = toolbarState.search.toLowerCase();
-      items = items.filter((item) => {
-        const haystack = [
-          item.name,
-          item.description ?? "",
-          item.mechanicalDescription ?? "",
-          item.mechanicalTemplate ?? "",
-          item.verboseDescription ?? "",
-          item.category ?? "",
-          item.familyKey ?? "",
-          item.familyLabel ?? "",
-          item.targetType,
-          ...(item.tags ?? []),
-        ]
-          .join("\n")
-          .toLowerCase();
-        return haystack.includes(q);
-      });
-    }
-
-    // Toolbar type filter. "ALL" = everything. Group keys
-    // (GROUP_HERITAGES) match a set of concrete types; otherwise it's a
-    // single concrete type.
-    if (toolbarState.typeFilter !== "ALL" && items.length > 0) {
-      const tf = toolbarState.typeFilter;
-      const group = TYPE_GROUPS[tf as keyof typeof TYPE_GROUPS];
-      const allowedTf =
-        group && group.length ? group : [tf as LibraryTargetType];
-      items = items.filter((item) =>
-        allowedTf.includes(item.targetType as LibraryTargetType),
-      );
-    }
-
-    // Category (items only carry category in template rows).
-    if (toolbarState.category) {
-      items = items.filter((item) => item.category === toolbarState.category);
-    }
-
-    // Author.
-    if (toolbarState.author) {
-      const q = toolbarState.author.toLowerCase();
-      items = items.filter(
-        (item) =>
-          item.authorUsername !== null &&
-          item.authorUsername.toLowerCase().includes(q),
-      );
-    }
-
-    // Likes / forks / BU cost — best-effort (LibraryItem may not carry
-    // counts in the browse payload, so we treat absent as 0).
-    if (toolbarState.minLikes) {
-      const min = Number(toolbarState.minLikes);
-      if (!Number.isNaN(min)) {
-        items = items.filter((item) => (item.likesCount ?? 0) >= min);
-      }
-    }
-    if (toolbarState.minForks) {
-      const min = Number(toolbarState.minForks);
-      if (!Number.isNaN(min)) {
-        items = items.filter((item) => (item.forkCount ?? 0) >= min);
-      }
-    }
-    if (toolbarState.hasForks) {
-      items = items.filter((item) => (item.forkCount ?? 0) >= 1);
-    }
-    if (toolbarState.minBu) {
-      const min = Number(toolbarState.minBu);
-      if (!Number.isNaN(min)) {
-        items = items.filter((item) => (item.buCost ?? 0) >= min);
-      }
-    }
-    if (toolbarState.maxBu) {
-      const max = Number(toolbarState.maxBu);
-      if (!Number.isNaN(max)) {
-        items = items.filter((item) => (item.buCost ?? 0) <= max);
-      }
-    }
-
-    // Tags.
-    if (toolbarState.tags) {
-      const wanted = toolbarState.tags
-        .split(",")
-        .map((s) => s.trim().toLowerCase())
-        .filter(Boolean);
-      if (wanted.length > 0) {
-        items = items.filter((item) => {
-          const itemTags = (item.tags ?? []).map((t) => t.toLowerCase());
-          return wanted.some((t) => itemTags.includes(t));
-        });
-      }
-    }
-
-    return sortLibraryItems(items, toolbarState.sort);
-  }, [build, combinedItems, toolbarState]);
+  const deferredToolbarState = useDeferredValue(toolbarState);
+  const filteredItems = useMemo(() => sortLibraryItems(
+    combinedItems.filter(item => matchesLibraryFilters(item, deferredToolbarState)),
+    deferredToolbarState.sort,
+  ), [combinedItems, deferredToolbarState]);
 
   // Card click → push to modal stack. The "Load into build" action still
   // calls the parent's onSelect; we pop the stack afterwards. Sub-entity
@@ -733,7 +628,13 @@ export function HeritageLibrary({
     toolbarState.author !== "" ||
     toolbarState.minLikes !== "" ||
     toolbarState.hasForks ||
-    toolbarState.sort !== "ENGAGEMENT";
+    toolbarState.sort !== "ENGAGEMENT" ||
+    !!toolbarState.minBu || !!toolbarState.maxBu || !!toolbarState.minForks ||
+    !!toolbarState.fromDate || !!toolbarState.toDate || !!toolbarState.tags ||
+    !!toolbarState.definitionKind || !!toolbarState.mirrorableOnly ||
+    !!toolbarState.mechanicTarget || !!toolbarState.recipient || !!toolbarState.conditionMode ||
+    !!toolbarState.minMagnitude || !!toolbarState.maxMagnitude || !!toolbarState.tier ||
+    (toolbarState.origin ?? "all") !== "all" || (toolbarState.visibility ?? "ANY") !== "ANY";
 
   // Monster mode: render an empty state — no composer yet.
   if (build === "monster") {

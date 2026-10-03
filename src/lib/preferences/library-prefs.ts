@@ -24,6 +24,7 @@ const DEFAULT_PREFS: LibraryPreferences = {
 };
 
 const VALID_SORTS: LibrarySort[] = [
+  "BU", "BU_DESC", "ALPHABETICAL_DESC",
   "LIKES",
   "RECENT",
   "FORKS",

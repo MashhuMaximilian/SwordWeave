@@ -16,6 +16,9 @@ import type { LibraryView } from "@/lib/preferences/library-prefs";
 
 export function parseSort(value: string | undefined | null): LibrarySort {
   if (
+    value === "BU" ||
+    value === "BU_DESC" ||
+    value === "ALPHABETICAL_DESC" ||
     value === "LIKES" ||
     value === "RECENT" ||
     value === "FORKS" ||
