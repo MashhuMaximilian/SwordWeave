@@ -21,7 +21,7 @@
 
 ## Art review
 
-Three revised full-canvas samples are saved as `*-graphic-v3` for Courtier, Orchard Tender, and Elemental Shaper. They retain angular graphic rendering and shadowed faces, with distinct formal, work, and elemental clothing; no drawn circular emblem. These samples have not replaced the existing 78 role portraits or their database references. Bulk replacement is pending review of this corrected direction.
+The user approved the three full-canvas samples. All 78 role portraits now have the revised `*-graphic-v3` artwork in the local gallery and presentation mappings. See `heritage-role-art-revision-2026-10-03.md` for the complete revision and checks. Database attachment remains pending asset deployment.
 
 ## Release state
 
