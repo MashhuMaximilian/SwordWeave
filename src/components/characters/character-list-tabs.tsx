@@ -153,4 +153,3 @@ function TabStrip({ active, counts, onChange }: TabStripProps) {
     </div>
   );
 }
-
