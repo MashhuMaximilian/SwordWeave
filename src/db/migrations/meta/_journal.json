@@ -449,6 +449,13 @@
       "when": 1790263371000,
       "tag": "0067_open_ended_progression",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1791028800000,
+      "tag": "0068_lineage_default_size",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,5 @@
 "use client";
+import { CHARACTER_SIZES } from "@/lib/heritage/lineage-size";
 import { PhonePiecePicker } from "./phone-piece-picker";
 import { PhonePieceDetails } from "./phone-piece-details";
 import { readJsonResponse } from "@/lib/http/read-json-response";
@@ -36,6 +37,7 @@ type HeritageRow = {
   userId?: string | null;
   kind: "LINEAGE" | "UPBRINGING" | "MANIFEST";
   name: string;
+  defaultSize?: string | null;
   imageUrl: string | null;
   description: string | null;
   suggestedTraits: string | null;
@@ -78,6 +80,7 @@ type HeritageRow = {
 const blankForm: HeritageFormState = {
   kind: "LINEAGE",
   name: "",
+  defaultSize: "MEDIUM",
   imageUrl: "",
   description: "",
   suggestedTraits: "",
@@ -219,6 +222,7 @@ export function HeritageForm({
     if (!initialTemplate) return;
     setForm({
       kind: initialTemplate.kind,
+      defaultSize: initialTemplate.defaultSize ?? "MEDIUM",
       name: initialTemplate.name,
       imageUrl: initialTemplate.imageUrl ?? "",
       description: initialTemplate.description ?? "",
@@ -459,6 +463,7 @@ export function HeritageForm({
     const body: Record<string, unknown> = {
       ...(orderChanged?{membershipOrder:[...primitiveIds.map(id=>`primitive:${id}`),...capabilityIds.map(id=>`capability:${id}`)]}:{}),
       kind: form.kind,
+      defaultSize: form.kind === "LINEAGE" ? form.defaultSize ?? "MEDIUM" : null,
       name: form.name.trim(),
       imageUrl: form.imageUrl.trim() || null,
       description: form.description.trim() || null,
@@ -707,6 +712,12 @@ export function HeritageForm({
 
         </AuthorChapter>
         <AuthorChapter id="identity" title="Identity">
+      {form.kind === "LINEAGE" ? <label className="grid gap-2 text-sm">Default size
+        <select value={form.defaultSize ?? "MEDIUM"} onChange={event => updateForm("defaultSize", event.target.value)} className="rounded-md border border-border bg-background p-2">
+          {CHARACTER_SIZES.map(size => <option key={size} value={size}>{size.charAt(0) + size.slice(1).toLowerCase()}</option>)}
+        </select>
+        <span className="text-xs text-muted-foreground">New Quickbuild characters use this size. Size primitives can change it later.</span>
+      </label> : null}
       {/* Phase 8: per-entity iconography */}
       <IconSlot
         appearance="medallion"

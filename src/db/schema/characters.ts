@@ -417,6 +417,7 @@ export const heritage = pgTable(
     imageUrl: text("image_url"),
     description: text("description"),
     suggestedTraits: text("suggested_traits"), // markdown
+    defaultSize: characterSizeEnum("default_size"), // Lineage base size; other heritage kinds leave this null.
     isPublic: boolean("is_public").notNull().default(false),
     sourceOrigin: text("source_origin"),
     // Phase 8 rev 10: heritage parity with primitives/capabilities/effects/

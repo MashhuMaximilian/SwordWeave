@@ -1,3 +1,4 @@
+import { parseLineageSize, isCharacterSize } from "@/lib/heritage/lineage-size";
 import { withPublishingResponse } from "@/lib/publishing/save-transaction";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
@@ -53,7 +54,7 @@ export async function GET(request: Request) {
   const kindFilter = searchParams.get("kind");
 
   const whereClause = kindFilter && parseKind(kindFilter)
-    ? eq(heritage.kind, kindFilter as HeritageKind)
+    ? eq(heritage.kind, parseKind(kindFilter)!)
     : undefined;
 
   const rows = await db.query.heritage.findMany({
@@ -115,6 +116,8 @@ async function handlePOST(request: Request) {
     const values = body as Record<string, unknown>;
     const membershipOrder=Array.isArray(values["membershipOrder"])?values["membershipOrder"].map(String):null;
     const kind = parseKind(values["kind"]);
+    if (values["defaultSize"] != null && !isCharacterSize(values["defaultSize"])) return NextResponse.json({error:"Invalid lineage size."},{status:400});
+    const defaultSize = kind === "LINEAGE" ? parseLineageSize(values["defaultSize"]) : null;
     const name = String(values["name"] ?? "").trim();
     const imageUrl = String(values["imageUrl"] ?? "").trim() || null;
     const description = String(values["description"] ?? "").trim() || null;
@@ -199,6 +202,7 @@ async function handlePOST(request: Request) {
         .values({
           membershipOrder,
           kind,
+          defaultSize,
           userId,
           name,
           imageUrl,
@@ -291,6 +295,7 @@ async function handlePOST(request: Request) {
       membershipOrder,
       iconSource: result.iconSource, iconKey:result.iconKey, iconUrl:result.iconUrl, iconColor:result.iconColor??"#ffffff",
       kind: result.kind,
+      defaultSize: result.defaultSize,
       name: result.name,
       description: result.description ?? "",
       suggestedTraits: result.suggestedTraits ?? "",
@@ -303,6 +308,7 @@ async function handlePOST(request: Request) {
       membershipOrder,
       iconSource: result.iconSource, iconKey:result.iconKey, iconUrl:result.iconUrl, iconColor:result.iconColor??"#ffffff",
       kind: result.kind,
+      defaultSize: result.defaultSize,
       name: result.name,
       description: result.description ?? "",
       suggestedTraits: result.suggestedTraits ?? "",

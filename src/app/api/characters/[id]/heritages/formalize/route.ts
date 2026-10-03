@@ -249,6 +249,7 @@ export async function POST(
           .values({
             userId,
             kind,
+            defaultSize: kind === "LINEAGE" ? character.size : null,
             name: finalName,
             description: description ?? null,
             isPublic: isPublic,

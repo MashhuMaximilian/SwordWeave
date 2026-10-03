@@ -63,3 +63,13 @@ it("records the authenticated creator and ignores a client-supplied owner", asyn
 });
 
 vi.mock("@/lib/publishing/save-transaction", () => ({withPublishingResponse: (work:()=>Promise<unknown>)=>work()}));
+
+it.each([["SMALL", "SMALL"], [undefined, "MEDIUM"]])("stores a lineage default size (%s)", async (size, expected) => {
+  const response = await POST(new Request("http://localhost/api/heritage", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({kind:"LINEAGE",name:"Sized",defaultSize:size,primitiveIds:[]})}));
+  expect(response.status).toBe(201);
+  expect(mocks.values.mock.calls[0]?.[0]).toMatchObject({kind:"LINEAGE",defaultSize:expected});
+});
+it("rejects an invalid lineage size before writing", async () => {
+  const response=await POST(new Request("http://localhost/api/heritage", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({kind:"LINEAGE",name:"Sized",defaultSize:"COLOSSAL",primitiveIds:[]})}));
+  expect(response.status).toBe(400);expect(mocks.values).not.toHaveBeenCalled();
+});

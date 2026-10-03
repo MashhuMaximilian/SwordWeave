@@ -437,6 +437,7 @@ async function forkTemplate(input: {
     .values({
       name: forkName,
       kind: source.kind,
+      defaultSize: source.defaultSize,
       description: source.description,
       imageUrl: source.imageUrl,
       suggestedTraits: newSuggestedTraits,

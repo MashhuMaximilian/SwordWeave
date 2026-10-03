@@ -45,6 +45,7 @@ import {
   heritageCapabilities,
   heritagePrimitives,
 } from "@/db/schema";
+import { isCharacterSize } from "@/lib/heritage/lineage-size";
 import { recordVersion } from "@/lib/versions/auto-snapshot";
 import {
   effectVersions,
@@ -523,12 +524,14 @@ async function restoreTemplate(
     name: asString(payload["name"]),
     description: asString(payload["description"]) || null,
     suggestedTraits: asString(payload["suggestedTraits"]) || null,
+    defaultSize: isCharacterSize(payload["defaultSize"]) ? payload["defaultSize"] : null,
     isPublic: asBool(payload["isPublic"]),
     updatedAt: new Date(),
   };
 
   const hash = await computeTemplateContentHash({
     kind: asString(payload["kind"]) || "LINEAGE",
+    defaultSize: update["defaultSize"] as string | null,
     name: update["name"] as string,
     description: (update["description"] as string) ?? "",
     suggestedTraits: (update["suggestedTraits"] as string) ?? "",

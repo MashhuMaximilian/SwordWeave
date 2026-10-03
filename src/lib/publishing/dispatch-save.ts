@@ -725,6 +725,7 @@ async function backfillSourceHash(
       .orderBy(asc(heritageCapabilities.capabilityId));
     const hash = await computeTemplateContentHash({
       kind: source.kind,
+      defaultSize: source.defaultSize,
       name: source.name,
       description: source.description ?? "",
       suggestedTraits: source.suggestedTraits ?? "",

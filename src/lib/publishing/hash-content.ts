@@ -599,6 +599,7 @@ export interface CanonicalTemplatePayload {
   membershipOrder?: readonly string[] | null;
   description: string;
   suggestedTraits: string;
+  defaultSize?: string | null;
   isPublic: boolean;
   /**
    * Phase 7 Q-M-UX: per-slot Mirrored flag. The sorted primitiveIds
@@ -626,6 +627,7 @@ export function buildCanonicalTemplatePayload(args: {
   membershipOrder?: readonly string[] | null;
   description: string;
   suggestedTraits: string;
+  defaultSize?: string | null;
   isPublic: boolean;
   primitiveIds: readonly number[];
   /**
@@ -657,6 +659,7 @@ export function buildCanonicalTemplatePayload(args: {
     ...(args.membershipOrder ? { membershipOrder: args.membershipOrder } : {}),
     description: args.description.trim(),
     suggestedTraits: args.suggestedTraits.trim(),
+    ...(args.kind === "LINEAGE" && args.defaultSize ? { defaultSize: args.defaultSize } : {}),
     isPublic: Boolean(args.isPublic),
     primitiveIds: sortedSlots.map((s) => s.primitiveId),
     primitiveSlots: sortedSlots,
@@ -685,6 +688,7 @@ export async function computeTemplateContentHash(args: {
   membershipOrder?: readonly string[] | null;
   description: string;
   suggestedTraits: string;
+  defaultSize?: string | null;
   isPublic: boolean;
   primitiveIds: readonly number[];
   primitiveSlots?: readonly { primitiveId: number; isMirrored: boolean }[];

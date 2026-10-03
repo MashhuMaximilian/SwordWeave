@@ -23,7 +23,7 @@ export default async function NewCharacterPage() {
         <div>
           <span>Character creation</span>
           <h1>Forge a new character</h1>
-          <p>Begin with their story, set their level and strengths, then choose an optional weakness and a few starting rules. Build their heritages, capabilities, and items on the character sheet.</p>
+          <p>Take your time with a complete character, or choose ready heritages in Quickbuild and start playing. Both paths stay open to new ideas on the character sheet.</p>
         </div>
       </header>
       <NewCharacterForm />

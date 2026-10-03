@@ -1,4 +1,5 @@
 "use client";
+import { quickbuildCost, shuffleQuickbuild, QUICKBUILD_KINDS, EMPTY_QUICKBUILD, type QuickbuildCatalog, type QuickbuildSelection, type QuickbuildKind } from "@/lib/character/quickbuild";
 import { PhoneSection } from "./workspace/phone-section";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { EditableNumberInput } from "@/components/ui/editable-number-input";
@@ -105,6 +106,7 @@ function clamp(value: number, min: number, max: number) {
 }
 
 export function NewCharacterForm() {
+  const [creationMode, setCreationMode] = useState<"complete" | "quick" | null>(null);
   const router = useRouter();
   const phone = useIsMobile();
   const [stepsOpen,setStepsOpen] = useState(false);
@@ -381,6 +383,16 @@ export function NewCharacterForm() {
     });
   }
 
+  if (creationMode === null) return <section className="sw-creation-choice" aria-labelledby="creation-mode-heading">
+    <span className="sw-creation-choice__eyebrow">Your next adventure</span><h2 id="creation-mode-heading">How would you like to begin?</h2>
+    <p>Both paths create a character you can keep developing on the sheet.</p>
+    <div className="sw-creation-choice__options">
+      <button type="button" onClick={() => setCreationMode("complete")}><span>01 · Take your time</span><strong>Complete character</strong><em>I want to create a proper character</em><small>Shape their story, foundation and starting rules, step by step.</small><ArrowRight aria-hidden /></button>
+      <button type="button" onClick={() => setCreationMode("quick")}><span>02 · Straight to the adventure</span><strong>Quickbuild</strong><em>I just want to play ASAP</em><small>Choose heritages or shuffle a build, add a name, and go.</small><Shuffle aria-hidden /></button>
+    </div>
+  </section>;
+  if (creationMode === "quick") return <QuickBuildForm primitives={primitives} options={options} onChangeMode={() => setCreationMode(null)} />;
+
   return (
     <div className="sw-character-forge">
       <aside className="sw-character-forge__rail" aria-label="Character creation progress">
@@ -398,7 +410,9 @@ export function NewCharacterForm() {
       </aside>
 
       <div className="sw-character-forge__workbench">
+        {phone ? <button type="button" className="sw-forge-reset" onClick={() => setCreationMode(null)}>Change creation mode</button> : null}
         <header className="sw-character-forge__header" hidden={phone}>
+          <button type="button" className="sw-forge-reset" onClick={() => setCreationMode(null)}>Change creation mode</button>
           <div><span>Step {currentIndex + 1} of {STEPS.length}</span><h2 ref={stepHeading} tabIndex={-1}>{STEPS[currentIndex]!.label}</h2></div>
         </header>
 
@@ -425,39 +439,133 @@ export function NewCharacterForm() {
   );
 }
 
-function IdentityStep({ state, setField, setState }: { state: FormState; setField: <K extends keyof FormState>(key: K, value: FormState[K]) => void; setState: React.Dispatch<React.SetStateAction<FormState>> }) {
+const QUICK_DRAFT_KEY = "swordweave-quickbuild-v1";
+const HERITAGE_LABELS: Record<QuickbuildKind,string> = {LINEAGE:"Lineage",UPBRINGING:"Upbringing",MANIFEST:"Manifest"};
+function QuickBuildForm({primitives, options, onChangeMode}: {primitives:PrimitiveOption[];options:Record<PackageSlot,PrimitiveOption[]>;onChangeMode:()=>void}) {
+  const router=useRouter();
+  const [state,setState]=useState<FormState>(INITIAL_STATE);
+  const [selection,setSelection]=useState<QuickbuildSelection>({...EMPTY_QUICKBUILD});
+  const [catalog,setCatalog]=useState<QuickbuildCatalog|null>(null);
+  const [packageIds,setPackageIds]=useState<number[]>([]);
+  const [mirrorIds,setMirrorIds]=useState<number[]>([]);
+  const [itemIds,setItemIds]=useState<string[]>([]);
+  const [error,setError]=useState<string|null>(null);
+  const [catalogError,setCatalogError]=useState<string|null>(null);
+  const [loaded,setLoaded]=useState(false);
+  const [isPending,startTransition]=useTransition();
+  const [packageSeed,setPackageSeed]=useState(0);
+  const [items,setItems]=useState<Array<{id:string;name:string;isPublic:boolean}>>([]);
+  const [itemsError,setItemsError]=useState<string|null>(null);
+  const [itemsLoading,setItemsLoading]=useState(false);
+  const [itemsLoaded,setItemsLoaded]=useState(false);
+  const budget=state.sizingMode==="bu" ? state.customBu : cumulativeBuForLevel(state.level);
+  const effectiveLevel=state.sizingMode==="bu" ? impliedLevelForBudget(state.customBu) : state.level;
+  const ceiling=maxBuDebtForLevel(effectiveLevel);
+  const mergedCatalog=useMemo<QuickbuildCatalog>(()=>({heritages:catalog?.heritages??[],primitives:[...new Map([...(catalog?.primitives??[]),...primitives.map(p=>({id:p.id,buCost:p.buCost,mirrorBuCredit:p.mirrorBuCredit??p.buCost}))].map(p=>[p.id,p])).values()]}),[catalog,primitives]);
+  const cost=useMemo(()=>quickbuildCost(mergedCatalog,selection,packageIds,mirrorIds),[mergedCatalog,selection,packageIds,mirrorIds]);
+  const viewState={...state,size:cost.size};
+  const attrSum=state.attrPhysical+state.attrMental+state.attrMagical;
+  const setField=<K extends keyof FormState>(key:K,value:FormState[K])=>setState(previous=>({...previous,[key]:value}));
+  const mirrorOptions=eligibleMirrorCandidates(primitives,ceiling);
+  const packages=useMemo(()=>recommendedPackages(options,effectiveLevel,Math.max(0,budget-cost.netCost+primitives.filter(p=>packageIds.includes(p.id)).reduce((sum,p)=>sum+p.buCost,0)),packageSeed),[options,effectiveLevel,budget,cost.netCost,primitives,packageIds,packageSeed]);
+  const loadCatalog=useCallback(async(signal?:AbortSignal)=>{
+    try {const response=await fetch("/api/characters/quickbuild/catalog",{signal:signal??null});if(!response.ok)throw Error("The heritage library could not be loaded.");const next=await response.json() as QuickbuildCatalog;if(!signal?.aborted){setCatalog(next);setCatalogError(null);}}
+    catch(reason){if(!signal?.aborted)setCatalogError(reason instanceof Error?reason.message:"The heritage library could not be loaded.");}
+  },[]);
+  useEffect(()=>{const controller=new AbortController();const timer=window.setTimeout(()=>void loadCatalog(controller.signal),0);return()=>{window.clearTimeout(timer);controller.abort();};},[loadCatalog]);
+  useEffect(()=>{
+    const timer=window.setTimeout(()=>{try{const raw=window.localStorage.getItem(QUICK_DRAFT_KEY);if(raw){const draft=JSON.parse(raw);if(draft.state)setState({...INITIAL_STATE,...draft.state,backstory:parseBackstory(draft.state.backstory)});if(draft.selection)setSelection({...EMPTY_QUICKBUILD,...draft.selection});if(Array.isArray(draft.packageIds))setPackageIds(draft.packageIds.filter(Number.isInteger));if(Array.isArray(draft.mirrorIds))setMirrorIds(draft.mirrorIds.filter(Number.isInteger));if(Array.isArray(draft.itemIds))setItemIds(draft.itemIds.filter((id:unknown)=>typeof id==="string"));}}catch{/* A local draft is optional. */}setLoaded(true);},0);
+    return()=>window.clearTimeout(timer);
+  },[]);
+  useEffect(()=>{if(loaded)try{window.localStorage.setItem(QUICK_DRAFT_KEY,JSON.stringify({state,selection,packageIds,mirrorIds,itemIds}));}catch{/* Storage can be unavailable. */}},[loaded,state,selection,packageIds,mirrorIds,itemIds]);
+  async function loadItems(){
+    if(itemsLoaded||itemsLoading)return;setItemsLoading(true);setItemsError(null);
+    try{const response=await fetch("/api/items");if(!response.ok)throw Error("Items could not be loaded.");const data=await response.json();setItems((data.items??[]).filter((item:{isPublic:boolean})=>item.isPublic));setItemsLoaded(true);}catch(reason){setItemsError(reason instanceof Error?reason.message:"Items could not be loaded.");}finally{setItemsLoading(false);}
+  }
+  function shuffle(only?:QuickbuildKind){setSelection(shuffleQuickbuild(mergedCatalog,budget,selection,packageIds,mirrorIds,only,Math.random,ceiling));setError(null);}
+  function shuffleWeakness(){const next=mirrorOptions.filter(p=>quickbuildCost(mergedCatalog,selection,packageIds,[p.id]).mirrorCredit<=ceiling&&p.id!==mirrorIds[0]);if(next.length)setMirrorIds([next[Math.floor(Math.random()*next.length)]!.id]);}
+  function submit(){
+    const missing=QUICKBUILD_KINDS.some(kind=>selection[kind]&&!mergedCatalog.heritages.some(h=>h.id===selection[kind]&&h.kind===kind));
+    const invalidMirror=mirrorIds.some(id=>!mirrorOptions.some(p=>p.id===id));
+    if(!state.name.trim()||attrSum!==10||!catalog||missing||invalidMirror||cost.mirrorCredit>ceiling||cost.netCost>budget){setError(!state.name.trim()?"Give your character a name.":attrSum!==10?"Your attributes must add up to 10.":!catalog?"Wait for the heritage library to load.":missing?"A selected heritage is no longer available. Choose another.":invalidMirror||cost.mirrorCredit>ceiling?"Choose a weakness within this level’s debt limit.":"These choices exceed your budget. Choose lighter heritages, remove an optional package, or adjust your budget.");return;}
+    setError(null);startTransition(async()=>{try{
+      const response=await fetch("/api/characters",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+        creationMode:"quick",name:state.name.trim(),portraitUrl:state.portraitUrl.trim(),portraitFrame:state.portraitFrame,
+        level:effectiveLevel,startingBu:25,buBudget:state.sizingMode==="bu"?state.customBu:null,buSpent:cost.positiveCost,
+        attrPhysical:state.attrPhysical,attrMental:state.attrMental,attrMagical:state.attrMagical,attrProficient:state.attrProficient,
+        backstory:{...state.backstory,origin:[state.concept.trim(),state.backstory.origin.trim()].filter(Boolean).join("\n\n")},
+        heritages:QUICKBUILD_KINDS.filter(kind=>selection[kind]).map(kind=>({id:selection[kind]})),
+        primitiveInstances:[...packageIds.map(primitiveId=>({primitiveId,isMirrored:false})),...mirrorIds.map(primitiveId=>({primitiveId,isMirrored:true}))],
+        itemsBySource:{PERSONAL:itemIds.map(id=>({id,quantity:1}))},sourceOrigin:"manual",isPublic:false,practiceSlices:{},
+      })});
+      const data=await response.json();if(!response.ok||!data.character?.id)throw Error(data.error??"Your character could not be created.");
+      try{window.localStorage.removeItem(QUICK_DRAFT_KEY);}catch{/* Storage can be unavailable. */}
+      router.push(`/characters/${data.character.id}?mode=PLAY`);
+    }catch(reason){setError(reason instanceof Error?reason.message:"Your character could not be created.");}});
+  }
+  return <div className="sw-quickbuild">
+    <header className="sw-quickbuild__heading"><div><span>From idea to adventure</span><h2>Quickbuild</h2><p>Pick only what you want. Everything can grow on the character sheet.</p></div><button type="button" className="sw-forge-reset" onClick={onChangeMode}>Change creation mode</button></header>
+    <IdentityStep quick state={viewState} setField={setField} setState={setState}/>
+    <section className="sw-quickbuild__heritages" aria-labelledby="quick-heritages-heading">
+      <header><div><span>Choose your roots</span><h3 id="quick-heritages-heading">A ready foundation</h3><p>Choose one, two or all three. Shuffle keeps the combined build within your budget.</p></div><button type="button" className="sw-metal-button sw-metal-button--secondary" onClick={()=>shuffle()} disabled={!catalog}><Shuffle size={16}/> Shuffle all</button></header>
+      {catalogError?<p role="alert">{catalogError} <button type="button" onClick={()=>{setCatalogError(null);void loadCatalog();}}>Retry</button></p>:!catalog?<p role="status">Loading heritages…</p>:null}
+      <div className="sw-quickbuild__roots">{QUICKBUILD_KINDS.map(kind=>{
+        const selected=cost.selected.find(h=>h.kind===kind);
+        return <article key={kind} className="sw-quickbuild__root">
+          <div className="sw-quickbuild__root-heading"><label htmlFor={`quick-${kind}`}>{HERITAGE_LABELS[kind]}</label><button type="button" aria-label={`Shuffle ${HERITAGE_LABELS[kind].toLowerCase()}`} onClick={()=>shuffle(kind)} disabled={!catalog}><Shuffle size={17}/></button></div>
+          {selected?.imageUrl?<img src={selected.imageUrl} alt="" className="sw-quickbuild__portrait"/>:<div className="sw-quickbuild__portrait sw-quickbuild__portrait--empty" aria-hidden>✦</div>}
+          <select id={`quick-${kind}`} value={selection[kind]} disabled={!catalog} onChange={e=>{setSelection(previous=>({...previous,[kind]:e.target.value}));setError(null);}}><option value="">No {HERITAGE_LABELS[kind].toLowerCase()} yet</option>{mergedCatalog.heritages.filter(h=>h.kind===kind).sort((a,b)=>a.cost-b.cost||a.name.localeCompare(b.name)).map(h=><option value={h.id} key={h.id}>{h.name} · {h.cost} BU</option>)}</select>
+          <p>{selected?.description??({LINEAGE:"Their species or inherited nature.",UPBRINGING:"Their background and early training.",MANIFEST:"Their role and main build."}[kind])}</p>
+          {kind==="LINEAGE"?<small>Default size · {cost.size.toLowerCase()}</small>:null}
+        </article>;
+      })}</div>
+      <div className="sw-quickbuild__ledger" aria-live="polite"><strong>{cost.netCost} / {budget} BU</strong><span>{cost.positiveCost} purchased · {cost.mirrorCredit} weakness credit · {budget-cost.netCost} remaining</span></div>
+      {cost.netCost>budget?<p className="sw-forge-error" role="alert">Above budget by {cost.netCost-budget} BU. Choose lighter roots or increase the agreed budget.</p>:null}
+    </section>
+    <FoundationStep quick state={viewState} setField={setField} setState={setState} attrSum={attrSum} budget={budget} effectiveLevel={effectiveLevel}/>
+    <section className="sw-quickbuild__extras" aria-label="Optional starting choices">
+      <details className="sw-forge-disclosure"><summary>Starting package (optional)<small>Domain, verb, range and output die</small></summary><div className="sw-forge-disclosure__body"><p>These access primitives are optional here. You can also purchase them later on the sheet.</p><div className="sw-quickbuild__extra-actions"><button type="button" onClick={()=>setPackageSeed(seed=>seed+1)}><Shuffle size={16}/> Shuffle packages</button><button type="button" onClick={()=>setPackageIds([])}>No package</button></div><div className="sw-access-presets">{packages.map((preset,index)=><PackageCard key={preset.key} preset={preset} index={index} active={preset.items.every(p=>packageIds.includes(p.id))} onChoose={()=>setPackageIds(preset.items.map(p=>p.id))}/>)}</div>{packageIds.length?<p>Selected: {primitives.filter(p=>packageIds.includes(p.id)).map(p=>p.name).join(" · ")}</p>:null}</div></details>
+      <details className="sw-forge-disclosure"><summary>Weakness (optional)<small>Mirror a primitive for extra budget</small></summary><div className="sw-forge-disclosure__body"><p>Weakness credit must stay within {ceiling} BU at level {effectiveLevel}.</p><div className="sw-quickbuild__extra-actions"><button type="button" onClick={shuffleWeakness} disabled={!mirrorOptions.length}><Shuffle size={16}/> Shuffle weakness</button><button type="button" onClick={()=>setMirrorIds([])}>No weakness</button></div><label>Mirrored primitive<select value={mirrorIds[0]??""} onChange={e=>setMirrorIds(e.target.value?[Number(e.target.value)]:[])}><option value="">None</option>{mirrorOptions.map(p=><option key={p.id} value={p.id}>{p.name} · +{p.mirrorBuCredit??p.buCost} BU credit</option>)}</select></label>{mirrorIds.map(id=>{const p=primitives.find(p=>p.id===id);return p?<p key={id}>{mirrorConsequence(p)}</p>:null;})}</div></details>
+      <details className="sw-forge-disclosure" onToggle={e=>{if(e.currentTarget.open)void loadItems();}}><summary>Items (optional)<small>Carried equipment · separate from character BU</small></summary><div className="sw-forge-disclosure__body"><p>Items start in your inventory. Equip them on the sheet.</p>{itemsLoading?<p role="status">Loading items…</p>:null}{itemsError?<p role="alert">{itemsError} <button type="button" onClick={()=>void loadItems()}>Retry</button></p>:null}<label>Add an item<select value="" onChange={e=>{const id=e.target.value;if(id)setItemIds(previous=>[...new Set([...previous,id])]);}}><option value="">Choose equipment</option>{items.filter(i=>!itemIds.includes(i.id)).map(i=><option value={i.id} key={i.id}>{i.name}</option>)}</select></label><ul>{itemIds.map(id=><li key={id}>{items.find(i=>i.id===id)?.name??"Selected item"}<button type="button" onClick={()=>setItemIds(previous=>previous.filter(item=>item!==id))}>Remove</button></li>)}</ul></div></details>
+    </section>
+    {error?<p className="sw-forge-error" role="alert">{error}</p>:null}
+    <footer className="sw-quickbuild__footer"><div><strong>{state.name.trim()||"Your character"}</strong><span>Level {effectiveLevel} · {cost.size.toLowerCase()} · {budget-cost.netCost} BU remaining</span></div><button type="button" className="sw-metal-button sw-metal-button--primary" onClick={submit} disabled={isPending||!catalog}>{isPending?<Loader2 className="animate-spin" size={18}/>:<ArrowRight size={18}/>} {isPending?"Creating…":"Create & play"}</button></footer>
+  </div>;
+}
+
+function IdentityStep({ state, setField, setState, quick = false }: { quick?: boolean; state: FormState; setField: <K extends keyof FormState>(key: K, value: FormState[K]) => void; setState: React.Dispatch<React.SetStateAction<FormState>> }) {
   const nameInput = useRef<HTMLInputElement>(null);
   useEffect(()=>{if(window.matchMedia("(min-width:768px)").matches) nameInput.current?.focus();},[]);
   return <div className="sw-forge-stack sw-forge-identity">
     <section className="sw-forge-panel sw-forge-panel--brass sw-forge-identity__main">
       <PanelTitle number="01" title="Bring your character to life" subtitle="Start with the idea, not the numbers. A sentence is enough to begin." />
       <ForgeField label="Character name" required><input value={state.name} onChange={(event) => setField("name", event.target.value)} placeholder="e.g. Vex the Quick" ref={nameInput} /></ForgeField>
-      <ForgeField label="Your character in one sentence" hint="What are they, and what is special about them? You can change this later." required><textarea rows={2} value={state.concept} onChange={(event) => setField("concept", event.target.value)} placeholder="A bear-like warrior bred for combat who learned to resist magic…" /></ForgeField>
+      <ForgeField label={quick ? "Backstory" : "Your character in one sentence"} hint="What are they, and what is special about them? You can change this later." required={!quick}><textarea rows={quick ? 3 : 2} value={state.concept} onChange={(event) => setField("concept", event.target.value)} placeholder="A bear-like warrior bred for combat who learned to resist magic…" /></ForgeField>
     </section>
-    <PhoneSection title="Backstory" summary="Optional · personality, history, ties and goals" className="sw-forge-story-section"><header><span>THE STORY SO FAR</span><h3>Give them a past and a purpose</h3><p>These prompts are optional, but answering one or two will help you choose rules that fit the character. A story flaw does not have to become a mechanical weakness later.</p></header><BackstoryStep state={state} setState={setState} /></PhoneSection>
-    <details className="sw-forge-disclosure"><summary><span><b>Add a portrait</b><small>Optional · upload an image or use a link</small></span><ChevronDown aria-hidden /></summary><div className="sw-forge-disclosure__body"><PortraitInput value={state.portraitUrl} onChange={(value) => setField("portraitUrl", value)} frame={state.portraitFrame} onFrameChange={(value) => setField("portraitFrame", value)} characterName={state.name} /></div></details>
-    <PhoneSection title="Understanding heritages" summary="Lineage, Upbringing and Manifest" className="sw-forge-heritages">
+    {!quick ? <PhoneSection title="Backstory" summary="Optional · personality, history, ties and goals" className="sw-forge-story-section"><header><span>THE STORY SO FAR</span><h3>Give them a past and a purpose</h3><p>These prompts are optional, but answering one or two will help you choose rules that fit the character. A story flaw does not have to become a mechanical weakness later.</p></header><BackstoryStep state={state} setState={setState} /></PhoneSection> : <details className="sw-forge-disclosure"><summary>Allies & other details (optional)</summary><div className="sw-forge-disclosure__body"><BackstoryStep state={state} setState={setState} /></div></details>}
+    <details className="sw-forge-disclosure" open={quick}><summary><span><b>Add a portrait</b><small>Optional · upload an image or use a link</small></span><ChevronDown aria-hidden /></summary><div className="sw-forge-disclosure__body"><PortraitInput value={state.portraitUrl} onChange={(value) => setField("portraitUrl", value)} frame={state.portraitFrame} onFrameChange={(value) => setField("portraitFrame", value)} characterName={state.name} /></div></details>
+    {!quick ? <PhoneSection title="Understanding heritages" summary="Lineage, Upbringing and Manifest" className="sw-forge-heritages">
       <header><span>THE THREE ROOTS OF A CHARACTER</span><h3 id="sw-forge-heritages-title">Where do their abilities come from?</h3><p>Heritages explain the story behind your character’s abilities. Describe these ideas in ordinary words now. On the character sheet, you can turn them into Lineage, Upbringing, and Manifest bundles with actual rules.</p></header>
       <div className="sw-forge-heritages__grid"><article><span>01 · WHAT THEY ARE</span><h4>Lineage</h4><p>Their inherited or created nature: body, ancestry, senses, and innate traits. A constructed or transformed person has a Lineage too.</p><small>Example: a bear-like being with powerful senses.</small></article><article><span>02 · WHAT SHAPED THEM</span><h4>Upbringing</h4><p>The people, place, work, and training that formed them before adventuring.</p><small>Example: raised and trained for combat.</small></article><article><span>03 · WHO THEY ARE BECOMING</span><h4>Manifest</h4><p>The role or discipline they pursue now. This is similar to a class, but it can grow and change with their story.</p><small>Example: an anti-magic hunter.</small></article></div>
-    </PhoneSection>
+    </PhoneSection> : null}
   </div>;
 }
 
-function FoundationStep({ state, setField, setState, attrSum, budget, effectiveLevel }: { state: FormState; setField: <K extends keyof FormState>(key: K, value: FormState[K]) => void; setState: React.Dispatch<React.SetStateAction<FormState>>; attrSum: number; budget: number; effectiveLevel: number }) {
+function FoundationStep({ state, setField, setState, attrSum, budget, effectiveLevel, quick = false }: { quick?: boolean; state: FormState; setField: <K extends keyof FormState>(key: K, value: FormState[K]) => void; setState: React.Dispatch<React.SetStateAction<FormState>>; attrSum: number; budget: number; effectiveLevel: number }) {
   const speed = SIZE_BASE_SPEED[state.size];
   return <div className="sw-forge-stack sw-forge-foundation">
     <section className="sw-forge-panel sw-forge-panel--brass sw-forge-identity__frame">
-      <PanelTitle number="01" title="Their physical frame" subtitle="Size, level, and Build Units belong together. The defaults fit a new level-1 character." />
+      <PanelTitle number="01" title={quick ? "Foundation" : "Their physical frame"} subtitle={quick ? "Start at level 1, or use your group’s level or agreed budget." : "Size, level, and Build Units belong together. The defaults fit a new level-1 character."} />
       <div className="sw-forge-identity__basics">
-        <ForgeField label="Size" hint="Choose what fits your concept."><select value={state.size} onChange={(event) => setField("size", event.target.value as Size)}>{SIZES.map((size) => <option key={size} value={size}>{size} — {SIZE_CAPACITY[size]} load · {SIZE_BASE_SPEED[size]} ft walk · {Math.ceil(SIZE_BASE_SPEED[size] / 2)} ft swim/climb</option>)}</select></ForgeField>
+        {!quick ? <ForgeField label="Size" hint="Choose what fits your concept."><select value={state.size} onChange={(event) => setField("size", event.target.value as Size)}>{SIZES.map((size) => <option key={size} value={size}>{size} — {SIZE_CAPACITY[size]} load · {SIZE_BASE_SPEED[size]} ft walk · {Math.ceil(SIZE_BASE_SPEED[size] / 2)} ft swim/climb</option>)}</select></ForgeField> : null}
         <div className="sw-forge-budget-control">
           <div className="sw-forge-budget-control__heading"><label htmlFor="sw-forge-budget-value">{state.sizingMode === "level" ? "Starting level" : "Agreed Build Units"}</label><div className="sw-forge-mode" role="group" aria-label="Starting budget source"><button type="button" aria-pressed={state.sizingMode === "level"} className={state.sizingMode === "level" ? "is-active" : ""} onClick={() => setField("sizingMode", "level")}>By level</button><button type="button" aria-pressed={state.sizingMode === "bu"} className={state.sizingMode === "bu" ? "is-active" : ""} onClick={() => setField("sizingMode", "bu")}>Custom BU</button></div></div>
           <small>{state.sizingMode === "level" ? "Leave this at 1 unless your group starts higher." : `Only if your group agreed on a budget. This implies level ${effectiveLevel} for eligible weaknesses.`}</small>
           <EditableBudgetInput key={state.sizingMode} value={state.sizingMode === "level" ? state.level : state.customBu} min={state.sizingMode === "level" ? 1 : 25} onChange={(value) => setField(state.sizingMode === "level" ? "level" : "customBu", value)} />
         </div>
       </div>
-      <div className="sw-forge-size-reading"><span><small>Carry</small>{SIZE_CAPACITY[state.size]} load</span><span><small>Walk</small>{speed} ft</span><span><small>Swim</small>{Math.ceil(speed / 2)} ft</span><span><small>Climb</small>{Math.ceil(speed / 2)} ft</span></div>
-      <p className="sw-forge-foundation__budget">Level {effectiveLevel} · {budget} BU before an optional weakness. You will choose what to spend in step 4.</p>
+      <div className="sw-forge-size-reading"><span><small>{quick ? "Base carry" : "Carry"}</small>{SIZE_CAPACITY[state.size]} load</span><span><small>Walk</small>{speed} ft</span><span><small>Swim</small>{Math.ceil(speed / 2)} ft</span><span><small>Climb</small>{Math.ceil(speed / 2)} ft</span></div>
+      <p className="sw-forge-foundation__budget">Level {effectiveLevel} · {budget} BU before an optional weakness. {quick ? `Size ${state.size.toLowerCase()} comes from your lineage; you can change it later on the sheet.` : "You will choose what to spend in step 4."}</p>
     </section>
     <AttributesStep state={state} setField={setField} setState={setState} attrSum={attrSum} />
   </div>;

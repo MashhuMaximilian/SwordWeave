@@ -36,6 +36,7 @@ import "./phone-density.css";
 import "./library-icon-layout.css";
 import "./library-discovery.css";
 import "./character-discovery.css";
+import "./quickbuild.css";
 
 // Retain the previous typefaces behind the data-ui switch so setting
 // NEXT_PUBLIC_SW_UI_VERSION=legacy is a complete visual rollback.

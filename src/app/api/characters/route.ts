@@ -1,3 +1,4 @@
+import { creationSize } from "@/lib/heritage/lineage-size";
 import { parseBackstory } from "@/lib/character/character-backstory";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
@@ -27,6 +28,7 @@ import { autoPublishOnCreate } from "@/lib/publishing/auto-publish";
 import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 import {
   expandBundles,
+  summarizeExpansionCost,
   type BundleExpansionInput,
   type CharacterPrimitiveSource,
 } from "@/lib/engine/bundle-expander";
@@ -171,7 +173,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Name is required." }, { status: 400 });
     }
 
-    const size = parseSize(values["size"]);
+    const quick = values["creationMode"] === "quick";
+    let size = quick ? creationSize("quick", values["size"], null) : parseSize(values["size"]);
     // Phase 8.1 batch 10g: no upper level cap. Phase 8.1 batch 11
     // (Mashu 2026-07-22) made levels 1+ the only constraint; the
     // cumulative BU formula extrapolates indefinitely (L100 = 2315).
@@ -219,7 +222,7 @@ export async function POST(request: Request) {
     const startingBu = buBudgetProvided
       ? Math.floor(rawBuBudget as number)
       : parseIntInRange(values["startingBu"], 0, Number.MAX_SAFE_INTEGER, startingBuDefault);
-    const buSpent = parseIntInRange(values["buSpent"], 0, Number.MAX_SAFE_INTEGER, 0);
+    let buSpent = parseIntInRange(values["buSpent"], 0, Number.MAX_SAFE_INTEGER, 0);
     const dmBonusBu = parseIntInRange(values["dmBonusBu"], 0, Number.MAX_SAFE_INTEGER, 0);
 
     // Phase 8.1 batch 10g: progressionPool uses the canon cumulative
@@ -240,7 +243,7 @@ export async function POST(request: Request) {
         // we can spot bad builds in dev. Mirror debt still hard-fails
         // (see maxBuDebtForLevel on client + server) because that breaks
         // canon mechanics.
-        if (buSpent > progressionPool) {
+        if (!quick && buSpent > progressionPool) {
           console.warn(
             `[characters POST] soft warning: buSpent=${buSpent} > progressionPool=${progressionPool} (character "${name}")`,
           );
@@ -424,9 +427,15 @@ export async function POST(request: Request) {
           name: heritage.name,
           imageUrl: heritage.imageUrl,
           description: heritage.description,
+          defaultSize: heritage.defaultSize,
+          isPublic: heritage.isPublic,
         })
         .from(heritage)
         .where(inArray(heritage.id, rawHeritages));
+      if (quick && (new Set(rawHeritages).size !== rawHeritages.length || heritageRows.length !== rawHeritages.length || heritageRows.some(row => !row.isPublic) || new Set(heritageRows.map(row => row.kind)).size !== heritageRows.length)) {
+        return NextResponse.json({error:"Choose at most one public heritage of each kind."},{status:400});
+      }
+      if (quick || values["size"] == null) size = creationSize(quick ? "quick" : "complete", values["size"], heritageRows.find(row => row.kind === "LINEAGE")?.defaultSize);
       const primLinksByHeritage = new Map<
         string,
         Array<{ primitiveId: number; isMirrored: boolean }>
@@ -678,6 +687,12 @@ export async function POST(request: Request) {
     const expandedCapabilityIds = expansion.capabilities.map(
       (c) => c.capabilityId,
     );
+
+    if (quick && expandedPrimitiveIds.length) {
+      const costRows = await db.select({id:primitives.id,buCost:primitives.buCost,mirrorBuCredit:primitives.mirrorBuCredit,isPublic:primitives.isPublic,userId:primitives.userId}).from(primitives).where(inArray(primitives.id,expandedPrimitiveIds));
+      if (new Set(expandedPrimitiveIds).size !== costRows.length || expansionInput.primitives.some(slot => !costRows.some(row => row.id === slot.primitiveId && (row.isPublic || row.userId === userId)))) return NextResponse.json({error:"A selected starting primitive is unavailable."},{status:400});
+      buSpent = summarizeExpansionCost(expansion,new Map(costRows.map(p=>[p.id,p.buCost])),new Map(costRows.map(p=>[p.id,p.mirrorBuCredit]))).positiveCost;
+    } else if (quick) buSpent=0;
 
     // Validate volatility ceiling BEFORE writing (fail fast).
     // We validate against the EXPANDED primitive set so any

@@ -13,6 +13,7 @@ import { LiveRecipeCard, LivePrimitiveRules, LiveEffectRules, LiveMechanicalSumm
 export type HeritageFormState = {
   kind: "LINEAGE" | "UPBRINGING" | "MANIFEST";
   name: string;
+  defaultSize?: string | null;
   imageUrl: string;
   description: string;
   suggestedTraits: string;
@@ -60,7 +61,7 @@ export function HeritageFormPreview({form, primitives, capabilities}: {
   const completeCost = capabilities.every(capability => capability.primitiveLinks !== undefined && capability.effects !== undefined && capability.effects.every(effect => effect.primitiveLinks !== undefined));
   const {transitiveBu} = computeTransitiveBu({primitiveLinks: allSlots}, {allowTemporaryIds:true});
   return <LiveRecipeCard portraitUrl={lineageArtUrl(form)} name={form.name} kind={kindLabel(form.kind)} icon={form} description={form.description} sourceOrigin={form.sourceOrigin} tags={form.tags} badges={<>
-    <span data-tone="violet">{kindLabel(form.kind)}</span><span data-tone="teal">{form.isPublic ? "Public" : "Private draft"}</span><span>{transitiveBu} BU{completeCost ? "" : " · loaded rules"}</span>
+    <span data-tone="violet">{kindLabel(form.kind)}</span>{form.kind === "LINEAGE" ? <span>{form.defaultSize ?? "MEDIUM"} size</span> : null}<span data-tone="teal">{form.isPublic ? "Public" : "Private draft"}</span><span>{transitiveBu} BU{completeCost ? "" : " · loaded rules"}</span>
   </>}>
     {lineageArtUrl(form) ? <img src={lineageArtUrl(form)!} alt={form.name} className="v12-live-portrait" /> : null}
     <LiveMechanicalSummary slots={allSlots} />

@@ -41,6 +41,7 @@ export async function POST(
         .values({
           userId,
           kind: source.kind,
+          defaultSize: source.defaultSize,
           name: newName,
           imageUrl: source.imageUrl,
           description: source.description,

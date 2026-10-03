@@ -1,3 +1,4 @@
+import { parseLineageSize, isCharacterSize } from "@/lib/heritage/lineage-size";
 import { withPublishingResponse } from "@/lib/publishing/save-transaction";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
@@ -435,6 +436,8 @@ async function handlePATCH(
     // -------------------------------------------------------------------
     // Field parsing — preserve existing behaviour from the legacy PATCH.
     // -------------------------------------------------------------------
+    if (values["defaultSize"] != null && !isCharacterSize(values["defaultSize"])) return NextResponse.json({error:"Invalid lineage size."},{status:400});
+    const defaultSize = current.kind === "LINEAGE" ? ("defaultSize" in values ? parseLineageSize(values["defaultSize"]) : current.defaultSize) : null;
     const name = String(values["name"] ?? "").trim();
     const imageUrl =
       "imageUrl" in values
@@ -511,6 +514,7 @@ async function handlePATCH(
     const canonicalPayload = buildCanonicalTemplatePayload({
       membershipOrder,
       kind,
+      defaultSize,
       name,
       description: description ?? "",
       suggestedTraits: suggestedTraits ?? "",
@@ -528,6 +532,7 @@ async function handlePATCH(
     const draftHash = await computeTemplateContentHash({
       membershipOrder,
       kind,
+      defaultSize,
       name,
       description: description ?? "",
       suggestedTraits: suggestedTraits ?? "",
@@ -576,6 +581,7 @@ async function handlePATCH(
     if (outcome.kind === "version-update") {
       const updatePayload: Record<string, unknown> = {
         name,
+        defaultSize,
         imageUrl,
         description,
         suggestedTraits,
@@ -755,6 +761,7 @@ async function handlePATCH(
         .insert(heritage)
         .values({
           kind,
+          defaultSize,
           name: baseName,
           imageUrl,
           description,
