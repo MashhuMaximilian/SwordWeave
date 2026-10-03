@@ -1,4 +1,5 @@
 "use client";
+import { useCharacterReadOnly, useReadOnlyGraph } from "../character-read-only";
 import { browserUuid } from "@/lib/browser-uuid";
 import { readJsonResponse } from "@/lib/http/read-json-response";
 import {
@@ -166,6 +167,7 @@ function PhonePlayLibrary({ graph, items, permission, toggles, restrictions }: {
   graph: WorkspaceGraph; items: boolean; permission: "OWNER" | "EDITOR" | "SUGGESTER" | "VIEWER";
   toggles: ReturnType<typeof useToggleState>; restrictions: ReturnType<typeof activeRestrictions>;
 }) {
+  const readOnly = useCharacterReadOnly();
   const [category, setCategory] = useState<WorkspaceCategory>(() => (["MANIFEST", "LINEAGE", "UPBRINGING"] as const).find(value => graph.edges.some(edge => edge.parent === null && edge.category === value)) ?? "MANIFEST");
   const [search, setSearch] = useState("");
   const [trail, setTrail] = useState<EntityKey[]>([]);
@@ -184,7 +186,8 @@ function PhonePlayLibrary({ graph, items, permission, toggles, restrictions }: {
     return { mechanical: !!mechanical, text: mechanical ? clean : clean.split(/\s+/).slice(0,28).join(" ") + (clean.split(/\s+/).length > 28 ? "…" : "") };
   };
   const actions = (node: WorkspaceNode) => {
-    if (node.kind === "effect") return <button className="v12-phone-play-toggle" aria-pressed={!toggles.offEffectIds.has(node.id)} onClick={() => {
+    if (node.kind === "effect") return <button disabled={readOnly} className="v12-phone-play-toggle" aria-pressed={!toggles.offEffectIds.has(node.id)} onClick={() => {
+      if (readOnly) return;
       const key = effStorageKey(graph.characterId, node.id);
       if (toggles.offEffectIds.has(node.id)) localStorage.removeItem(key); else localStorage.setItem(key,"1");
       notifyToggleChanged();
@@ -267,7 +270,9 @@ function LegacyCharacterWorkspace({
 }) {
   const router = useRouter();
   const phone = usePhoneCharacterSurface();
-  const [graph, setGraph] = useState<WorkspaceGraph | null>(null);
+  const readOnly = useCharacterReadOnly();
+  const savedGraph = useReadOnlyGraph();
+  const [graph, setGraph] = useState<WorkspaceGraph | null>(savedGraph);
   const [error, setError] = useState<string | null>(null);
   const [category, setCategory] = useState<WorkspaceCategory>(
     items ? "ITEM" : "ALL",
@@ -335,6 +340,7 @@ function LegacyCharacterWorkspace({
   }, [items, mode]);
   const storageKey = `sw:workspace:${characterId}:${items ? "items" : "capabilities"}`;
   const reload = useCallback(async () => {
+    if (readOnly && savedGraph) { setGraph(savedGraph); return savedGraph; }
     const response = await fetch(`/api/characters/${characterId}/workspace`, {
       cache: "no-store",
     });
@@ -343,7 +349,7 @@ function LegacyCharacterWorkspace({
       throw new Error(value.error ?? "Unable to load workspace.");
     setGraph(value);
     return value as WorkspaceGraph;
-  }, [characterId]);
+  }, [characterId, readOnly, savedGraph]);
   useEffect(() => {
     let active = true;
     void Promise.resolve().then(async () => {
@@ -378,12 +384,12 @@ function LegacyCharacterWorkspace({
     };
   }, [reload, storageKey]);
   useEffect(() => {
-    if (ready)
+    if (ready && !readOnly)
       localStorage.setItem(
         storageKey,
         JSON.stringify({ category, expanded, layout }),
       );
-  }, [ready, storageKey, category, expanded, layout]);
+  }, [ready, storageKey, category, expanded, layout, readOnly]);
   const selectedEdge = graph?.edges.find((e) => e.id === path.at(-1));
   const selected = graph?.nodes.find((n) => n.key === selectedEdge?.child);
   const [costPreview, setCostPreview] = useState<{
@@ -1304,9 +1310,11 @@ function LegacyCharacterWorkspace({
               {selected?.kind === "effect" && mode === "PLAY" && !preview && (
                 <button
                   className={button}
+                  disabled={readOnly}
                   aria-pressed={!toggles.offEffectIds.has(selected.id)}
                   onClick={() => {
-                    const key = effStorageKey(characterId, selected.id);
+                    if (readOnly) return;
+      const key = effStorageKey(characterId, selected.id);
                     if (toggles.offEffectIds.has(selected.id))
                       localStorage.removeItem(key);
                     else localStorage.setItem(key, "1");
@@ -1706,6 +1714,7 @@ function WorkspaceRow({
   edge?: WorkspaceEdge | undefined;
   context: RowContext;
 }) {
+  const readOnly = useCharacterReadOnly();
   const {
     graph,
     mode,
@@ -1944,9 +1953,11 @@ function WorkspaceRow({
         <div className="v12-runtime-actions px-4 pb-3">
           <button
             className={button}
+            disabled={readOnly}
             aria-pressed={!toggles.offEffectIds.has(node.id)}
             onClick={() => {
-              const key = effStorageKey(graph.characterId, node.id);
+              if (readOnly) return;
+      const key = effStorageKey(graph.characterId, node.id);
               if (toggles.offEffectIds.has(node.id))
                 localStorage.removeItem(key);
               else localStorage.setItem(key, "1");
@@ -1973,7 +1984,8 @@ function WorkspaceRow({
           mode={mode}
           effectIsOff={(id) => toggles.offEffectIds.has(id)}
           onToggleEffect={(id) => {
-            const key = effStorageKey(graph.characterId, id);
+            if (readOnly) return;
+      const key = effStorageKey(graph.characterId, id);
             if (toggles.offEffectIds.has(id)) localStorage.removeItem(key);
             else localStorage.setItem(key, "1");
             notifyToggleChanged();

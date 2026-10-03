@@ -9287,22 +9287,9 @@ body[data-ui="v12"] .v12-roster-permission svg {width:12px;height:12px;}
 body[data-ui="v12"] .v12-roster-card-actions {gap:8px;flex-wrap:wrap;margin-top:auto;}
 body[data-ui="v12"] .v12-roster-card-actions :is(a,button) {min-height:36px;}
 
-/* Character library previews share the roster language and preserve portrait colors. */
-body[data-ui="v12"] .v12-character-library-preview {max-width:1120px;margin:0 auto;padding:24px 16px 88px;}
-body[data-ui="v12"] .v12-character-preview-back {display:inline-flex;align-items:center;gap:8px;margin-bottom:20px;color:var(--v12-gold-hi);}
-body[data-ui="v12"] .v12-character-preview-hero {display:grid;grid-template-columns:minmax(220px,320px) minmax(0,1fr);gap:20px;align-items:stretch;}
-body[data-ui="v12"] .v12-character-preview-hero:not(:has(.v12-character-preview-portrait)) {grid-template-columns:1fr;}
-body[data-ui="v12"] .v12-character-preview-portrait {aspect-ratio:1;border:1px solid var(--v12-brass);overflow:hidden;background:var(--v12-panel-deep);}
-body[data-ui="v12"] .v12-character-preview-portrait img {width:100%;height:100%;object-fit:cover;}
-body[data-ui="v12"] .v12-character-preview-sections {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:24px;}
-body[data-ui="v12"] .v12-character-preview-sections > section {min-width:0;padding:20px;border:1px solid var(--v12-brass);background:var(--v12-panel-deep);}
-body[data-ui="v12"] .v12-character-preview-label {color:var(--v12-gold);font:600 11px var(--font-system);text-transform:uppercase;letter-spacing:.12em;}
-body[data-ui="v12"] .v12-character-preview-sections h2 {color:var(--v12-gold-hi);font-size:22px;margin:8px 0 16px;}
-body[data-ui="v12"] .v12-character-preview-wide {grid-column:1/-1;}
-body[data-ui="v12"] .v12-character-preview-capabilities {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;}
-body[data-ui="v12"] .v12-character-preview-capabilities article {min-width:0;padding-top:12px;border-top:1px solid var(--v12-brass);}
-body[data-ui="v12"] .v12-character-preview-capabilities a {display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--v12-gold-hi);margin-bottom:8px;}
-@media(max-width:640px) {
- body[data-ui="v12"] .v12-character-preview-hero,body[data-ui="v12"] .v12-character-preview-sections,body[data-ui="v12"] .v12-character-preview-capabilities {grid-template-columns:1fr;}
- body[data-ui="v12"] .v12-character-preview-portrait {max-width:320px;width:100%;justify-self:center;}
-}
+/* Public viewing uses the standard character sheet and a single fork action. */
+body[data-ui="v12"] .v12-public-sheet-notice {display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 18px;margin-bottom:20px;border:1px solid var(--v12-brass);background:var(--v12-panel-deep);}
+body[data-ui="v12"] .v12-public-sheet-notice strong {display:block;color:var(--v12-gold-hi);}
+body[data-ui="v12"] .v12-public-sheet-notice span {display:block;margin-top:4px;color:var(--v12-soft);font-size:13px;}
+body[data-ui="v12"] .v12-public-sheet-notice button {min-width:100px;}
+@media(max-width:640px) {body[data-ui="v12"] .v12-public-sheet-notice {align-items:flex-start;padding:12px;}}

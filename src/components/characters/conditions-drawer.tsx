@@ -1,4 +1,5 @@
 "use client";
+import { useCharacterReadOnly } from "./character-read-only";
 import { hasExternalCondition } from "@/lib/character/condition-scope";
 
 /**
@@ -70,6 +71,7 @@ interface ConditionsDrawerProps {
 }
 
 export function ConditionsDrawer({ characterId, open, onClose, autoEvaluated }: ConditionsDrawerProps) {
+  const readOnly = useCharacterReadOnly();
   const { conditions, hydrated, syncError, update, remove, toggle } =
     useRuntimeConditions(open ? characterId : null);
   const [composerInitial, setComposerInitial] = useState<RuntimeCondition | null>(
@@ -81,6 +83,7 @@ export function ConditionsDrawer({ characterId, open, onClose, autoEvaluated }: 
   const [promoting, setPromoting] = useState<RuntimeCondition | null>(null);
 
   const openComposer = (initial: RuntimeCondition | null = null) => {
+    if (readOnly) return;
     setComposerInitial(initial);
     setComposerOpen(true);
   };
@@ -128,14 +131,14 @@ export function ConditionsDrawer({ characterId, open, onClose, autoEvaluated }: 
         </header>
 
         <div className="v12-conditions-body flex-1 overflow-y-auto px-4 py-3">
-          <button
+          {!readOnly && <button
             type="button"
             onClick={() => openComposer(null)}
             className="v12-conditions-add mb-4 flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-amber-500/40 bg-amber-500/5 px-3 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-500/10 dark:text-amber-300"
           >
             <Plus className="size-4" />
             Add consequence
-          </button>
+          </button>}
 
           <details className="v12-consequences-about mb-4">
             <summary>
@@ -176,8 +179,8 @@ export function ConditionsDrawer({ characterId, open, onClose, autoEvaluated }: 
 
           {hydrated && conditions.length === 0 && (
             <p className="text-xs italic text-muted-foreground">
-              No consequences yet. Use the button above to track a temporary
-              state like &quot;poisoned&quot; or &quot;exhausted&quot;.
+              {readOnly ? "No saved consequences on this character." : <>No consequences yet. Use the button above to track a temporary
+              state like &quot;poisoned&quot; or &quot;exhausted&quot;.</>}
             </p>
           )}
 
@@ -193,10 +196,10 @@ export function ConditionsDrawer({ characterId, open, onClose, autoEvaluated }: 
                     active={conditionActive(c, autoEvaluated?.get(c.id))}
                     liveActive={autoEvaluated?.get(c.id)?.active}
                     sourceKind={c.source}
-                    onPromote={() => setPromoting(c)}
+                    {...(!readOnly ? { onPromote: () => setPromoting(c) } : {})}
                     onToggle={() => toggle(c.id, conditionActive(c, autoEvaluated?.get(c.id)))}
-                    onReset={typeof c.manualOverride === "boolean" ? () => update(c.id, { manualOverride: undefined }) : undefined}
-                    {...(c.source === "custom" ? {
+                    onReset={!readOnly && typeof c.manualOverride === "boolean" ? () => update(c.id, { manualOverride: undefined }) : undefined}
+                    {...(!readOnly && c.source === "custom" ? {
                       onEdit: () => openComposer(c), onRemove: () => remove(c.id),
                       onResolve: () => {setResolving(c);setRecoveryNote(c.recoveryNote??"");},
                     } : {})}
@@ -208,8 +211,8 @@ export function ConditionsDrawer({ characterId, open, onClose, autoEvaluated }: 
         </div>
 
         <footer className="v12-conditions-footer border-t border-border bg-background/50 px-4 py-2 text-xs text-muted-foreground">
-          Consequences sync with this character. Rest does not resolve them automatically.
-          Resolving records recovery and does not refund vitality.
+          {readOnly ? "Saved consequences are shown read only. Fork this character to track your own changes." : <>Consequences sync with this character. Rest does not resolve them automatically.
+          Resolving records recovery and does not refund vitality.</>}
         </footer>
       </aside>
 
@@ -278,6 +281,7 @@ export function ConditionCardItem({
   sourceKind?: string;
 }) {
   const [mechanicsOpen, setMechanicsOpen] = useState(false);
+  const readOnly = useCharacterReadOnly();
   const { title, description, tags, modifiers, durationTier } = condition;
   const engineWantsOn = liveActive === true && !active;
   const mechanicalDescription = modifiers.length > 0
@@ -311,7 +315,7 @@ export function ConditionCardItem({
         <button
           type="button"
           onClick={onToggle}
-          disabled={condition.status === "resolved"}
+          disabled={readOnly || condition.status === "resolved"}
           aria-pressed={active}
           aria-label={active ? "Deactivate" : "Activate"}
           title={active ? "Active — click to deactivate" : "Inactive — click to activate"}

@@ -1,4 +1,5 @@
 "use client";
+import { useCharacterReadOnly } from "./character-read-only";
 import { EditableNumberInput } from "@/components/ui/editable-number-input";
 
 /**
@@ -329,6 +330,7 @@ export function ItemCard({
   atCapacity = false,
   nested,
 }: ItemCardProps) {
+  const readOnly = useCharacterReadOnly();
   const router = useRouter();
   const [, startTransition] = useTransition();
   const { showToast } = useToasts();
@@ -535,7 +537,7 @@ export function ItemCard({
   // silently rejected and the input stays open for the
   // user to fix.
   const handleConfirmQuantity = useCallback(async () => {
-    if (pending) return;
+    if (readOnly || pending) return;
     const parsed = Number(qtyInput);
     if (!Number.isInteger(parsed) || parsed < 1) {
       showToast("Quantity must be a positive integer.", "error");
@@ -582,7 +584,7 @@ export function ItemCard({
     } finally {
       setPending(false);
     }
-  }, [pending, qtyInput, item.quantity, item.id, item.name, characterId, router, showToast]);
+  }, [pending, qtyInput, item.quantity, item.id, item.name, characterId, router, showToast, readOnly]);
 
   // Cancel button: reverts the input to the server value
   // and exits edit mode without saving.
@@ -592,7 +594,7 @@ export function ItemCard({
   }, [item.quantity]);
 
   const handleToggleEquip = useCallback(async () => {
-    if (pending) return;
+    if (readOnly || pending) return;
     const next = !optimisticEquipped;
 
     // Optimistic flip.
@@ -641,6 +643,7 @@ export function ItemCard({
     item.id,
     item.name,
     optimisticEquipped,
+    readOnly,
     pending,
     showToast,
   ]);
@@ -677,8 +680,9 @@ export function ItemCard({
     <button
       type="button"
       onClick={() => { setQtyInput(String(item.quantity)); setEditingQty(true); }}
-      title="Edit quantity"
-      aria-label="Edit quantity"
+      disabled={readOnly}
+      title={readOnly ? "Quantity" : "Edit quantity"}
+      aria-label={readOnly ? "Quantity" : "Edit quantity"}
       className="v12-item-quantity"
     >
       <span aria-hidden="true">×</span><b>{item.quantity}</b><Pencil />
@@ -747,7 +751,7 @@ export function ItemCard({
               <button
                 type="button"
                 onClick={handleToggleEquip}
-                disabled={pending || (!optimisticEquipped && atCapacity)}
+                disabled={readOnly || pending || (!optimisticEquipped && atCapacity)}
                 aria-pressed={optimisticEquipped}
                 title={!optimisticEquipped && atCapacity ? "Equip slots are full — unequip something first" : optimisticEquipped ? "Click to unequip" : "Click to equip"}
               >

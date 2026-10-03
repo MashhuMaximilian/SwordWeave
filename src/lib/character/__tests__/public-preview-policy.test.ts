@@ -21,3 +21,24 @@ describe("public character preview access", () => {
     expect(isPublicCharacterPreview(false, null)).toBe(false);
   });
 });
+
+import { characterSheetPermission } from "../public-preview-policy";
+describe("normal character sheet viewing mode", () => {
+  it("allows a stranger to read a public sheet", () => {
+    expect(characterSheetPermission(null, true, false)).toBe("VIEWER");
+  });
+  it("does not let a viewing URL expose a private character", () => {
+    expect(characterSheetPermission(null, false, true)).toBeNull();
+  });
+  it("keeps normal owner and editor access", () => {
+    expect(characterSheetPermission("OWNER", false, false)).toBe("OWNER");
+    expect(characterSheetPermission("EDITOR", false, false)).toBe("EDITOR");
+  });
+  it("makes a library view read-only even for the owner", () => {
+    expect(characterSheetPermission("OWNER", true, true)).toBe("VIEWER");
+    expect(characterSheetPermission("EDITOR", true, true)).toBe("VIEWER");
+  });
+  it("retains a shared viewer's read-only grant", () => {
+    expect(characterSheetPermission("VIEWER", false, false)).toBe("VIEWER");
+  });
+});

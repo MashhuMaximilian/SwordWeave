@@ -1,4 +1,5 @@
 "use client";
+import { useCharacterReadOnly } from "@/components/characters/character-read-only";
 
 /**
  * use-sheet-conditions.ts — Phase 8.L round 68 (Mashu 2026-08-20)
@@ -354,6 +355,7 @@ export function useSheetConditions(input: {
   sheetConditionIds: ReadonlySet<string>;
   autoEvaluated: ReadonlyMap<string, AutoEvaluatedConditionState>;
 } {
+  const readOnly = useCharacterReadOnly();
   const { characterId, primitiveLinks, capabilityLinks, conditionContext } = input;
   const { conditions, hydrated } = useRuntimeConditions(characterId);
 
@@ -365,7 +367,7 @@ export function useSheetConditions(input: {
   }, [primitiveLinks, capabilityLinks]);
 
   useEffect(() => {
-    if (!characterId || !hydrated) return;
+    if (!characterId || !hydrated || readOnly) return;
     const next = reconcileSheetConditions(conditions, desired);
     if (next.length === conditions.length && next.every(c =>
       consequenceJson(c) === consequenceJson(conditions.find(previous => previous.id === c.id))
@@ -382,7 +384,7 @@ export function useSheetConditions(input: {
       }
       notifyConditionsChanged();
     } catch { /* Storage may be unavailable. */ }
-  }, [characterId, hydrated, desired, conditions]);
+  }, [characterId, hydrated, desired, conditions, readOnly]);
 
   const sheetConditionIds = useMemo(() => {
     return new Set(conditions.filter((c) => c.source === "sheet").map((c) => c.id));

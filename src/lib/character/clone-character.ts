@@ -1,6 +1,10 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
+import { canResolveCharacterForPage } from "./can-resolve-character";
+import { isPublicCharacterPreview } from "./public-preview-policy";
+import { publications } from "@/db/schema/engagement";
 import { db } from "@/db/client";
 import {
+  characterEffects,
   characterCapabilities,
   characterHeritages,
   characterItems,
@@ -20,6 +24,16 @@ export async function cloneCharacter(sourceId: string, userId: string) {
     },
   });
   if (!source) return null;
+  const [access, publication] = await Promise.all([
+    canResolveCharacterForPage(userId, sourceId),
+    db.query.publications.findFirst({
+      where: and(eq(publications.targetType, "CHARACTER"), eq(publications.targetId, sourceId)),
+      columns: { visibility: true, unpublishedAt: true }, orderBy: desc(publications.publishedAt),
+    }),
+  ]);
+  if (!access && !isPublicCharacterPreview(source.isPublic, publication)) return null;
+
+  const effectSlots = await db.select().from(characterEffects).where(eq(characterEffects.characterId, sourceId));
 
   return db.transaction(async (tx) => {
     const [created] = await tx.insert(characters).values({
@@ -45,7 +59,7 @@ export async function cloneCharacter(sourceId: string, userId: string) {
       dmBonusBu: source.dmBonusBu,
       enforceTemplateCaps: source.enforceTemplateCaps,
       isMirrored: source.isMirrored,
-      notes: source.notes,
+      notes: access ? source.notes : null,
       dmNotes: null,
       portraitUrl: source.portraitUrl,
       portraitFrame: source.portraitFrame,
@@ -104,6 +118,13 @@ export async function cloneCharacter(sourceId: string, userId: string) {
         equipped: i.equipped,
         versionId: i.versionId,
         slotSource: i.slotSource,
+      })));
+    }
+
+    if (effectSlots.length > 0) {
+      await tx.insert(characterEffects).values(effectSlots.map(effect => ({
+        characterId: created.id, effectId: effect.effectId, category: effect.category,
+        versionId: effect.versionId, slotSource: effect.slotSource,
       })));
     }
 

@@ -307,6 +307,8 @@ export type CharacterSheetProps = {
   size: string;
   portraitUrl: string | null;
   portraitFrame: unknown;
+  readOnlyGraph?: WorkspaceGraph | null;
+  readOnlyConditions?: readonly RuntimeCondition[];
   notes: string | null;
   dmNotes: string | null;
   lineageName: string | null;
@@ -720,9 +722,19 @@ function buildAccessRules(links: ReadonlyArray<SheetPrimitiveLink>): ReadonlyArr
   return rules;
 }
 
+import { CharacterReadOnlyProvider, useCharacterReadOnly } from "./character-read-only";
+import { ForkCharacterButton } from "./fork-character-button";
+import type { WorkspaceGraph } from "@/lib/character/workspace/model";
+import type { RuntimeCondition } from "@/lib/hooks/use-runtime-conditions";
 import type { VitalityRuntimeUpdate } from "@/lib/character/vitality-update";
 
-export function CharacterSheetView(initialProps: CharacterSheetProps) {
+export function CharacterSheetView(props: CharacterSheetProps) {
+  return <CharacterReadOnlyProvider readOnly={(props.viewerPermission ?? "VIEWER") === "VIEWER"} conditions={props.readOnlyConditions} graph={props.readOnlyGraph}>
+    <CharacterSheetContent {...props} />
+  </CharacterReadOnlyProvider>;
+}
+
+function CharacterSheetContent(initialProps: CharacterSheetProps) {
   const [vitalityConfirmation, setVitalityConfirmation] = useState<{
     characterId: string; baseCurrent: number | null; baseContext: CharacterSheetProps["conditionContext"];
     value: { current: number; max: number; runtime: VitalityRuntimeUpdate };
@@ -740,6 +752,10 @@ export function CharacterSheetView(initialProps: CharacterSheetProps) {
   const [tab, setTab] = useState<Tab>("capabilities");
   const permission = props.viewerPermission ?? "VIEWER";
   const canDraft = permission !== "VIEWER";
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("sw-character-view-permission", { detail: { characterId: props.id, readOnly: !canDraft } }));
+    return () => { window.dispatchEvent(new CustomEvent("sw-character-view-permission", { detail: null })); };
+  }, [props.id, canDraft]);
   const canWrite = permission === "OWNER" || permission === "EDITOR";
   const [localSheetMode, setLocalSheetMode] = useState<"BUILD" | "PLAY" | null>(null);
   const [editorIntent, setEditorIntent] = useState<CharacterEditorIntent>("overview");
@@ -1089,7 +1105,11 @@ export function CharacterSheetView(initialProps: CharacterSheetProps) {
         onClose={() => setConditionsOpen(false)}
         autoEvaluated={autoEvaluated}
       />
-    <div className="v12-character-page mx-auto w-full max-w-[1480px] px-5 pt-20 pb-32" data-character-surface data-sheet-mode={sheetMode}>
+    <div className="v12-character-page mx-auto w-full max-w-[1480px] px-5 pt-20 pb-32" data-character-surface data-sheet-mode={sheetMode} data-read-only={!canDraft} data-character-id={props.id}>
+      {!canDraft && <aside className="v12-public-sheet-notice" aria-label="Read-only character">
+        <div><strong>Read-only character sheet</strong><span>Read only · Fork to play and make changes to your own copy.</span></div>
+        <ForkCharacterButton characterId={props.id} roster label="Fork" />
+      </aside>}
       <nav className="v12-character-lenses" aria-label="Character sheet sections">
         <div>
           {TABS.map((item) => {
@@ -1169,6 +1189,7 @@ export function CharacterSheetView(initialProps: CharacterSheetProps) {
               Level Up
             </button>
           )}
+          {canDraft ? (
           <Link
             href={`/characters/${props.id}/clone`}
             className="flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-card"
@@ -1176,6 +1197,7 @@ export function CharacterSheetView(initialProps: CharacterSheetProps) {
             <Swords className="size-4" />
             Clone
           </Link>
+          ) : <ForkCharacterButton characterId={props.id} roster label="Fork" />}
           {/* PLAN Eilxina Part A (Mashu 2026-09-09): visibility tier
               picker on the character sheet header. Posts to
               /api/creations/visibility with targetType='CHARACTER'.
@@ -4327,6 +4349,7 @@ function HistoryTab({
     createdAt: string;
   }>;
 }) {
+  const readOnly = useCharacterReadOnly();
   const [filter, setFilter] = useState<string | null>(null);
   // Mashu 2026-07-28: fetch fresh log entries from
   // /api/characters/[id]/logs whenever this tab is
@@ -4363,6 +4386,7 @@ function HistoryTab({
   }, [characterId]);
 
   useEffect(() => {
+    if (readOnly) return;
     let cancelled = false;
     setLoading(true);
     void (async () => {
@@ -4390,7 +4414,7 @@ function HistoryTab({
     return () => {
       cancelled = true;
     };
-  }, [characterId, refreshKey]);
+  }, [characterId, refreshKey, readOnly]);
 
   if (entries.length === 0) {
     return (

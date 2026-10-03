@@ -1,4 +1,3 @@
-import { LibraryCharacterDetail } from "@/components/characters/library-character-detail";
 import { sourceDisplayLabel } from "@/lib/publishing/source-display";
 // =============================================================================
 // /library/item/[id] — public detail view for a library item
@@ -12,7 +11,7 @@ import { sourceDisplayLabel } from "@/lib/publishing/source-display";
 
 import { lineageArtUrl } from "@/lib/heritage/lineage-art";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { ArrowLeft, ChevronRight, History, Pencil, Shield, User as UserIcon } from "lucide-react";
 import { and, eq, inArray, sql } from "drizzle-orm";
@@ -456,7 +455,7 @@ export default async function LibraryItemPage({ params }: PageProps) {
     : null;
 
   if (type === "CHARACTER") {
-    return <LibraryCharacterDetail id={id} viewerClerkId={clerkUserId} />;
+    redirect(`/characters/${encodeURIComponent(id)}?view=public`);
   }
 
   if (type === "PRIMITIVE") {

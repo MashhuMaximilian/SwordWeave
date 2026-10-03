@@ -10,6 +10,6 @@ export function PublicCharacterCard({ item, character }: { item: LibraryItem; ch
     : item.authorDisplayName ?? item.authorUsername ?? "Unknown author";
   return <RosterCharacterCard character={character}
     attribution={<><span>By {author}</span>{(item.likesCount > 0 || item.forkCount > 0) && <span>♥ {item.likesCount} · ⑂ {item.forkCount}</span>}</>}
-    actions={<><Link href={`/library/item/${item.id}`} className="v12-roster-open"><Swords aria-hidden="true" />Preview</Link><ForkCharacterButton characterId={item.targetId} roster /></>}
+    actions={<><Link href={`/characters/${item.targetId}?view=public`} className="v12-roster-open"><Swords aria-hidden="true" />Open sheet</Link><ForkCharacterButton characterId={item.targetId} roster /></>}
   />;
 }

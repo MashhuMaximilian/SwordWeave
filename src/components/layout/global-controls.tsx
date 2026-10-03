@@ -388,6 +388,20 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
   // is hidden there.
   const isSplitableSandboxRoute =
     pathname?.startsWith("/atelier");
+  const [sheetAccess, setSheetAccess] = useState<{ characterId: string; readOnly: boolean } | null>(null);
+  useEffect(() => {
+    const update = (event: Event) => setSheetAccess((event as CustomEvent).detail);
+    window.addEventListener("sw-character-view-permission", update);
+    let cancelled = false;
+    // A server-rendered child can announce its role before this listener mounts.
+    queueMicrotask(() => {
+      if (cancelled) return;
+      const sheet = document.querySelector<HTMLElement>("[data-sheet-mode][data-character-id]");
+      if (sheet?.dataset["characterId"]) setSheetAccess({ characterId: sheet.dataset["characterId"], readOnly: sheet.dataset["readOnly"] === "true" });
+    });
+    return () => { cancelled = true; window.removeEventListener("sw-character-view-permission", update); };
+  }, []);
+  const readOnlySheet = sheetAccess?.readOnly && pathname === `/characters/${sheetAccess.characterId}`;
   const isCharacterSheetRoute = pathname?.startsWith("/characters/") === true;
 
   // Filters only appear on routes that actually open the filter panel
@@ -512,7 +526,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         icon: <span className="text-base leading-none">🎲</span>,
       },
     );
-    return list;
+    return readOnlySheet ? list.filter(item => item.key !== "build") : list;
   }, [
     isSandboxRoute,
     isMobile,
@@ -527,6 +541,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
     toggleDark,
     pathname,
     isCharacterSheetRoute,
+    readOnlySheet,
     stack,
   ]);
 

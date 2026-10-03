@@ -23,7 +23,9 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
-  if (isProtectedRoute(req)) {
+  const isSheet = /^\/characters\/[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\/?$/i.test(req.nextUrl.pathname);
+  // The sheet server page checks publication/share access. Editing routes stay protected.
+  if (isProtectedRoute(req) && !isSheet) {
     await auth.protect();
   }
 });

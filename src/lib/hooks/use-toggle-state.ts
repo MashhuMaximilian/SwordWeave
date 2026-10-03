@@ -35,6 +35,7 @@
  *     safely pipe primitives through without explicit gating.
  */
 
+import { useCharacterReadOnly } from "@/components/characters/character-read-only";
 import { useSyncExternalStore, useCallback } from "react";
 import { createToggleStateStore, emptyToggleSnapshot } from "./toggle-state-store";
 
@@ -145,7 +146,8 @@ const toggleStore = createToggleStateStore(readAllOffKeys, (id, refresh) => {
 });
 const serverSnapshot = () => emptyToggleSnapshot;
 export function useToggleState(characterId: string | null): UseToggleStateResult {
-  const id = characterId ?? "";
+  const readOnly = useCharacterReadOnly();
+  const id = readOnly ? "" : characterId ?? "";
   const subscribe = useCallback((listener: () => void) => toggleStore.subscribe(id, listener), [id]);
   const snapshot = useCallback(() => toggleStore.getSnapshot(id), [id]);
   const refresh = useCallback(() => toggleStore.refresh(id), [id]);

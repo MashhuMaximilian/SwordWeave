@@ -1,4 +1,6 @@
 "use client";
+import { useToggleState } from "@/lib/hooks/use-toggle-state";
+import { useCharacterReadOnly } from "./character-read-only";
 import { usePhoneCharacterSurface } from "@/components/characters/compact-hierarchy";
 import { grantedKeyword } from "@/lib/engine/practice-grants";
 
@@ -495,6 +497,7 @@ export function BottomStickyBar({
   behaviorVariables,
   accessRules = [],
 }: BottomStickyBarProps) {
+  const readOnly = useCharacterReadOnly();
   const ruleKindLabel: Record<NonNullable<BottomStickyBarProps["accessRules"]>[number]["kind"], string> = {
     domain: "Domain",
     verb: "Verb",
@@ -1429,7 +1432,7 @@ export function BottomStickyBar({
               ...contributionsToSteps(`save_dc`, dcResolver ?? resolver_),
             ]}
             selector={
-              showSaveSelector
+              showSaveSelector && !readOnly
                 ? {
                     label: "Scales with attribute",
                     value: dcAttr,
@@ -1564,7 +1567,7 @@ export function BottomStickyBar({
               { label: "= Attack Bonus", value: atkTotal },
             ]}
             selector={
-              showAttackSelector
+              showAttackSelector && !readOnly
                 ? {
                     label: "Scales with attribute",
                     value: atkAttr,
@@ -2505,28 +2508,9 @@ function PracticeDetailModal({
     };
   }, []);
 
-  // Phase 8.J D-5 + C2: read OFF caps from localStorage for greyed-out.
-  const [offCapabilityIds, setOffCapabilityIds] = useState<Set<string>>(new Set());
+  // Use the same play state as the resolver, including read-only public snapshots.
+  const { offCapabilityIds } = useToggleState(characterId);
   const [rawTokensOpen, setRawTokensOpen] = useState<unknown | null>(null);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const off = new Set<string>();
-      // Phase 8.L round 26 (Mashu): prefix MUST include characterId
-    // so we only read OFF caps for THIS character (capability-card
-    // writes sw:cap:<characterId>:<capabilityId> = "1" when OFF).
-    // The old prefix "sw:cap:" was reading OFF caps from every
-    // character on the device, breaking the per-character toggle.
-    const prefix = `sw:cap:${characterId}:`;
-      for (let i = 0; i < window.localStorage.length; i++) {
-        const key = window.localStorage.key(i);
-        if (key && key.startsWith(prefix) && window.localStorage.getItem(key) === "1") {
-          off.add(key.slice(prefix.length));
-        }
-      }
-      setOffCapabilityIds(off);
-    } catch {}
-  }, []);
 
   const fmt = (n: number | null | undefined) => (n === null || n === undefined ? "" : n >= 0 ? `+${n}` : `${n}`);
 

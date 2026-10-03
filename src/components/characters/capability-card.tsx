@@ -1,4 +1,5 @@
 "use client";
+import { useCharacterReadOnly } from "./character-read-only";
 import { useRuntimeConditions } from "@/lib/hooks/use-runtime-conditions";
 import { useCharacterSupplyGraph } from "@/lib/hooks/use-character-supply-graph";
 import { activeRestrictions } from "@/lib/character/consequences/types";
@@ -164,12 +165,13 @@ export function CapabilityActionButtons({
   onToggle: () => void;
   onTrigger: () => void;
 }) {
+  const readOnly = useCharacterReadOnly();
   return (
     <div className="v12-capability-actions-only" onClick={(event) => event.stopPropagation()}>
       <button
         type="button"
         onClick={onToggle}
-        disabled={togglePending || triggerPending}
+        disabled={readOnly || togglePending || triggerPending}
         aria-pressed={active}
         data-testid="capability-toggle"
         title={active ? "Active — click to deactivate" : "Inactive — click to activate"}
@@ -180,7 +182,7 @@ export function CapabilityActionButtons({
       <button
         type="button"
         onClick={onTrigger}
-        disabled={triggerPending || togglePending || triggerDisabled}
+        disabled={readOnly || triggerPending || togglePending || triggerDisabled}
         data-testid="capability-trigger"
         title="Fire this capability once and log it"
       >
@@ -260,15 +262,17 @@ function EffectToggleRow({
   effectDescription: string | null;
   versionId: string | null;
 }) {
+  const readOnly = useCharacterReadOnly();
   const [active, setActive] = useState(true);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     // Read initial state from localStorage. Default = active.
-    const off = readEffectToggle(characterId, effectId);
+    const off = !readOnly && readEffectToggle(characterId, effectId);
     setActive(!off);
     setHydrated(true);
 
+    if (readOnly) return;
     function onChange() {
       const next = !readEffectToggle(characterId, effectId);
       setActive(next);
@@ -279,14 +283,15 @@ function EffectToggleRow({
       window.removeEventListener("storage", onChange);
       window.removeEventListener("sw:toggle-changed", onChange);
     };
-  }, [characterId, effectId]);
+  }, [characterId, effectId, readOnly]);
 
   const handleToggle = useCallback(() => {
+    if (readOnly) return;
     const next = !active;
     setActive(next);
     writeEffectToggle(characterId, effectId, !next);
     notifyToggleChanged();
-  }, [active, characterId, effectId]);
+  }, [active, characterId, effectId, readOnly]);
 
   const isOff = hydrated && !active;
 
@@ -307,6 +312,7 @@ function EffectToggleRow({
         <button
           type="button"
           onClick={handleToggle}
+          disabled={readOnly}
           aria-label={active ? "Deactivate effect" : "Activate effect"}
           title={active ? "Effect is ON — click to deactivate" : "Effect is OFF — click to activate"}
           className={cn(
@@ -413,6 +419,7 @@ export function CapabilityCard({
 
   // Local optimistic state. Hydrate from localStorage on mount.
   // Phase 8.L round 44: default ACTIVE (no localStorage key).
+  const readOnly = useCharacterReadOnly();
   const [active, setActive] = useState(true);
   // Phase 8.4 v9 (Mashu 2026-07-28): the sheet only carries the
   // capability's effectLinks, not its primitiveLinks. For "actual
@@ -507,9 +514,9 @@ export function CapabilityCard({
 
   useEffect(() => {
     // Phase 8.L round 44: readToggle returns 'is OFF'. Default ACTIVE.
-    setActive(!readToggle(characterId, capability.id));
+    setActive(readOnly || !readToggle(characterId, capability.id));
     setHydrated(true);
-  }, [characterId, capability.id]);
+  }, [characterId, capability.id, readOnly]);
 
   // Phase 8.4 v9 (Mashu 2026-07-28): lazy-load the capability's
   // bundled primitives so the SHEET can show them nested under
@@ -559,7 +566,7 @@ export function CapabilityCard({
   const toggleInFlight = useRef(false);
   const triggerInFlight = useRef(false);
   const handleToggle = useCallback(async () => {
-    if (toggleInFlight.current) return;
+    if (readOnly || toggleInFlight.current) return;
     toggleInFlight.current = true;
     const next = !active;
 
@@ -624,10 +631,10 @@ export function CapabilityCard({
       toggleInFlight.current = false;
       setToggling(false);
     }
-  }, [active, capability.id, capability.name, characterId, showToast, toggling]);
+  }, [active, capability.id, capability.name, characterId, showToast, toggling, readOnly]);
 
   const handleTrigger = useCallback(async () => {
-    if (triggerInFlight.current) return;
+    if (readOnly || triggerInFlight.current) return;
     triggerInFlight.current = true;
     setTriggerPending(true);
 
@@ -682,7 +689,7 @@ export function CapabilityCard({
       triggerInFlight.current = false;
       setTriggerPending(false);
     }
-  }, [capability.id, capability.name, characterId, showToast, triggerPending]);
+  }, [capability.id, capability.name, characterId, showToast, triggerPending, readOnly]);
 
   // Until hydration runs on the client, render a neutral state so
   // server-rendered HTML matches the first client render (avoids
@@ -909,7 +916,7 @@ export function CapabilityCard({
               e.stopPropagation();
               void handleToggle();
             }}
-            disabled={toggling || triggerPending}
+            disabled={readOnly || toggling || triggerPending}
             aria-pressed={showActive}
             data-testid="capability-toggle"
             className={cn(
@@ -933,7 +940,7 @@ export function CapabilityCard({
               e.stopPropagation();
               void handleTrigger();
             }}
-            disabled={triggerPending || toggling || !!blockedReason}
+            disabled={readOnly || triggerPending || toggling || !!blockedReason}
             data-testid="capability-trigger"
             className="inline-flex items-center gap-1 rounded-md border border-amber-500/50 bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:text-amber-300"
             title="Fire this capability once and log it (state does not persist)"

@@ -3,6 +3,7 @@
 /** Local cache with character-scoped server synchronization. Legacy browser
  * records are imported idempotently and retained as an acknowledged backup. */
 
+import { useCharacterReadOnly, useReadOnlyConditions } from "@/components/characters/character-read-only";
 import { useState, useEffect, useCallback } from "react";
 import { connectConsequenceSync, consequenceSyncReady, consequenceSyncError } from "@/lib/character/consequences/client-sync";
 
@@ -92,6 +93,8 @@ export interface UseRuntimeConditionsResult {
 export function useRuntimeConditions(
   characterId: string | null,
 ): UseRuntimeConditionsResult {
+  const readOnly = useCharacterReadOnly();
+  const savedConditions = useReadOnlyConditions();
   const [conditions, setConditions] = useState<readonly RuntimeCondition[]>([]);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -114,7 +117,7 @@ export function useRuntimeConditions(
   }, [characterId]);
 
   useEffect(() => {
-    if (!characterId) return;
+    if (!characterId || readOnly) return;
     // Hydrate this external localStorage source after subscribing to a character.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
@@ -131,7 +134,7 @@ export function useRuntimeConditions(
       window.removeEventListener("storage", onChange);
       window.removeEventListener("sw:conditions-changed", onChange);
     };
-  }, [characterId, refresh]);
+  }, [characterId, refresh, readOnly]);
 
   const create = useCallback<UseRuntimeConditionsResult["create"]>(
     (input) => {
@@ -154,17 +157,18 @@ export function useRuntimeConditions(
         createdAt: Date.now(),
         active: input.active ?? true,
       };
+      if (readOnly) return cond;
       if (characterId) writeCondition(characterId, cond);
       window.dispatchEvent(new CustomEvent("sw:conditions-changed"));
       refresh();
       return cond;
     },
-    [characterId, refresh],
+    [characterId, refresh, readOnly],
   );
 
   const update = useCallback<UseRuntimeConditionsResult["update"]>(
     (id, patch) => {
-      if (!characterId) return;
+      if (!characterId || readOnly) return;
       const existing = readCondition(characterId, id);
       if (!existing) return;
       const merged: RuntimeCondition = { ...existing, ...patch };
@@ -172,30 +176,31 @@ export function useRuntimeConditions(
       window.dispatchEvent(new CustomEvent("sw:conditions-changed"));
       refresh();
     },
-    [characterId, refresh],
+    [characterId, refresh, readOnly],
   );
 
   const remove = useCallback<UseRuntimeConditionsResult["remove"]>(
     (id) => {
-      if (!characterId) return;
+      if (!characterId || readOnly) return;
       deleteCondition(characterId, id);
       window.dispatchEvent(new CustomEvent("sw:conditions-changed"));
       refresh();
     },
-    [characterId, refresh],
+    [characterId, refresh, readOnly],
   );
 
   const toggle = useCallback<UseRuntimeConditionsResult["toggle"]>(
     (id, currentActive) => {
-      if (!characterId) return;
+      if (!characterId || readOnly) return;
       const existing = readCondition(characterId, id);
       if (!existing) return;
       const active = !(currentActive ?? existing.manualOverride ?? existing.active);
       update(id, { manualOverride: active });
     },
-    [characterId, update],
+    [characterId, update, readOnly],
   );
 
+  if (readOnly) return { syncError: null, conditions: savedConditions, hydrated: true, create, update, remove, toggle, refresh: () => {} };
   return { syncError, conditions: loadedCharacterId === characterId ? conditions : [],
     hydrated: hydrated && loadedCharacterId === characterId, create, update, remove, toggle, refresh };
 }

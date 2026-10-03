@@ -1,4 +1,5 @@
 "use client";
+import { useCharacterReadOnly } from "./character-read-only";
 import { EditableNumberInput } from "@/components/ui/editable-number-input";
 
 /**
@@ -87,6 +88,7 @@ export function VitalityTracker({
   compact = false,
   attrBestTotals,
 }: VitalityTrackerProps) {
+  const readOnly = useCharacterReadOnly();
   const mutationPending = useRef(false);
   const { showToast } = useToasts();
 
@@ -117,6 +119,7 @@ export function VitalityTracker({
       : 0;
 
   function openDialog(mode: "damage" | "heal") {
+    if (readOnly) return;
     setDialogMode(mode);
     setAmount("");
     setDialogOpen(true);
@@ -124,6 +127,7 @@ export function VitalityTracker({
 
   async function submitApply(e: React.FormEvent) {
     e.preventDefault();
+    if (readOnly) return;
     if (mutationPending.current) return;
     const num = Number(amount);
     if (!Number.isFinite(num) || num <= 0) {
@@ -183,6 +187,7 @@ export function VitalityTracker({
   }
 
   async function submitRest(restType: "long" | "short") {
+    if (readOnly) return;
     if (mutationPending.current) return;
     mutationPending.current = true;
     const optimisticRest = restType === "long"
@@ -327,7 +332,7 @@ export function VitalityTracker({
           type="button"
           onClick={() => openDialog("damage")}
           disabled={
-            pending || restPending !== null || optimisticCurrent === 0
+            readOnly || pending || restPending !== null || optimisticCurrent === 0
           }
           className={cn(
             "v12-vitality-command is-damage inline-flex flex-1 items-center justify-center gap-1 whitespace-nowrap font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70",
@@ -342,7 +347,7 @@ export function VitalityTracker({
           type="button"
           onClick={() => openDialog("heal")}
           disabled={
-            pending || restPending !== null || optimisticCurrent >= max
+            readOnly || pending || restPending !== null || optimisticCurrent >= max
           }
           className={cn(
             "v12-vitality-command is-heal inline-flex flex-1 items-center justify-center gap-1 whitespace-nowrap font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70",
@@ -357,7 +362,7 @@ export function VitalityTracker({
           type="button"
           onClick={() => submitRest("long")}
           disabled={
-            pending || restPending !== null || optimisticCurrent === max
+            readOnly || pending || restPending !== null || optimisticCurrent === max
           }
           className={cn(
             "v12-vitality-command is-rest inline-flex flex-1 items-center justify-center gap-1 whitespace-nowrap font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70",
@@ -373,7 +378,7 @@ export function VitalityTracker({
           type="button"
           onClick={() => submitRest("short")}
           disabled={
-            pending || restPending !== null || optimisticCurrent === max
+            readOnly || pending || restPending !== null || optimisticCurrent === max
           }
           className={cn(
             "v12-vitality-command is-rest inline-flex flex-1 items-center justify-center gap-1 whitespace-nowrap font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70",

@@ -1,4 +1,5 @@
 "use client";
+import { useCharacterReadOnly } from "../character-read-only";
 import { bundleBu } from "@/lib/character/workspace/model";
 import type { WorkspaceNode, WorkspaceGraph, WorkspaceEdge, EntityKey } from "@/lib/character/workspace/model";
 import { CapabilityCard } from "../capability-card";
@@ -44,6 +45,7 @@ export function BundleContents({
   ancestors?: string[];
   seen?: EntityKey[];
 }) {
+  const readOnly = useCharacterReadOnly();
   if (seen.includes(node.key)) return null;
   const contents = graph.edges
     .filter((e) => e.parent === node.key)
@@ -105,6 +107,7 @@ export function BundleContents({
             defaultExpanded
             actions={child.kind === "effect" && characterId && mode === "PLAY" ? (
               <button
+                disabled={readOnly}
                 className="v12-effect-toggle"
                 aria-pressed={!effectIsOff?.(child.id)}
                 onClick={() => onToggleEffect?.(child.id)}

@@ -25,6 +25,7 @@
 // - Double-click: disable button while in-flight.
 // =============================================================================
 
+import { useAuth, useClerk } from "@clerk/nextjs";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { GitFork, Loader2 } from "lucide-react";
@@ -35,18 +36,26 @@ interface ForkCharacterButtonProps {
   /** Optional compact variant for use in tight rows. */
   compact?: boolean;
   roster?: boolean;
+  label?: string;
 }
 
 export function ForkCharacterButton({
   characterId,
   compact = false,
   roster = false,
+  label = "Fork as my own",
 }: ForkCharacterButtonProps) {
   const router = useRouter();
+  const { isSignedIn } = useAuth();
+  const { redirectToSignIn } = useClerk();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
   const handleFork = () => {
+    if (!isSignedIn) {
+      void redirectToSignIn({ redirectUrl: `/characters/${characterId}?view=public` });
+      return;
+    }
     setError(null);
     startTransition(async () => {
       try {
@@ -88,7 +97,7 @@ export function ForkCharacterButton({
         ) : (
           <GitFork className="size-3.5" />
         )}
-        {isPending ? "Forking…" : "Fork as my own"}
+        {isPending ? "Forking…" : label}
       </button>
       {error && (
         <span className="text-xs font-medium text-destructive" role="alert">

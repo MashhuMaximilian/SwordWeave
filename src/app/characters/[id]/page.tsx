@@ -1,8 +1,11 @@
+import { readWorkspace } from "@/lib/character/workspace/read";
+import { characterSheetPermission, isPublicCharacterPreview } from "@/lib/character/public-preview-policy";
+import { characterConsequences } from "@/db/schema/workspace";
 import { effectivePrimitiveLinks } from "@/lib/character/workspace/effective-primitives";
 import { getSuggestionGrants } from "@/lib/character/suggestion-grants";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { CharacterSheetView } from "@/components/characters/character-sheet-view";
 import { db } from "@/db/client";
 import {
@@ -20,7 +23,6 @@ import { publications } from "@/db/schema/engagement";
 import { aggregateCharacterSheet } from "@/lib/engine";
 import {
   canResolveCharacterForPage,
-  type CharacterPermission,
 } from "@/lib/character/can-resolve-character";
 import type { ConditionContext } from "@/lib/engine/condition-evaluator";
 import {
@@ -88,11 +90,14 @@ function extractDamageModifiers(
 }
 
 export default async function CharacterSheetPage({
-  params,
+  params, searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ view?: string }>;
 }) {
   const { id } = await params;
+  if (!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id)) notFound();
+  const publicViewRequested = (await searchParams).view === "public";
   const { userId } = await auth();
 
   const row = await db.query.characters.findFirst({
@@ -114,22 +119,21 @@ export default async function CharacterSheetPage({
   });
 
   if (!row) notFound();
-  // PLAN Eilxina Part C (Mashu 2026-09-09): full permission gate.
-  // Replaces the Part B 2-line check with canResolveCharacterForPage
-  // so we can thread the resolved permission down to CharacterSheetView
-  // for share-panel + edit-button visibility.
-  let viewerPermission: CharacterPermission | null = null;
-  if (userId) {
-    const resolved = await canResolveCharacterForPage(userId, id);
-    if (!resolved) {
-      redirect("/characters");
-    }
-    viewerPermission = resolved.permission;
-  } else {
-    // Anonymous: redirect (existing behavior — public characters
-    // are handled via the library route, not /characters/[id]).
-    redirect("/characters");
-  }
+  const publication = await db.query.publications.findFirst({
+    where: and(eq(publications.targetType, "CHARACTER"), eq(publications.targetId, id)),
+    columns: { visibility: true, unpublishedAt: true },
+    orderBy: desc(publications.publishedAt),
+  });
+  const isPublic = isPublicCharacterPreview(row.isPublic, publication);
+  const resolved = userId ? await canResolveCharacterForPage(userId, id) : null;
+  // Library links are always a viewing session, even for the original author.
+  const viewerPermission = characterSheetPermission(resolved?.permission ?? null, isPublic, publicViewRequested);
+  if (!viewerPermission) notFound();
+  const publicReader = isPublic && (publicViewRequested || !resolved);
+  const savedConsequences = viewerPermission === "VIEWER" ? await db.select({ occurrence: characterConsequences.occurrence })
+    .from(characterConsequences).where(and(eq(characterConsequences.characterId, id), isNull(characterConsequences.deletedAt))) : [];
+
+  const readOnlyGraph = viewerPermission === "VIEWER" ? await readWorkspace(id) : null;
 
   const [{ publicationVisibility, ownerShares, pendingCount, firstPendingId, characterVersionCount }] = await Promise.all([
     (async () => {
@@ -661,8 +665,10 @@ export default async function CharacterSheetPage({
       size={sheet.resolvedSize ?? row.size}
       portraitUrl={row.portraitUrl}
       portraitFrame={row.portraitFrame}
-      notes={row.notes}
-      dmNotes={row.dmNotes}
+      notes={publicReader ? null : row.notes}
+      dmNotes={viewerPermission === "OWNER" ? row.dmNotes : null}
+      readOnlyConditions={savedConsequences.map(entry => entry.occurrence)}
+      readOnlyGraph={readOnlyGraph}
       lineageName={row.lineageName}
       lineageDescription={row.lineageDescription}
       upbringingName={row.upbringingName}
@@ -947,13 +953,13 @@ export default async function CharacterSheetPage({
       // has historically logged on the character row; here we just
       // forward the raw log rows from the join.
       logEntries={(
-        (row as unknown as { logEntries?: Array<{
+        (publicReader ? [] : (row as unknown as { logEntries?: Array<{
           id: number;
           characterId: string;
           kind: string;
           payload: unknown;
           createdAt: Date;
-        }> }).logEntries ?? []
+        }> }).logEntries ?? [])
       ).map((l) => ({
         id: l.id,
         kind: l.kind,

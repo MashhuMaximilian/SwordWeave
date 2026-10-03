@@ -1,4 +1,6 @@
 "use client";
+import { ForkCharacterButton } from "./fork-character-button";
+import { useCharacterReadOnly } from "./character-read-only";
 
 /**
  * Phase 8.4 (Mashu 2026-07-28): SheetIdentityHeader rewrite.
@@ -226,6 +228,7 @@ export function SheetIdentityHeader({
   ownerShares,
   viewerPermission,
 }: SheetIdentityHeaderProps) {
+  const readOnly = useCharacterReadOnly();
   const [hydrated, setHydrated] = useState(false);
   const [expanded, setExpanded] = useState(false);
   // Phase 8.4 v25.2 (Mashu 2026-07-30): BU popup state.
@@ -561,6 +564,7 @@ export function SheetIdentityHeader({
               />
             </div>}
             <div className="v12-identity-action-group is-character">
+              {readOnly ? <ForkCharacterButton characterId={characterId} roster label="Fork" /> : (
               <Link
                 href={`/characters/${characterId}/clone`}
                 className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium hover:bg-secondary"
@@ -569,6 +573,7 @@ export function SheetIdentityHeader({
                 <Pencil className="size-3" />
                 Clone
               </Link>
+              )}
               {canLevelUp && onLevelUp ? (
                 <button
                   type="button"
