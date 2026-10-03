@@ -1,3 +1,4 @@
+import { LibraryCharacterDetail } from "@/components/characters/library-character-detail";
 import { sourceDisplayLabel } from "@/lib/publishing/source-display";
 // =============================================================================
 // /library/item/[id] — public detail view for a library item
@@ -453,6 +454,10 @@ export default async function LibraryItemPage({ params }: PageProps) {
   const currentUserInternalId = clerkUserId
     ? await resolveUserIdByClerkId(clerkUserId)
     : null;
+
+  if (type === "CHARACTER") {
+    return <LibraryCharacterDetail id={id} viewerClerkId={clerkUserId} />;
+  }
 
   if (type === "PRIMITIVE") {
     const numericId = Number(id);
