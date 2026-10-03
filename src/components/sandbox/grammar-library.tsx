@@ -1,7 +1,6 @@
 "use client";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { PhoneTypeChoices } from "@/components/library/phone-type-choices";
-import { PhoneLibraryFilters } from "@/components/library/phone-library-filters";
 
 // Grammar Library column.
 //
@@ -488,8 +487,7 @@ export function GrammarLibrary({
   const filterPanelContent = useMemo(
     () => (
       <div className="space-y-3">
-        {phone ? <PhoneLibraryFilters state={toolbarState} onChange={setToolbarState} categories={primitiveCategories} source={phoneSourceControl} types={[{value:"ALL",label:"All mechanics"},{value:"GROUP_MECHANICS",label:"Mechanics"},{value:"PRIMITIVE",label:"Primitives"},{value:"EFFECT",label:"Effects"},{value:"CAPABILITY",label:"Capabilities"}]} /> : null}
-        <details className={phone ? "phone-advanced-toolbar" : "contents"} open={!phone}><summary className={phone ? "" : "hidden"}>More filters</summary>
+        {phone ? phoneSourceControl : null}
         <LibraryToolbar
           state={toolbarState}
           onStateChange={setToolbarState}
@@ -499,7 +497,6 @@ export function GrammarLibrary({
           showAdvancedFilters={true}
           forceExpandFilters
         />
-        </details>
       </div>
     ),
     [phone, phoneSourceControl, toolbarState, setToolbarState, primitiveCategories],

@@ -2,7 +2,6 @@
 import { libraryHeritageArt } from "@/lib/heritage/lineage-art";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { PhoneTypeChoices, PHONE_RECORD_TYPES } from "./phone-type-choices";
-import { PhoneLibraryFilters } from "./phone-library-filters";
 import { useInfiniteLibrary } from "@/lib/hooks/use-infinite-library";
 import { InfiniteLibraryResults } from "./infinite-library-results";
 import { LibraryTable } from "./library-table";
@@ -280,8 +279,6 @@ export function LibraryBrowseClient({
   const filterPanelContent = useMemo(
     () => (
       <div className="space-y-3">
-        {phone ? <PhoneLibraryFilters state={state} onChange={onStateChange} categories={primitiveCategories}/> : null}
-        <details className={phone ? "phone-advanced-toolbar" : "contents"} open={!phone}><summary className={phone ? "" : "hidden"}>More filters</summary>
         <LibraryToolbar
           state={state}
           onStateChange={onStateChange}
@@ -299,7 +296,6 @@ export function LibraryBrowseClient({
           showVisibilityFilter={false}
           forceExpandFilters
         />
-        </details>
       </div>
     ),
     [phone, state, onStateChange, primitiveCategories, itemTags, activeTags],

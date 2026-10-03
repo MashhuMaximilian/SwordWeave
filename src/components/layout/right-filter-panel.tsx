@@ -5,8 +5,8 @@ import { useMobileDialogFocus } from "@/lib/hooks/use-mobile-dialog-focus";
 // RightFilterPanel — slide-in side panel for filters.
 //
 // Opened/closed by GlobalControls (via the FAB's "Filters" toggle). Slides in
-// from the right edge of the screen. On mobile takes 85% width; on desktop
-// it's a 380px-wide side sheet.
+// from the right edge of the screen. On mobile it fills the screen; on desktop
+// it provides a 620px-wide side sheet.
 //
 // The panel renders whatever the active page's filter content is. Pages push
 // their filter content into a slot via `useFilterSlot`. If no page has
@@ -128,7 +128,7 @@ export function RightFilterPanel() {
         inert={!filterPanelOpen}
         aria-label="Filters"
         className={cn(
-          "sw-filter-panel v12-instrument fixed inset-y-0 right-0 z-50 flex w-[85vw] max-w-[420px] flex-col border-l border-border bg-card shadow-2xl transition-transform duration-300 ease-out",
+          "sw-filter-panel v12-instrument fixed inset-y-0 right-0 z-50 flex w-[min(100vw,620px)] max-w-none flex-col border-l border-border bg-card shadow-2xl transition-transform duration-300 ease-out",
           filterPanelOpen ? "translate-x-0" : "translate-x-full",
         )}
       >
@@ -148,7 +148,7 @@ export function RightFilterPanel() {
             <X className="size-4" />
           </button>
         </header>
-        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        <div className="sw-filter-panel-body min-h-0 flex-1 overflow-y-auto p-4">
           {content ?? (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-muted-foreground">
               <FilterIcon className="size-8 opacity-30" />

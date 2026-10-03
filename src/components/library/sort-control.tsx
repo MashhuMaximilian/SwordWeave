@@ -5,6 +5,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Grid3x3, List } from "lucide-react";
 import type { LibrarySort } from "@/lib/publishing/library-query";
 import type { LibraryView } from "@/lib/preferences/library-prefs";
@@ -39,7 +40,10 @@ const SORT_OPTIONS: { key: LibrarySort; label: string; hint: string }[] = [
   { key: "LIKES", label: "Most liked", hint: "like count" },
   { key: "FORKS", label: "Most forked", hint: "fork count" },
   { key: "RECENT", label: "Recent", hint: "newest first" },
-  { key: "ALPHABETICAL", label: "A → Z", hint: "by name" },
+  { key: "ALPHABETICAL", label: "Name A → Z", hint: "by name" },
+  { key: "ALPHABETICAL_DESC", label: "Name Z → A", hint: "reverse name" },
+  { key: "BU", label: "BU low → high", hint: "lowest cost first" },
+  { key: "BU_DESC", label: "BU high → low", hint: "highest cost first" },
 ];
 
 function writeCookie(sort: LibrarySort, view: LibraryView) {
@@ -55,62 +59,16 @@ export function LibrarySortControl({
   sortUrls,
   viewUrls,
 }: Props) {
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      {/* Sort label + chips */}
-      <span className="text-xs font-semibold uppercase text-muted-foreground">
-        Sort
-      </span>
-      <div className="flex flex-wrap gap-1">
-        {SORT_OPTIONS.map((opt) => {
-          const active = currentSort === opt.key;
-          return (
-            <Link
-              key={opt.key}
-              href={sortUrls[opt.key] ?? sortUrls.ALPHABETICAL}
-              onClick={() => writeCookie(opt.key, currentView)}
-              title={opt.hint}
-              className={`rounded-md px-3 py-1.5 text-xs transition-colors ${
-                active
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-secondary hover:bg-secondary/70"
-              }`}
-            >
-              {opt.label}
-            </Link>
-          );
-        })}
-      </div>
-
-      {/* View mode toggle */}
-      <div className="ml-auto flex items-center gap-1 rounded-md border border-border bg-card p-0.5">
-        <Link
-          href={viewUrls.GRID}
-          onClick={() => writeCookie(currentSort, "GRID")}
-          title="Grid view"
-          className={`flex items-center gap-1 rounded px-2 py-1 text-xs ${
-            currentView === "GRID"
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Grid3x3 className="size-3.5" />
-          Grid
-        </Link>
-        <Link
-          href={viewUrls.LIST}
-          onClick={() => writeCookie(currentSort, "LIST")}
-          title="List view"
-          className={`flex items-center gap-1 rounded px-2 py-1 text-xs ${
-            currentView === "LIST"
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <List className="size-3.5" />
-          List
-        </Link>
-      </div>
+  const router = useRouter();
+  return <div className="sw-library-sort">
+    <label>Sort by<select value={currentSort} onChange={event=>{
+      const sort=event.target.value as LibrarySort;
+      writeCookie(sort,currentView);
+      router.push(sortUrls[sort] ?? sortUrls.ALPHABETICAL);
+    }}>{SORT_OPTIONS.filter(option=>!!sortUrls[option.key]).map(option=><option key={option.key} value={option.key}>{option.label}</option>)}</select></label>
+    <div className="sw-library-sort-view" aria-label="Result layout">
+      <Link href={viewUrls.LIST} aria-current={currentView==="LIST"?"true":undefined} onClick={()=>writeCookie(currentSort,"LIST")}><List size={15}/>List</Link>
+      <Link href={viewUrls.GRID} aria-current={currentView==="GRID"?"true":undefined} onClick={()=>writeCookie(currentSort,"GRID")}><Grid3x3 size={15}/>Grid</Link>
     </div>
-  );
+  </div>;
 }
