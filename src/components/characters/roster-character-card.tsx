@@ -173,8 +173,8 @@ export function RosterCharacterCard({
         <div><dt>Item BU <small>separate</small></dt><dd>{sheet.buBalance.itemBuSpent}</dd></div>
       </dl>
       <div className="v12-roster-status">
-        <span>Vitality <b>{sheet.vitality.current}/{sheet.vitality.max}</b></span>
-        <span><b>{sheet.equippedItemCount}</b> equipped · <b>{sheet.totalItemCount}</b> items</span>
+        <span>Vitality <b>{sheet.vitality.current ?? sheet.vitality.max}/{sheet.vitality.max}</b></span>
+        <span><b>{sheet.equippedItemCount}</b> equipped · <b>{sheet.totalItemCount}</b> {sheet.totalItemCount === 1 ? "item" : "items"}</span>
       </div>
 
       {/* Actions */}

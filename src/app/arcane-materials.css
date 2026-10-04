@@ -346,7 +346,7 @@ body[data-ui="v12"] button[data-selection-card="drawback"] > b {color:var(--sw-t
   body[data-ui="v12"] [data-fab-root] {right:max(8px,env(safe-area-inset-right))!important;bottom:max(8px,env(safe-area-inset-bottom))!important;z-index:90;}
   body[data-ui="v12"] [data-fab-trigger] {width:44px!important;height:44px!important;}
   body[data-ui="v12"] [data-fab-menu] {
-    position:fixed;right:calc(60px + env(safe-area-inset-right));bottom:max(8px,env(safe-area-inset-bottom));
+    position:fixed!important;right:calc(60px + env(safe-area-inset-right));bottom:max(8px,env(safe-area-inset-bottom));
     width:min(520px,calc(100vw - 76px))!important;height:auto;min-height:0;flex-shrink:0;
     max-height:calc(var(--sw-visible-height,100dvh) - 16px - env(safe-area-inset-bottom))!important;
     overflow-y:auto;overscroll-behavior:contain;padding:8px!important;

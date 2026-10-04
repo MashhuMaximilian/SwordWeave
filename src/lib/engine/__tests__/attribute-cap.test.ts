@@ -47,8 +47,8 @@ describe("Attribute max/min is an actual cap (not roll constraint)", () => {
     // and is read by computeAllPracticeModifiers as the base
     // for PHY practices.
     const fieldcraft = r.practices.find((p) => p.practice === "fieldcraft");
-    console.log("Fieldcraft total (with attribute ceiling):", fieldcraft?.total);
     // PHY clamped to 18 (not 50). Fieldcraft = 18 (slice) + 6 (PB if prof) = 24
     expect(fieldcraft?.total).toBe(24);  // 18 + 6
+    expect(r.attributes.physical).toBe(18);
   });
 });

@@ -1217,9 +1217,9 @@ behaviorVariables.sort((a, b) => a.key.localeCompare(b.key));
     capabilityCount: input.capabilityLinks.length,
     equippedItemCount: equippedItems.length,
     totalItemCount: input.itemLinks.length,
-    // Phase 8.I i2 finish: attributes including primitive
-    // modifier contributions.
-    attributes,
+    // Expose the same resolved attributes used by practices and DC,
+    // including token values, deduplication, and min/max limits.
+    attributes: attributesFinal,
   };
 }
 
