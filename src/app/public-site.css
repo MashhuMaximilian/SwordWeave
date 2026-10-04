@@ -614,3 +614,11 @@ body[data-ui="v12"] .sw-public-site .sw-intent__choices button[aria-pressed="tru
 /* A single centered glyph avoids the old transformed hamburger's malformed X. */
 .sw-public-site .sw-public-nav__burger--icon { align-items:center; justify-content:center; padding:8px; }
 .sw-public-site .sw-public-nav__burger--icon > svg { display:block; flex:0 0 auto; color:currentColor; }
+
+/* The eight tenets read as a compact charter in either material palette. */
+.sw-home-tenets__list {list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 28px;padding:0;margin:28px 0;}
+.sw-home-tenets__list li {display:grid;grid-template-columns:30px minmax(0,1fr);gap:14px;padding:24px 0;border-top:1px solid var(--border);}
+.sw-home-tenets__list .sw-public-number {color:var(--sw-text-teal);padding-top:3px;}
+.sw-home-tenets__list h3 {margin:0 0 9px;color:var(--sw-text-gold);font:600 clamp(18px,2vw,23px)/1.25 var(--font-system);}
+.sw-home-tenets__list p {margin:0;color:var(--foreground);line-height:1.65;}
+@media(max-width:767px) {.sw-home-tenets__list {grid-template-columns:1fr;margin:20px 0;}.sw-home-tenets__list li {padding:18px 0;gap:10px;}}

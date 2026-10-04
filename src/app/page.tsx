@@ -19,6 +19,17 @@ const PIECES = [
   { number: "05", name: "Items", label: "Power with a place in the world", icon: "lorc/knapsack", description: "Put primitives, effects, and capabilities into equipment. The rules travel with the item, and its place in the fiction matters.", example: "An heirloom. A tool. A dangerous gift.", kind: "item" },
 ] as const;
 
+const CORE_TENETS = [
+  { title: "Actions have consequences.", text: "Discuss the stakes together, with the DM appraising the attempt. There are no spell slots: ambitious actions can cost vitality, or bring other consequences agreed at your table." },
+  { title: "Let the story lead.", text: "SwordWeave is a framework for judgment and imagination. Use its numbers as guides. Have fun telling a story; pursue the perfect build when that is the game your table wants." },
+  { title: "Tell it together.", text: "Players and DM negotiate what happens, build on each other’s ideas, and share the spotlight. The aim is a story you enjoy making together, full of moments worth remembering." },
+  { title: "Rule of cool is king.", text: "Give exciting ideas a chance. Talk through what makes the attempt possible, what it risks, and how you will resolve it. Then see where it takes the scene." },
+  { title: "Imagine freely.", text: "The world lives in your shared imagination. Try the strange idea, invent the impossible place, and do the thing your group wants to explore." },
+  { title: "Everything is a guideline.", text: "Make SwordWeave yours. Bend the framework around your world and playstyle. Change a guideline whenever your group finds a way that serves its game better." },
+  { title: "Balance is a lie.", text: "No formula can promise balance for every world, character, and situation. Agree what feels fair and fun at your table, and adjust as you play." },
+  { title: "Begin with a character idea.", text: "Know what you want your character to do, then create primitives, capabilities, and effects for that concept. Authoring your own pieces can be easier than searching the whole community library for a unique idea." },
+] as const;
+
 export default function HomePage() {
   return (
     <div className="sw-home sw-public-site sw-public-site--arcane">
@@ -61,6 +72,14 @@ export default function HomePage() {
           <article><span className="sw-public-number">II</span><div><h3>Make the stakes visible.</h3><p>Work out scale, impact, complexity, and consequences together. Clarify when each rule applies and what an imposed condition means here.</p></div></article>
           <article><span className="sw-public-number">III</span><div><h3>Resolve. Respond. Keep playing.</h3><p>Let the agreed rules and rolls answer uncertainty. When the situation changes, adjust the intent and keep the story moving.</p></div></article>
         </div>
+      </section>
+
+      <section className="sw-public-section sw-home-tenets" aria-labelledby="tenets-title">
+        <header className="sw-public-section-head"><div><p className="sw-public-kicker">Core tenets</p><h2 id="tenets-title">Your imagination.<br /><em>Your table’s game.</em></h2></div><p>Keep these ideas close when you create a character, make a ruling, or try something nobody has written a rule for yet.</p></header>
+        <ol className="sw-home-tenets__list">
+          {CORE_TENETS.map((tenet, index) => <li key={tenet.title}><span className="sw-public-number" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span><div><h3>{tenet.title}</h3><p>{tenet.text}</p></div></li>)}
+        </ol>
+        <Link href="/atelier?build=primitive" className="sw-public-link">Give your idea a rule <ArrowRight aria-hidden="true" /></Link>
       </section>
 
       <section className="sw-public-section" aria-labelledby="tools-title">

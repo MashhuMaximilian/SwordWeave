@@ -180,23 +180,23 @@ body[data-ui="v12"] .v12-studio-separator {background:var(--sw-edge-teal);opacit
 body[data-ui="v12"] .v12-studio-separator:hover {opacity:1;}
 
 /* Preview affordance: glass on the actual interactive boundary. */
-body[data-ui="v12"] :is([data-preview-trigger="true"],.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button) {
+body[data-ui="v12"] :is([data-preview-trigger="true"],button[aria-label^="Preview "],.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button) {
   position:relative;isolation:isolate;cursor:pointer;
   transition:transform 180ms ease,box-shadow 180ms ease,background 180ms ease;
 }
-body[data-ui="v12"] :is([data-preview-trigger="true"],.sheet-library-entry,.v12-live-effect-open)::after {
+body[data-ui="v12"] :is([data-preview-trigger="true"],button[aria-label^="Preview "],.sheet-library-entry,.v12-live-effect-open)::after {
   content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;
   border:1px solid transparent;background:linear-gradient(transparent,transparent) padding-box,linear-gradient(125deg,#a5ead9,#d7b3ef 32%,#fff1b5 56%,#68aeb1 80%,#a5ead9) border-box;
   mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0);mask-composite:exclude;
   transition:opacity 180ms ease;
 }
 @media (hover:hover) {
-  body[data-ui="v12"] :is([data-preview-trigger="true"],.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button):hover {
-    transform:translateY(-1px) scale(1.006);background-image:var(--sw-glass);box-shadow:0 5px 18px var(--sw-preview-shadow),inset 0 0 18px #83cec515;z-index:1;
+  body[data-ui="v12"] :is([data-preview-trigger="true"],button[aria-label^="Preview "],.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button):hover {
+    transform:translateY(-2px) scale(1.008);background:var(--sw-metal-gold)!important;color:var(--sw-metal-gold-ink)!important;box-shadow:0 6px 20px var(--sw-preview-shadow),inset 0 1px #fff4ce;z-index:1;
   }
-  body[data-ui="v12"] :is([data-preview-trigger="true"],.sheet-library-entry,.v12-live-effect-open):hover::after {opacity:1;}
+  body[data-ui="v12"] :is([data-preview-trigger="true"],button[aria-label^="Preview "],.sheet-library-entry,.v12-live-effect-open):hover::after {opacity:1;}
 }
-body[data-ui="v12"] :is([data-preview-trigger="true"],.sheet-library-entry,.v12-live-effect-open):focus-visible {box-shadow:0 0 18px var(--sw-preview-shadow);}
+body[data-ui="v12"] :is([data-preview-trigger="true"],button[aria-label^="Preview "],.sheet-library-entry,.v12-live-effect-open):focus-visible {box-shadow:0 0 18px var(--sw-preview-shadow);}
 body[data-ui="v12"] [data-preview-trigger="true"]:focus-visible::after {opacity:1;}
 
 /* FAB glyphs share a real metallic hover, including Rules and the dice link. */
@@ -287,8 +287,8 @@ body[data-ui="v12"] .v12-studio-panel {container-type:inline-size;}
   body[data-ui="v12"] .sw-discovery-section__end em {font-size:10px;}
 }
 @media(prefers-reduced-motion:reduce) {
-  body[data-ui="v12"] :is([data-preview-trigger="true"],.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button) {transition:none;transform:none!important;}
-  body[data-ui="v12"] :is([data-preview-trigger="true"],.sheet-library-entry,.v12-live-effect-open)::after {transition:none;}
+  body[data-ui="v12"] :is([data-preview-trigger="true"],button[aria-label^="Preview "],.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button) {transition:none;transform:none!important;}
+  body[data-ui="v12"] :is([data-preview-trigger="true"],button[aria-label^="Preview "],.sheet-library-entry,.v12-live-effect-open)::after {transition:none;}
 }
 
 /* Fixed legacy surfaces use light-dark() in their original compositions. Their
@@ -364,4 +364,25 @@ body[data-ui="v12"] button[data-selection-card="drawback"] > b {color:var(--sw-t
 
 html:not(.dark) body[data-ui="v12"] :is(.sw-public-nav__link.is-active,.sw-public-nav__drawer-link.is-active .sw-public-nav__drawer-label) {
   background-image:linear-gradient(115deg,#684711,#8a5d18 40%,#126668);color:transparent;
+}
+
+/* Starting access is a selected piece, with an enduring mark rather than a gold page. */
+body[data-ui="v12"] button[data-selection-card="starting-access"][aria-pressed="true"] {
+  background:var(--sw-surface-fill) padding-box,var(--sw-edge-gold) border-box;
+  color:var(--foreground);border:1px solid transparent;
+  box-shadow:inset 4px 0 var(--sw-text-teal);
+}
+body[data-ui="v12"] .sw-access-entry__copy strong {color:var(--foreground);}
+body[data-ui="v12"] .sw-access-entry__copy > small {color:var(--muted-foreground);}
+body[data-ui="v12"] .sw-access-entry__copy [data-copy="mechanical"] {color:var(--sw-text-mechanical);}
+body[data-ui="v12"] .sw-access-entry__copy em {color:var(--sw-text-teal);}
+body[data-ui="v12"] .sw-access-entry__cost {background:var(--sw-inset-fill);color:var(--sw-text-gold);}
+body[data-ui="v12"] :is([data-preview-trigger="true"],button[aria-label^="Preview "],.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button):focus-visible {
+  background:var(--sw-metal-gold)!important;color:var(--sw-metal-gold-ink)!important;
+}
+body[data-ui="v12"] :is([data-preview-trigger="true"],button[aria-label^="Preview "],.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button):focus-visible :is(strong,small,em,p,span,svg) {color:inherit!important;}
+@media(hover:hover) {
+  body[data-ui="v12"] :is([data-preview-trigger="true"],button[aria-label^="Preview "],.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button):hover :is(strong,small,em,p,span,svg) {color:inherit!important;}
+  body[data-ui="v12"] .sw-access-entry:hover {background:var(--sw-metal-gold)!important;color:var(--sw-metal-gold-ink)!important;}
+  body[data-ui="v12"] .sw-access-entry:hover .sw-access-entry__copy :is(strong,small,em,span) {color:inherit!important;}
 }

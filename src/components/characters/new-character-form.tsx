@@ -4136,6 +4136,7 @@ function PrimitiveSelectCard({
     <button
       type="button"
       className={`sw-access-entry${selected ? " is-selected" : ""}`}
+      data-selection-card="starting-access"
       onClick={onToggle}
       aria-pressed={selected}
     >
