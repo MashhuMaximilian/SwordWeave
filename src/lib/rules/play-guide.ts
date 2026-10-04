@@ -111,7 +111,7 @@ export const PLAY_GUIDE: GuideTopic[] = [
       },
       {
         "title": "Choose your heritage foundations",
-        "body": "Lineage describes species or ancestry; upbringing describes background and training; manifest describes the main role or build. You can choose one, two or all three. Browse and preview the rules, or shuffle for ideas within your limits. Quickbuild takes starting size from the lineage. These foundations organize your character; their names alone do not grant extra abilities."
+        "body": "Lineage describes species or ancestry; upbringing describes background and training; manifest describes a role or expression of your build. The Library supplies seeds and examples: you are encouraged to invent your own heritages in the Atelier. You can have multiple lineages, upbringings or manifests when they fit your concept and the table agrees. Quickbuild offers one starting slot for each kind; that form is a starting convenience, not a limit on the character concept. Preview the actual rules and budget before choosing. Heritage names alone do not grant extra abilities."
       },
       {
         "title": "Make sure the foundation can act",
@@ -237,7 +237,21 @@ export const PLAY_GUIDE: GuideTopic[] = [
       {
         "title": "Mirroring changes direction; drawbacks carry consequences",
         "body": "You own the primitive, whether acquired normally or as a mirrored drawback. Compatible operations can be used in either direction within an action or composition without buying the primitive again: add/subtract, minimum/maximum, multiply/divide, and other supported mirrors. A drawback gives credit because the character accepts its ongoing consequence. Using a positive direction in a separate action does not silently remove that drawback from the character’s build.",
-        "example": "You own +10 Max Vitality. You can propose an action that applies −10 Max Vitality to an enemy for an agreed duration. You still need the appropriate action and domain access, reach, resolution and cost. A character who acquired the mirrored version can also propose either direction; their accepted personal drawback remains accounted for."
+        "example": "You own +10 Max Vitality. You can propose an action that applies −10 Max Vitality to an enemy for an agreed duration. You still need the appropriate action and domain access, reach, resolution and cost. A character who acquired the mirrored version can also propose either direction; their accepted personal drawback remains accounted for.",
+        "details": [
+          {
+            "title": "All mechanical operations and their mirrors",
+            "body": "These pairs describe the operation of a compatible mechanical rule. Check its target, scope, value and permissions as well. A narrative rule needs its intended opposite agreed at the table; reversing a word does not automatically grant new access.",
+            "rules": [
+              "Add ↔ Subtract — mirrorable. Increase a value becomes decrease that value, and vice versa.",
+              "Multiply ↔ Divide — mirrorable. A proportional increase can become a proportional reduction; inspect the displayed mirrored rule and factor.",
+              "Minimum ↔ Maximum — mirrorable. A floor becomes a ceiling at the same value, and vice versa.",
+              "Grant ↔ Revoke — mirrorable. Give a permission or behavior becomes remove it, and vice versa, within the rule’s scope.",
+              "Set To — not mirrorable. Assigning a fixed value or state has no automatic opposite. Write another rule if you need a different assignment."
+            ],
+            "example": "A minimum roll of 10 can mirror into a maximum roll of 10. Granting a named behavior can mirror into revoking that same behavior. A rule that sets a score to 10 does not automatically mean “set it to −10” when mirrored."
+          }
+        ]
       },
       {
         "title": "Read the budget ledger",
@@ -250,13 +264,14 @@ export const PLAY_GUIDE: GuideTopic[] = [
       },
       {
         "title": "Grow through BU awards",
-        "body": "The DM awards BU when it suits the campaign: discoveries, milestones, accomplishments or other agreed rewards. You can use available BU immediately, or save it. Ordinary level steps add 10 BU to the cumulative progression reference; after each four-level bracket, the next level includes a larger milestone increase. Levels remain a shorthand for progression and have no level-20 cap.",
+        "body": "The DM awards Build Units as rewards for discoveries, milestones, accomplishments or other campaign progress, whenever your group agrees it makes sense. Awards can be smaller than a whole level: they accumulate toward progression. In the default progression, each ordinary level requires another 10 BU. Spend awarded BU immediately or keep it for later; spending your budget does not undo your progression. Every four levels, reaching the next bracket also grants an automatic milestone spike on level-up: at levels 5, 9, 13, 17 and onward. This spike is added to the usual 10-BU step, not substituted for the DM’s progression reward. Levels are a shorthand, with no level-20 cap.",
         "details": [
           {
             "title": "Read the progression thresholds",
             "body": "The current reference is 25 BU at level 1, 35 at level 2, 45 at level 3 and 55 at level 4. Level 5 is 69, level 9 is 117, level 13 is 169 and level 17 is 225. These totals already include their milestone bonuses; do not add those bonuses again. Level 10 is 127 and level 21 is 286. The sheet continues the progression beyond those milestones. Your table can agree a different budget or a DM adjustment."
           }
-        ]
+        ],
+        "example": "At level 4, the reference budget is 55 BU. The DM awards another 10 BU of progression, bringing you to level 5. Level 5 also grants its default +4 BU spike, so the new total is 69 BU. You do not need to earn that spike separately. It is already included in the sheet’s level-5 reference; do not add it again."
       },
       {
         "title": "Versions preserve your build",
@@ -354,7 +369,7 @@ export const PLAY_GUIDE: GuideTopic[] = [
       },
       {
         "title": "Attacks: use your displayed bonus",
-        "body": "When an attack needs an accuracy roll, roll d20 and add the applicable attack bonus shown in the sheet. Compare with the target’s DC. Confirm which source and any scoped modifiers apply. A hit establishes the agreed contact; roll or resolve its output separately.",
+        "body": "For an attack, roll d20 and add the applicable attack bonus shown on your sheet against the target’s DC. Meet or beat that DC to hit, then roll or resolve damage separately. A miss does not deal the hit’s damage unless a specific rule says otherwise. For a capability that subjects a target to an effect through a saving throw, the target instead rolls the relevant save against your DC. Choose Physical, Mental or Magical according to the capability’s source; read its specific resolution and agreed outcome before rolling. Do not require both an attack and a save by default: the capability or table ruling determines the resolution.",
         "rules": [
           "Attack = d20 + relevant attribute + PB if applicable + attack modifiers."
         ],
@@ -374,7 +389,7 @@ export const PLAY_GUIDE: GuideTopic[] = [
       },
       {
         "title": "Three saving throws",
-        "body": "Saving throws are separate from DC. Each attribute has its own save bonus. Use the relevant one to resist the incoming effect, including proficiency and scoped modifiers where applicable.",
+        "body": "When an incoming capability calls for a save, the recipient rolls d20 plus the appropriate displayed save bonus against the capability user’s DC. A Physical source normally calls for a Physical save, a Psychic/Mental source for a Mental save, and a Magical source for a Magical save. Meet or beat the DC to resist according to the agreed rule. Decide beforehand whether success avoids the effect, reduces it or produces another outcome. Saving throws and DC are separate numbers.",
         "rules": [
           "Save = d20 + relevant attribute + PB if proficient + applicable save modifiers."
         ],
@@ -472,11 +487,12 @@ export const PLAY_GUIDE: GuideTopic[] = [
       },
       {
         "title": "Active Contest: whose effort wins?",
-        "body": "Use a contest for a direct physical, mental, or magical struggle. Both sides use the relevant approach, training, and modifiers; the higher result wins the immediate struggle.",
+        "body": "Use a contest for a direct physical, mental or magical struggle. It can use practices as well as broad attributes: the DM and players choose the relevant approach for each side. Use the displayed practice bonus if a practice applies; it already includes its attribute, training and modifiers. The higher result wins the immediate struggle.",
         "rules": [
-          "Active Contest = d20 + relevant attribute + applicable proficiency and modifiers."
+          "Attribute contest: d20 + relevant attribute + applicable proficiency and modifiers.",
+          "Practice contest: d20 + the relevant displayed practice bonus. Do not add its attribute or PB again."
         ],
-        "example": "You hold a door shut while a creature pushes from the other side. This is a struggle, not a race."
+        "example": "Holding a door shut may use Physical or Prowess. Sneaking past a watchful guard might compare your Finesse with their Awareness. Different approaches can oppose one another when the fiction supports them."
       },
       {
         "title": "Pivot when the situation changes",
@@ -631,10 +647,16 @@ export const PLAY_GUIDE: GuideTopic[] = [
       {
         "title": "Damage creates maintenance pressure",
         "rules": [
-          "If total damage taken during the turn reaches or exceeds the applicable upkeep cost, immediately re-pay that upkeep to maintain the capability."
+          "When upkeep is paid in Vitality, total damage during the turn reaching or exceeding that upkeep cost calls for immediately re-paying it to maintain the capability."
         ],
-        "body": "This is a resource payment, not a concentration save. If you cannot pay, the maintained effect ends. Track the damage during the turn and clarify the payment when several capabilities are maintained.",
-        "example": "Upkeep is 4. You take 2 damage, then another 3 in the same turn: total 5 reaches the threshold. Re-pay the upkeep or let the maintained capability end."
+        "body": "This numerical comparison applies to upkeep measured in Vitality. Other upkeep can be a resource, a condition, a sustained task or a narrative consequence; damage is not automatically comparable to any of those. Agree how maintenance can be disrupted and what continuing would require when you establish the capability. A hit may threaten maintenance, but does not universally end it or demand a D&D-style concentration save. If the agreed payment or requirement cannot be met, the maintained effect ends.",
+        "example": "A field costs 4 Vitality in upkeep. Taking 2 damage and then 3 in the same turn reaches the threshold: re-pay 4 Vitality or let it end.",
+        "details": [
+          {
+            "title": "When upkeep is not Vitality",
+            "body": "Suppose a ward is maintained by singing continuously. A hit alone need not stop it; being silenced may break the actual requirement. If an illusion is sustained by burning incense, losing the incense can end it, while a wounded caster may continue. If upkeep is accumulating fatigue or attracting attention, agree whether disruption adds another consequence, requires a contest to continue, or ends the working. Establish these terms together; there is no universal conversion from damage to fatigue, incense or narrative cost."
+          }
+        ]
       },
       {
         "title": "Interrupt before the action resolves",
@@ -812,6 +834,43 @@ export const PLAY_GUIDE: GuideTopic[] = [
       {
         "title": "Cover & Manifestation",
         "url": "https://app.notion.com/p/390ed8479ccd80118106cd4b8f28a9bf"
+      }
+    ]
+  },
+  {
+    "id": "creating",
+    "title": "Create, edit & fork",
+    "summary": "Turn your own concept into reusable rules, adapt a Library seed, and keep ownership and versions clear.",
+    "keywords": "atelier create author edit fork publish private library ownership version primitive capability effect heritage",
+    "blocks": [
+      {
+        "title": "Start with the idea you want to play",
+        "body": "Describe the result in plain language before looking for a Library entry: “I want to stitch memories into maps,” for example. Discuss what that means with the DM. Break it into subjects you can affect, actions you can perform and any special rules it needs. You can author a primitive, effect, capability, heritage or item in the Atelier. The community Library provides inspiration; your concept does not have to match an existing entry."
+      },
+      {
+        "title": "Create a reusable building block",
+        "body": "In the Atelier, choose the kind of piece you are building and give it a clear name and description. A primitive grants one reusable permission or rule. Describe its intended scope, limits and price; add a mechanical rule when a tracked number or behavior should change. The description explains what happens in the fiction. A mechanical rule helps the sheet calculate it. Neither replaces the table’s judgment about an actual action.",
+        "example": "“Cartographic Memory” could permit recording a witnessed place as a remembered map. Explain what can be recalled and what remains uncertain. Agree its BU price and limits before purchasing it for play."
+      },
+      {
+        "title": "Compose effects and capabilities",
+        "body": "An effect groups related primitives; a capability compiles pieces into a ready idea for play. Select the relevant pieces, describe targeting and resolution, and state duration, upkeep and consequences where needed. Preview the composition to check that it says what you mean. Saved capabilities are shortcuts: owned primitives can still be combined into new actions at the table."
+      },
+      {
+        "title": "Fork something you want to adapt",
+        "body": "Fork makes your own copy of a Library piece or public character. Open its preview or sheet, choose Fork, then work on your copy. A public character opens read-only; fork it to change Vitality, consequences or its build. Your edits to the copy do not rewrite the original author’s work. Review inherited rules and costs before using the copy."
+      },
+      {
+        "title": "Edit, save and review",
+        "body": "Open your own creation in the Atelier or open edit mode on a character you own or have edit permission for. Change the description or composition, inspect the preview and budget, then save. Reading a Library preview does not give edit permission. Fork a piece owned by somebody else when you want your own version. A character can keep a pinned older version; review an offered update before adopting it."
+      },
+      {
+        "title": "Choose who can see the work",
+        "body": "Keep a draft private while shaping it. Use the available sharing or publishing controls when you want others to read or reuse it. Publishing is a separate choice from writing a useful rule for your own table. Check the current visibility before you finish."
+      },
+      {
+        "title": "Bring the new rule into play",
+        "body": "Agree its price and permissions with the DM, then acquire the primitive using available BU. You can invent and purchase a piece during a session, including combat when it makes sense for the scene. Buying it grants access; the particular action still needs an agreed resolution and cost. Keep a note of the ruling so the next use is easier."
       }
     ]
   },

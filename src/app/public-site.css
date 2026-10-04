@@ -622,3 +622,7 @@ body[data-ui="v12"] .sw-public-site .sw-intent__choices button[aria-pressed="tru
 .sw-home-tenets__list h3 {margin:0 0 9px;color:var(--sw-text-gold);font:600 clamp(18px,2vw,23px)/1.25 var(--font-system);}
 .sw-home-tenets__list p {margin:0;color:var(--foreground);line-height:1.65;}
 @media(max-width:767px) {.sw-home-tenets__list {grid-template-columns:1fr;margin:20px 0;}.sw-home-tenets__list li {padding:18px 0;gap:10px;}}
+.sw-creating-guide {max-width:900px;}
+.sw-creating-guide > article {padding:24px 0;border-bottom:1px solid var(--border);}
+.sw-creating-guide > article h2 {font:600 clamp(22px,3vw,32px)/1.2 var(--font-system);color:var(--sw-text-gold);margin:8px 0 14px;}
+.sw-creating-guide > article > p:not(.sw-public-kicker) {font:400 18px/1.6 var(--font-body);color:var(--foreground);max-width:70ch;}

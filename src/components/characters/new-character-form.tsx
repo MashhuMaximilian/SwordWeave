@@ -1846,6 +1846,34 @@ function QuickBuildForm({
               (h) => h.id === selection[kind] && h.kind === kind,
             );
             const label = HERITAGE_LABELS[kind];
+            const rootActions = (
+                <div className="sw-quickbuild__root-actions">
+                  <button
+                    type="button"
+                    className="sw-metal-button sw-metal-button--secondary"
+                    onClick={() => setPicker(kind)}
+                    disabled={!catalog}
+                  >
+                    <Search size={16} />{" "}
+                    {selected ? <>Change <span className="sw-quickbuild__change-kind">{label.toLowerCase()}</span></> : `Browse ${label.toLowerCase()}s`}
+                  </button>
+                  {selected ? (
+                    <button
+                      type="button"
+                      className="sw-quickbuild__remove"
+                      aria-label={`Remove ${selected.name}`}
+                      onClick={() =>
+                        setSelection((previous) => ({
+                          ...previous,
+                          [kind]: "",
+                        }))
+                      }
+                    >
+                      <X size={16} />
+                    </button>
+                  ) : null}
+                </div>
+            );
             return (
               <details open
                 key={kind}
@@ -1933,6 +1961,7 @@ function QuickBuildForm({
                         </button>
                       ) : null}
                     </details>
+                    {rootActions}
                     </div>
                   </>
                 ) : (
@@ -1954,32 +1983,7 @@ function QuickBuildForm({
                     </p>
                   </div>
                 )}
-                <div className="sw-quickbuild__root-actions">
-                  <button
-                    type="button"
-                    className="sw-metal-button sw-metal-button--secondary"
-                    onClick={() => setPicker(kind)}
-                    disabled={!catalog}
-                  >
-                    <Search size={16} />{" "}
-                    {selected ? <>Change <span className="sw-quickbuild__change-kind">{label.toLowerCase()}</span></> : `Browse ${label.toLowerCase()}s`}
-                  </button>
-                  {selected ? (
-                    <button
-                      type="button"
-                      className="sw-quickbuild__remove"
-                      aria-label={`Remove ${selected.name}`}
-                      onClick={() =>
-                        setSelection((previous) => ({
-                          ...previous,
-                          [kind]: "",
-                        }))
-                      }
-                    >
-                      <X size={16} />
-                    </button>
-                  ) : null}
-                </div>
+                {!selected ? rootActions : null}
                 </div>
               </details>
             );
@@ -3807,7 +3811,7 @@ function MirrorOptionCard({
         )}
       </span>
       <span className="sw-mirror-choices__copy">
-        <span>Optional drawback · {item.category.replaceAll("_", " ")}</span>
+        <span title={item.category.replaceAll("_", " ")}>Optional drawback</span>
         <strong>{item.name}</strong>
         <small>{mirrorConsequence(item)}</small>
         {mechanicalCopy ? <em>Original benefit: {mechanicalCopy}</em> : null}
