@@ -50,7 +50,7 @@ import { useMobileDialogFocus } from "@/lib/hooks/use-mobile-dialog-focus";
 
 import { useEffect, useState, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { X, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   useCharacterModal,
@@ -78,7 +78,7 @@ export function CharacterModal({ children }: CharacterModalProps) {
     pendingEditId,
     isSeedingEdit,
   } = useCharacterModal();
-  const panelRef = useMobileDialogFocus<HTMLDivElement>(isOpen);
+  const panelRef = useMobileDialogFocus<HTMLDivElement>(isOpen, 100000);
   const [isDesktop, setIsDesktop] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [pendingNav, setPendingNav] = useState<string | null>(null);
@@ -97,7 +97,7 @@ export function CharacterModal({ children }: CharacterModalProps) {
   }, []);
 
   useEffect(() => {
-    if (!isOpen || !window.matchMedia("(max-width: 1279px)").matches) return;
+    if (!isOpen) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = previous; };
@@ -244,21 +244,23 @@ export function CharacterModal({ children }: CharacterModalProps) {
     >
       <div
         className={cn(
-          "v12-instrument relative flex w-full flex-col overflow-hidden bg-card shadow-2xl sm:rounded-2xl",
+          "sw-character-studio v12-instrument relative flex w-full flex-col overflow-hidden bg-card shadow-2xl sm:rounded-2xl",
           // Mobile: explicit top + bottom so the modal never moves with
           // body scroll. sm+: cap height with dvh, center vertically.
-          "inset-x-0 bottom-0 top-2 sm:inset-auto sm:max-h-[90dvh]",
+          "inset-x-0 bottom-0 top-2 sm:inset-auto sm:h-[90dvh]",
           isDesktop ? "max-w-5xl" : "max-w-2xl",
         )}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Scroll container — header is INSIDE so it sticks when content
             scrolls (Phase 9 round-2 lesson). */}
-        <div className="sw-character-modal-scroll flex min-h-0 flex-1 flex-col overflow-y-auto text-sm">
-          <header className="v12-section-head sticky top-0 z-20 flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-4">
-            <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {titleText}
-            </span>
+        <div className="sw-character-modal-scroll flex min-h-0 flex-1 flex-col text-sm">
+          <header className="sw-character-studio-header shrink-0">
+            <div className="sw-character-studio-heading">
+              <Sparkles aria-hidden="true" className="size-5" />
+              <div><span className="sw-character-studio-eyebrow">Character workshop</span>
+                <h2>{titleText}</h2></div>
+            </div>
             {isDirty ? (
               <span
                 className="shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400"
@@ -310,13 +312,13 @@ export function CharacterModal({ children }: CharacterModalProps) {
               type="button"
               onClick={close}
               aria-label="Close character modal"
-              className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="sw-character-studio-close"
             >
               <X className="size-4" />
             </button>
           </header>
 
-          <div className="sw-character-modal-content p-4">
+          <div className="sw-character-modal-content">
             {children ?? <TabbedCharacterForm />}
           </div>
         </div>

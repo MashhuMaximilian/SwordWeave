@@ -23,7 +23,6 @@
 // =============================================================================
 
 import {
-  BookOpen,
   Columns2,
   Maximize2,
   Menu,
@@ -44,20 +43,12 @@ import { useIsDark } from "@/lib/hooks/use-is-dark";
 
 
 
-// Nav-icon helper: game-icons need a baked hex color (they're <img>), so
-// we resolve the theme-aware color here via useIsDark. Used for the
-// module-level NAV_LINKS entries that sit outside the FabSpeedDial scope.
-function FabIcon({ iconKey, alt }: { iconKey: string; alt: string }) {
-  const isDark = useIsDark();
-  return (
-    <IconDisplay
-      iconSource="GAME_ICONS"
-      iconKey={iconKey}
-      iconColor={isDark ? "#ffffff" : "#011614"}
-      size={22}
-      alt={alt}
-    />
-  );
+// A silhouette mask keeps navigation icons white in dark mode and ink in light.
+// Shared CSS gives the same silhouette a gold finish on hover or keyboard focus.
+export function FabIcon({ iconKey, alt }: { iconKey: string; alt: string }) {
+  const mask = `url("/api/icons/game/${iconKey}?color=%23ffffff&finish=metallic-v2-diagonal")`;
+  return <span className="sw-fab-glyph" aria-hidden="true" title={alt}
+    style={{ maskImage: mask, WebkitMaskImage: mask }} />;
 }
 
 /** Action button: toggles a state, calls onClick. */
@@ -375,14 +366,14 @@ export function FabSpeedDial({
                 },
               ] as FabAction[]
               ).map((action) => (
-                <FabGridAction key={action.key} action={action} badgeCount={badgeCounts[action.key] ?? 0} onInvoke={() => { if (isMobile && (action.key === "build" || action.key === "character" || action.key === "split")) setOpen(false); }} />
+                <FabGridAction key={action.key} action={action} badgeCount={badgeCounts[action.key] ?? 0} onInvoke={() => { if (action.key === "build" || action.key === "character" || (isMobile && action.key === "split")) setOpen(false); }} />
               ))}
             </div>
             <div className="sw-fab__workspace-grid">
               {items.filter(
                 (i): i is FabAction => i.kind === "action" && (i.key === "build" || i.key === "character"),
               ).map((action) => (
-                <FabGridAction key={action.key} action={action} badgeCount={badgeCounts[action.key] ?? 0} onInvoke={() => { if (isMobile && (action.key === "build" || action.key === "character" || action.key === "split")) setOpen(false); }} />
+                <FabGridAction key={action.key} action={action} badgeCount={badgeCounts[action.key] ?? 0} onInvoke={() => { if (action.key === "build" || action.key === "character" || (isMobile && action.key === "split")) setOpen(false); }} />
               ))}
             </div>
           </div>
@@ -557,7 +548,7 @@ export const NAV_LINKS: FabItem[] = [
     ),
     href: "/characters",
   },
-  { kind: "link", key: "rules", label: "Rules & play guide", icon: <BookOpen size={22} />, href: "/rules" },
+  { kind: "link", key: "rules", label: "Play guide", icon: <FabIcon iconKey="delapouite/rule-book" alt="Play guide" />, href: "/rules" },
 ];
 
 /** Profile row at the bottom — opens the user menu modal. */

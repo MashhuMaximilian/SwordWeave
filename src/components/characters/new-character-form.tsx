@@ -26,6 +26,7 @@ import {
 import {
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -832,13 +833,13 @@ export function NewCharacterForm() {
         <span className="sw-creation-choice__eyebrow">Your next adventure</span>
         <h2 id="creation-mode-heading">How would you like to begin?</h2>
         <p>
-          Both paths create a character you can keep developing on the sheet.
+          You play one person in a shared story. Start with an idea, choose their strengths and abilities, then keep developing them on the character sheet.
         </p>
         <div className="sw-creation-choice__options">
           <button type="button" onClick={() => setCreationMode("complete")}>
             <span>01 · Take your time</span>
             <strong>Complete character</strong>
-            <em>I want to create a proper character</em>
+            <em>Guide me through each choice</em>
             <small>
               Shape their story, foundation and starting rules, step by step.
             </small>
@@ -847,9 +848,9 @@ export function NewCharacterForm() {
           <button type="button" onClick={() => setCreationMode("quick")}>
             <span>02 · Straight to the adventure</span>
             <strong>Quickbuild</strong>
-            <em>I just want to play ASAP</em>
+            <em>Help me get ready to play</em>
             <small>
-              Choose heritages or shuffle a build, add a name, and go.
+              Choose ready-made roots and abilities, or shuffle ideas. Every choice has a preview.
             </small>
             <Shuffle aria-hidden />
           </button>
@@ -1023,6 +1024,7 @@ export function NewCharacterForm() {
               {error}
             </p>
           ) : null}
+          {step === "foundation" ? <CreationGuidance /> : null}
           {step === "packages" ? (
             <StartingAccessStep
               selectionLimit={budgetLedger.nextLevelBudget + mirrorCredit}
@@ -1107,9 +1109,9 @@ export function NewCharacterForm() {
         </div>
 
         <footer className="sw-character-forge__footer">
+          <CreationBudgetDisclosure remaining={budgetLedger.remaining} warning={budgetLedger.needsDmApproval}>
           <div
             className="sw-character-forge__footer-reading"
-            hidden={phone && step === "identity"}
           >
             <span>{state.name.trim() || "Your character"}</span>
             {step === "identity" ? (
@@ -1136,6 +1138,7 @@ export function NewCharacterForm() {
             )}
           </div>
           {budgetLedger.needsDmApproval ? <small className="sw-budget-warning">{budgetLedger.aboveNextLevel ? `Above next level’s ${budgetLedger.nextLevelBudget} BU ceiling.` : "Over agreed budget — check with your DM before creating."}</small> : null}
+          </CreationBudgetDisclosure>
           <div className="sw-character-forge__footer-actions">
             {currentIndex > 0 ? (
               <button
@@ -1146,7 +1149,7 @@ export function NewCharacterForm() {
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
               >
-                <ArrowLeft aria-hidden /> Previous
+                <ArrowLeft aria-hidden /> Back
               </button>
             ) : null}
             {currentIndex < STEPS.length - 1 ? (
@@ -1156,12 +1159,12 @@ export function NewCharacterForm() {
                 onClick={goNext}
               >
                 {step === "identity"
-                  ? "Set foundation"
+                  ? "Foundation"
                   : step === "foundation"
-                    ? "Consider a weakness"
+                    ? "Drawbacks"
                     : step === "mirroring"
-                      ? "Choose starting access"
-                      : "Review character"}{" "}
+                      ? "Starting access"
+                      : "Review"}{" "}
                 <ArrowRight aria-hidden />
               </button>
             ) : (
@@ -1212,6 +1215,33 @@ type QuickItem = {
 
 function BudgetBadge({ amount, label, tone = "gold" }: { amount: number | string; label: string; tone?: "gold" | "teal" | "copper" | "warning" }) {
   return <span className={`sw-bu-badge sw-bu-badge--${tone}`}><b>{amount}<i> BU</i></b><span>{label}</span></span>;
+}
+
+/** Keep the action and remaining budget visible; reveal the detailed ledger on demand. */
+function CreationBudgetDisclosure({ remaining, items, warning = false, children }: { remaining: number; items?: number; warning?: boolean; children: ReactNode }) {
+  const [expanded, setExpanded] = useState(false);
+  const panelId = useId();
+  return <div className={`sw-creation-budget${warning ? " has-warning" : ""}${expanded ? " is-expanded" : ""}`}>
+    <button type="button" className="sw-creation-budget__toggle" aria-expanded={expanded} aria-controls={panelId} aria-label={`${remaining} Build Units remaining${items !== undefined ? `, ${items} item Build Units separately` : ""}. ${warning ? "Budget needs DM review. " : ""}${expanded ? "Hide" : "Show"} budget details`} onClick={() => setExpanded(value => !value)}>
+      <span><b>{remaining} BU</b><small>{warning ? "DM review" : "remaining"}</small></span>
+      {items !== undefined ? <span className="sw-creation-budget__items"><b>{items}</b><small>item BU</small></span> : null}
+      <ChevronDown size={15} aria-hidden />
+    </button>
+    <div id={panelId} className="sw-creation-budget__details">{children}</div>
+  </div>;
+}
+
+function CreationGuidance() {
+  return <details className="sw-creation-guidance">
+    <summary><span>New to SwordWeave?</span><ChevronDown size={16} aria-hidden /></summary>
+    <div>
+      <p><strong>Build a starting point.</strong> You do not need to plan a whole character at once. Choose a name and a simple idea; library previews explain what each choice lets you do.</p>
+      <p><strong>Build Units (BU) buy primitives.</strong> Primitives are the building blocks of your abilities. Heritages and capabilities gather them into ready-to-use ideas, and a shared primitive is paid for once.</p>
+      <p><strong>Leave room to grow.</strong> We recommend keeping some BU unspent. On the sheet, you can buy or invent a primitive during play—even in combat when it fits the scene and your table agrees—and combine what you own into new actions.</p>
+      <p><strong>Choose your start together.</strong> Level 1 gives you a small foundation. Consider level 3–6 for more choices, or level 10 if your group already knows tabletop games. Levels are a familiar reference for budgets, not a complete measure of power; there is no level-20 maximum.</p>
+      <a href="/rules" target="_blank" rel="noopener noreferrer">Read the play guide <ArrowRight size={14} aria-hidden /></a>
+    </div>
+  </details>;
 }
 
 function QuickbuildSection({ title, number, reading, subtitle, className = "", children }: { title: string; number: string; reading: ReactNode; subtitle?: string; className?: string; children: ReactNode }) {
@@ -1696,6 +1726,7 @@ function QuickBuildForm({
           Change creation mode
         </button>
       </header>
+      <CreationGuidance />
       <QuickbuildSection number="01" title="Your character" className="sw-quickbuild__identity" reading={<>Level {effectiveLevel}<BudgetBadge amount={budget} label="budget" /></>} subtitle="Choose a name and starting budget. A portrait and a short backstory are optional.">
         <div className="sw-quickbuild__identity-grid">
           <div className="sw-quickbuild__identity-fields">
@@ -1716,6 +1747,7 @@ function QuickBuildForm({
               Level {effectiveLevel} · <strong>{budget} BU</strong> before
               optional drawback credit
             </p>
+            <p className="sw-creation-start-note">Keep some BU unspent for abilities you discover on the sheet or during play.</p>
             <ForgeField
               label="Backstory"
               hint="One paragraph is enough. You can develop their story on the sheet."
@@ -1739,7 +1771,48 @@ function QuickBuildForm({
           </div>
         </div>
       </QuickbuildSection>
-      <QuickbuildSection number="02" title="Choose your heritages" className="sw-quickbuild__heritages" reading={<><BudgetBadge amount={heritageCost.netCost} label="heritages total" />{heritageSplit.map(({ kind, cost: part }) => <BudgetBadge key={kind} amount={part} label={HERITAGE_LABELS[kind]} tone="teal" />)}</>} subtitle="Browse and preview each library, or shuffle for a combination that fits your budget.">
+        <QuickbuildSection number="02" title="Consider drawbacks" reading={<BudgetBadge amount={Math.max(0, cost.mirrorCredit - heritageCost.mirrorCredit)} label="credit" tone="copper" />} subtitle="Optional: accept a weakness to gain extra Build Units before choosing your heritages.">
+          <div className="sw-forge-disclosure__body">
+            {heritageCost.mirrorCredit ? (
+              <p>
+                Your heritages use {heritageCost.mirrorCredit} of the {ceiling}{" "}
+                BU credit allowance. {remainingMirrorCeiling} BU remains for
+                optional drawbacks.
+              </p>
+            ) : null}
+            <MirroringStep
+              options={mirrorOptions}
+              selectedOptions={primitives}
+              selectedIds={mirrorIds}
+              onSelect={keepMirror}
+              onRemove={(id) => {
+                setSavedMirrorIds((previous) =>
+                  previous.filter((p) => p !== id),
+                );
+                setMirrorIds((previous) => previous.filter((p) => p !== id));
+              }}
+              savedIds={savedMirrorIds}
+              suggestionIds={mirrorSuggestionIds}
+              shuffleSeed={mirrorSeed}
+              onShuffle={shuffleMirrors}
+              budget={budget}
+              ceiling={remainingMirrorCeiling}
+              inheritedCredit={heritageCost.mirrorCredit}
+              characterName={state.name}
+              quick
+            />
+            {!primitivesLoading &&
+            mirrorIds.some((id) => !mirrorOptions.some((p) => p.id === id)) ? (
+              <p role="alert">
+                A chosen drawback no longer fits this level or heritage.{" "}
+                <button type="button" onClick={() => setMirrorIds([])}>
+                  Clear drawbacks
+                </button>
+              </p>
+            ) : null}
+          </div>
+      </QuickbuildSection>
+      <QuickbuildSection number="03" title="Choose your heritages" className="sw-quickbuild__heritages" reading={<><BudgetBadge amount={heritageCost.netCost} label="heritages total" />{heritageSplit.map(({ kind, cost: part }) => <BudgetBadge key={kind} amount={part} label={HERITAGE_LABELS[kind]} tone="teal" />)}</>} subtitle="Browse and preview each library, or shuffle for a combination that fits your budget.">
         <header>
           <div className="sw-quickbuild__shuffle-actions">
             <button type="button" className="sw-quickbuild__limit-toggle" aria-label="Set heritage shuffle BU limits" aria-expanded={limitsOpen} onClick={() => setLimitsOpen(!limitsOpen)}><SlidersHorizontal size={17} /><span>BU limits</span></button>
@@ -1799,6 +1872,7 @@ function QuickBuildForm({
                     <button
                       type="button"
                       className="sw-quickbuild__selected-portrait"
+                      data-preview-trigger="true"
                       aria-label={`Preview ${selected.name}`}
                       onClick={() =>
                         setPreview({ kind: "heritage", id: selected.id })
@@ -1824,10 +1898,7 @@ function QuickBuildForm({
                       </button>
                       <span>{selected.cost} BU</span>
                     </div>
-                    <p className="sw-quickbuild__root-description">
-                      {selected.description ||
-                        "Open the preview to explore this heritage."}
-                    </p>
+                    <details className="sw-quickbuild__root-description"><summary>About {selected.name}</summary><p>{selected.description || "Open the preview to explore this heritage."}</p></details>
                     <div className="sw-quickbuild__rules">
                       <strong>Rules & abilities</strong>
                       {selected.rules?.length ? (
@@ -1935,7 +2006,7 @@ function QuickBuildForm({
           </span>
         </div>
       </QuickbuildSection>
-      <QuickbuildSection number="03" title="Choose your strengths" reading={`${state.attrPhysical} Physical · ${state.attrMental} Mental · ${state.attrMagical} Magical`}><AttributesStep
+      <QuickbuildSection number="04" title="Choose your strengths" reading={`${state.attrPhysical} Physical · ${state.attrMental} Mental · ${state.attrMagical} Magical`}><AttributesStep
         hideHeading
         state={{ ...state, size: cost.size }}
         setField={setField}
@@ -2013,57 +2084,6 @@ function QuickBuildForm({
         <details open className="sw-forge-disclosure">
           <summary>
             <span>
-              <b>Drawbacks</b>
-              <small>
-                Optional · mirrored primitives
-                <BudgetBadge amount={Math.max(0, cost.mirrorCredit - heritageCost.mirrorCredit)} label="credit" tone="copper" />
-              </small>
-            </span>
-            <ChevronDown aria-hidden />
-          </summary>
-          <div className="sw-forge-disclosure__body">
-            {heritageCost.mirrorCredit ? (
-              <p>
-                Your heritages use {heritageCost.mirrorCredit} of the {ceiling}{" "}
-                BU credit allowance. {remainingMirrorCeiling} BU remains for
-                optional drawbacks.
-              </p>
-            ) : null}
-            <MirroringStep
-              options={mirrorOptions}
-              selectedOptions={primitives}
-              selectedIds={mirrorIds}
-              onSelect={keepMirror}
-              onRemove={(id) => {
-                setSavedMirrorIds((previous) =>
-                  previous.filter((p) => p !== id),
-                );
-                setMirrorIds((previous) => previous.filter((p) => p !== id));
-              }}
-              savedIds={savedMirrorIds}
-              suggestionIds={mirrorSuggestionIds}
-              shuffleSeed={mirrorSeed}
-              onShuffle={shuffleMirrors}
-              budget={budget}
-              ceiling={remainingMirrorCeiling}
-              inheritedCredit={heritageCost.mirrorCredit}
-              characterName={state.name}
-              quick
-            />
-            {!primitivesLoading &&
-            mirrorIds.some((id) => !mirrorOptions.some((p) => p.id === id)) ? (
-              <p role="alert">
-                A chosen drawback no longer fits this level or heritage.{" "}
-                <button type="button" onClick={() => setMirrorIds([])}>
-                  Clear drawbacks
-                </button>
-              </p>
-            ) : null}
-          </div>
-        </details>
-        <details open className="sw-forge-disclosure">
-          <summary>
-            <span>
               <b>Equipment</b>
               <small>
                 Optional · carried items, separate from character BU
@@ -2111,6 +2131,7 @@ function QuickBuildForm({
                         <button
                           type="button"
                           className="sw-quickbuild__item-name"
+                          data-preview-trigger="true"
                           onClick={() => setPreview({ kind: "item", id })}
                         >
                           {item?.name ?? "Loading item…"}
@@ -2178,6 +2199,7 @@ function QuickBuildForm({
         </p>
       ) : null}
       <footer className="sw-quickbuild__footer">
+        <CreationBudgetDisclosure remaining={budgetLedger.remaining} items={itemBudget} warning={budgetLedger.needsDmApproval}>
         <div>
           <strong>{state.name.trim() || "Your character"}</strong>
           <span>
@@ -2194,6 +2216,7 @@ function QuickBuildForm({
             {budgetLedger.aboveNextLevel ? `Above next level’s ${budgetLedger.nextLevelBudget} BU ceiling — remove choices to continue.` : budgetLedger.needsDmApproval ? "Over agreed budget — check with your DM before creating." : "Items use a separate budget agreed with your DM."}
           </span>
         </div>
+        </CreationBudgetDisclosure>
         <button
           type="button"
           className={`sw-metal-button sw-metal-button--primary${budgetLedger.needsDmApproval ? " sw-budget-overflow" : ""}`}
@@ -2314,8 +2337,8 @@ function BudgetControl({
       </div>
       <small>
         {state.sizingMode === "level"
-          ? "Leave this at 1 unless your group starts higher."
-          : `This budget implies level ${effectiveLevel} for the drawback limit.`}
+          ? "Agree on a starting level with your group. Level 1 starts small; level 3–6 gives a first character more options."
+          : `This budget implies level ${effectiveLevel} for the drawback limit. Items use a separate budget agreed with your group.`}
       </small>
       <EditableBudgetInput
         key={state.sizingMode}
@@ -2552,7 +2575,7 @@ function FoundationStep({
             </div>
             <small>
               {state.sizingMode === "level"
-                ? "Leave this at 1 unless your group starts higher."
+                ? "Agree on a starting level with your group. Level 1 starts small; level 3–6 gives a first character more options."
                 : `Only if your group agreed on a budget. This implies level ${effectiveLevel} for eligible weaknesses.`}
             </small>
             <EditableBudgetInput
@@ -2594,6 +2617,7 @@ function FoundationStep({
             ? `Size ${state.size.toLowerCase()} comes from your lineage; you can change it later on the sheet.`
             : "You will choose what to spend in step 4."}
         </p>
+        <p className="sw-creation-start-note">You do not need to spend every BU now. Keep room to add or invent primitives on your character sheet as you play.</p>
       </section>
       <AttributesStep
         state={state}
@@ -2668,6 +2692,7 @@ function AttributesStep({
         title="Choose your strengths"
         subtitle="Balanced is ready to use. Pick a focus only if you want one."
       /> : null}
+      <p className="sw-forge-attribute-explainer">Physical describes movement and endurance, Mental describes thought and awareness, and Magical describes arcane control. Pick a focus or keep Balanced; the three starting scores share 10 points.</p>
       <div
         className="sw-forge-attribute-presets"
         role="group"
@@ -3886,7 +3911,7 @@ function MirroringStep({
             later.
           </p>
           <details className="sw-mirror-rules">
-            <summary>How do the extra points work?</summary>
+            <summary>How do drawbacks and extra points work?</summary>
             <p>
               Each drawback costs no BU and grants the credit shown on its card.
               At your level, their combined credit may be up to {ceiling + inheritedCredit} BU.{" "}
@@ -3894,6 +3919,7 @@ function MirroringStep({
                 ? "The budget above includes this credit immediately."
                 : "The next step adds that credit to your available points."}
             </p>
+            <p>A drawback is a primitive used in reverse: for example, a Vitality increase becomes a decrease. You accept that consequence for the extra budget. A primitive you own can be used in either direction when composing an action; you do not purchase a second mirrored copy. Agree the action’s strain and consequences at the table.</p>
           </details>
         </div>
         <div className="sw-mirror-ledger">

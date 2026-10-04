@@ -30,7 +30,6 @@ import {
   type ReactNode,
 } from "react";
 
-import { V12Navigation } from "@/components/layout/v12-navigation";
 import { cn } from "@/lib/utils";
 import { IconDisplay } from "@/components/icons/icon-display";
 import { useIsDark } from "@/lib/hooks/use-is-dark";
@@ -66,16 +65,15 @@ const BUILD_ICON_COLOR = "#d8ad54";
  *   - Header chevron collapses a column to a 40px icon strip (single-click toggle).
  *   - Header hide button collapses a column to 0px (drag handle to bring back).
  *   - Column widths + collapsed state persist to localStorage per storageKey.
- *   - On viewports <1024px the panels collapse into three mode tabs (Library | Build | Preview).
+ *   - Portrait phones use mode tabs; tablets and landscape phones keep three resizable columns.
  *   - Panel state is dumb chrome — it does not own the entity being edited. Composers do.
  */
 
 const COLLAPSED_STRIP_PX = 4;
 const HIDDEN_PX = 0;
 const STORAGE_PREFIX = "sandbox:layout:";
-const LAYOUT_REVISION = 2;
+const LAYOUT_REVISION = 3;
 const MOBILE_BREAKPOINT_PX = 768; // <768 = mobile (tabs)
-const TABLET_BREAKPOINT_PX = 1280; // tablet: two usable columns + companion toggle
 
 type ColumnKey = "library" | "builder" | "preview";
 
@@ -186,7 +184,7 @@ export function SandboxLayout({
   // tree. The desktop/tablet layouts mount `<Panel>` from react-resizable-panels
   // which would otherwise leave orphaned data-panel divs at body level when the
   // viewport transitions. We only switch to desktop/tablet after `viewportReady`.
-  const [viewport, setViewport] = useState<"mobile" | "tablet" | "desktop">("mobile");
+  const [viewport, setViewport] = useState<"mobile" | "desktop">("mobile");
   const [viewportReady, setViewportReady] = useState(false);
   const [hiddenColumns, setHiddenColumns] = useState<Set<ColumnKey>>(new Set());
   const [previewVisible, setPreviewVisible] = useState(true);
@@ -236,9 +234,9 @@ export function SandboxLayout({
     if (typeof window === "undefined") return;
     const computeViewport = () => {
       const w = window.innerWidth;
-      if (w < MOBILE_BREAKPOINT_PX) setViewport("mobile");
-      else if (w < TABLET_BREAKPOINT_PX) setViewport("tablet");
-      else setViewport("desktop");
+      // Landscape phones and tablets have three simultaneous work surfaces.
+      const landscapeWorkbench = w >= 640 && window.innerHeight < 500 && w > window.innerHeight;
+      setViewport(w < MOBILE_BREAKPOINT_PX && !landscapeWorkbench ? "mobile" : "desktop");
     };
     computeViewport();
     setViewportReady(true);
@@ -338,7 +336,6 @@ export function SandboxLayout({
         data-sandbox-layout
         data-atelier-surface
       >
-        <V12Navigation page="Atelier" />
         {topBar ? <div className="v12-atelier-top shrink-0">{topBar}</div> : null}
 
         {/* Floating restore buttons — desktop only, and only after viewport is ready. */}
@@ -367,20 +364,6 @@ export function SandboxLayout({
               <div className="v12-workspace-dock fixed inset-x-0 bottom-0 z-30 border-t bg-background pb-[env(safe-area-inset-bottom)] shadow-[0_-2px_8px_rgba(0,0,0,0.08)]">
                 {bottomBar}
               </div>
-            ) : null}
-          </div>
-        ) : viewport === "tablet" ? (
-          <div className="flex min-h-0 flex-1 flex-col">
-            <TabletSandboxLayout
-              library={library}
-              builder={builder}
-              preview={preview}
-              previewVisible={previewVisible}
-              columnMeta={columnMeta}
-              onPreviewToggle={togglePreview}
-            />
-            {bottomBar ? (
-              <div className="v12-workspace-dock fixed inset-x-0 bottom-0 z-30 border-t bg-background">{bottomBar}</div>
             ) : null}
           </div>
         ) : (
@@ -546,102 +529,6 @@ function DesktopSandboxLayout({
         </Panel>
       )}
     </Group>
-  );
-}
-
-// ----------------------------------------------------------------------------
-// Tablet layout (768-1023px) — Library + Builder side-by-side, Preview toggleable.
-// ----------------------------------------------------------------------------
-
-type TabletProps = {
-  columnMeta?: SandboxLayoutProps["columnMeta"];
-  library: ReactNode;
-  builder: ReactNode;
-  preview: ReactNode;
-  previewVisible: boolean;
-  onPreviewToggle: () => void;
-};
-
-function TabletSandboxLayout({
-  columnMeta,
-  library,
-  builder,
-  preview,
-  previewVisible,
-  onPreviewToggle,
-}: TabletProps) {
-  return (
-    <div className="flex h-full min-h-0 flex-col">
-      {/* Top action bar — preview toggle lives here on tablet. */}
-      <div className="flex h-10 shrink-0 items-center justify-end gap-2 border-b bg-muted/30 px-3">
-        <button
-          type="button"
-          onClick={onPreviewToggle}
-          aria-pressed={previewVisible}
-          className={cn(
-            "flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors",
-            previewVisible
-              ? "bg-primary/10 text-primary"
-              : "text-muted-foreground hover:bg-accent hover:text-foreground",
-          )}
-        >
-          <Eye className="size-3.5" />
-          {previewVisible ? "Browse sources" : "Show Preview"}
-        </button>
-      </div>
-
-      {/* Two usable columns: keep the editor mounted while switching its companion. */}
-      <div className="v12-studio v12-tablet-studio flex flex-1 min-h-0">
-        <div hidden={previewVisible} className="v12-studio-panel v12-studio-source relative flex h-full min-h-0 w-[38%] shrink-0 flex-col">
-          <ModalStackScope />
-          <TabletColumnChrome title={columnMeta?.sourceTitle ?? "Library sources"} kicker={columnMeta?.sourceKicker ?? "Add to build"} icon={<CodexIcon />} />
-          <div className="flex-1 min-h-0 overflow-auto">{library}</div>
-        </div>
-        <div className="v12-studio-panel v12-studio-build flex h-full min-h-0 min-w-0 flex-1 flex-col">
-          <TabletColumnChrome
-            title={columnMeta?.buildTitle ?? "What this entity stores"}
-            kicker={columnMeta?.buildKicker ?? "Recipe"}
-            icon={
-              <IconDisplay
-                iconSource="GAME_ICONS"
-                iconKey="lorc/anvil-impact"
-                iconColor={BUILD_ICON_COLOR}
-                size={22}
-                alt="Build"
-              />
-            }
-            actions={columnMeta?.buildActions}
-          />
-          <div className="flex-1 min-h-0 overflow-auto">{builder}</div>
-        </div>
-        {previewVisible ? (
-          <div className="v12-studio-panel v12-studio-preview flex h-full min-h-0 w-[40%] shrink-0 flex-col">
-            <TabletColumnChrome title={columnMeta?.previewTitle ?? "Exact result"} kicker={columnMeta?.previewKicker ?? "Live build preview"} icon={<Eye className="size-4" />} />
-            <div className="flex-1 min-h-0 overflow-auto">{preview}</div>
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function TabletColumnChrome({
-  title,
-  kicker,
-  icon,
-  actions,
-}: {
-  title: string;
-  kicker: string;
-  icon: ReactNode;
-  actions?: ReactNode;
-}) {
-  return (
-    <div className="v12-studio-head v12-section-head flex min-h-20 shrink-0 items-center gap-2 border-b bg-muted/30 px-3 text-sm font-medium">
-      <span className="text-muted-foreground">{icon}</span>
-      <span className="min-w-0"><span className="v12-kicker block truncate">{kicker}</span><span className="v12-studio-head-title block truncate">{title}</span></span>
-      {actions ? <span className="ml-auto flex shrink-0 items-center gap-1">{actions}</span> : null}
-    </div>
   );
 }
 

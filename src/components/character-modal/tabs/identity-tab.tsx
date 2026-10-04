@@ -112,7 +112,7 @@ export function IdentityTab({ state: controlled, onChange }: IdentityTabProps = 
   }
 
   return (
-    <div className="space-y-4">
+    <div className="sw-character-identity space-y-4">
       <div>
         <h3 className="text-base font-semibold text-foreground">Identity</h3>
         <p className="mt-1 text-xs text-muted-foreground">
@@ -154,11 +154,11 @@ export function IdentityTab({ state: controlled, onChange }: IdentityTabProps = 
 
       </div>
 
-      <PortraitInput
+      <div className="sw-character-identity-portrait"><PortraitInput
         value={state.portraitUrl}
         onChange={(value) => setField("portraitUrl", value)}
         characterName={state.name}
-      />
+      /></div>
 
       <label className="block space-y-1">
         <span className="text-xs font-medium text-muted-foreground">Notes</span>

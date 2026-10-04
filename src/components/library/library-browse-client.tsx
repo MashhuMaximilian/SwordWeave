@@ -473,6 +473,7 @@ export function LibraryBrowseClient({
                 <article
                   key={item.id}
                   data-library-row-id={item.id}
+                  data-preview-trigger="true"
                   className={`v12-entry-row${selectedItem?.id === item.id ? " is-selected" : ""}`}
                   onClick={() => onRowSelect(item)}
                   role="button"

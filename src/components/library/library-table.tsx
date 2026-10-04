@@ -354,6 +354,7 @@ function ListItem({
         // row after a save. Mashu 2026-07-22: "I have to refresh the
         // page to find it in list."
         data-library-row-id={item.id}
+        data-preview-trigger="true"
         data-library-kind={item.targetType}
         data-library-surface={surface}
         className={cn(baseClass, "w-full text-left")}
@@ -366,6 +367,7 @@ function ListItem({
     <Link
       href={`/library/item/${item.id}`}
       data-library-row-id={item.id}
+      data-preview-trigger="true"
       data-library-kind={item.targetType}
       data-library-surface={surface}
       className={baseClass}
@@ -557,6 +559,7 @@ function GridCard({
         // highlight handler in heritage-library can scroll/focus this
         // row after a save.
         data-library-row-id={item.id}
+        data-preview-trigger="true"
         data-library-kind={item.targetType}
         data-library-surface={surface}
         className={cn(

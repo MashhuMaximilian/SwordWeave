@@ -32,7 +32,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   useCharacterModal,
@@ -95,31 +95,31 @@ const SLOT_RECEIVER_CONFIG: Record<
   attributes: null,
   lineage: {
     title: "Lineage",
-    help: "Where your character comes from. The lineage heritage bundles its primitives and capabilities — you don't pick sub-pieces.",
-    ctaPrimary: "No lineage slotted yet",
+    help: "Your species or ancestry. A ready heritage brings its primitives and capabilities together; you can develop this foundation later.",
+    ctaPrimary: "No lineage chosen yet",
     ctaSecondary:
-      "Close the modal, browse Lineages in /atelier, and click 'Add to character · Lineage' on the one you want.",
+      "Browse Atelier, preview a lineage, then choose Add to character. Your draft stays here while you browse.",
   },
   upbringing: {
     title: "Upbringing",
-    help: "How your character grew up. Same pattern as Lineage.",
-    ctaPrimary: "No upbringing slotted yet",
+    help: "Your background, community and early training. Choose a heritage or build this part from individual pieces.",
+    ctaPrimary: "No upbringing chosen yet",
     ctaSecondary:
-      "Close the modal, browse Upbringings in /atelier, and click 'Add to character · Upbringing' on the one you want.",
+      "Browse Atelier, preview a upbringing, then choose Add to character. Your draft stays here while you browse.",
   },
   manifest: {
     title: "Manifest",
-    help: "What your character becomes — their archetype. Same pattern as Lineage.",
-    ctaPrimary: "No manifest slotted yet",
+    help: "Your main role and build. Its capabilities are ready ideas you can adapt using the primitives you own.",
+    ctaPrimary: "No manifest chosen yet",
     ctaSecondary:
-      "Close the modal, browse Manifests in /atelier, and click 'Add to character · Manifest' on the one you want.",
+      "Browse Atelier, preview a manifest, then choose Add to character. Your draft stays here while you browse.",
   },
   items: {
     title: "Items",
     help: "Gear the character carries. Items are slotted whole from the library.",
-    ctaPrimary: "No items slotted yet",
+    ctaPrimary: "No items chosen yet",
     ctaSecondary:
-      "Close the modal, browse Items in /atelier, and click 'Add to character · Items' on the ones you want.",
+      "Browse Atelier, preview an item, then choose Add to character. Your draft stays here while you browse.",
   },
 };
 
@@ -1248,6 +1248,11 @@ export function TabbedCharacterForm() {
     router,
   ]);
 
+  // Each section starts at its heading while the shared tabs and budget rail stay visible.
+  useEffect(() => {
+    document.getElementById("character-tab-panel")?.scrollTo({ top: 0 });
+  }, [activeStep]);
+
   // Phase 8.2 batch 7 rev 2: the dirty-confirm dialog has been
   // removed (closing the modal is now non-destructive). The save
   // event listener is no longer needed — the user clicks the
@@ -1298,14 +1303,14 @@ export function TabbedCharacterForm() {
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="sw-character-form">
       {/* Tab bar — sticky at top of scroll container */}
       <nav
         role="tablist"
         aria-label="Character creation tabs"
-        className="sw-character-modal-tabs sticky top-0 z-10 -mx-4 flex items-center gap-1 overflow-x-auto border-b border-border bg-card px-4 py-2"
+        className="sw-character-modal-tabs"
       >
-        {CHARACTER_TABS.map((tab) => {
+        {CHARACTER_TABS.map((tab, index) => {
           const isActive = tab === activeStep;
           const count = pendingSlots[tab].length;
           return (
@@ -1314,6 +1319,18 @@ export function TabbedCharacterForm() {
               type="button"
               role="tab"
               aria-selected={isActive}
+              id={`character-tab-${tab}`}
+              aria-controls="character-tab-panel"
+              tabIndex={isActive ? 0 : -1}
+              onKeyDown={(event) => {
+                const direction = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+                if (!direction && event.key !== "Home" && event.key !== "End") return;
+                event.preventDefault();
+                const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? CHARACTER_TABS.length - 1 : (index + direction + CHARACTER_TABS.length) % CHARACTER_TABS.length;
+                const nextTab = CHARACTER_TABS[nextIndex]!;
+                setActiveStep(nextTab);
+                document.getElementById(`character-tab-${nextTab}`)?.focus();
+              }}
               onClick={() => setActiveStep(tab)}
               className={cn(
                 "flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
@@ -1322,7 +1339,7 @@ export function TabbedCharacterForm() {
                   : "text-muted-foreground hover:bg-accent hover:text-foreground",
               )}
             >
-              <span>{CHARACTER_TAB_LABELS[tab]}</span>
+              <span aria-hidden="true" className="sw-character-step-number">{String(index + 1).padStart(2, "0")}</span><span>{CHARACTER_TAB_LABELS[tab]}</span>
               {count > 0 ? (
                 <span
                   className={cn(
@@ -1341,7 +1358,8 @@ export function TabbedCharacterForm() {
       </nav>
 
       {/* Tab body */}
-      <div className="px-1">
+      <div className="sw-character-tab-panel" role="tabpanel" id="character-tab-panel" aria-labelledby={`character-tab-${activeStep}`} tabIndex={0}>
+        <div className="sw-character-tab-context"><span>Shape your character</span><span>{CHARACTER_TABS.indexOf(activeStep) + 1} / {CHARACTER_TABS.length}</span></div>
         {activeStep === "identity" && (
           <IdentityTab state={identity} onChange={setIdentity} />
         )}
@@ -1404,8 +1422,8 @@ export function TabbedCharacterForm() {
             - mirror primitives earn debt (Y = their sum)
             - non-mirror overflow absorbs into that pool (X = min(overflow, Y))
             - any overflow past available stays in budget overflow (+N). */}
-      <div className="sw-character-modal-footer sticky bottom-0 z-10 -mx-4 flex items-center justify-between gap-2 border-t border-border bg-card px-4 py-2">
-        <div className="flex flex-wrap items-center gap-2 text-xs">
+      <div className="sw-character-modal-footer">
+        <div className="sw-character-footer-totals">
           <FooterStat label="Lvl" value={String(attributes.level)} />
           <FooterStat
             label="BU"
@@ -1418,13 +1436,18 @@ export function TabbedCharacterForm() {
           />
           {buSummary.debtUsed > 0 || debtCeiling > 0 ? (
             <FooterStat
-              label="BU debt"
+              label="Drawback credit"
               value={`${debtX}/${debtY}`}
-              sublabel={`(max ${debtCeiling} BU)`}
+              sublabel={`max ${debtCeiling}`}
               tone={debtExceeded ? "warn" : "default"}
             />
           ) : null}
         </div>
+        <div className="sw-character-footer-actions">
+          <div className="sw-character-step-actions">
+            <button type="button" aria-label="Previous section" disabled={activeStep === CHARACTER_TABS[0]} onClick={() => setActiveStep(CHARACTER_TABS[CHARACTER_TABS.indexOf(activeStep) - 1]!)}><ChevronLeft className="size-4" /></button>
+            <button type="button" aria-label="Next section" disabled={activeStep === CHARACTER_TABS[CHARACTER_TABS.length - 1]} onClick={() => setActiveStep(CHARACTER_TABS[CHARACTER_TABS.indexOf(activeStep) + 1]!)}><ChevronRight className="size-4" /></button>
+          </div>
         <button
           type="button"
           onClick={() => {
@@ -1457,7 +1480,7 @@ export function TabbedCharacterForm() {
             void handleSubmit();
           }}
           disabled={!canCreate || !hasEdits}
-          className="flex shrink-0 items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="sw-character-save"
         >
           {/* Phase 8.2 batch 7: button label flips with mode. */}
           {isPending
@@ -1468,9 +1491,13 @@ export function TabbedCharacterForm() {
             ? hasEdits
               ? "Save changes"
               : "No changes"
-            : "Create"}
+            : "Create & open"}
           <ChevronRight className="size-3.5" />
         </button>
+        </div>
+        {!nameValid || !attrValid || debtExceeded || overBudget ? <p className="sw-character-save-guidance" role="status">
+          {!nameValid ? "Add a name in Identity to continue." : !attrValid ? "Allocate 10 attribute points in Attributes to continue." : debtExceeded ? `Reduce drawback credit to ${debtCeiling} BU or less.` : "This build exceeds its budget. Agree the extra BU with your DM before saving."}
+        </p> : null}
       </div>
 
       <ToastViewport toasts={toasts} onDismiss={dismissToast} />
@@ -1493,7 +1520,7 @@ function FooterStat({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono font-bold",
+        "sw-character-budget-stat inline-flex items-center gap-1 font-mono font-bold",
         tone === "ok" && "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
         tone === "warn" && "bg-destructive/10 text-destructive",
         tone === "default" && "bg-secondary text-secondary-foreground",

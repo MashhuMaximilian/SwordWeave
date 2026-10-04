@@ -74,14 +74,14 @@ export default async function LibraryHubPage() {
   const characterCount = characterLibrary.total;
 
   const collections = [
-    { name: "Primitives", type: "PRIMITIVE", icon: CircuitBoard, tone: "gold", count: primitiveRows.length, caption: "Individual rules", description: "The foundation: access, bonuses, movement, and the rules your character owns." },
+    { name: "Primitives", type: "PRIMITIVE", icon: CircuitBoard, tone: "gold", count: primitiveRows.length, caption: "Individual rules", description: "Reusable access, bonuses, movement and fictional permissions your character can own." },
     { name: "Effects", type: "EFFECT", icon: Sparkles, tone: "copper", count: effectRows.length, caption: "Reusable combinations", description: "Keep related primitives together, ready to use inside capabilities and items." },
-    { name: "Capabilities", type: "CAPABILITY", icon: Library, tone: "teal", count: capabilityRows.length, caption: "Actions & talents", description: "Discover what a character can do, with the mechanical pieces that support it." },
+    { name: "Capabilities", type: "CAPABILITY", icon: Library, tone: "teal", count: capabilityRows.length, caption: "Actions & talents", description: "Saved ideas for quick access, assembled from primitives you can also reuse in new actions." },
   ];
   const shelves = [
-    { name: "Lineages", type: "LINEAGE_TEMPLATE", icon: Shield, count: templateCount.get("LINEAGE") ?? 0, description: "Where a character comes from." },
-    { name: "Upbringings", type: "UPBRINGING_TEMPLATE", icon: ScrollText, count: templateCount.get("UPBRINGING") ?? 0, description: "The life that shaped them." },
-    { name: "Manifests", type: "MANIFEST_TEMPLATE", icon: Wand2, count: templateCount.get("MANIFEST") ?? 0, description: "The path they are choosing." },
+    { name: "Lineages", type: "LINEAGE_TEMPLATE", icon: Shield, count: templateCount.get("LINEAGE") ?? 0, description: "Their species, ancestry and inherited qualities." },
+    { name: "Upbringings", type: "UPBRINGING_TEMPLATE", icon: ScrollText, count: templateCount.get("UPBRINGING") ?? 0, description: "Their background, work, learning and early training." },
+    { name: "Manifests", type: "MANIFEST_TEMPLATE", icon: Wand2, count: templateCount.get("MANIFEST") ?? 0, description: "Their main role and developing build." },
     { name: "Builds", type: "BUILD_TEMPLATE", icon: Crown, count: null, description: "Foundations shared by the community." },
     { name: "Characters", type: "CHARACTER", icon: Swords, count: characterCount, description: "Meet a character. Make your own version." },
   ];

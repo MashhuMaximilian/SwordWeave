@@ -33,6 +33,7 @@ import {
 } from "./use-tab-primitives";
 import { YinYangSpinner } from "@/components/ui/yin-yang-spinner";
 import { OP_SPECS } from "@/types/modifier";
+import { CharacterComponentName } from "../character-component-name";
 import { useRemoveAnimation } from "@/lib/hooks/use-remove-animation";
 
 interface SlotReceiverTabProps {
@@ -327,7 +328,7 @@ export function SlotReceiverTab({
   ctaPrimary,
   ctaSecondary,
 }: SlotReceiverTabProps) {
-  const { pendingSlots, removeSlot, setSlotMirror, queueSlot } = useCharacterModal();
+  const { pendingSlots, removeSlot, setSlotMirror, queueSlot, close } = useCharacterModal();
   const slots = pendingSlots[tabId];
 
   const {
@@ -378,16 +379,17 @@ export function SlotReceiverTab({
   const totalBundleCount = heritageSlots.length + capabilitySlots.length;
 
   return (
-    <div className="space-y-6">
+    <div className="sw-character-receiver space-y-4">
       <div>
         <h3 className="text-base font-semibold text-foreground">{title}</h3>
         <p className="mt-1 text-xs text-muted-foreground">{help}</p>
       </div>
 
       {isEmpty ? (
-        <div className="rounded-md border border-dashed border-border bg-muted/40 p-6 text-center">
+        <div className="sw-character-empty">
           <p className="text-sm font-medium text-foreground">{ctaPrimary}</p>
           <p className="mt-1 text-xs text-muted-foreground">{ctaSecondary}</p>
+          <button type="button" className="sw-character-browse" onClick={close}>Browse Atelier <span aria-hidden="true">↗</span></button>
         </div>
       ) : null}
 
@@ -399,7 +401,7 @@ export function SlotReceiverTab({
               Active Primitives ({directRows.length + inheritedRows.length})
             </h4>
             <span className="text-xs text-muted-foreground">
-              Mirror, expand, or duplicate — all from here
+              Expand for controls · choose a name to preview
             </span>
           </header>
 
@@ -619,14 +621,16 @@ function InheritedPrimitiveRow({
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <li className="rounded-md border border-border/60 bg-card/60 text-sm">
+    <li className="sw-character-component-row rounded-md border border-border/60 bg-card/60 text-sm">
       {/* COLLAPSED — always-visible header row */}
       <div
-        className="flex items-start justify-between gap-2 p-3"
+        className="sw-character-component-header flex items-start justify-between gap-2 p-3"
         role="button"
+        aria-expanded={expanded}
         tabIndex={0}
         onClick={() => setExpanded((v) => !v)}
         onKeyDown={(e) => {
+          if (e.target !== e.currentTarget) return;
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
             setExpanded((v) => !v);
@@ -635,7 +639,7 @@ function InheritedPrimitiveRow({
       >
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium text-foreground">{primitive.name}</span>
+            <CharacterComponentName name={primitive.name} targetType="PRIMITIVE" targetId={primitive.primitiveId} />
             <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold uppercase text-emerald-700 dark:text-emerald-300">
               Inherited
             </span>
@@ -757,7 +761,7 @@ function DirectPrimitiveRow({
 
   return (
     <li
-      className={`overflow-hidden rounded-md border border-border bg-card text-sm transition-all duration-200 ${
+      className={`sw-character-component-row overflow-hidden rounded-md border border-border bg-card text-sm transition-all duration-200 ${
         removing
           ? "pointer-events-none -translate-x-6 scale-95 opacity-0"
           : ""
@@ -765,11 +769,13 @@ function DirectPrimitiveRow({
     >
       {/* COLLAPSED — always-visible header row */}
       <div
-        className="flex items-start justify-between gap-2 p-3"
+        className="sw-character-component-header flex items-start justify-between gap-2 p-3"
         role="button"
+        aria-expanded={expanded}
         tabIndex={0}
         onClick={() => setExpanded((v) => !v)}
         onKeyDown={(e) => {
+          if (e.target !== e.currentTarget) return;
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
             setExpanded((v) => !v);
@@ -778,7 +784,7 @@ function DirectPrimitiveRow({
       >
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium text-foreground">{slot.name}</span>
+            <CharacterComponentName name={slot.name} targetType="PRIMITIVE" targetId={slot.primitiveId} />
             {isMirrorable ? (
               <span
                 className={
@@ -1157,18 +1163,20 @@ const { removing, handleRemove } = useRemoveAnimation(onRemove);
 
 return (
     <li
-      className={`overflow-hidden rounded-md border border-border bg-card transition-all duration-200 ${
+      className={`sw-character-component-row overflow-hidden rounded-md border border-border bg-card transition-all duration-200 ${
         removing
           ? "pointer-events-none -translate-x-6 scale-95 opacity-0"
           : ""
       }`}
     >
       <div
-        className="flex items-start justify-between gap-2 p-3"
+        className="sw-character-component-header flex items-start justify-between gap-2 p-3"
         role="button"
+        aria-expanded={heritageExpanded}
         tabIndex={0}
         onClick={() => setHeritageExpanded((v) => !v)}
         onKeyDown={(e) => {
+          if (e.target !== e.currentTarget) return;
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
             setHeritageExpanded((v) => !v);
@@ -1177,9 +1185,7 @@ return (
       >
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium text-foreground">
-              {bundle?.name ?? slot.name}
-            </span>
+            <CharacterComponentName name={bundle?.name ?? slot.name} targetType={`${slot.heritageKind}_TEMPLATE`} targetId={slot.heritageId} />
             <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-semibold uppercase text-secondary-foreground">
               {slot.heritageKind}
             </span>
@@ -1259,9 +1265,7 @@ return (
                     className="rounded border border-border bg-background px-2 py-1"
                   >
                     <div className="flex flex-wrap items-center gap-1">
-                      <span className="font-medium">
-                        {cl.capability?.name ?? "Unknown capability"}
-                      </span>
+                      <CharacterComponentName name={cl.capability?.name ?? "Unknown capability"} targetType="CAPABILITY" targetId={cl.capabilityId} />
                       <span className="rounded-full bg-secondary px-1.5 py-0.5 text-xs uppercase text-secondary-foreground">
                         {cl.effectLinks.length} effect
                         {cl.effectLinks.length === 1 ? "" : "s"}
@@ -1274,9 +1278,7 @@ return (
                             key={el.effectId}
                             className="flex flex-wrap items-center gap-1 text-muted-foreground"
                           >
-                            <span className="text-foreground">
-                              {el.effect?.name ?? "(unnamed effect)"}
-                            </span>
+                            <CharacterComponentName name={el.effect?.name ?? "(unnamed effect)"} targetType="EFFECT" targetId={el.effectId} />
                             {el.effect?.description ? (
                               <span className="text-xs italic">
                                 — {el.effect.description}
@@ -1458,18 +1460,20 @@ const { removing, handleRemove } = useRemoveAnimation(onRemove);
 
 return (
     <li
-      className={`overflow-hidden rounded-md border border-border bg-card text-sm transition-all duration-200 ${
+      className={`sw-character-component-row overflow-hidden rounded-md border border-border bg-card text-sm transition-all duration-200 ${
         removing
           ? "pointer-events-none -translate-x-6 scale-95 opacity-0"
           : ""
       }`}
     >
       <div
-        className="flex items-start justify-between gap-2 p-3"
+        className="sw-character-component-header flex items-start justify-between gap-2 p-3"
         role="button"
+        aria-expanded={capabilityExpanded}
         tabIndex={0}
         onClick={() => setCapabilityExpanded((v) => !v)}
         onKeyDown={(e) => {
+          if (e.target !== e.currentTarget) return;
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
             setCapabilityExpanded((v) => !v);
@@ -1478,7 +1482,7 @@ return (
       >
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium text-foreground">{label}</span>
+            <CharacterComponentName name={label} targetType="CAPABILITY" targetId={slot.capabilityId} />
             <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-semibold uppercase text-secondary-foreground">
               {kindLabel}
             </span>
@@ -1541,9 +1545,7 @@ return (
                     key={el.effectId}
                     className="rounded border border-border bg-background px-2 py-1"
                   >
-                    <div className="font-medium text-foreground">
-                      {el.effect?.name ?? "(unnamed effect)"}
-                    </div>
+                    <CharacterComponentName name={el.effect?.name ?? "(unnamed effect)"} targetType="EFFECT" targetId={el.effectId} />
                     {el.effect?.description ? (
                       <div className="text-muted-foreground italic">
                         {el.effect.description}

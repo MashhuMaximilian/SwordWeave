@@ -149,8 +149,11 @@ export function BackstoryTab({
         </p>
       </div>
 
+      <div className="sw-character-story-fields">
       {FIELDS.map((field) => (
-        <label key={field.key} className="block space-y-1">
+        <details key={field.key} className="sw-character-story-field">
+          <summary><span>{field.label}</span><span className="sw-character-story-excerpt">{state[field.key]?.trim() ? state[field.key].trim().slice(0, 70) : "Optional"}</span></summary>
+        <label className="block space-y-1">
           <span className="text-xs font-medium text-muted-foreground">
             {field.label}
           </span>
@@ -165,7 +168,9 @@ export function BackstoryTab({
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
           />
         </label>
+        </details>
       ))}
+      </div>
     </div>
   );
 }

@@ -61,6 +61,7 @@ import {
 } from "lucide-react";
 import { useCharacterModal, type PendingSlot } from "../character-modal-store";
 import { useToasts } from "@/components/ui/toast";
+import { CharacterComponentName } from "../character-component-name";
 import { cn } from "@/lib/utils";
 
 interface ItemsTabProps {
@@ -125,7 +126,7 @@ interface ItemsTabProps {
 }
 
 export function ItemsTab({ characterSeedItemLinks }: ItemsTabProps) {
-  const { pendingSlots, queueSlot, removeSlot, setDirty } =
+  const { pendingSlots, queueSlot, removeSlot, setDirty, close } =
     useCharacterModal();
   const { showToast } = useToasts();
 
@@ -228,8 +229,8 @@ export function ItemsTab({ characterSeedItemLinks }: ItemsTabProps) {
 
   if (itemSlots.length === 0) {
     return (
-      <div className="rounded-md border border-dashed border-border bg-card/50 px-6 py-12 text-center">
-        <Package className="mx-auto size-10 text-muted-foreground" />
+      <div className="sw-character-empty">
+        <Package className="mx-auto size-7 text-muted-foreground" />
         <h3 className="mt-4 text-lg font-semibold">No items</h3>
         <p className="mt-2 text-sm text-muted-foreground">
           Add items from the library via the{" "}
@@ -238,6 +239,7 @@ export function ItemsTab({ characterSeedItemLinks }: ItemsTabProps) {
           capabilities, and effects — they live with the
           item, not in your character&apos;s general pool.
         </p>
+        <button type="button" className="sw-character-browse" onClick={close}>Browse Atelier <span aria-hidden="true">↗</span></button>
       </div>
     );
   }
@@ -341,6 +343,7 @@ function ItemContainerCard({
   // version was wonky because calling onSetQuantity on
   // every keystroke re-queued the slot, which re-arranged
   // the card list via the store's queueSlot mechanism.
+  const [expanded, setExpanded] = useState(false);
   const [qtyInput, setQtyInput] = useState<string>(String(quantity));
   const [editingQty, setEditingQty] = useState(false);
   const handleConfirmQty = useCallback(() => {
@@ -359,13 +362,13 @@ function ItemContainerCard({
   return (
     <div
       className={cn(
-        "rounded-md border bg-card p-4 transition-colors",
+        "sw-character-item-row rounded-md border bg-card transition-colors",
         !isNotEquippable && equipped ? "border-primary/40" : "border-border",
       )}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="sw-character-item-header">
         <div>
-          <h4 className="font-semibold">{item.name}</h4>
+          <h4 className="font-semibold"><CharacterComponentName name={item.name} targetType="ITEM" targetId={item.id} /></h4>
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
             <span>{item.itemType}</span>
             <span>· {item.rarity}</span>
@@ -473,6 +476,8 @@ function ItemContainerCard({
         </div>
       </div>
 
+      <button type="button" className="sw-character-item-expand" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? "Hide contents" : `Contents · ${item.primitiveLinks.length} primitives · ${item.capabilityLinks.length} capabilities · ${item.effectLinks.length} effects`} <span aria-hidden="true">{expanded ? "▾" : "▸"}</span></button>
+      {expanded && <div className="sw-character-item-details">
       {item.description && (
         <p className="mt-2 text-xs leading-relaxed text-muted-foreground line-clamp-3">
           {item.description}
@@ -481,6 +486,7 @@ function ItemContainerCard({
 
       {/* Nested bundle — capabilities + primitives + effects */}
       <ItemNestedBundle item={item} />
+      </div>}
     </div>
   );
 }
@@ -530,7 +536,7 @@ function ItemNestedBundle({
                 className="rounded border border-border/40 bg-card px-2 py-1.5"
               >
                 <div className="flex items-center gap-2">
-                  <span className="font-medium">{cl.capability.name}</span>
+                  <CharacterComponentName name={cl.capability.name} targetType="CAPABILITY" targetId={cl.capabilityId} />
                   <span className="rounded-full bg-secondary px-1.5 py-0.5 text-xs uppercase tracking-wide text-muted-foreground">
                     {cl.capability.type}
                   </span>
@@ -575,7 +581,7 @@ function ItemNestedBundle({
                 key={el.effectId}
                 className="rounded border border-border/40 bg-card px-2 py-1.5"
               >
-                <div className="font-medium">{el.effect.name}</div>
+                <CharacterComponentName name={el.effect.name} targetType="EFFECT" targetId={el.effectId} />
                 {el.effect.description && (
                   <p className="mt-0.5 text-muted-foreground line-clamp-3">
                     {el.effect.description}
@@ -600,7 +606,7 @@ function ItemNestedBundle({
                 className="rounded border border-border/40 bg-card px-2 py-1.5"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-medium">{pl.primitive.name}</span>
+                  <CharacterComponentName name={pl.primitive.name} targetType="PRIMITIVE" targetId={pl.primitiveId} />
                   <span className="font-mono text-muted-foreground">
                     {pl.primitive.buCost} BU
                   </span>

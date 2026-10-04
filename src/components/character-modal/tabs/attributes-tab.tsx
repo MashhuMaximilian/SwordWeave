@@ -101,6 +101,17 @@ interface AttributesTabProps {
   onChange: (next: AttributesState) => void;
 }
 
+function AttributeInput({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
+  const valid = value >= -1 && value <= 5;
+  return <label className="block space-y-1">
+    <span className="text-xs font-medium text-muted-foreground">{label}</span>
+    <IntegerField state={value} setState={onChange} commitDefault={0} min={-1} max={5} maxLength={2} allowNegative
+      className={valid
+        ? "w-full rounded-md border bg-background px-3 py-2 text-sm text-foreground focus:outline-none border-border focus:border-primary"
+        : "w-full rounded-md border bg-background px-3 py-2 text-sm text-foreground focus:outline-none border-destructive text-destructive"} />
+  </label>;
+}
+
 export function AttributesTab({ state, onChange }: AttributesTabProps) {
   const { setDirty } = useCharacterModal();
 
@@ -115,46 +126,15 @@ export function AttributesTab({ state, onChange }: AttributesTabProps) {
 
   const attrSum = state.attrPhysical + state.attrMental + state.attrMagical;
   const attrValid = attrSum === 10;
-  const attrEachValid = (val: number) => val >= -1 && val <= 5;
-
-  const AttrInput = ({
-    label,
-    valueKey,
-  }: {
-    label: string;
-    valueKey: "attrPhysical" | "attrMental" | "attrMagical";
-  }) => {
-    const v = state[valueKey];
-    const valid = attrEachValid(v);
-    return (
-      <label className="block space-y-1">
-        <span className="text-xs font-medium text-muted-foreground">{label}</span>
-        <IntegerField
-          state={v}
-          setState={(n) => setField(valueKey, n)}
-          commitDefault={0}
-          min={-1}
-          max={5}
-          maxLength={2}
-          allowNegative
-          className={
-            valid
-              ? "w-full rounded-md border bg-background px-3 py-2 text-sm text-foreground focus:outline-none border-border focus:border-primary"
-              : "w-full rounded-md border bg-background px-3 py-2 text-sm text-foreground focus:outline-none border-destructive text-destructive"
-          }
-        />
-      </label>
-    );
-  };
 
   return (
     <div className="space-y-4">
       <div>
         <h3 className="text-base font-semibold text-foreground">Attributes</h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          Physical / Mental / Magical — three attributes, each in [-1, +5].
-          They must sum to exactly 10. Pick one as Proficient for the
-          Proficiency Bonus to apply to all practices under that attribute.
+          Divide 10 points between Physical, Mental and Magical. Each starts between −1 and +5.
+          Choose one trained attribute: its practices gain your Proficiency Bonus.
+          You can develop these strengths with primitives later.
         </p>
       </div>
 
@@ -176,9 +156,9 @@ export function AttributesTab({ state, onChange }: AttributesTabProps) {
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        <AttrInput label="Physical" valueKey="attrPhysical" />
-        <AttrInput label="Mental" valueKey="attrMental" />
-        <AttrInput label="Magical" valueKey="attrMagical" />
+        <AttributeInput label="Physical" value={state.attrPhysical} onChange={(value) => setField("attrPhysical", value)} />
+        <AttributeInput label="Mental" value={state.attrMental} onChange={(value) => setField("attrMental", value)} />
+        <AttributeInput label="Magical" value={state.attrMagical} onChange={(value) => setField("attrMagical", value)} />
       </div>
 
       <label className="block space-y-1">

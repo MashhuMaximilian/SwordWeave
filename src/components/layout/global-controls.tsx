@@ -26,6 +26,7 @@ import {
 import {
   ACCOUNT_LINKS,
   FabSpeedDial,
+  FabIcon,
   NAV_LINKS,
   type FabItem,
 } from "./fab-speed-dial";
@@ -36,7 +37,6 @@ import { usePathname } from "next/navigation";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { useCharacterModal } from "@/components/character-modal/character-modal-store";
 import {
-  BookOpen,
   Columns2,
   LogOut,
   Maximize2,
@@ -420,7 +420,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
   const items = useMemo<FabItem[]>(() => {
     const list: FabItem[] = [
       ...NAV_LINKS.map(item => item.key === "rules" && isCharacterSheetRoute && pathname !== "/characters/new" ? {
-        kind: "action" as const, key: "rules", label: "Rules & play guide", icon: <BookOpen size={22} />,
+        kind: "action" as const, key: "rules", label: "Play guide", icon: <FabIcon iconKey="delapouite/rule-book" alt="Play guide" />,
         onClick: () => { stack.push({ key: "play-guide", label: "Rules & play guide", category: "At the table", global: true, content: <PlayGuide embedded /> }); },
       } : item),
       {
@@ -521,9 +521,9 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
       {
         kind: "link",
         key: "buymeacoffee",
-        label: "Buy me a dice set",
+        label: "Buy me dice",
         href: "https://buymeacoffee.com/mashhul",
-        icon: <span className="text-base leading-none">🎲</span>,
+        icon: <FabIcon iconKey="delapouite/rolling-dices" alt="Dice" />,
       },
     );
     return readOnlySheet ? list.filter(item => item.key !== "build") : list;

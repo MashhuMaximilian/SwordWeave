@@ -39,6 +39,8 @@ import "./character-discovery.css";
 import "./quickbuild.css";
 import "./creation-mode.css";
 import "./play-guide.css";
+import "./character-modal-redesign.css";
+import "./arcane-materials.css";
 
 // Retain the previous typefaces behind the data-ui switch so setting
 // NEXT_PUBLIC_SW_UI_VERSION=legacy is a complete visual rollback.

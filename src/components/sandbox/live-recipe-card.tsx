@@ -44,6 +44,7 @@ export function LivePrimitiveRules({ slots }: { slots: LivePrimitiveSlot[] }) {
     className="v12-live-rule"
     key={`${slot.primitiveId}:${index}`}
     role="button"
+                  data-preview-trigger="true"
     tabIndex={0}
     onClick={() => dispatchOpenPreview({targetType:"PRIMITIVE", targetId:String(slot.primitiveId), label:slot.primitive.name})}
     onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); dispatchOpenPreview({targetType:"PRIMITIVE", targetId:String(slot.primitiveId), label:slot.primitive.name}); } }}

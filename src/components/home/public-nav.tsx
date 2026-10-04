@@ -19,6 +19,7 @@
 // =============================================================================
 
 import Link from "next/link";
+import { Menu, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
@@ -134,14 +135,12 @@ export function PublicNav() {
               ref={toggleRef}
               type="button"
               aria-controls="public-navigation-menu"
-              className="sw-public-nav__burger"
+              className="sw-public-nav__burger sw-public-nav__burger--icon"
               aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
               aria-expanded={mobileOpen}
               onClick={() => setOpenPath(mobileOpen ? null : pathname)}
             >
-              <span aria-hidden className={`sw-public-nav__burger-bar ${mobileOpen ? "is-open-1" : ""}`} />
-              <span aria-hidden className={`sw-public-nav__burger-bar ${mobileOpen ? "is-open-2" : ""}`} />
-              <span aria-hidden className={`sw-public-nav__burger-bar ${mobileOpen ? "is-open-3" : ""}`} />
+              {mobileOpen ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}
             </button>
           </div>
         </div>
