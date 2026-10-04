@@ -153,7 +153,7 @@ body[data-ui="v12"] :is(.v12-metal-button--primary,.sw-metal-button--primary,.sw
   color:var(--sw-metal-gold-ink)!important;background:var(--sw-metal-gold)!important;
   border-color:#dfbd78;box-shadow:inset 0 1px #fff5ce,inset 0 -1px #896728,0 3px 12px #0002;text-shadow:none!important;
 }
-body[data-ui="v12"] :is(button,a,[role="tab"]):is([aria-selected="true"],[aria-pressed="true"],[aria-checked="true"],[data-state="active"]):not([data-fab-trigger]) {
+body[data-ui="v12"] :is(button,a,[role="tab"]):is([aria-selected="true"],[aria-pressed="true"],[aria-checked="true"],[data-state="active"]):not([data-fab-trigger]):not([data-selection-card]) {
   background:var(--sw-metal-gold)!important;color:var(--sw-metal-gold-ink)!important;border-color:#d7b87a!important;
   text-shadow:none!important;box-shadow:inset 0 1px #fff4ce99,inset 0 -2px #9d7534!important;
   --foreground:var(--sw-metal-gold-ink);--muted-foreground:var(--sw-metal-gold-ink);
@@ -224,7 +224,7 @@ html:not(.dark) body[data-ui="v12"] :is(.sw-home,.sw-public-page) {
 }
 html:not(.dark) body[data-ui="v12"] .sw-home::before {background:radial-gradient(ellipse at 20% 0%,#6da99b33,transparent 65%),linear-gradient(150deg,#f5f6ee,#d4e6dc);}
 html:not(.dark) body[data-ui="v12"] .sw-public-site :is(h1,h2) em,
-html:not(.dark) body[data-ui="v12"] .sw-public-nav__wordmark > span,
+html:not(.dark) body[data-ui="v12"] .sw-public-nav__wordmark,
 html:not(.dark) body[data-ui="v12"] .sw-home :is(.sw-headline__weave,.sw-headline__under) {background-image:linear-gradient(125deg,#684711,#875714 35%,#126668 75%,#684711);}
 html:not(.dark) body[data-ui="v12"] :is(.sw-intent__foot,.sw-public-example) {background:var(--sw-inset-fill);color:var(--foreground);}
 html:not(.dark) body[data-ui="v12"] :is(.sw-intent__seal,.sw-public-invitation__seal,.sw-home-piece__icon,.sw-forge-node strong) {background:var(--sw-surface-fill);color:var(--sw-text-gold);text-shadow:none;}
@@ -289,4 +289,79 @@ body[data-ui="v12"] .v12-studio-panel {container-type:inline-size;}
 @media(prefers-reduced-motion:reduce) {
   body[data-ui="v12"] :is([data-preview-trigger="true"],.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button) {transition:none;transform:none!important;}
   body[data-ui="v12"] :is([data-preview-trigger="true"],.sheet-library-entry,.v12-live-effect-open)::after {transition:none;}
+}
+
+/* Fixed legacy surfaces use light-dark() in their original compositions. Their
+   dark colors stay intact; the light branch uses this shared material palette. */
+html:not(.dark) body[data-ui="v12"] .sw-public-nav__wordmark > span {
+  background:none; color:transparent; -webkit-text-fill-color:transparent;
+}
+html:not(.dark) body[data-ui="v12"] .sw-forge-node > span {
+  box-shadow:inset 0 0 0 4px var(--sw-surface-deep),inset 0 0 0 5px var(--border),0 6px 16px #254c3b24;
+}
+body[data-ui="v12"] .sw-arcane-forge {
+  --sw-forge-start:light-dark(#f9faf1,#183d40);
+  --sw-forge-mid:light-dark(#e7f0e5,#0b222c);
+  --sw-forge-end:light-dark(#c5dfd6,#060e16);
+}
+
+/* Selected content stays readable on a surface. Gold marks the selection;
+   solid metallic gold remains reserved for the actual selected controls. */
+body[data-ui="v12"] button[data-selection-card="drawback"] {
+  background:var(--sw-surface-fill) padding-box,var(--sw-edge-teal) border-box;
+  color:var(--foreground); border:1px solid transparent;
+}
+body[data-ui="v12"] button[data-selection-card="drawback"][aria-pressed="true"] {
+  background:var(--sw-surface-fill) padding-box,var(--sw-edge-gold) border-box;
+  box-shadow:inset 3px 0 var(--sw-text-teal),0 2px 10px var(--sw-preview-shadow);
+}
+body[data-ui="v12"] button[data-selection-card="drawback"] .sw-mirror-choices__copy > span {color:var(--muted-foreground);}
+body[data-ui="v12"] button[data-selection-card="drawback"] .sw-mirror-choices__copy strong {color:var(--foreground);}
+body[data-ui="v12"] button[data-selection-card="drawback"] .sw-mirror-choices__copy > small {color:var(--sw-text-mechanical);}
+body[data-ui="v12"] button[data-selection-card="drawback"] .sw-mirror-choices__copy em {color:var(--v12-soft);}
+body[data-ui="v12"] button[data-selection-card="drawback"] .sw-mirror-choices__credit {color:var(--sw-text-teal);}
+body[data-ui="v12"] button[data-selection-card="drawback"] .sw-mirror-choices__credit small {color:var(--muted-foreground);}
+body[data-ui="v12"] button[data-selection-card="drawback"] > b {color:var(--sw-text-gold);}
+
+/* Short screens use one scroll owner for the source column. Nested clipped
+   grids cannot consume the remaining height or hide the disclosure controls. */
+@media (min-width:640px) and (max-width:1279px) and (max-height:600px) and (orientation:landscape) {
+  body[data-ui="v12"]:has(.sw-phone-tool-shell) {overflow:hidden;}
+  body[data-ui="v12"] .sw-phone-tool-shell {height:var(--sw-visible-height,100dvh);min-height:0;overflow:hidden;}
+  body[data-ui="v12"] .sw-phone-tool-shell > main {min-height:0;overflow:hidden;padding-bottom:0;}
+  body[data-ui="v12"] .sw-phone-tool-shell > .v12-site-footer {display:none;}
+  body[data-ui="v12"] .v12-atelier-shell {height:100%!important;min-height:0!important;overflow:hidden;}
+  body[data-ui="v12"] .v12-studio {min-height:0;padding:4px!important;}
+  body[data-ui="v12"] .v12-studio-source .v12-studio-body {overflow:auto!important;overscroll-behavior:contain;touch-action:pan-y;padding:6px!important;}
+  body[data-ui="v12"] .v12-studio-source :is(.v12-unified-source-browser,.v12-source-browser,.v12-source-split) {
+    height:auto!important;min-height:0!important;flex:0 0 auto!important;overflow:visible!important;contain:none;
+  }
+  body[data-ui="v12"] .v12-studio-source .v12-source-split {display:flex;flex-direction:column;padding:0!important;gap:8px;}
+  body[data-ui="v12"] .v12-studio-source :is(.v12-source-families,.v12-source-entries) {
+    display:block;flex:0 0 auto;min-height:0;max-height:none;overflow:visible!important;
+  }
+  body[data-ui="v12"] .v12-studio-source .v12-source-pane-head {display:flex!important;position:relative!important;min-height:44px;padding:5px!important;}
+  body[data-ui="v12"] .v12-studio-source .v12-source-pane-scroll {height:auto;max-height:none;overflow:visible!important;padding:4px!important;}
+  body[data-ui="v12"] .v12-studio-head {min-height:44px;padding:4px 6px;}
+  body[data-ui="v12"] [data-fab-root] {right:max(8px,env(safe-area-inset-right))!important;bottom:max(8px,env(safe-area-inset-bottom))!important;z-index:90;}
+  body[data-ui="v12"] [data-fab-trigger] {width:44px!important;height:44px!important;}
+  body[data-ui="v12"] [data-fab-menu] {
+    position:fixed;right:calc(60px + env(safe-area-inset-right));bottom:max(8px,env(safe-area-inset-bottom));
+    width:min(520px,calc(100vw - 76px))!important;height:auto;min-height:0;flex-shrink:0;
+    max-height:calc(var(--sw-visible-height,100dvh) - 16px - env(safe-area-inset-bottom))!important;
+    overflow-y:auto;overscroll-behavior:contain;padding:8px!important;
+  }
+  body[data-ui="v12"] .sw-fab__heading {padding:4px 6px;font-size:12px;}
+  body[data-ui="v12"] .sw-fab__navigation {grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;}
+  body[data-ui="v12"] .sw-fab :is([data-fab-link],[data-fab-action]) {min-height:44px!important;padding:6px 8px!important;gap:6px!important;}
+  body[data-ui="v12"] .sw-fab__utility-grid {gap:5px;}
+  body[data-ui="v12"] .sw-fab__utility-grid [data-fab-action] {flex-direction:row!important;}
+}
+@container (max-width:420px) {
+  body[data-ui="v12"] .v12-studio-source :is(.v12-source-pane-head,.v12-source-results-head) .v12-kicker {font-size:9px;letter-spacing:.04em;white-space:normal;}
+  body[data-ui="v12"] .v12-studio-source .v12-source-toolbar {padding:6px!important;gap:6px;}
+}
+
+html:not(.dark) body[data-ui="v12"] :is(.sw-public-nav__link.is-active,.sw-public-nav__drawer-link.is-active .sw-public-nav__drawer-label) {
+  background-image:linear-gradient(115deg,#684711,#8a5d18 40%,#126668);color:transparent;
 }

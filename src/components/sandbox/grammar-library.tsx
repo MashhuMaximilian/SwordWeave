@@ -235,11 +235,8 @@ export function GrammarLibrary({
   onSelect,
   onFork,
 }: GrammarLibraryProps) {
-  const phone = useIsMobile();
+  const phone = useIsMobile(true);
   const [familiesCollapsed, setFamiliesCollapsed] = useState(false);
-  useEffect(() => {
-    if (window.matchMedia("(max-width: 767px)").matches) setFamiliesCollapsed(true);
-  }, []);
   const [entriesCollapsed, setEntriesCollapsed] = useState(false);
   // Default type filter per build mode. For the collapsed Mechanics tab
   // we default to "ALL" so primitives + effects + capabilities show
@@ -794,7 +791,7 @@ function SandboxPreviewBody({
   currentUser: { username: string; displayName: string | null; avatarUrl: string | null } | null;
   currentUserInternalId: string | null;
 }) {
-  const phone = useIsMobile();
+  const phone = useIsMobile(true);
   // Preview actions may focus the inline split workspace, but the
   // persistent Build & Preview drawer is reserved for its FAB action.
   const {

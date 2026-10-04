@@ -2,11 +2,11 @@
 
 import { useEffect } from "react";
 
-/** Keep phone sheets within the visible area when the keyboard/browser chrome opens. */
+/** Keep phone and tablet sheets within the visible area when the keyboard/browser chrome opens. */
 export function MobileViewport() {
   useEffect(() => {
     const viewport = window.visualViewport;
-    const media = window.matchMedia("(max-width: 767px)");
+    const media = window.matchMedia("(max-width: 1279px)");
     const update = () => {
       // Preserve browser pinch zoom; do not resize sheets while someone magnifies text.
       if (viewport && viewport.scale !== 1) return;

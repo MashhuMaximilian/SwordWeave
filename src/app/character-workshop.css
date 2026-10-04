@@ -113,7 +113,7 @@
 .sheet-draft-footer>div { display:flex;gap:7px; }
 .sheet-draft-footer>span { color:var(--muted-foreground);font:11px var(--font-v12-system); }
 .sheet-mobile-nav { display:none; }
-.sheet-error { padding:12px 20px;color:#ffb4a4!important;background:#76362f40; }
+.sheet-error { padding:12px 20px;color:light-dark(var(--sw-text-mechanical),#ffb4a4)!important;background:#76362f40; }
 .sheet-notice { display:flex;gap:12px;justify-content:space-between;padding:9px 20px;color:var(--muted-foreground);background:var(--sw-surface-fill);font:12px var(--font-v12-system); }
 .sheet-review { padding:15px; }
 .sheet-review>ol { list-style:none;padding:0;margin:15px 0; }

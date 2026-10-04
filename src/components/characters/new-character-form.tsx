@@ -1265,6 +1265,7 @@ function QuickBuildForm({
   primitivesLoading: boolean;
 }) {
   const router = useRouter();
+  const phone = useIsMobile();
   const [state, setState] = useState<FormState>(INITIAL_STATE);
   const [selection, setSelection] = useState<QuickbuildSelection>({
     ...EMPTY_QUICKBUILD,
@@ -1887,6 +1888,7 @@ function QuickBuildForm({
                         View full preview <Search size={14} />
                       </span>
                     </button>
+                    <div className="sw-quickbuild__root-copy">
                     <div className="sw-quickbuild__root-title">
                       <button
                         type="button"
@@ -1899,8 +1901,8 @@ function QuickBuildForm({
                       <span>{selected.cost} BU</span>
                     </div>
                     <details className="sw-quickbuild__root-description"><summary>About {selected.name}</summary><p>{selected.description || "Open the preview to explore this heritage."}</p></details>
-                    <div className="sw-quickbuild__rules">
-                      <strong>Rules & abilities</strong>
+                    <details className="sw-quickbuild__rules" open={!phone}>
+                      <summary>Rules & abilities <small>{selected.rules?.length ?? 0}</small></summary>
                       {selected.rules?.length ? (
                         <ul>
                           {selected.rules.slice(0, 4).map((rule, index) => (
@@ -1930,6 +1932,7 @@ function QuickBuildForm({
                           View all {selected.rules!.length} rules
                         </button>
                       ) : null}
+                    </details>
                     </div>
                   </>
                 ) : (
@@ -1959,9 +1962,7 @@ function QuickBuildForm({
                     disabled={!catalog}
                   >
                     <Search size={16} />{" "}
-                    {selected
-                      ? `Change ${label.toLowerCase()}`
-                      : `Browse ${label.toLowerCase()}s`}
+                    {selected ? <>Change <span className="sw-quickbuild__change-kind">{label.toLowerCase()}</span></> : `Browse ${label.toLowerCase()}s`}
                   </button>
                   {selected ? (
                     <button
@@ -3787,6 +3788,7 @@ function MirrorOptionCard({
       type="button"
       className={active ? "is-active" : ""}
       aria-pressed={active}
+      data-selection-card="drawback"
       disabled={disabled}
       onClick={onSelect}
     >

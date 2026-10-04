@@ -27,6 +27,7 @@ import {
 } from "@/components/characters/character-list-tabs";
 import { NewCharacterButton } from "@/components/characters/new-character-button";
 import { db } from "@/db/client";
+import { effectivePrimitiveLinks } from "@/lib/character/workspace/effective-primitives";
 import { characters } from "@/db/schema";
 import { queryLibrary } from "@/lib/publishing/library-query";
 import { listSharedCharacters } from "@/lib/character/list-shared-characters";
@@ -114,6 +115,16 @@ export default async function CharactersPage({ searchParams }: PageProps) {
       itemLinks: { with: { item: true } },
     },
   }) : [];
+  // Resolve saved mechanics in one batch across all three tabs. A library
+  // update must not silently change a character's roster attributes or debt.
+  const rosterRows = [...ownRows, ...otherRows] as unknown as RosterCharacter[];
+  const effectiveLinks = await effectivePrimitiveLinks(rosterRows.flatMap(row => row.primitiveLinks));
+  let offset = 0;
+  for (const row of rosterRows) {
+    const count = row.primitiveLinks.length;
+    row.primitiveLinks = effectiveLinks.slice(offset, offset + count);
+    offset += count;
+  }
   const otherById = new Map(otherRows.map(c => [c.id, c as unknown as RosterCharacter]));
 
   return (

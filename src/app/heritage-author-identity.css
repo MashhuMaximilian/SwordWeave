@@ -3,7 +3,7 @@ body[data-ui="v12"] .sw-heritage-identity {
   min-width: 0;
   padding: 16px;
   border: 1px solid #886732;
-  background: linear-gradient(145deg, #1b2529, #0b1117 65%);
+  background: linear-gradient(145deg, light-dark(var(--sw-surface-raised),#1b2529), light-dark(var(--sw-surface),#0b1117) 65%);
   box-shadow: inset 0 1px #f8e6b33d;
 }
 body[data-ui="v12"] .sw-heritage-identity .sw-portrait-input--identity {
@@ -43,7 +43,7 @@ body[data-ui="v12"] .sw-heritage-identity__field {
   min-width: 0;
 }
 body[data-ui="v12"] .sw-heritage-identity__field > span {
-  color: #f4eacb;
+  color: light-dark(var(--sw-text-gold),#f4eacb);
   font: 600 13px var(--font-system);
 }
 body[data-ui="v12"] .sw-heritage-identity__field :is(input, select) {
@@ -54,8 +54,8 @@ body[data-ui="v12"] .sw-heritage-identity__field :is(input, select) {
   margin: 0;
   border: 1px solid #8c989b;
   border-radius: 3px;
-  background: #090f15;
-  color: #f4f0e6;
+  background: light-dark(var(--sw-surface),#090f15);
+  color: light-dark(var(--foreground),#f4f0e6);
   font: 500 13px var(--font-system);
   box-shadow: inset 0 1px 6px #0007;
 }
@@ -65,7 +65,7 @@ body[data-ui="v12"] .sw-heritage-identity__field :is(input, select):focus-visibl
 }
 body[data-ui="v12"] .sw-heritage-identity__field small,
 body[data-ui="v12"] .sw-heritage-identity__hint {
-  color: #b7b5a9;
+  color: light-dark(var(--v12-soft),#b7b5a9);
   font: 400 12px/1.5 var(--font-body);
 }
 body[data-ui="v12"] .sw-heritage-identity .sw-portrait-input__controls {

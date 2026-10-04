@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { characters } from "@/db/schema";
 import { aggregateCharacterSheet } from "@/lib/engine";
+import type { PrimitiveLinkSnapshot, ItemLinkSnapshot, CapabilityLinkSnapshot } from "@/lib/engine/sheet";
+import { rosterComposition } from "@/lib/character/roster-composition";
 import { portraitFrameStyle } from "@/lib/character/portrait-frame";
 
 export function RosterCharacterCard({
@@ -11,26 +13,7 @@ export function RosterCharacterCard({
 }: {
   attribution?: React.ReactNode;
   actions?: React.ReactNode;
-  character: typeof characters.$inferSelect & {
-    primitiveLinks: Array<{
-      isMirrored: boolean | null;
-      primitive: {
-        id: number;
-        name: string;
-        category: string;
-        buCost: number;
-        isMirrorable: boolean;
-        mirrorBuCredit: number;
-        // Phase 8.3d (Mashu 2026-07-27): included for parity with
-        // /characters/[id]/page.tsx. The list page doesn't render
-        // conditions directly, but the sheet aggregator's
-        // PrimitiveLinkSnapshot requires the field.
-        hardModifiers?: readonly unknown[];
-      };
-    }>;
-    capabilityLinks: Array<{ capabilityId: string }>;
-    itemLinks: Array<{ itemId: string; equipped: boolean }>;
-  };
+  character: RosterCharacter;
 }) {
   const sheet = aggregateCharacterSheet({
     level: character.level,
@@ -47,8 +30,11 @@ export function RosterCharacterCard({
     size: character.size,
     primitiveLinks: character.primitiveLinks.map((l) => ({
       primitiveId: l.primitive.id,
-      source: "PERSONAL" as const,
-      acquiredAtLevel: 1,
+      ...(l.instanceId ? { instanceId: l.instanceId } : {}),
+      source: l.source ?? "PERSONAL",
+      directSource: l.directSource ?? null,
+      originItemId: l.originItemId ?? null,
+      acquiredAtLevel: l.acquiredAtLevel ?? 1,
       isMirrored: l.isMirrored ?? false,
       primitive: {
         ...l.primitive,
@@ -58,24 +44,17 @@ export function RosterCharacterCard({
         hardModifiers: l.primitive.hardModifiers ?? [],
       },
     })),
-    capabilityLinks: [],
-    itemLinks: character.itemLinks.map((l) => ({
-      itemId: l.itemId,
-      equipped: l.equipped,
-      item: {
-        id: l.itemId,
-        name: "",
-        itemType: "TRINKET",
-        rarity: "COMMON",
-        slotCost: 1,
-        isTwoHanded: false,
-        isConsumable: false,
-        // Phase 8.4 v24.5: required by ItemLinkSnapshot.
-        buCost: 0,
-      },
+    capabilityLinks: character.capabilityLinks.map(l => ({
+      ...l, acquiredAtLevel: l.acquiredAtLevel ?? 1,
+      capability: l.capability ?? {id:l.capabilityId,name:"",type:"ACTIVE",sourceType:"PHYSICAL"},
+    })),
+    itemLinks: character.itemLinks.map(l => ({
+      ...l,
+      item: l.item,
     })),
   });
 
+  const composition = rosterComposition(character);
   const attrSum =
     character.attrPhysical + character.attrMental + character.attrMagical;
 
@@ -133,7 +112,7 @@ export function RosterCharacterCard({
             <span className="v12-roster-level">
               L{character.level}
             </span>
-            <span>{character.size}</span>
+            <span>{sheet.resolvedSize}</span>
             {character.lineageName && <span>· {character.lineageName}</span>}
             {character.manifestName && (
               <span>· {character.manifestName}</span>
@@ -180,13 +159,22 @@ export function RosterCharacterCard({
 
       {/* Stats grid */}
       <div className="v12-roster-stats">
-        <Stat label="P" value={character.attrPhysical} />
-        <Stat label="M" value={character.attrMental} />
-        <Stat label="Mg" value={character.attrMagical} />
+        <Stat label="Physical" value={sheet.attributes.physical} />
+        <Stat label="Mental" value={sheet.attributes.mental} />
+        <Stat label="Magical" value={sheet.attributes.magical} />
       </div>
       <div className="v12-roster-footnote">
-        <span>Sum: {attrSum}/10</span>
-        <span>{character.capabilityLinks.length} caps</span>
+        <span>Sheet attributes · base allocation {attrSum}/10</span>
+      </div>
+      <dl className="v12-roster-composition" aria-label="Character composition">
+        <div><dt>Primitives</dt><dd>{composition.primitives}</dd></div>
+        <div><dt>Capabilities</dt><dd>{composition.capabilities}</dd></div>
+        <div><dt>Drawbacks</dt><dd>{composition.drawbacks}</dd></div>
+        <div><dt>Item BU <small>separate</small></dt><dd>{sheet.buBalance.itemBuSpent}</dd></div>
+      </dl>
+      <div className="v12-roster-status">
+        <span>Vitality <b>{sheet.vitality.current}/{sheet.vitality.max}</b></span>
+        <span><b>{sheet.equippedItemCount}</b> equipped · <b>{sheet.totalItemCount}</b> items</span>
       </div>
 
       {/* Actions */}
@@ -218,4 +206,13 @@ function Stat({ label, value }: { label: string; value: number }) {
   );
 }
 
-export type RosterCharacter = React.ComponentProps<typeof RosterCharacterCard>["character"];
+export type RosterCharacter = typeof characters.$inferSelect & {
+  primitiveLinks: Array<Omit<PrimitiveLinkSnapshot, "isMirrored" | "source" | "acquiredAtLevel"> & {
+    isMirrored: boolean | null;
+    source?: string;
+    acquiredAtLevel?: number;
+    versionId?: string | null;
+  }>;
+  capabilityLinks: Array<Pick<CapabilityLinkSnapshot, "capabilityId"> & Partial<CapabilityLinkSnapshot>>;
+  itemLinks: ItemLinkSnapshot[];
+};

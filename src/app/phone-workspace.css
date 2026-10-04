@@ -14,8 +14,8 @@
  body[data-ui="v12"] .sheet-phone-context select {min-width:0;width:46%;height:38px;font:600 16px var(--font-system);background:var(--sw-surface-fill);border:1px solid #a1884a;color:var(--sw-text-gold);border-radius:5px;padding:4px 8px;}
  body[data-ui="v12"] .sheet-phone-context>span {font:11px var(--font-system);color:var(--muted-foreground);}
  body[data-ui="v12"] .sheet-phone-context b {color:var(--sw-text-gold);}
- body[data-ui="v12"] .sheet-phone-warning {padding:0 8px;background:#402b28;flex-shrink:0;max-height:27dvh;overflow:auto;}
- body[data-ui="v12"] .sheet-phone-warning summary {min-height:36px;display:flex;align-items:center;font:600 11px var(--font-system);color:#ffd0af;cursor:pointer;}
+ body[data-ui="v12"] .sheet-phone-warning {padding:0 8px;background:light-dark(color-mix(in srgb,var(--sw-text-gold) 7%,var(--sw-surface)),#402b28);flex-shrink:0;max-height:27dvh;overflow:auto;}
+ body[data-ui="v12"] .sheet-phone-warning summary {min-height:36px;display:flex;align-items:center;font:600 11px var(--font-system);color:light-dark(var(--sw-text-mechanical),#ffd0af);cursor:pointer;}
  body[data-ui="v12"] .sheet-phone-warning summary::before {content:'!';margin-right:8px;border:1px solid #ffd0af;border-radius:50%;width:17px;text-align:center;}
  body[data-ui="v12"] .sheet-phone-warning p {font-size:13px;line-height:1.4;margin:4px 0;}
  body[data-ui="v12"] .sheet-phone-warning .sheet-button {margin-bottom:7px;}

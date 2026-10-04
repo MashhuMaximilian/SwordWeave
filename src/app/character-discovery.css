@@ -47,13 +47,13 @@ body[data-ui="v12"] .sheet-build-library .sheet-library-filters:has(> .sw-discov
   padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--v12-silver, #a7b5b6) 45%, transparent);
   border-radius: 5px;
-  background: linear-gradient(130deg, var(--v12-inset, #111c23), var(--v12-panel-deep, #0e171e));
+  background: linear-gradient(130deg, var(--v12-inset, light-dark(var(--sw-surface-raised),#111c23)), var(--v12-panel-deep, light-dark(var(--sw-surface),#0e171e)));
   box-shadow: inset 0 1px 3px #0003;
   color: var(--v12-paper, #e6e1d3);
   font: 500 13px/1.4 var(--font-system, sans-serif);
   color-scheme: dark;
 }
-.sw-discovery-filters .sw-discovery-field input::placeholder { color: #a3aca7; opacity: 1; }
+.sw-discovery-filters .sw-discovery-field input::placeholder { color: light-dark(var(--v12-soft),#a3aca7); opacity: 1; }
 .sw-discovery-filters .sw-discovery-field :is(input, select):focus-visible,
 .sw-discovery-section > summary:focus-visible {
   outline: 2px solid var(--v12-gold-hi, #e4cd91);
@@ -63,7 +63,7 @@ body[data-ui="v12"] .sheet-build-library .sheet-library-filters:has(> .sw-discov
 .sw-discovery-range > legend { margin-bottom: 10px; font: 600 13px/1.45 var(--font-system, sans-serif); }
 .sw-discovery-range__inputs { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: end; gap: 10px; }
 .sw-discovery-range__inputs .sw-discovery-field > span { color: var(--v12-silver, #afbab7); font-size: 12px; font-weight: 500; }
-.sw-discovery-range__divider { align-self: end; padding-bottom: 12px; color: #909d98; }
+.sw-discovery-range__divider { align-self: end; padding-bottom: 12px; color: light-dark(var(--v12-soft),#909d98); }
 .sw-discovery-pair { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
 .sw-discovery-section { margin-top: 20px; border-top: 1px solid #bea26645; }
 .sw-discovery-section > summary {
@@ -81,7 +81,7 @@ body[data-ui="v12"] .sheet-build-library .sheet-library-filters:has(> .sw-discov
 .sw-discovery-section strong { color: var(--v12-gold-hi, #e4cd91); font: 600 14px/1.35 var(--font-system, sans-serif); }
 .sw-discovery-section small,
 .sw-discovery-field small,
-.sw-discovery-hint { margin: 0; color: #aebbb3; font: 400 12px/1.5 var(--font-system, sans-serif); }
+.sw-discovery-hint { margin: 0; color: light-dark(var(--v12-soft),#aebbb3); font: 400 12px/1.5 var(--font-system, sans-serif); }
 .sw-discovery-section__end { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .sw-discovery-section__end em { color: var(--v12-teal, #8bd4c6); font: 500 11px/1.4 var(--font-system, sans-serif); white-space: nowrap; }
 .sw-discovery-section__chevron { color: var(--v12-gold-hi, #e4cd91); font-size: 22px; line-height: 1; transition: transform .15s; }
@@ -90,8 +90,29 @@ body[data-ui="v12"] .sheet-build-library .sheet-library-filters:has(> .sw-discov
 .sw-discovery-hint { margin-top: 9px; }
 .sw-discovery-filters .sw-discovery-check { display: flex; align-items: center; gap: 10px; min-height: 42px; margin: 0; font: 500 13px/1.5 var(--font-system, sans-serif); cursor: pointer; }
 .sw-discovery-check input { width: 18px; height: 18px; accent-color: #d8bb78; flex-shrink: 0; }
-.sw-discovery-note { margin: 12px 0 0; color: #e4bd8e; font: 400 12px/1.5 var(--font-system, sans-serif); }
+.sw-discovery-note { margin: 12px 0 0; color: light-dark(var(--sw-text-mechanical),#e4bd8e); font: 400 12px/1.5 var(--font-system, sans-serif); }
 @container sw-character-discovery (min-width: 480px) {
   .sw-discovery-filters__basics { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
   .sw-discovery-pair { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+}
+
+/* A roster record exposes build composition without becoming a second sheet. */
+body[data-ui="v12"] .v12-roster-card {background:var(--sw-surface-fill) padding-box,var(--sw-edge-teal) border-box;border-color:transparent;}
+body[data-ui="v12"] .v12-roster-stats .v12-roster-stat > div:first-child {font-size:10px;letter-spacing:.03em;color:var(--v12-soft);}
+body[data-ui="v12"] .v12-roster-footnote {margin:4px 0 9px;font-size:10px;color:var(--muted-foreground);}
+body[data-ui="v12"] .v12-roster-composition {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:0;gap:5px;}
+body[data-ui="v12"] .v12-roster-composition > div {display:flex;flex-direction:column;justify-content:space-between;gap:4px;min-width:0;padding:8px;border:1px solid var(--v12-line-subtle);border-radius:5px;background:var(--sw-inset-fill);}
+body[data-ui="v12"] .v12-roster-composition dt {color:var(--v12-soft);font:500 10px/1.3 var(--font-system);overflow-wrap:anywhere;}
+body[data-ui="v12"] .v12-roster-composition dt small {display:block;font-size:9px;font-weight:400;}
+body[data-ui="v12"] .v12-roster-composition dd {margin:0;color:var(--sw-text-teal);font:600 19px/1 var(--font-system);}
+body[data-ui="v12"] .v12-roster-status {display:flex;justify-content:space-between;flex-wrap:wrap;gap:5px;margin-top:9px;color:var(--muted-foreground);font:400 10px/1.4 var(--font-system);}
+body[data-ui="v12"] .v12-roster-status b {color:var(--foreground);font-weight:600;}
+@media(max-width:767px) {
+  body[data-ui="v12"] .v12-roster-composition > div {padding:8px 6px;}
+  body[data-ui="v12"] .v12-roster-composition dt {font-size:10px;}
+  body[data-ui="v12"] .v12-roster-card-actions {margin-top:12px;}
+}
+@media(max-width:359px) {
+  body[data-ui="v12"] .v12-roster-composition {grid-template-columns:repeat(2,minmax(0,1fr));}
+  body[data-ui="v12"] .v12-roster-composition > div {flex-direction:row;align-items:center;}
 }

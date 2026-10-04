@@ -14,7 +14,7 @@ describe("public catalog migration", () => {
     expect(publicArtRedirects().every(rule => rule.source.startsWith("/images/"))).toBe(true);
   });
   it("allows a replacement CDN without committing a permanent redirect", () => {
-    expect(publicArtRedirects("https://other.example")[0].destination).toBe("https://other.example/images/characters/:path*");
+    expect(publicArtRedirects("https://other.example")[0]?.destination).toBe("https://other.example/images/characters/:path*");
   });
   it("rejects malformed origins before deployment", () => {
     for (const origin of ["http://assets.example", "https://user:password@assets.example", "https://assets.example/private", "https://assets.example?key=value"]) {

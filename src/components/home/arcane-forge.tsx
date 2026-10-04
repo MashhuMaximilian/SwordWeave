@@ -17,7 +17,7 @@ export function ArcaneForge() {
         <defs>
           <linearGradient id="forge-metal" x1="70" y1="40" x2="550" y2="600" gradientUnits="userSpaceOnUse"><stop stopColor="#604019"/><stop offset=".22" stopColor="#e6bf68"/><stop offset=".29" stopColor="#fff4bd"/><stop offset=".38" stopColor="#8d6023"/><stop offset=".56" stopColor="#d6a658"/><stop offset=".75" stopColor="#ffedb5"/><stop offset="1" stopColor="#715329"/></linearGradient>
           <linearGradient id="forge-teal" x1="0" y1="0" x2="600" y2="600"><stop stopColor="#7df0dc"/><stop offset=".5" stopColor="#164b4c"/><stop offset="1" stopColor="#78d6d0"/></linearGradient>
-          <radialGradient id="forge-depth"><stop stopColor="#183d40"/><stop offset=".54" stopColor="#0b222c"/><stop offset="1" stopColor="#060e16"/></radialGradient>
+          <radialGradient id="forge-depth"><stop stopColor="var(--sw-forge-start)"/><stop offset=".54" stopColor="var(--sw-forge-mid)"/><stop offset="1" stopColor="var(--sw-forge-end)"/></radialGradient>
         </defs>
         <circle cx="300" cy="300" r="275" stroke="#8bc4b6" strokeOpacity=".18"/>
         <circle cx="300" cy="300" r="260" stroke="url(#forge-metal)" strokeWidth="1.5"/>
