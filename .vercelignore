@@ -16,3 +16,9 @@ scripts/output
 mockups
 output
 tmp
+
+# Public artwork is served by Cloudflare, including CLI deployments.
+public/images/characters
+public/images/lineages
+public/images/heritages
+public/heritage-art-review.html

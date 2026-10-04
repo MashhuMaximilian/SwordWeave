@@ -65,3 +65,11 @@ Cloudflare’s external-image transformation free tier includes 5,000 unique tra
 6. Preserve old paths during the transition. Do not rewrite character heritage pins as part of an image migration.
 
 **Decision to make:** keep Vercel with a slimmer deployment bundle now, or adopt R2 for the public artwork catalog. I recommend R2 for the long-term catalog and a deliberate separate policy for private uploads.
+
+## Decision implemented
+
+The user approved R2 and chose a Worker URL rather than moving domain DNS.
+The catalog is uploaded and verified (381/381), with the application migration
+and bundle exclusions described in [public-art-hosting.md](public-art-hosting.md).
+No paid plan upgrade is required at current catalog size. The Worker Free request
+allowance is a separate limit from R2; review both as traffic grows.

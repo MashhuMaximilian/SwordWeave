@@ -61,3 +61,8 @@ t4.tsx
 .hermes-*.md
 .env.vercel
 .local-uploads/
+
+# Public catalog is archived in Cloudflare R2; local originals stay available.
+/public/images/characters/
+/public/images/lineages/
+/public/images/heritages/

@@ -1,0 +1,1909 @@
+{
+  "assets": [
+    {
+      "key": "images/characters/aster-farwake-graphic-v1.webp",
+      "bytes": 213166,
+      "sha256": "d2e8b5e37926783fe279b249e0e68bf6d8067a4792ec661d8495257aa88db59c"
+    },
+    {
+      "key": "images/characters/futoshi-graphic-v1.webp",
+      "bytes": 128778,
+      "sha256": "a1f4c8d9f6d3e97cb8423af3ce30ba5fe67b5eecdcacd2f4b0e69df2207058fb"
+    },
+    {
+      "key": "images/characters/ivara-mossveil-graphic-v1.webp",
+      "bytes": 211138,
+      "sha256": "debf99a15a2675e0fea0c26b0e83181533261b9bd9033336ea51640bb802dd5b"
+    },
+    {
+      "key": "images/characters/korr-tidefast-graphic-v1.webp",
+      "bytes": 226634,
+      "sha256": "e051483e52401deef85c3f51ab3ce6d9a0b86de706f0728af5921bb18abc19ea"
+    },
+    {
+      "key": "images/characters/neris-cinderthread-graphic-v1.webp",
+      "bytes": 177146,
+      "sha256": "d768f6872591a42fa2e8a2b958cf4fe2395ade69bf2d6215b351b6970cb38231"
+    },
+    {
+      "key": "images/characters/orren-vaultwright-graphic-v1.webp",
+      "bytes": 221922,
+      "sha256": "161da1dccb644731ada7c61a5b3f30ba6385788f3980374675db83af8e76ba0c"
+    },
+    {
+      "key": "images/characters/sill-underbough-graphic-v1.webp",
+      "bytes": 252706,
+      "sha256": "3b1d311dc4e454da3100721e39d07f79191809e45ecdc1a9c2a7e8b94c07d780"
+    },
+    {
+      "key": "images/characters/tarn-emberpost-graphic-v1.webp",
+      "bytes": 182952,
+      "sha256": "43e7b5a52b9b24877a0f171f3ca8cf65c7acdcfa9bf61207b9db0890892d9f94"
+    },
+    {
+      "key": "images/characters/veyra-lanternwake-graphic-v1.webp",
+      "bytes": 186904,
+      "sha256": "0ca76838f56cc14464927aaafb0ab86b433dc39a146dea82e15e9795a873c20c"
+    },
+    {
+      "key": "images/heritages/manifests/artificer-graphic-v1.png",
+      "bytes": 2649907,
+      "sha256": "9b7f3ac644556f46e4d7876d3fa922cd0cdf4bcce8fa904e4e5b1b9f5b595623"
+    },
+    {
+      "key": "images/heritages/manifests/artificer-graphic-v1.webp",
+      "bytes": 163376,
+      "sha256": "ccf8b5d7cab3b70c97b38c2094301a13b941c80e0f8ddce86a9c3a8c293f7477"
+    },
+    {
+      "key": "images/heritages/manifests/artificer-graphic-v3.png",
+      "bytes": 3191707,
+      "sha256": "6c43cf789d0ff3214e9543b11fb186ef10588e068e5b106f3bbe02725a9928c2"
+    },
+    {
+      "key": "images/heritages/manifests/artificer-graphic-v3.webp",
+      "bytes": 274400,
+      "sha256": "8c19b74bf9cebb45e363949b0c5f7311d3fea2d6ca9f6e1a91d7603f05f81fa7"
+    },
+    {
+      "key": "images/heritages/manifests/beast-signal-keeper-graphic-v1.png",
+      "bytes": 2716295,
+      "sha256": "e237bb4ed893efefddffa23a286a69dc0cb4ffb8c59828c6ea24a41c76de1ab6"
+    },
+    {
+      "key": "images/heritages/manifests/beast-signal-keeper-graphic-v1.webp",
+      "bytes": 166620,
+      "sha256": "671450d1906784960850be007dee06e3e37f3aa5c5c121cdc7fc398e3f0e3cf3"
+    },
+    {
+      "key": "images/heritages/manifests/beast-signal-keeper-graphic-v3.png",
+      "bytes": 3168856,
+      "sha256": "45437d9c8d873d58e0b1edb1ab296f2878d24352e96cd686258f8368a94d8a29"
+    },
+    {
+      "key": "images/heritages/manifests/beast-signal-keeper-graphic-v3.webp",
+      "bytes": 281434,
+      "sha256": "eeb346aa4ad5fade83502ca3353761368f4ebb22e0cb4b0b2d70c1ffa9de84ee"
+    },
+    {
+      "key": "images/heritages/manifests/doorwatch-graphic-v1.png",
+      "bytes": 2935640,
+      "sha256": "173c5f885c6ed325f9f880ad39098fb0950bb7cb3fcc7de6bf9933c8567bf9cc"
+    },
+    {
+      "key": "images/heritages/manifests/doorwatch-graphic-v1.webp",
+      "bytes": 184626,
+      "sha256": "ad47a2269cf9e27bb482b8c4cbdbff1539711b9628364d640076f292f6da4fb2"
+    },
+    {
+      "key": "images/heritages/manifests/doorwatch-graphic-v3.png",
+      "bytes": 3215790,
+      "sha256": "c22d3836e3162fce7559e6c8540040af7d0c15538f64cfccf9142dab392509eb"
+    },
+    {
+      "key": "images/heritages/manifests/doorwatch-graphic-v3.webp",
+      "bytes": 271636,
+      "sha256": "e8234fef3a67079679cc590dbb8cb9cc6780aedbdb5a9287884837967e97f21c"
+    },
+    {
+      "key": "images/heritages/manifests/echo-duelist-graphic-v1.png",
+      "bytes": 2805764,
+      "sha256": "726016e7d93d2162504541e681c5786725ac615a17a6e6b865c773f83ba11892"
+    },
+    {
+      "key": "images/heritages/manifests/echo-duelist-graphic-v1.webp",
+      "bytes": 162980,
+      "sha256": "47b826694cee10874436dc10f43e5951e3f9eb61ddb2ea86fc8a36788acbb140"
+    },
+    {
+      "key": "images/heritages/manifests/echo-duelist-graphic-v3.png",
+      "bytes": 3215767,
+      "sha256": "d3098d87bce7d47b912de4f609edb97b56f02e2240d4965f7f3c516988a9e206"
+    },
+    {
+      "key": "images/heritages/manifests/echo-duelist-graphic-v3.webp",
+      "bytes": 265080,
+      "sha256": "ef58f6a2475e200db4fb9bfd39a474211b14d85b60b3aab0b88f8cb4f3d63760"
+    },
+    {
+      "key": "images/heritages/manifests/elemental-shaper-graphic-v1.png",
+      "bytes": 2973533,
+      "sha256": "2fb6e1c04dc64add59c1d2c08ef1e3f9889e86f00c6df15f3f0e873c383c8f53"
+    },
+    {
+      "key": "images/heritages/manifests/elemental-shaper-graphic-v1.webp",
+      "bytes": 190304,
+      "sha256": "5eea4371fc2c53984d9b567496d6feb7113f52d598572a608678a231eafd45bb"
+    },
+    {
+      "key": "images/heritages/manifests/elemental-shaper-graphic-v3.png",
+      "bytes": 3321425,
+      "sha256": "abb6a0076d0bac5e1be3385ecd22beb75ddff54ea4bbfd8dd11f965ed8e95eb8"
+    },
+    {
+      "key": "images/heritages/manifests/elemental-shaper-graphic-v3.webp",
+      "bytes": 275632,
+      "sha256": "de666b26e73632ff3b1912c8de64592de48e3e03d61d685d89eb1c5fd3f1ea3e"
+    },
+    {
+      "key": "images/heritages/manifests/field-medic-graphic-v1.png",
+      "bytes": 2891903,
+      "sha256": "cb265688586082cfcd191feaa3c73e5c12c5608e155aebee4d992ed26cb7e533"
+    },
+    {
+      "key": "images/heritages/manifests/field-medic-graphic-v1.webp",
+      "bytes": 185864,
+      "sha256": "fb54921df6239231d5f64e60878345dcb68913d08d63fda62829d99b0c182fed"
+    },
+    {
+      "key": "images/heritages/manifests/field-medic-graphic-v3.png",
+      "bytes": 3076015,
+      "sha256": "dbabe8242f44f29d83eca24d883269949493738fe0ecfbdaeb921686b077dff8"
+    },
+    {
+      "key": "images/heritages/manifests/field-medic-graphic-v3.webp",
+      "bytes": 252536,
+      "sha256": "5c4051d197e45dad4c32c3722490d9594a3e103b44b39c9693577b63969de304"
+    },
+    {
+      "key": "images/heritages/manifests/glimmer-caller-graphic-v1.png",
+      "bytes": 2776378,
+      "sha256": "7eb92c333b3ec40252136cf842bcbf3ad44142cba402751fc11dcf451c205480"
+    },
+    {
+      "key": "images/heritages/manifests/glimmer-caller-graphic-v1.webp",
+      "bytes": 164510,
+      "sha256": "99ebf025d966c6a40d3bb507a51e8b168da8b3dbd32bcf1b9d9c35344d488938"
+    },
+    {
+      "key": "images/heritages/manifests/glimmer-caller-graphic-v3.png",
+      "bytes": 3196113,
+      "sha256": "92d2d797f0e2c18ed7c1ef6acc661901b123a6fd9e536879aa52e092f1244f3d"
+    },
+    {
+      "key": "images/heritages/manifests/glimmer-caller-graphic-v3.webp",
+      "bytes": 277000,
+      "sha256": "8bdf1dca30d7392f257e6d895bce08a387276e76e4d705ee9c635949d2dfc24e"
+    },
+    {
+      "key": "images/heritages/manifests/guardian-graphic-v1.png",
+      "bytes": 3008680,
+      "sha256": "c4147c1c71e1c7d8e876c0df0d9df2d6121177002ccaa5ca7110b865d09f2976"
+    },
+    {
+      "key": "images/heritages/manifests/guardian-graphic-v1.webp",
+      "bytes": 191870,
+      "sha256": "c7cf22b4d961d8326929e0376fb3260cb93975c4ab64afd3958d30f0a2006b40"
+    },
+    {
+      "key": "images/heritages/manifests/guardian-graphic-v3.png",
+      "bytes": 3054986,
+      "sha256": "a36bad80d090fd6e4b4f14115cccb79acd729b2346494feabfdfc8f2519705d7"
+    },
+    {
+      "key": "images/heritages/manifests/guardian-graphic-v3.webp",
+      "bytes": 244506,
+      "sha256": "2f6e16188d6263a7c7ff4f4b09a6b3ecc933aa6ea34d923e466b98cf7bc939b7"
+    },
+    {
+      "key": "images/heritages/manifests/hexwright-graphic-v1.png",
+      "bytes": 2747334,
+      "sha256": "a65334cd97565ffbd173b02993ddda38ef409d23778a5f519b7532d6d33f28bd"
+    },
+    {
+      "key": "images/heritages/manifests/hexwright-graphic-v1.webp",
+      "bytes": 160824,
+      "sha256": "918241ba73b5c133c7be0812f9b0b483b8fbdc4dd030c2a7e14c04a7f1ac44b9"
+    },
+    {
+      "key": "images/heritages/manifests/hexwright-graphic-v3.png",
+      "bytes": 3129267,
+      "sha256": "aefe6e70f1d602867c74a5968144bf39c125d9d238c58f14ce49bd09e93b03a4"
+    },
+    {
+      "key": "images/heritages/manifests/hexwright-graphic-v3.webp",
+      "bytes": 256456,
+      "sha256": "2bc7f91924cccf2b05249835582ac6b38d5cfccff44fba9f7e711cb3681650db"
+    },
+    {
+      "key": "images/heritages/manifests/longshot-graphic-v1.png",
+      "bytes": 2846995,
+      "sha256": "e28b8a250e7acfa6f1a91bbe1d909b9d4851609406487e4809270e1879536419"
+    },
+    {
+      "key": "images/heritages/manifests/longshot-graphic-v1.webp",
+      "bytes": 181046,
+      "sha256": "8193aaf947c6bf4a0a4528e8869e09c477d20ab40dd7406ef41fb2a512dda34d"
+    },
+    {
+      "key": "images/heritages/manifests/longshot-graphic-v3.png",
+      "bytes": 3279965,
+      "sha256": "1d406cf6c77a9234dace3dfc5176bbd1ae9a8620b6e14b02c15faf19f74ab340"
+    },
+    {
+      "key": "images/heritages/manifests/longshot-graphic-v3.webp",
+      "bytes": 285576,
+      "sha256": "838dd2f15850d943f9dd8cc4df9c067134818b73f50b91b76720fe7269baddb5"
+    },
+    {
+      "key": "images/heritages/manifests/mystic-graphic-v1.png",
+      "bytes": 2812280,
+      "sha256": "daf75d6e41767489f2a71d3c575d48b71a0af0ada654d187d76b5f3134a976f1"
+    },
+    {
+      "key": "images/heritages/manifests/mystic-graphic-v1.webp",
+      "bytes": 165834,
+      "sha256": "786e1057b381b95f97104df7fd7992f571a1bd642211e2d775fb48c5fbb5fccf"
+    },
+    {
+      "key": "images/heritages/manifests/mystic-graphic-v3.png",
+      "bytes": 3372485,
+      "sha256": "1a26b5ec8f31a43e7ee0d0ee059847f4a81459ebd1ac7c008697a4dce99e83b3"
+    },
+    {
+      "key": "images/heritages/manifests/mystic-graphic-v3.webp",
+      "bytes": 284494,
+      "sha256": "7024b1eeea540546c49af6dc59625a7b419f164a53d1a13515de2f8d64842a5a"
+    },
+    {
+      "key": "images/heritages/manifests/patchwright-graphic-v1.png",
+      "bytes": 2702360,
+      "sha256": "421a3fd664567d74ee80baf7bb733c7a6a23ab6f896c0c5bd24a366740be930e"
+    },
+    {
+      "key": "images/heritages/manifests/patchwright-graphic-v1.webp",
+      "bytes": 165640,
+      "sha256": "7c71218113e52652c7af9af2ec3182a3fe7d27bf34fad9f8a114b391a27b8703"
+    },
+    {
+      "key": "images/heritages/manifests/patchwright-graphic-v3.png",
+      "bytes": 3319368,
+      "sha256": "547005044ec8a262d77b4f1cde067cfd01f3cc9d7c8f272f814247edc9b073cd"
+    },
+    {
+      "key": "images/heritages/manifests/patchwright-graphic-v3.webp",
+      "bytes": 292072,
+      "sha256": "9ec715137f13c377cb3b2a40de6b940c0d88dccef5637489bc24b2ec20f5000a"
+    },
+    {
+      "key": "images/heritages/manifests/quickstep-graphic-v1.png",
+      "bytes": 2729774,
+      "sha256": "a98065be8e85ba4736a484984bbfd25f1c7ce39f4f9cef461e3cf57bfce8f20e"
+    },
+    {
+      "key": "images/heritages/manifests/quickstep-graphic-v1.webp",
+      "bytes": 158426,
+      "sha256": "ad729b0644ea2bdf8cb74594265bd25ad19b21ae4e4c7dbdd94b1243da2c5759"
+    },
+    {
+      "key": "images/heritages/manifests/quickstep-graphic-v3.png",
+      "bytes": 3231866,
+      "sha256": "720275e528016dee9fa6601a50b2fc46b210d3bce64530f3457e471fbed0a93f"
+    },
+    {
+      "key": "images/heritages/manifests/quickstep-graphic-v3.webp",
+      "bytes": 283474,
+      "sha256": "10caf7eeb2873504de201c8ebb665afdda680570417ea0162bc5c940fc6c9828"
+    },
+    {
+      "key": "images/heritages/manifests/relic-seeker-graphic-v1.png",
+      "bytes": 2843584,
+      "sha256": "aff769845aef5b8efbee55be19200bfad6eda0e8cc0c53c69fcd7ffc09571c42"
+    },
+    {
+      "key": "images/heritages/manifests/relic-seeker-graphic-v1.webp",
+      "bytes": 175644,
+      "sha256": "0bf05e6bc12666ce03a9555cb51e9f94fdc5e9a51cfecc92086742fcf5e9ce65"
+    },
+    {
+      "key": "images/heritages/manifests/relic-seeker-graphic-v3.png",
+      "bytes": 3235729,
+      "sha256": "431a1eac9119f991c90b7b2a82c07b00f759609ab386c4f8ea29ac82b3de7ef3"
+    },
+    {
+      "key": "images/heritages/manifests/relic-seeker-graphic-v3.webp",
+      "bytes": 273260,
+      "sha256": "cfece731fa32bb7598aa09c92c65db379934ab401c47d705b5f63e73fe0bd4d7"
+    },
+    {
+      "key": "images/heritages/manifests/signal-captain-graphic-v1.png",
+      "bytes": 2666971,
+      "sha256": "c602c3399f6392851c84076c822c07043c77d43e80af42123f9b0f58c936541e"
+    },
+    {
+      "key": "images/heritages/manifests/signal-captain-graphic-v1.webp",
+      "bytes": 145876,
+      "sha256": "27053848d3e34421a617fff794432c003b757302c90d5c4b9fca63214d1feadd"
+    },
+    {
+      "key": "images/heritages/manifests/signal-captain-graphic-v3.png",
+      "bytes": 3169036,
+      "sha256": "6da8c67a425666a92c7de1d68b2056115a7b27f11dc1285b592a93eacdda44df"
+    },
+    {
+      "key": "images/heritages/manifests/signal-captain-graphic-v3.webp",
+      "bytes": 253728,
+      "sha256": "9efd25e41d1caebdf7673a5284d7d3ca5b313b132af859862a39837aec825e2c"
+    },
+    {
+      "key": "images/heritages/manifests/skirmisher-graphic-v1.png",
+      "bytes": 2903711,
+      "sha256": "9bbe90fed496a8a73144b4f06c1bd393d8c49b9c99b938c19cb81194defc52ce"
+    },
+    {
+      "key": "images/heritages/manifests/skirmisher-graphic-v1.webp",
+      "bytes": 181412,
+      "sha256": "3462c7c13ca27fccbaca97fab8aced4ebbefcd8e96e8dc2a6c04bb6c822f98cf"
+    },
+    {
+      "key": "images/heritages/manifests/skirmisher-graphic-v3.png",
+      "bytes": 3170135,
+      "sha256": "5b3b123c0b7020a063da4f8bc97aaee05e5284c8f785c21565e2a1731bd91f91"
+    },
+    {
+      "key": "images/heritages/manifests/skirmisher-graphic-v3.webp",
+      "bytes": 257158,
+      "sha256": "447067d3f7c5d93554a8a53c7b621fcc9d821e9e3a4f909dde64018adea56cf7"
+    },
+    {
+      "key": "images/heritages/manifests/steady-blade-graphic-v1.png",
+      "bytes": 3080928,
+      "sha256": "352192e8009cfe385ba2c5f593ae27067349841fcb78ddeb041b8757eea0c75c"
+    },
+    {
+      "key": "images/heritages/manifests/steady-blade-graphic-v1.webp",
+      "bytes": 206092,
+      "sha256": "8cccc84dffb321a5f3d644cc6e086c267b48ca11ce136a8988314902f0247031"
+    },
+    {
+      "key": "images/heritages/manifests/steady-blade-graphic-v3.png",
+      "bytes": 3217511,
+      "sha256": "c7169abc413376347530fe959bb55d119bcf0f0b10c58377a15520bcc7ce0ad7"
+    },
+    {
+      "key": "images/heritages/manifests/steady-blade-graphic-v3.webp",
+      "bytes": 272424,
+      "sha256": "61ad853bc5df637b777fa5952cf7808ab15996909f6eac233f4a30a9d288ccd8"
+    },
+    {
+      "key": "images/heritages/manifests/stitchkeeper-graphic-v1.png",
+      "bytes": 2798812,
+      "sha256": "996e11622c3484e7c4c0de03912a8ec1bd4363bef04f7cd913418a3a578106f0"
+    },
+    {
+      "key": "images/heritages/manifests/stitchkeeper-graphic-v1.webp",
+      "bytes": 176564,
+      "sha256": "e46582b302dca1775ac6daa341e53fb449b88010147492af3ec323cb4d67b014"
+    },
+    {
+      "key": "images/heritages/manifests/stitchkeeper-graphic-v3.png",
+      "bytes": 3221861,
+      "sha256": "b07779d738c455a9a76f78f69f0abcb8112203d155220cd0e4e22576985927e5"
+    },
+    {
+      "key": "images/heritages/manifests/stitchkeeper-graphic-v3.webp",
+      "bytes": 283882,
+      "sha256": "35842628dca8e5fa81c252e9c223ed9d7ed3af634d5de8b95cd161e216c72388"
+    },
+    {
+      "key": "images/heritages/manifests/striker-graphic-v1.png",
+      "bytes": 2919912,
+      "sha256": "8042f02ce4c5313de2b1c7804f90d8d1d3b5f438cd0046a4fba0af3704d05101"
+    },
+    {
+      "key": "images/heritages/manifests/striker-graphic-v1.webp",
+      "bytes": 176570,
+      "sha256": "2ecd37dd0127ff24471abb9add2ca113b34f9a3d92a5a16c238556bd80bdcdeb"
+    },
+    {
+      "key": "images/heritages/manifests/striker-graphic-v3.png",
+      "bytes": 3254750,
+      "sha256": "2f22b7775d01fbaa0ff51d18c7f8fd3dfa136a3f954239a0dcc5cd883918c78a"
+    },
+    {
+      "key": "images/heritages/manifests/striker-graphic-v3.webp",
+      "bytes": 278770,
+      "sha256": "897af031389dd4ac6c038074d37488ce8f3e38bb29046e154ef82f90f08f159d"
+    },
+    {
+      "key": "images/heritages/manifests/terrain-architect-graphic-v1.png",
+      "bytes": 3034232,
+      "sha256": "26b7d9d8c8af840a7e08f55f1cfd38e0030acde5a2c170260c3e768fca854203"
+    },
+    {
+      "key": "images/heritages/manifests/terrain-architect-graphic-v1.webp",
+      "bytes": 204044,
+      "sha256": "4402b9172584a36cdc5cb7035171bb4c9a477992d8e889f98f7dd7b4da1731b8"
+    },
+    {
+      "key": "images/heritages/manifests/terrain-architect-graphic-v3.png",
+      "bytes": 3227124,
+      "sha256": "f15ce1194bab99031d755eea22e644c922fb6ab6d6c43c1ad86be57e34ab5d98"
+    },
+    {
+      "key": "images/heritages/manifests/terrain-architect-graphic-v3.webp",
+      "bytes": 285878,
+      "sha256": "1d09b63e91a86643123f62871b7e297f58dceb5eae6c8016874c8c1c26e47e43"
+    },
+    {
+      "key": "images/heritages/manifests/thread-surgeon-graphic-v1.png",
+      "bytes": 2809935,
+      "sha256": "794e84da57e9989a762ff6b91c6c3ee97d524f0f80fb06c030de7f3790dca95a"
+    },
+    {
+      "key": "images/heritages/manifests/thread-surgeon-graphic-v1.webp",
+      "bytes": 176634,
+      "sha256": "7bfa3c42b0c6aa6f2449147821e854e7923356fa887064b36e89ba5278483312"
+    },
+    {
+      "key": "images/heritages/manifests/thread-surgeon-graphic-v3.png",
+      "bytes": 3259729,
+      "sha256": "aca66cc4d2a185b371b82ebe238a5c5b99002b84c05dc79ba9e85a9bbcf02ed6"
+    },
+    {
+      "key": "images/heritages/manifests/thread-surgeon-graphic-v3.webp",
+      "bytes": 285102,
+      "sha256": "d3c5735f8a3330ba3b0fdd319cafb974342ccafc761af11f0e8b7160e5aba1d4"
+    },
+    {
+      "key": "images/heritages/manifests/threshold-warden-graphic-v1.png",
+      "bytes": 2706818,
+      "sha256": "63def26cae1129a565c8bda80455b597ac6dd37714e806fb63525be2420ec406"
+    },
+    {
+      "key": "images/heritages/manifests/threshold-warden-graphic-v1.webp",
+      "bytes": 158142,
+      "sha256": "6d7d5cfaf765377aee197c76bd3f2b7a1f1f10ff6e041deb9cf48f97914db0ba"
+    },
+    {
+      "key": "images/heritages/manifests/threshold-warden-graphic-v3.png",
+      "bytes": 3413509,
+      "sha256": "243c53c1727e43583998e88f70338aa699d3ff141dd9110badc55d98f732f315"
+    },
+    {
+      "key": "images/heritages/manifests/threshold-warden-graphic-v3.webp",
+      "bytes": 292136,
+      "sha256": "e1ab891a66bbd87b5473038d7ed7b62097102e071be6b69e595c0875b15e7d67"
+    },
+    {
+      "key": "images/heritages/manifests/treaty-envoy-graphic-v1.png",
+      "bytes": 2966769,
+      "sha256": "d1aa7934e47247389503dded19c8d8286312b8914afe147cb2e9329ae89e7f0e"
+    },
+    {
+      "key": "images/heritages/manifests/treaty-envoy-graphic-v1.webp",
+      "bytes": 187738,
+      "sha256": "ed9e4c33a6ca089c090e5c70f982df56cb063063d3dbf57e31000b47dde6f7e5"
+    },
+    {
+      "key": "images/heritages/manifests/treaty-envoy-graphic-v3.png",
+      "bytes": 3188651,
+      "sha256": "cec5ab9de9436fe04bbd0842c566b49aadc6b8b61e32961597e88e027194cb00"
+    },
+    {
+      "key": "images/heritages/manifests/treaty-envoy-graphic-v3.webp",
+      "bytes": 262256,
+      "sha256": "ccaccb0fe8a2260f8cb69f7de4b1333f83b8178ee2d52cc110d3c62a8a3ef59b"
+    },
+    {
+      "key": "images/heritages/manifests/veil-runner-graphic-v1.png",
+      "bytes": 2805266,
+      "sha256": "391ce258d391be714a9716774abb0937925517cc789f998ac4d2352b891ecd3f"
+    },
+    {
+      "key": "images/heritages/manifests/veil-runner-graphic-v1.webp",
+      "bytes": 171258,
+      "sha256": "27b5b0e099b99cfac7db2ca501a885bbc7dec3d9d4c1ce9252a3a6620b1a16be"
+    },
+    {
+      "key": "images/heritages/manifests/veil-runner-graphic-v3.png",
+      "bytes": 3247389,
+      "sha256": "dee5b6a975103c9c91b8c8e171b9edaf95f90e858fa7b2d8cad600cfe0c5b9be"
+    },
+    {
+      "key": "images/heritages/manifests/veil-runner-graphic-v3.webp",
+      "bytes": 269760,
+      "sha256": "a96dc155d5891f8b93e4f3475a1b37332b511dd711c1383f9518203b2551f33e"
+    },
+    {
+      "key": "images/heritages/upbringings/agreement-recorder-graphic-v1.png",
+      "bytes": 2620529,
+      "sha256": "bf71bb3f98eeab443a7c3c294fcf9802a81bbfafe823c6b93dbb5b9187558be6"
+    },
+    {
+      "key": "images/heritages/upbringings/agreement-recorder-graphic-v1.webp",
+      "bytes": 152714,
+      "sha256": "405f69c93c31c10174ff50e79c797d1cdb18c2e7a781d2380e7cd58456b44faf"
+    },
+    {
+      "key": "images/heritages/upbringings/agreement-recorder-graphic-v3.png",
+      "bytes": 3301607,
+      "sha256": "8683e9dea5739c0a9aceb548d864d772e8bd962e455a6ba1cdf352afd55a91ce"
+    },
+    {
+      "key": "images/heritages/upbringings/agreement-recorder-graphic-v3.webp",
+      "bytes": 288580,
+      "sha256": "5f2195c69df4128472e210ebcb11bfc88061c8c2d61f9dca20256d6e009c88d6"
+    },
+    {
+      "key": "images/heritages/upbringings/apothecary-apprentice-graphic-v1.png",
+      "bytes": 2893809,
+      "sha256": "4668bc935117079a43c177f07d4d0a69ece44dfb5b9eae9a5797d238117d9ddf"
+    },
+    {
+      "key": "images/heritages/upbringings/apothecary-apprentice-graphic-v1.webp",
+      "bytes": 182580,
+      "sha256": "bbe15e403f27ec4aff5b27df090d9733610422948d43af2be0d139f97a7fbf56"
+    },
+    {
+      "key": "images/heritages/upbringings/apothecary-apprentice-graphic-v3.png",
+      "bytes": 3233783,
+      "sha256": "fe328723c7547799a12f62e35d7056758b78b8a0f42860f9922147abfd1c8d59"
+    },
+    {
+      "key": "images/heritages/upbringings/apothecary-apprentice-graphic-v3.webp",
+      "bytes": 286892,
+      "sha256": "af4285b5ec2159ba448585460b1cb4f6ed66984efd0d99bdec0ad44336acb226"
+    },
+    {
+      "key": "images/heritages/upbringings/archive-conservator-graphic-v1.png",
+      "bytes": 2809034,
+      "sha256": "d50a2cc8206cc48b9687f5e7f7e3788d8aa8a576f4a23764806ce30505ede363"
+    },
+    {
+      "key": "images/heritages/upbringings/archive-conservator-graphic-v1.webp",
+      "bytes": 186200,
+      "sha256": "e244e47a6ef7b9102ef0b1bbeec9c41532c326b3943ba410a2148f1b0e03eaa1"
+    },
+    {
+      "key": "images/heritages/upbringings/archive-conservator-graphic-v3.png",
+      "bytes": 3222620,
+      "sha256": "4a386098ad163cc56c3af9f150cd7125c7e674acde474adffdeada53f5fce44e"
+    },
+    {
+      "key": "images/heritages/upbringings/archive-conservator-graphic-v3.webp",
+      "bytes": 275806,
+      "sha256": "8845117db63d4619ce1dc0d9c76f6165e223d18170004c7a5ebc727985b446ed"
+    },
+    {
+      "key": "images/heritages/upbringings/beast-handler-s-aide-graphic-v1.png",
+      "bytes": 2658354,
+      "sha256": "5bad2d0b75b6e0664426f237134ccf11be9f824d7d5bd9e9f5ad71beddf1177b"
+    },
+    {
+      "key": "images/heritages/upbringings/beast-handler-s-aide-graphic-v1.webp",
+      "bytes": 150360,
+      "sha256": "fda51775f68a03a3ee199a0fe5c629d1b682c790d15100e98a618c2297624977"
+    },
+    {
+      "key": "images/heritages/upbringings/beast-handler-s-aide-graphic-v3.png",
+      "bytes": 3226595,
+      "sha256": "e53a92fddfd858b59b28dfea8477836a79b4286463b8776e53574ebb02524648"
+    },
+    {
+      "key": "images/heritages/upbringings/beast-handler-s-aide-graphic-v3.webp",
+      "bytes": 277986,
+      "sha256": "fb3154449f69f3e4775992ac6031c39694f0137d7f5911146a5f0d66568a0fac"
+    },
+    {
+      "key": "images/heritages/upbringings/bell-foundry-worker-graphic-v1.png",
+      "bytes": 2982521,
+      "sha256": "d4565d85a99aad8754685dcba5f9b8537c15165c60a5fdfd5dd6f9b75671cd17"
+    },
+    {
+      "key": "images/heritages/upbringings/bell-foundry-worker-graphic-v1.webp",
+      "bytes": 192812,
+      "sha256": "f3413d36b16b25d0e5e64163bd937eab848801e0fcf2c671c0dfdab40f038533"
+    },
+    {
+      "key": "images/heritages/upbringings/bell-foundry-worker-graphic-v3.png",
+      "bytes": 3239599,
+      "sha256": "8dcca943f508b3bed9a5321cdc621d2ef117b5edea5eda3caefa2e86f3ed223f"
+    },
+    {
+      "key": "images/heritages/upbringings/bell-foundry-worker-graphic-v3.webp",
+      "bytes": 290702,
+      "sha256": "eb5bff68810eecb89e4964b033bfcbda29167e714414f500e4ae82b11c1b0081"
+    },
+    {
+      "key": "images/heritages/upbringings/boundary-keeper-graphic-v1.png",
+      "bytes": 2839557,
+      "sha256": "049ba190b0516d5791c42ef8d06a281f80437f51a90a54a4ed86bb38e2a1d72b"
+    },
+    {
+      "key": "images/heritages/upbringings/boundary-keeper-graphic-v1.webp",
+      "bytes": 172814,
+      "sha256": "062a15b26d3ef102a77ad42ec360d5857498d34b22b7aad6d02f5b0116013385"
+    },
+    {
+      "key": "images/heritages/upbringings/boundary-keeper-graphic-v3.png",
+      "bytes": 3285352,
+      "sha256": "05fbfdbd6211143a32fae875e6073b92bef108df2e2c03fb8f2a4a024d7e9e49"
+    },
+    {
+      "key": "images/heritages/upbringings/boundary-keeper-graphic-v3.webp",
+      "bytes": 295274,
+      "sha256": "3435255e6c908c41dd5d4dcaecc7b3c4bc176004b77f325bd26d8023931f4a57"
+    },
+    {
+      "key": "images/heritages/upbringings/bridgewatch-veteran-graphic-v1.png",
+      "bytes": 2830937,
+      "sha256": "b5738e0f7822979f37b9e54f6ec889504029b710e9661a9925c74fe6656514a1"
+    },
+    {
+      "key": "images/heritages/upbringings/bridgewatch-veteran-graphic-v1.webp",
+      "bytes": 170952,
+      "sha256": "f0dfa93a4c37ff5ce62cc25aae45148aae88fb5c68c35c6ab85e6ccb9c422fdc"
+    },
+    {
+      "key": "images/heritages/upbringings/bridgewatch-veteran-graphic-v3.png",
+      "bytes": 3153852,
+      "sha256": "7e46ce5cd78f6d8661f69245eecba0f840bdfc6cdce93af5ac913a6fd09b19be"
+    },
+    {
+      "key": "images/heritages/upbringings/bridgewatch-veteran-graphic-v3.webp",
+      "bytes": 260238,
+      "sha256": "848c0b4a92ac5f5d2519fb3c683e847b10d316b46d045bf34f06cab2b5a81906"
+    },
+    {
+      "key": "images/heritages/upbringings/canal-inspector-graphic-v1.png",
+      "bytes": 2749790,
+      "sha256": "d2f3bae10c1e55afa8a72d9931c1c31d91e35092335e5d1f5279367d72a15190"
+    },
+    {
+      "key": "images/heritages/upbringings/canal-inspector-graphic-v1.webp",
+      "bytes": 164592,
+      "sha256": "03213f6535e080f285047844a3f30253414ac05d3b880c5db6f9a2420d102d21"
+    },
+    {
+      "key": "images/heritages/upbringings/canal-inspector-graphic-v3.png",
+      "bytes": 3210075,
+      "sha256": "1d3e2850dcc296333e6ee2e750302c711ce876a804de1362c005bfdad527266c"
+    },
+    {
+      "key": "images/heritages/upbringings/canal-inspector-graphic-v3.webp",
+      "bytes": 272062,
+      "sha256": "18ce1920230913bcf2829985b2ab1ec1c73e1577cde5dea51df3208fd1e9af95"
+    },
+    {
+      "key": "images/heritages/upbringings/caravan-watermaster-graphic-v1.png",
+      "bytes": 2617280,
+      "sha256": "b78d4b4df68c8c9ecce03f767c9888b295f31007d6df70725e1c0ac21933d1b3"
+    },
+    {
+      "key": "images/heritages/upbringings/caravan-watermaster-graphic-v1.webp",
+      "bytes": 154158,
+      "sha256": "83b71267b27985f20613a12fd8fe81982a405436d155c861a5489e9d442a6824"
+    },
+    {
+      "key": "images/heritages/upbringings/caravan-watermaster-graphic-v3.png",
+      "bytes": 3146593,
+      "sha256": "2f559bae93267792ec2f58c6035a9cb63b33ed55ea1dbae040ffc89211f837ee"
+    },
+    {
+      "key": "images/heritages/upbringings/caravan-watermaster-graphic-v3.webp",
+      "bytes": 255702,
+      "sha256": "bd8bfef80255d9d334fb9b02543645e5025051fbaf75b6e5e2966e716db2b194"
+    },
+    {
+      "key": "images/heritages/upbringings/cartographer-s-apprentice-graphic-v1.png",
+      "bytes": 2996977,
+      "sha256": "5ad5b7a98ea915f6abaab7cd00f344393a22c15fbbf0599a5b3d5902c4fe2951"
+    },
+    {
+      "key": "images/heritages/upbringings/cartographer-s-apprentice-graphic-v1.webp",
+      "bytes": 200806,
+      "sha256": "3d4a2e087a1936f217b09c4f046b751530cf9441c6bef2698210793466dd1f07"
+    },
+    {
+      "key": "images/heritages/upbringings/cartographer-s-apprentice-graphic-v3.png",
+      "bytes": 3356133,
+      "sha256": "28591025105afa00dac3ea3c6309f6c8c24c72bc8a4a31fbff6c577d8fb6066b"
+    },
+    {
+      "key": "images/heritages/upbringings/cartographer-s-apprentice-graphic-v3.webp",
+      "bytes": 297146,
+      "sha256": "438fafb8ad9f3f974e9960d063369ac3dd630416bfa956ccf830a579f0886520"
+    },
+    {
+      "key": "images/heritages/upbringings/city-alarm-keeper-graphic-v1.png",
+      "bytes": 2695462,
+      "sha256": "edc8a75bc7b4eaab316f0e49656abf3a681f61a9a46141e0b6aec67a18d881a7"
+    },
+    {
+      "key": "images/heritages/upbringings/city-alarm-keeper-graphic-v1.webp",
+      "bytes": 158672,
+      "sha256": "f1eae8715a90d2186d48d85d23c07f9d510109fb2d2b95efe63d5f5df300001c"
+    },
+    {
+      "key": "images/heritages/upbringings/city-alarm-keeper-graphic-v3.png",
+      "bytes": 3147880,
+      "sha256": "29dd0a95e073e0a1fa384eb4f873dcedc9b486a58a7844ae4c84ee0d7b7a9204"
+    },
+    {
+      "key": "images/heritages/upbringings/city-alarm-keeper-graphic-v3.webp",
+      "bytes": 268540,
+      "sha256": "4b962632a2eab9575a4363df1a74cd912decc3b5e04c23c233f2a052057c3ba3"
+    },
+    {
+      "key": "images/heritages/upbringings/courtier-graphic-v1.png",
+      "bytes": 2755702,
+      "sha256": "982e1fe6bfe6cd5325d37bb051a40851fcdecf8189cb00a967504d7d2855376b"
+    },
+    {
+      "key": "images/heritages/upbringings/courtier-graphic-v1.webp",
+      "bytes": 161852,
+      "sha256": "8e32042c7997cf1d1c4c4b32d4eb00260156a6e01a1b44fae524625ba38a60e3"
+    },
+    {
+      "key": "images/heritages/upbringings/courtier-graphic-v3.png",
+      "bytes": 3073905,
+      "sha256": "c37bab345f147515b9d45a93cf0aee1e4c5a7aebf60b7e2a13de176d007807f0"
+    },
+    {
+      "key": "images/heritages/upbringings/courtier-graphic-v3.webp",
+      "bytes": 233304,
+      "sha256": "b976c5242f67d846693ce9879fe9dc6c03fa94c1ce74193613e198e2075c66dc"
+    },
+    {
+      "key": "images/heritages/upbringings/disaster-cook-graphic-v1.png",
+      "bytes": 2892285,
+      "sha256": "d6bc3add53e0863f0d5326a6274524c274e7aaa951691c40146278febd3d28f3"
+    },
+    {
+      "key": "images/heritages/upbringings/disaster-cook-graphic-v1.webp",
+      "bytes": 192278,
+      "sha256": "3b493aa97b19c77b442959e6165e0f3ea5b8d11e32bb98ee5f262112bee3330d"
+    },
+    {
+      "key": "images/heritages/upbringings/disaster-cook-graphic-v3.png",
+      "bytes": 3253354,
+      "sha256": "f2ae2db0c38e0b0c5bda85355f9b4e8f9d470156efc529a987c1301b91f6c5e8"
+    },
+    {
+      "key": "images/heritages/upbringings/disaster-cook-graphic-v3.webp",
+      "bytes": 283866,
+      "sha256": "5676394f158595bd61e827cef8533c76f21f877b779102e52ac7e085978bd3bc"
+    },
+    {
+      "key": "images/heritages/upbringings/ferry-ward-graphic-v1.png",
+      "bytes": 2676868,
+      "sha256": "f7c61bfba01c59f7497f134a4c88d5c2cd97667d6f8a2d4cf9ecee4352a3f6f0"
+    },
+    {
+      "key": "images/heritages/upbringings/ferry-ward-graphic-v1.webp",
+      "bytes": 165870,
+      "sha256": "07cd691b4d8d45f5a14f23c9120291708bf4dedfc4e9d409383989b555766e92"
+    },
+    {
+      "key": "images/heritages/upbringings/ferry-ward-graphic-v3.png",
+      "bytes": 3149471,
+      "sha256": "17f35c439bd5294be08c2aaf72303ad149a8592d21609878c1cba191e4b2d5cf"
+    },
+    {
+      "key": "images/heritages/upbringings/ferry-ward-graphic-v3.webp",
+      "bytes": 266850,
+      "sha256": "46c2b0ef1719b9e3e854a2fe36804f5cc19774e7274db9f1b48899352d5eb370"
+    },
+    {
+      "key": "images/heritages/upbringings/festival-lantern-tender-graphic-v1.png",
+      "bytes": 2651202,
+      "sha256": "597643413a2716b33c8dc6560825aa99f0be773aa977dbe47686e5a0687ea4be"
+    },
+    {
+      "key": "images/heritages/upbringings/festival-lantern-tender-graphic-v1.webp",
+      "bytes": 153280,
+      "sha256": "3ccc7b2aca00ac7f0864126f4328099d6178cd2632e810b42fcc2b53818226dd"
+    },
+    {
+      "key": "images/heritages/upbringings/festival-lantern-tender-graphic-v3.png",
+      "bytes": 3271641,
+      "sha256": "c76e2f6201c41f4303124b71b3ad772d4ae1add19d6df05465d060a852907699"
+    },
+    {
+      "key": "images/heritages/upbringings/festival-lantern-tender-graphic-v3.webp",
+      "bytes": 293008,
+      "sha256": "a7e3e28173099dcee6bbddae003c286861dd0c042b103ab3a998db33795ce5db"
+    },
+    {
+      "key": "images/heritages/upbringings/field-surgeon-apprentice-graphic-v1.png",
+      "bytes": 2746843,
+      "sha256": "4efc1ef77bedd3256fada07a654b1d6b63be895a281fedb34f7419eade8af1c2"
+    },
+    {
+      "key": "images/heritages/upbringings/field-surgeon-apprentice-graphic-v1.webp",
+      "bytes": 169550,
+      "sha256": "dc8791b60a1a866162ab2cbf1dbd38be9282d6c75f884a7279c999bdbbd29d7d"
+    },
+    {
+      "key": "images/heritages/upbringings/field-surgeon-apprentice-graphic-v3.png",
+      "bytes": 3301069,
+      "sha256": "9ff6f92a4ccade9d9b6860e8470b4d6e948b5f0044ff19897377750b86acd87f"
+    },
+    {
+      "key": "images/heritages/upbringings/field-surgeon-apprentice-graphic-v3.webp",
+      "bytes": 288888,
+      "sha256": "184f1195efe0e3a4940f3ae8cbc700fdc9a660e96d11119f66037060bbf5d2f8"
+    },
+    {
+      "key": "images/heritages/upbringings/firewatch-runner-graphic-v1.png",
+      "bytes": 2666172,
+      "sha256": "050d41714ddf587274be3382c827f415a99ddb66feb3eeffaefe4ff595259b3b"
+    },
+    {
+      "key": "images/heritages/upbringings/firewatch-runner-graphic-v1.webp",
+      "bytes": 153592,
+      "sha256": "75ec884f3664b208993e43f65a6d6fb50f0369dd880a1be1aac1a1d60075425d"
+    },
+    {
+      "key": "images/heritages/upbringings/firewatch-runner-graphic-v3.png",
+      "bytes": 3135952,
+      "sha256": "f7d1fe855ef9425ccb2761970813816203891e7e95d61a6d9177f32b9477c4b6"
+    },
+    {
+      "key": "images/heritages/upbringings/firewatch-runner-graphic-v3.webp",
+      "bytes": 256190,
+      "sha256": "f8ca2372d546d53b74f55e8f4576f8ce73e4254587a5f3ef3d9d4d3274fd3aea"
+    },
+    {
+      "key": "images/heritages/upbringings/funeral-tender-graphic-v1.png",
+      "bytes": 2636504,
+      "sha256": "9e8b6388f320dd69f1a8418dc09db95936d722e931921956af9fb2d7d4b07035"
+    },
+    {
+      "key": "images/heritages/upbringings/funeral-tender-graphic-v1.webp",
+      "bytes": 149170,
+      "sha256": "1ac53e963b244ead17bb294160bf326a2b88db35626be6eab1af8bf8ffc7b95c"
+    },
+    {
+      "key": "images/heritages/upbringings/funeral-tender-graphic-v3.png",
+      "bytes": 3067722,
+      "sha256": "b4f70ea303a8d6b1ba3b2dd63550a95fcbe8775ad1e8021b4d619d93a3167d39"
+    },
+    {
+      "key": "images/heritages/upbringings/funeral-tender-graphic-v3.webp",
+      "bytes": 253634,
+      "sha256": "f6c4370eff484b27c697d2299dc05233f5a612e560d99954d345fc1312be116c"
+    },
+    {
+      "key": "images/heritages/upbringings/glasswright-graphic-v1.png",
+      "bytes": 2603135,
+      "sha256": "2c9409a9300f557e0dcfc9eb3682065f00fe38c44cd9bc66c884c887e8761fe9"
+    },
+    {
+      "key": "images/heritages/upbringings/glasswright-graphic-v1.webp",
+      "bytes": 146244,
+      "sha256": "de09e94c28dc4d808181a24fbe970bbfd2606db947011fb41232899b533f64a7"
+    },
+    {
+      "key": "images/heritages/upbringings/glasswright-graphic-v3.png",
+      "bytes": 3168321,
+      "sha256": "2e33b27179e9168c99ec04999c6c4d69cba43c68e737973a5d84e8c942159607"
+    },
+    {
+      "key": "images/heritages/upbringings/glasswright-graphic-v3.webp",
+      "bytes": 263748,
+      "sha256": "73851ad5b549f84b1059e2f6d17eb8d9708f9d3c311e4be430044fb8d5bf4473"
+    },
+    {
+      "key": "images/heritages/upbringings/harbor-rope-hand-graphic-v1.png",
+      "bytes": 2825288,
+      "sha256": "3f5464bc7bc8b74a343224a51cc5fbbf33af96dea970aae4b5e20f8c7f7250a8"
+    },
+    {
+      "key": "images/heritages/upbringings/harbor-rope-hand-graphic-v1.webp",
+      "bytes": 179896,
+      "sha256": "d1ba388b57a13af4b2c766c3ceee20793e42ffcd284941d3f2d3818ee26f3c78"
+    },
+    {
+      "key": "images/heritages/upbringings/harbor-rope-hand-graphic-v3.png",
+      "bytes": 3241071,
+      "sha256": "7ed73e754cc7e99dc67ea27b43cdf949c294347dc77141d6a8f927ff883691b9"
+    },
+    {
+      "key": "images/heritages/upbringings/harbor-rope-hand-graphic-v3.webp",
+      "bytes": 282306,
+      "sha256": "f95575e581b6acb7b4585a9bef93a90798cf1ff28d3167f5c1d71714e60feef8"
+    },
+    {
+      "key": "images/heritages/upbringings/hollow-city-scavenger-graphic-v1.png",
+      "bytes": 2666733,
+      "sha256": "bf06daf7a360b006243243e8258160e0782eff154fc4d162f1d22e4fe9e5c40c"
+    },
+    {
+      "key": "images/heritages/upbringings/hollow-city-scavenger-graphic-v1.webp",
+      "bytes": 157620,
+      "sha256": "91eb2d692395d463fdbd91273859a053322b3e5fed4c2942151e399d14dd2907"
+    },
+    {
+      "key": "images/heritages/upbringings/hollow-city-scavenger-graphic-v3.png",
+      "bytes": 3238061,
+      "sha256": "a9686cbf4f89f7df165cdaddcb11a81c7df3a652eca91c973919e99575cb546f"
+    },
+    {
+      "key": "images/heritages/upbringings/hollow-city-scavenger-graphic-v3.webp",
+      "bytes": 281558,
+      "sha256": "c0cb372a193ca2f7087dfc32fd904943b02db6007454c7a386e93628aad01a22"
+    },
+    {
+      "key": "images/heritages/upbringings/lantern-stall-helper-graphic-v1.png",
+      "bytes": 2699533,
+      "sha256": "d75f9d5f0978600e9399de00e3e46a3387acc16a99e5852ae9a5ab864ea0e000"
+    },
+    {
+      "key": "images/heritages/upbringings/lantern-stall-helper-graphic-v1.webp",
+      "bytes": 159832,
+      "sha256": "a63f3054be271be32810ceb5156b4d3cc1519ead26dfdaafcf9e58cb403c6701"
+    },
+    {
+      "key": "images/heritages/upbringings/lantern-stall-helper-graphic-v3.png",
+      "bytes": 3137720,
+      "sha256": "ba09d3064313fb5be6bbeee7f8ffdd3bde8e6e5dcbdb6615227f64f299ed79ac"
+    },
+    {
+      "key": "images/heritages/upbringings/lantern-stall-helper-graphic-v3.webp",
+      "bytes": 267848,
+      "sha256": "c06f160866b0cf57f462e8d08aa7d5aa78791a432d6f7e53d66a79282f6a4456"
+    },
+    {
+      "key": "images/heritages/upbringings/market-ledger-clerk-graphic-v1.png",
+      "bytes": 2799660,
+      "sha256": "c7affdcbab093898c0bdd9e54688e06d40414f1c01191da06828cde54aaba278"
+    },
+    {
+      "key": "images/heritages/upbringings/market-ledger-clerk-graphic-v1.webp",
+      "bytes": 173034,
+      "sha256": "bfc231872c1abe500d3699ff094e3720096a9fad556d9349a61e674c1ff354ec"
+    },
+    {
+      "key": "images/heritages/upbringings/market-ledger-clerk-graphic-v3.png",
+      "bytes": 3200183,
+      "sha256": "6374e014ff5887c11e8b93f4ffe582e69356a974d79a85a4683aeda704f16093"
+    },
+    {
+      "key": "images/heritages/upbringings/market-ledger-clerk-graphic-v3.webp",
+      "bytes": 278304,
+      "sha256": "a1a0502c26d98338cf7d368a0a11c90d53a655d6b91922b876f1622f206e2ac3"
+    },
+    {
+      "key": "images/heritages/upbringings/marsh-salvager-graphic-v1.png",
+      "bytes": 2685749,
+      "sha256": "865ea4630b39e1e617f43fb8a8a69f8486a91cb0bb20a87760dc6e63d31db9ac"
+    },
+    {
+      "key": "images/heritages/upbringings/marsh-salvager-graphic-v1.webp",
+      "bytes": 162200,
+      "sha256": "0e6c9330ece8d1e156345ae001564045b48f474dc4f754ec4be479b8f9a38537"
+    },
+    {
+      "key": "images/heritages/upbringings/marsh-salvager-graphic-v3.png",
+      "bytes": 3231110,
+      "sha256": "ef6b2796bee2c45ad0e4bc5366841f00e3ab09ff6f00b9cbb4ef3e16c375a3a2"
+    },
+    {
+      "key": "images/heritages/upbringings/marsh-salvager-graphic-v3.webp",
+      "bytes": 279898,
+      "sha256": "dae9dd15a16b7727d15478b77e90116a4b831d57a1629e062746d1fd7e724390"
+    },
+    {
+      "key": "images/heritages/upbringings/night-census-taker-graphic-v1.png",
+      "bytes": 2708039,
+      "sha256": "98ec69c123b04fcc429737cd553ce4505b8f97e7b21f98e46cad6ecd6e62b940"
+    },
+    {
+      "key": "images/heritages/upbringings/night-census-taker-graphic-v1.webp",
+      "bytes": 157514,
+      "sha256": "f3d5a2134ce4d0f88226bc43b93807d813e99c3e2753978bd74a120aead2890c"
+    },
+    {
+      "key": "images/heritages/upbringings/night-census-taker-graphic-v3.png",
+      "bytes": 2989672,
+      "sha256": "053b45a8dd1e8343048234c3b3af597626100152412adeaaa90d0434340b29bc"
+    },
+    {
+      "key": "images/heritages/upbringings/night-census-taker-graphic-v3.webp",
+      "bytes": 238560,
+      "sha256": "ac3490e2696fac51d0fda6d64ca672afb779647d62fb35b81d1b2e31d4b6ef10"
+    },
+    {
+      "key": "images/heritages/upbringings/oath-witness-graphic-v1.png",
+      "bytes": 2809916,
+      "sha256": "150674a78f23f03d57d57d90aeb5e4e08db095658c90534de94a0ad800f6e61e"
+    },
+    {
+      "key": "images/heritages/upbringings/oath-witness-graphic-v1.webp",
+      "bytes": 165204,
+      "sha256": "a74164fb95542bafcd8709c69c9ee7d4050b358cca13cb86ae835261714a9f45"
+    },
+    {
+      "key": "images/heritages/upbringings/oath-witness-graphic-v3.png",
+      "bytes": 3176864,
+      "sha256": "6094ab3c36e6d9cd7f7fc4ca936078b906488b3b8e7454a6577e468ed52ab992"
+    },
+    {
+      "key": "images/heritages/upbringings/oath-witness-graphic-v3.webp",
+      "bytes": 265060,
+      "sha256": "a04fd40de4f9dc15e3d4b69d49cba1ef4ab4673bd0ba5e93917065b1de1b23ff"
+    },
+    {
+      "key": "images/heritages/upbringings/orchard-neighbor-graphic-v1.png",
+      "bytes": 2884218,
+      "sha256": "ae8990b60ef039cd6b4523571cbccc2ab6d8deb8a02ef454da3b8cedb3c461dc"
+    },
+    {
+      "key": "images/heritages/upbringings/orchard-neighbor-graphic-v1.webp",
+      "bytes": 186812,
+      "sha256": "e393a9111be6c67ccfe63f456de955a960d2c56a301afb8e7ed6ce72282db53f"
+    },
+    {
+      "key": "images/heritages/upbringings/orchard-neighbor-graphic-v3.png",
+      "bytes": 3310704,
+      "sha256": "b32ed57b68aa520c5d1b8a21c2da71b40095e55e3622a157b2b185852a5ea5ce"
+    },
+    {
+      "key": "images/heritages/upbringings/orchard-neighbor-graphic-v3.webp",
+      "bytes": 302018,
+      "sha256": "c26a718a51f163050aaba757ed52993261027efb38f55d283dbac532b54279c9"
+    },
+    {
+      "key": "images/heritages/upbringings/orchard-tender-graphic-v1.png",
+      "bytes": 2950177,
+      "sha256": "26a1e32171199eac21984f8a21d5be7efc022df2244bf35730ca19a09bb64462"
+    },
+    {
+      "key": "images/heritages/upbringings/orchard-tender-graphic-v1.webp",
+      "bytes": 216324,
+      "sha256": "0944d9d40f049beff90bb79d9016b369c1e108678799e98ca40368c04c718769"
+    },
+    {
+      "key": "images/heritages/upbringings/orchard-tender-graphic-v3.png",
+      "bytes": 3284720,
+      "sha256": "7d95ffc412220e503458901f25ee491383cd511b951c534f86f84698b77541e3"
+    },
+    {
+      "key": "images/heritages/upbringings/orchard-tender-graphic-v3.webp",
+      "bytes": 275018,
+      "sha256": "f0e0b4094e0eefafb04358259427872f0b96ffdabbad24b8a9acdbc5c5e61f88"
+    },
+    {
+      "key": "images/heritages/upbringings/pit-fighter-graphic-v1.png",
+      "bytes": 2849016,
+      "sha256": "f376ffadb88953bf29a1c3affebf6db8b939584ca4df75d6b347c5cb4018899d"
+    },
+    {
+      "key": "images/heritages/upbringings/pit-fighter-graphic-v1.webp",
+      "bytes": 183274,
+      "sha256": "3aebf54ddfdf9b32213473ac712a4bb9821e8ce8afd44a5642a8a12e7dc23f96"
+    },
+    {
+      "key": "images/heritages/upbringings/pit-fighter-graphic-v3.png",
+      "bytes": 3132797,
+      "sha256": "ad198e287c98f3e8c09f1a9ef55a9f24acdaddcddf3526fe1349b2014bfbad94"
+    },
+    {
+      "key": "images/heritages/upbringings/pit-fighter-graphic-v3.webp",
+      "bytes": 256648,
+      "sha256": "64a3b8fb03121579cdd637a7dce6320bc7d8d388619d04753da65fc87c3feef3"
+    },
+    {
+      "key": "images/heritages/upbringings/plague-camp-volunteer-graphic-v1.png",
+      "bytes": 2689228,
+      "sha256": "66d1c3cd663a6c6c828a68eb07f4770a2f71eb6c79e6b5ddebb1e35b246488be"
+    },
+    {
+      "key": "images/heritages/upbringings/plague-camp-volunteer-graphic-v1.webp",
+      "bytes": 157998,
+      "sha256": "ff1163a3ca96cb94cb9678b6e2159bfe609d05a0fb956c001277231df3e3506e"
+    },
+    {
+      "key": "images/heritages/upbringings/plague-camp-volunteer-graphic-v3.png",
+      "bytes": 3297006,
+      "sha256": "952f24864c2d9caaa9c0b57c2540eb43eb33f33c546c8f6a24d1001f87454d90"
+    },
+    {
+      "key": "images/heritages/upbringings/plague-camp-volunteer-graphic-v3.webp",
+      "bytes": 285818,
+      "sha256": "94e34d48f0ce92f7c21ce969d28896f7449e618bb14cc77aeb2d153abe11f61b"
+    },
+    {
+      "key": "images/heritages/upbringings/prison-keykeeper-graphic-v1.png",
+      "bytes": 2800758,
+      "sha256": "9fca0ac927adf900efaaf06bf26916634477ca44f82cc8a7c319ac8a0a6501df"
+    },
+    {
+      "key": "images/heritages/upbringings/prison-keykeeper-graphic-v1.webp",
+      "bytes": 169468,
+      "sha256": "e1b748451c827453f0f60d18edeec026b6f14696c1b4b90bee9b5d4011989d33"
+    },
+    {
+      "key": "images/heritages/upbringings/prison-keykeeper-graphic-v3.png",
+      "bytes": 3124540,
+      "sha256": "73b89060146f1805692b8d1bb73f0ef8f991d0204f145effc38ee98a5a669259"
+    },
+    {
+      "key": "images/heritages/upbringings/prison-keykeeper-graphic-v3.webp",
+      "bytes": 253096,
+      "sha256": "732e1431cecb1f39ed8bb34aaf243ff3505a1d711f99d47adfe1c18ad05242ce"
+    },
+    {
+      "key": "images/heritages/upbringings/quarry-rigger-graphic-v1.png",
+      "bytes": 2727324,
+      "sha256": "053bb91ebff7e3e9386333357d2697331884af751b27c1d8d7e591e89da087e1"
+    },
+    {
+      "key": "images/heritages/upbringings/quarry-rigger-graphic-v1.webp",
+      "bytes": 163672,
+      "sha256": "de65e9eb06470cba161f5dd5f250c73c51fcc4ccff20f191668ca9263bf5588b"
+    },
+    {
+      "key": "images/heritages/upbringings/quarry-rigger-graphic-v3.png",
+      "bytes": 3357018,
+      "sha256": "17b375c6b43f456100febe9c6d0fb071c96811a7f0182eb0f92fd9bfc1187b51"
+    },
+    {
+      "key": "images/heritages/upbringings/quarry-rigger-graphic-v3.webp",
+      "bytes": 297314,
+      "sha256": "fb896f6387ab3ba6bc8fdd34945ed59fcf52713041e10cbcda085321e7c45a9d"
+    },
+    {
+      "key": "images/heritages/upbringings/reef-courier-graphic-v1.png",
+      "bytes": 2707236,
+      "sha256": "73d1fd4092a53a58b60660be1cba7de29abe91db6f3a29ee2106679f77dffbaa"
+    },
+    {
+      "key": "images/heritages/upbringings/reef-courier-graphic-v1.webp",
+      "bytes": 160004,
+      "sha256": "752ea2d0c8ec3bab7a759a67ce0908eac3735656340777d39952692dd0e32d0f"
+    },
+    {
+      "key": "images/heritages/upbringings/reef-courier-graphic-v3.png",
+      "bytes": 3233825,
+      "sha256": "cdf816c5fe8df8209c9ba83684577aa9f14211b02f1004d4b0ea4c02ef800b72"
+    },
+    {
+      "key": "images/heritages/upbringings/reef-courier-graphic-v3.webp",
+      "bytes": 280366,
+      "sha256": "264f882b84bbafdd54c673255e631c2e0fbbdd1d55a11b8b3abd4b843018c43a"
+    },
+    {
+      "key": "images/heritages/upbringings/reliquary-keeper-graphic-v1.png",
+      "bytes": 2660519,
+      "sha256": "c4eeea79256f8147f4f36a7262625b3700157c65ac6c743f9bf3e030937e68f7"
+    },
+    {
+      "key": "images/heritages/upbringings/reliquary-keeper-graphic-v1.webp",
+      "bytes": 149882,
+      "sha256": "ca36bd686f33a2ea6efacb14facdfe8a3cf68e3032fdc9e1682d5c8244c4c549"
+    },
+    {
+      "key": "images/heritages/upbringings/reliquary-keeper-graphic-v3.png",
+      "bytes": 3286983,
+      "sha256": "780c2dc8523eb8b307bdc32d46c73e0b6d73acbb765c31b34738b1032b81c705"
+    },
+    {
+      "key": "images/heritages/upbringings/reliquary-keeper-graphic-v3.webp",
+      "bytes": 284662,
+      "sha256": "443a4f39eba0f50b4dccceac67debb6e0ff0ee03379459bceb0fb5d5664ffe79"
+    },
+    {
+      "key": "images/heritages/upbringings/rescue-diver-graphic-v1.png",
+      "bytes": 2793268,
+      "sha256": "fa968f71a002010233142aecff9c41cfe8ebd3fca9d1d104d19f38858db3d1e4"
+    },
+    {
+      "key": "images/heritages/upbringings/rescue-diver-graphic-v1.webp",
+      "bytes": 163142,
+      "sha256": "23f6abb47dec2df11fb9b85679324959ef9e58d13bfccf73d36f158cc7a823b0"
+    },
+    {
+      "key": "images/heritages/upbringings/rescue-diver-graphic-v3.png",
+      "bytes": 3362049,
+      "sha256": "95bcead2d559f4a2c4c6631b58abe30016789f48e4bea170ae9f4d484f243711"
+    },
+    {
+      "key": "images/heritages/upbringings/rescue-diver-graphic-v3.webp",
+      "bytes": 292798,
+      "sha256": "1a19ee5db373594742880a5d0e7618262f4c68ef1c5ea275759afb12d6ad8878"
+    },
+    {
+      "key": "images/heritages/upbringings/road-warden-graphic-v1.png",
+      "bytes": 2670844,
+      "sha256": "ca34c26b8423aef4133e3f3e27fddafba62ec8d805d2e73cf28789e759941829"
+    },
+    {
+      "key": "images/heritages/upbringings/road-warden-graphic-v1.webp",
+      "bytes": 150962,
+      "sha256": "16792a92dec81c78284bc051f931462e34a4e8fdddc1a0d2dbcc7ef6b01efc10"
+    },
+    {
+      "key": "images/heritages/upbringings/road-warden-graphic-v3.png",
+      "bytes": 3234628,
+      "sha256": "7843f76b7114f483aa81e7e50983f4b3be5749da3007c4c5ca47b1bca37f69ff"
+    },
+    {
+      "key": "images/heritages/upbringings/road-warden-graphic-v3.webp",
+      "bytes": 264196,
+      "sha256": "14f9e2e621713f664d904644293e20ee5231e3677e2964ce5420ff47a0bc0859"
+    },
+    {
+      "key": "images/heritages/upbringings/roadside-errand-runner-graphic-v1.png",
+      "bytes": 2924086,
+      "sha256": "f042c15652f900bce90996150bc3ccc017cb9f7fd2ade9f08072581f9346453b"
+    },
+    {
+      "key": "images/heritages/upbringings/roadside-errand-runner-graphic-v1.webp",
+      "bytes": 193362,
+      "sha256": "e1b778a472a8652d6ff1c972d42b08ba9039252af62d6727329168b13fa6d9a7"
+    },
+    {
+      "key": "images/heritages/upbringings/roadside-errand-runner-graphic-v3.png",
+      "bytes": 3155234,
+      "sha256": "58d2866882668ad411bb5790184fefc7c76beb4c706d7574abee7e6babc81793"
+    },
+    {
+      "key": "images/heritages/upbringings/roadside-errand-runner-graphic-v3.webp",
+      "bytes": 271196,
+      "sha256": "863093950e39c85a0ea7ddc41bb72e1bad86a826f764440fc112cefb96dfa5fb"
+    },
+    {
+      "key": "images/heritages/upbringings/rooftop-rigger-graphic-v1.png",
+      "bytes": 2979848,
+      "sha256": "1f030dfe908087a848173ede5ac8caf02aaa600748b88f70a38fc1822cf3b6a0"
+    },
+    {
+      "key": "images/heritages/upbringings/rooftop-rigger-graphic-v1.webp",
+      "bytes": 201046,
+      "sha256": "277558b2a50c8cdf22ea0a987fc16a5fd85f0ae531406bc6615892507e2840cb"
+    },
+    {
+      "key": "images/heritages/upbringings/rooftop-rigger-graphic-v3.png",
+      "bytes": 3268586,
+      "sha256": "dd5b4b8f3c355f16a27554d20a4d9dbc72b1d4bdf3fc0dff7e1f7fbcf71ba9b3"
+    },
+    {
+      "key": "images/heritages/upbringings/rooftop-rigger-graphic-v3.webp",
+      "bytes": 287124,
+      "sha256": "7718d954987ed48f12bc8648b31274f455a82c8b834e3e8c3831a7d2a00788fa"
+    },
+    {
+      "key": "images/heritages/upbringings/salt-road-exile-graphic-v1.png",
+      "bytes": 2729897,
+      "sha256": "86f26de5577aea6f509de90f2a02dac20ec0f37172abc2ea7b995e4423935a8f"
+    },
+    {
+      "key": "images/heritages/upbringings/salt-road-exile-graphic-v1.webp",
+      "bytes": 158838,
+      "sha256": "e282daa6ca453c0351ed0fc4613d97d52ac50cfa6c83907ff3027fe0e9d64fd9"
+    },
+    {
+      "key": "images/heritages/upbringings/salt-road-exile-graphic-v3.png",
+      "bytes": 3350597,
+      "sha256": "2d7e0a2e9f935e7a411a0df875eac9f08410a5396a0763a3a7897f23621a6f4d"
+    },
+    {
+      "key": "images/heritages/upbringings/salt-road-exile-graphic-v3.webp",
+      "bytes": 294066,
+      "sha256": "a34307423754ab0443b12b5aa794f43415a4ecbbbeb0979c9d51939d8d1a9cef"
+    },
+    {
+      "key": "images/heritages/upbringings/scholar-graphic-v1.png",
+      "bytes": 2661009,
+      "sha256": "9c86163989553df3ce7d430fb9a1e953693a4c53c7fe6d9e690d843bbdbe6b6e"
+    },
+    {
+      "key": "images/heritages/upbringings/scholar-graphic-v1.webp",
+      "bytes": 155672,
+      "sha256": "28531e3cff2c1e2813c7f8cb4c3fc028b9ce6541b3c3afa4f13aa30874c1a2cf"
+    },
+    {
+      "key": "images/heritages/upbringings/scholar-graphic-v3.png",
+      "bytes": 3092056,
+      "sha256": "d2427394ab4c909adae2fd4de9e2a65ba160a950cf9f3e479d253e0661dc40c3"
+    },
+    {
+      "key": "images/heritages/upbringings/scholar-graphic-v3.webp",
+      "bytes": 249274,
+      "sha256": "7585063e8b65f4bb8cdea8dc3573110d750d2d351b54b5d1bd5f730086263db1"
+    },
+    {
+      "key": "images/heritages/upbringings/siege-mason-graphic-v1.png",
+      "bytes": 2865066,
+      "sha256": "5a095c7951051b5972e452647397aad15ea6e47d3c53001519ca4dfa75f7768a"
+    },
+    {
+      "key": "images/heritages/upbringings/siege-mason-graphic-v1.webp",
+      "bytes": 185144,
+      "sha256": "966ff7f7c3692292c4ad5f9efddc8821efcdfb05e7e51f9eec87ef893b624c1e"
+    },
+    {
+      "key": "images/heritages/upbringings/siege-mason-graphic-v3.png",
+      "bytes": 3348231,
+      "sha256": "37598bd90b7ec0582dffc73a77bf6302ea6c41a5607d9b1cb2d6920b408c1556"
+    },
+    {
+      "key": "images/heritages/upbringings/siege-mason-graphic-v3.webp",
+      "bytes": 291300,
+      "sha256": "348992b9c01d370bcb8dd69934d6b79878fd3a7857fb5f765a6a1f976d514c84"
+    },
+    {
+      "key": "images/heritages/upbringings/smuggler-s-lookout-graphic-v1.png",
+      "bytes": 2782259,
+      "sha256": "e1a9727da9f032d6e9b10c77a1f9b6e59a866937cc638a906d94feb55b458246"
+    },
+    {
+      "key": "images/heritages/upbringings/smuggler-s-lookout-graphic-v1.webp",
+      "bytes": 166244,
+      "sha256": "2d2d923ec159b00374525e9473ff8950e332c55dcc5b3545c31fa258245b3f13"
+    },
+    {
+      "key": "images/heritages/upbringings/smuggler-s-lookout-graphic-v3.png",
+      "bytes": 3008704,
+      "sha256": "571b00ae3614df33c30fda58c4e3361e48da8d66dc7577774d12199da02eb238"
+    },
+    {
+      "key": "images/heritages/upbringings/smuggler-s-lookout-graphic-v3.webp",
+      "bytes": 250236,
+      "sha256": "6fef1b9b32181d065e3b6cf38b6821ac16cc0e098dbbd85c11fda2231f4aaa77"
+    },
+    {
+      "key": "images/heritages/upbringings/soldier-graphic-v1.png",
+      "bytes": 2987863,
+      "sha256": "2302c288ce51505d1bb395548b98b9fb26c693bdb39f232a6523d3ed7e70dd8c"
+    },
+    {
+      "key": "images/heritages/upbringings/soldier-graphic-v1.webp",
+      "bytes": 186476,
+      "sha256": "a81c22f088e58c8b45a58ff61f1e9e56b64516efbf3654b0f462ba5e691296b0"
+    },
+    {
+      "key": "images/heritages/upbringings/soldier-graphic-v3.png",
+      "bytes": 3193083,
+      "sha256": "cd67174089a666a5e51dfea318662fd6d35e6414209c58744a8c2675dcc4e178"
+    },
+    {
+      "key": "images/heritages/upbringings/soldier-graphic-v3.webp",
+      "bytes": 267168,
+      "sha256": "4da23173c05f1f62a06a995cc5bfba5181ef7aa2b900156f6c2ddd2716a562ea"
+    },
+    {
+      "key": "images/heritages/upbringings/star-surveyor-graphic-v1.png",
+      "bytes": 2801717,
+      "sha256": "7fb95d31976597aff65ba085485f37e30e8d08b32c6ee1db2ddc5faf4af740fd"
+    },
+    {
+      "key": "images/heritages/upbringings/star-surveyor-graphic-v1.webp",
+      "bytes": 167316,
+      "sha256": "44ded71d6c2c682aad199e7df93ec52d6900b5f75c5cc41a978e633a1a3f7a03"
+    },
+    {
+      "key": "images/heritages/upbringings/star-surveyor-graphic-v3.png",
+      "bytes": 3056336,
+      "sha256": "2fd0f320716377464a6e5cc61cbbc35ad6336c8364b6525dbc74c86fc6fafe58"
+    },
+    {
+      "key": "images/heritages/upbringings/star-surveyor-graphic-v3.webp",
+      "bytes": 252250,
+      "sha256": "4aed9d875fb97453b255f54c292ea87c2340524cf51549a126c500a995db3d4c"
+    },
+    {
+      "key": "images/heritages/upbringings/tavern-keeper-graphic-v1.png",
+      "bytes": 2845486,
+      "sha256": "732de5aec295bd261b0dcaac53f97d0cb817fcd651eb1189a9a845db22877634"
+    },
+    {
+      "key": "images/heritages/upbringings/tavern-keeper-graphic-v1.webp",
+      "bytes": 179864,
+      "sha256": "a2129717818c2a10203ad5426624c360e7639bfc0a2cac8690c518ac6e4313cf"
+    },
+    {
+      "key": "images/heritages/upbringings/tavern-keeper-graphic-v3.png",
+      "bytes": 3173297,
+      "sha256": "65711e4067dccdad610e72611c08cb9bcb7e0a6483c0c671f68d22daaea8f82c"
+    },
+    {
+      "key": "images/heritages/upbringings/tavern-keeper-graphic-v3.webp",
+      "bytes": 265938,
+      "sha256": "9781c7f760785035ba81542abf135d31f2f662b48d2631b1da037eb9ba3dbff3"
+    },
+    {
+      "key": "images/heritages/upbringings/theater-maskmaker-graphic-v1.png",
+      "bytes": 2762837,
+      "sha256": "7ea622ae87177f5d67fb8265e6d074d71f7654e219d17103e58214de4afed307"
+    },
+    {
+      "key": "images/heritages/upbringings/theater-maskmaker-graphic-v1.webp",
+      "bytes": 163258,
+      "sha256": "c516c5777971ef3cf44fe2c01278c996f46890c91501a7a78a9a2c56798a6d37"
+    },
+    {
+      "key": "images/heritages/upbringings/theater-maskmaker-graphic-v3.png",
+      "bytes": 3147401,
+      "sha256": "c724eede135d39cd73a366f64d470c4ca4f867833ec7faa89b25f610cd772d25"
+    },
+    {
+      "key": "images/heritages/upbringings/theater-maskmaker-graphic-v3.webp",
+      "bytes": 265608,
+      "sha256": "46642920807c85fdf9daa17ececb7361ba4f872e03979374a4fcc9e472785030"
+    },
+    {
+      "key": "images/heritages/upbringings/tinkerer-graphic-v1.png",
+      "bytes": 2750145,
+      "sha256": "c84349a2a9f4ce202a54090b25aacbac8d7f1e7a5c8cb313698ab96b3fcc10b4"
+    },
+    {
+      "key": "images/heritages/upbringings/tinkerer-graphic-v1.webp",
+      "bytes": 173820,
+      "sha256": "c865776d5d4cfd300fee9c173e9c889665d63a5412c9b612702370a6d78411ae"
+    },
+    {
+      "key": "images/heritages/upbringings/tinkerer-graphic-v3.png",
+      "bytes": 3209966,
+      "sha256": "2ee2bd41acbc55fde12b63e776451b52dfe7c1e889503ef4fd1f636d58514238"
+    },
+    {
+      "key": "images/heritages/upbringings/tinkerer-graphic-v3.webp",
+      "bytes": 270216,
+      "sha256": "e2a3173a34402044abe916a39121f4d138205944dd481c48435c89c9bce1bb42"
+    },
+    {
+      "key": "images/heritages/upbringings/village-mediator-graphic-v1.png",
+      "bytes": 2888589,
+      "sha256": "329f32adc6d16634485244bbcfd08c6a0ab3bbbc180e2bc382b238664b8e91f0"
+    },
+    {
+      "key": "images/heritages/upbringings/village-mediator-graphic-v1.webp",
+      "bytes": 180426,
+      "sha256": "53138bd655176bbaa77d20cf55453e539c0ee5a5cc45853e3e879c460932edb2"
+    },
+    {
+      "key": "images/heritages/upbringings/village-mediator-graphic-v3.png",
+      "bytes": 3161147,
+      "sha256": "70015098d7e3ba5a6df9073abcfc9eb27d2310dbabc2bfdb04bf9a851a5cdae5"
+    },
+    {
+      "key": "images/heritages/upbringings/village-mediator-graphic-v3.webp",
+      "bytes": 269390,
+      "sha256": "af8d118563a9ba56ac2b79f7a25bdfef6d6885196cb1a2eb27cb350c9bfb66e8"
+    },
+    {
+      "key": "images/heritages/upbringings/wanderer-graphic-v1.png",
+      "bytes": 2983305,
+      "sha256": "54a399ceab8cd3d6b352d8a7b392737eb6d2f03bae4a9bd82d56767174e2f929"
+    },
+    {
+      "key": "images/heritages/upbringings/wanderer-graphic-v1.webp",
+      "bytes": 198282,
+      "sha256": "7c10029f6fd93de6e300f2bf45f99567fd1ba900f725d693e6f2f19682c72c3a"
+    },
+    {
+      "key": "images/heritages/upbringings/wanderer-graphic-v3.png",
+      "bytes": 3285594,
+      "sha256": "8e21aeb7c03bb97cdf6f767b6900c12daedc74b5cee698fcb362ef66b067c33f"
+    },
+    {
+      "key": "images/heritages/upbringings/wanderer-graphic-v3.webp",
+      "bytes": 296300,
+      "sha256": "0aa01b1daac85085882d75316545e4f9e6dce1c97432cc41e4f5998d4f40a4ae"
+    },
+    {
+      "key": "images/heritages/upbringings/ward-tailor-graphic-v1.png",
+      "bytes": 2974399,
+      "sha256": "30e5f7b28d654505ebdcd432e2d717e1638ec915a470fb87e7e541b967454335"
+    },
+    {
+      "key": "images/heritages/upbringings/ward-tailor-graphic-v1.webp",
+      "bytes": 201312,
+      "sha256": "d6203fa1107fccd07b474e3339380e42f74e5fe1779d44c491ef558dc7eececc"
+    },
+    {
+      "key": "images/heritages/upbringings/ward-tailor-graphic-v3.png",
+      "bytes": 3243540,
+      "sha256": "c565fada67826032c740e4a180251abb9fc0a54cdea27370a29de5af72091ce1"
+    },
+    {
+      "key": "images/heritages/upbringings/ward-tailor-graphic-v3.webp",
+      "bytes": 286500,
+      "sha256": "55af8f6ff4df3bb362bd942ab6877576675b69ae383709174551fb962eb6ecb1"
+    },
+    {
+      "key": "images/heritages/upbringings/weather-watcher-graphic-v1.png",
+      "bytes": 2822023,
+      "sha256": "16f0b60050a7592436312ab73b13bd4c46befc030bcca2f2ebafeba90f378de8"
+    },
+    {
+      "key": "images/heritages/upbringings/weather-watcher-graphic-v1.webp",
+      "bytes": 176358,
+      "sha256": "733436d78ad5876434698ea15b4d75784a74398df8a308f1bc7bb0403dc52ebe"
+    },
+    {
+      "key": "images/heritages/upbringings/weather-watcher-graphic-v3.png",
+      "bytes": 3048640,
+      "sha256": "a43d40fa4120269b83eafe6206ea6baa54306c57b81aaadcc6d97805faa54bf6"
+    },
+    {
+      "key": "images/heritages/upbringings/weather-watcher-graphic-v3.webp",
+      "bytes": 246426,
+      "sha256": "9187766ac08b7d3589b87a308332deaa9fe650cac5b94c3e4f0e2ea308b32ea7"
+    },
+    {
+      "key": "images/heritages/upbringings/witness-scribe-graphic-v1.png",
+      "bytes": 2864679,
+      "sha256": "13bb7168d6a4dca0f33615c1834716935dde5702fb51a67587744c95ddb88d57"
+    },
+    {
+      "key": "images/heritages/upbringings/witness-scribe-graphic-v1.webp",
+      "bytes": 182554,
+      "sha256": "94798ab820ba212cde27ac2aefa598925560cdfcb30db568d2f321ea8e3a2e45"
+    },
+    {
+      "key": "images/heritages/upbringings/witness-scribe-graphic-v3.png",
+      "bytes": 3171270,
+      "sha256": "7b3ae1e07dd7a088a298e705aad2b088f960590ebadd4357e5a918321effffb9"
+    },
+    {
+      "key": "images/heritages/upbringings/witness-scribe-graphic-v3.webp",
+      "bytes": 257900,
+      "sha256": "204bc81d818c0b2df7a786d2a1a22d6427fe2fb04a475d86ac4f35980f762302"
+    },
+    {
+      "key": "images/heritages/upbringings/workshop-sweeper-graphic-v1.png",
+      "bytes": 2676804,
+      "sha256": "8d388dba59e61a9f88802ec7ec50e85ab8ae6cf7c2348149bbd3f3a1227fb553"
+    },
+    {
+      "key": "images/heritages/upbringings/workshop-sweeper-graphic-v1.webp",
+      "bytes": 161446,
+      "sha256": "eb0acac399426b0a40ab7a4a13eb6e5a0c24e1110f0c81943e24a16bb84989c0"
+    },
+    {
+      "key": "images/heritages/upbringings/workshop-sweeper-graphic-v3.png",
+      "bytes": 3248450,
+      "sha256": "f30765a8b65279ba1507a18f200d032dcdffc9fead56b3f84259e748e1ecfd13"
+    },
+    {
+      "key": "images/heritages/upbringings/workshop-sweeper-graphic-v3.webp",
+      "bytes": 282314,
+      "sha256": "e2084a0123ce305f8d6a93a1fe8ec009d9a91db4c8ab76d6bd0fff2136adbe23"
+    },
+    {
+      "key": "images/heritages/upbringings/wreck-diver-graphic-v1.png",
+      "bytes": 2762743,
+      "sha256": "fdf54e64371f098b3df0f3b776f6c8a8f13c1b5a9b0a802d3de1d0335493c639"
+    },
+    {
+      "key": "images/heritages/upbringings/wreck-diver-graphic-v1.webp",
+      "bytes": 169768,
+      "sha256": "f67c37b04fe7b98002318987060d2ecde3a15b4babf8a1724d140ca2b2a52042"
+    },
+    {
+      "key": "images/heritages/upbringings/wreck-diver-graphic-v3.png",
+      "bytes": 3205624,
+      "sha256": "e97df8759e551af6426a31055d55b624c5e1e58390a63a39bfa1ee5f37d9e6fa"
+    },
+    {
+      "key": "images/heritages/upbringings/wreck-diver-graphic-v3.webp",
+      "bytes": 277066,
+      "sha256": "7b8623325a4f9d412a6392ac57a8812d50cba583341cfaa93af2714baf6a07f9"
+    },
+    {
+      "key": "images/lineages/antlerhand-graphic-v1.png",
+      "bytes": 2786275,
+      "sha256": "4144f2863379825dc5eac52381decbf99e3df7c7781e7dd398f7d209970a88ef"
+    },
+    {
+      "key": "images/lineages/antlerhand-graphic-v1.webp",
+      "bytes": 196464,
+      "sha256": "5f9871eeed3c07077ec8fe60dec237bd69f39390cf9bce8ef023a111708269de"
+    },
+    {
+      "key": "images/lineages/ashlung-graphic-v1.png",
+      "bytes": 2623769,
+      "sha256": "d39652d677eb4d8ae2d4c10321cb68bb586e8d68cbe792db6d78bea94ca4c7b1"
+    },
+    {
+      "key": "images/lineages/ashlung-graphic-v1.webp",
+      "bytes": 153358,
+      "sha256": "14b34b7bbc67426e546042f6c318544c71f4521a7f69a0ee870cddfbf62e0e3b"
+    },
+    {
+      "key": "images/lineages/burrowhide-graphic-v1.png",
+      "bytes": 2956321,
+      "sha256": "e361178fd176911b5d0981b9f057633f0720826f29552256faac463117a07973"
+    },
+    {
+      "key": "images/lineages/burrowhide-graphic-v1.webp",
+      "bytes": 190908,
+      "sha256": "4f75b3ccb54b0256466c8318d6fc4b8e3c27e5e00909057d7180546e937f50cb"
+    },
+    {
+      "key": "images/lineages/chitterkin-graphic-v1.png",
+      "bytes": 2876731,
+      "sha256": "42cf3663ffa813ca9b63ae3d7c71dabaea39933fcc5159f61fda11921a97c7d9"
+    },
+    {
+      "key": "images/lineages/chitterkin-graphic-v1.webp",
+      "bytes": 207840,
+      "sha256": "2f44901bc3d8b0602f038d87f9fcfecc60db764599fb656d20250fda48280195"
+    },
+    {
+      "key": "images/lineages/claymold-graphic-v1.png",
+      "bytes": 2904797,
+      "sha256": "f7d753712340a369b86fbceacaae070add2bd4d4000789840a0199e3ceb0a147"
+    },
+    {
+      "key": "images/lineages/claymold-graphic-v1.webp",
+      "bytes": 205654,
+      "sha256": "088ca6dcfc3091d5f79a417048573c2081e12b1df5eca1aa8fe4654bcca83911"
+    },
+    {
+      "key": "images/lineages/coppervein-graphic-v1.png",
+      "bytes": 2710122,
+      "sha256": "8651526b56f6fb377445a9f92def71e6e2943a1a5f77e38489b1903d4a9b9b95"
+    },
+    {
+      "key": "images/lineages/coppervein-graphic-v1.webp",
+      "bytes": 178080,
+      "sha256": "c664b31ee5a88a729f8d1a81f7416fc8adb5fd8f3294808a6da5ca34f39f0490"
+    },
+    {
+      "key": "images/lineages/duskling-graphic-v1.png",
+      "bytes": 2678316,
+      "sha256": "f1d1417e6a6320b788b1fcd350049929e6587d6000505b6f81eb2748d7bc1b99"
+    },
+    {
+      "key": "images/lineages/duskling-graphic-v1.webp",
+      "bytes": 130844,
+      "sha256": "dd9540312229d12efaa9594caa76a0b80b1d5859e44cc2727d79e70fa3ad7440"
+    },
+    {
+      "key": "images/lineages/flintskin-graphic-v1.png",
+      "bytes": 2930200,
+      "sha256": "9e99c18449b8cf3fef4bf27619472e83a5efcd1a5cf4172bb29e5686a3d97f19"
+    },
+    {
+      "key": "images/lineages/flintskin-graphic-v1.webp",
+      "bytes": 209484,
+      "sha256": "70f10ac3312f159c1f92a067f95d2c7b67922e73c7d07a6533ca762b94a0d9fd"
+    },
+    {
+      "key": "images/lineages/forestkind-graphic-v1.png",
+      "bytes": 2842753,
+      "sha256": "d3e3c8d767c8e1ad79b71a27c46edbb184bc23c77b92a41ce9c29387805b1227"
+    },
+    {
+      "key": "images/lineages/forestkind-graphic-v1.webp",
+      "bytes": 172324,
+      "sha256": "76d2f8fdacb0afd43db5a674a157908a327335b80d8c41a107b62b6ed77b724c"
+    },
+    {
+      "key": "images/lineages/glidesprout-graphic-v1.png",
+      "bytes": 2896314,
+      "sha256": "ff67f318872f80b7eb532b727c1af4f5d2fa04af5ab4e635ada365ea214e8e14"
+    },
+    {
+      "key": "images/lineages/glidesprout-graphic-v1.webp",
+      "bytes": 154188,
+      "sha256": "7b686e41c9408c0698c01de176072b4010c4046d51be064385b7983c569c1fd3"
+    },
+    {
+      "key": "images/lineages/griproot-graphic-v1.png",
+      "bytes": 2833722,
+      "sha256": "ff1fe4ae2b74e7f442c9575a0f732b3df7e5a855c891288ae67ae8602ce8d5d5"
+    },
+    {
+      "key": "images/lineages/griproot-graphic-v1.webp",
+      "bytes": 150268,
+      "sha256": "ed78dc95c3593c21029ed58d185fcf37edcead08fe276acfe73bbe73eacedf0f"
+    },
+    {
+      "key": "images/lineages/hearthspark-graphic-v1.png",
+      "bytes": 2686809,
+      "sha256": "e3ce220699242bd7e79e492a7e815dfd58a731cf4c7ec2a693af1212ce423b48"
+    },
+    {
+      "key": "images/lineages/hearthspark-graphic-v1.webp",
+      "bytes": 141172,
+      "sha256": "0fe31d673310ba05d2f4e4bb8ebae120d813c705902cffa9a2063000f19e7533"
+    },
+    {
+      "key": "images/lineages/hollowbone-graphic-v1.png",
+      "bytes": 2878359,
+      "sha256": "5664388de8eb7c031970663269248fb1f1bfe8c7127f03e5663b0406b5d3aa5c"
+    },
+    {
+      "key": "images/lineages/hollowbone-graphic-v1.webp",
+      "bytes": 202592,
+      "sha256": "2fd3359196f766cd709cc7d968fb7d310adb5fa7bf6deeeb13297a29507a5108"
+    },
+    {
+      "key": "images/lineages/human-graphic-v1.png",
+      "bytes": 2788707,
+      "sha256": "df46a4e63efb5d06ec3549b81f2de50a37effc5ea377f3ad17246e7fea22e1d1"
+    },
+    {
+      "key": "images/lineages/human-graphic-v1.webp",
+      "bytes": 152392,
+      "sha256": "3d67b91fe4fda35c804ea56a543fc0968e7f5f5d466e90b163cd500963f50302"
+    },
+    {
+      "key": "images/lineages/ironborn-graphic-v1.png",
+      "bytes": 2761881,
+      "sha256": "9820ad018514ff5b07ba14c5b4344e8a609d1a92bafa688902a7aa4033e663a9"
+    },
+    {
+      "key": "images/lineages/ironborn-graphic-v1.webp",
+      "bytes": 163872,
+      "sha256": "ff3d36238cf1e6fa57459e6a15af3d246611f2a8e3fb1ca72214976eac8ee28e"
+    },
+    {
+      "key": "images/lineages/kilnmaw-graphic-v1.png",
+      "bytes": 3016903,
+      "sha256": "c5914ccad2db1c6e2f97f9b587cafb0d1fbce2e852751762a11e53e369239467"
+    },
+    {
+      "key": "images/lineages/kilnmaw-graphic-v1.webp",
+      "bytes": 186594,
+      "sha256": "8230ebe44014ec673623bbd126ef27b06bafe6afca85c7c796972e9c891c8605"
+    },
+    {
+      "key": "images/lineages/lantern-eyed-graphic-v1.png",
+      "bytes": 2999569,
+      "sha256": "0a3b45aa0b09773b83ced1f2564a46ce3e5a5af6abf74f5bb4e7677f92a4fcb7"
+    },
+    {
+      "key": "images/lineages/lantern-eyed-graphic-v1.webp",
+      "bytes": 213142,
+      "sha256": "a6f688921721da5fd502a8e0c7d52ea84d7c7197045f2ba1ac7767c8c7d5aed3"
+    },
+    {
+      "key": "images/lineages/latticevein-graphic-v1.png",
+      "bytes": 2979885,
+      "sha256": "4b55243e8c39e11f505d0579819792a373cf55c2f575affdc38c6ef2ed897d20"
+    },
+    {
+      "key": "images/lineages/latticevein-graphic-v1.webp",
+      "bytes": 210130,
+      "sha256": "33622a8e7a63f1dd02a41eb938cb3b01022b7bb17539aff306f91476f8307c1e"
+    },
+    {
+      "key": "images/lineages/longreach-graphic-v1.png",
+      "bytes": 2669265,
+      "sha256": "3a7ef5b2b531ad13773e5ff8f95993176929aca12219e3d91cd387ba600a8516"
+    },
+    {
+      "key": "images/lineages/longreach-graphic-v1.webp",
+      "bytes": 173376,
+      "sha256": "b647b45bff9fdcbb9e3f03a82cacf352ce64aa25369ad29523421f77a0bcca9f"
+    },
+    {
+      "key": "images/lineages/mirebody-graphic-v1.png",
+      "bytes": 2474880,
+      "sha256": "1ab041af20721fdb33454a45c6b51ba11092dd198fd81a800f5e10ccf095f347"
+    },
+    {
+      "key": "images/lineages/mirebody-graphic-v1.webp",
+      "bytes": 116184,
+      "sha256": "f03454fddc3bc828284f152a4f91a6df4ac21c02a699a265bbcc07baa3149c44"
+    },
+    {
+      "key": "images/lineages/mirrorhide-graphic-v1.png",
+      "bytes": 2749145,
+      "sha256": "baabc754a791c00437ed66a187ca3e5535af67a1afbdab2ab05cf1f3f3385b3b"
+    },
+    {
+      "key": "images/lineages/mirrorhide-graphic-v1.webp",
+      "bytes": 185524,
+      "sha256": "c268bcb702a17ab8fad91774376458e3b36d4079f054a87ec84836e0f9225ec9"
+    },
+    {
+      "key": "images/lineages/mountainfolk-graphic-v1.png",
+      "bytes": 3118234,
+      "sha256": "c8002d0ea9350356cf51786ce6113049e0ba545ed735ffd3ecb00999e414c1ea"
+    },
+    {
+      "key": "images/lineages/mountainfolk-graphic-v1.webp",
+      "bytes": 203102,
+      "sha256": "fff150fa21e8185cedecd3e308eeb5b86976fe45922fd2a66d4383ee1e9612f6"
+    },
+    {
+      "key": "images/lineages/nightpupil-graphic-v1.png",
+      "bytes": 2953713,
+      "sha256": "b422bd28d09f996f87ce6471c7ffb55bcdfac8c7ce8d73f624c2a96518ce4cac"
+    },
+    {
+      "key": "images/lineages/nightpupil-graphic-v1.webp",
+      "bytes": 210338,
+      "sha256": "e0dce78483abc3f59c0ee00ea8e73bca3006e908e731b450c2b041af77569b69"
+    },
+    {
+      "key": "images/lineages/reachling-graphic-v1.png",
+      "bytes": 2361897,
+      "sha256": "72ad500c8d9ba9aa046e296bb82ec560834e46b8181c4e33c0c512b38d4b4ab6"
+    },
+    {
+      "key": "images/lineages/reachling-graphic-v1.webp",
+      "bytes": 106852,
+      "sha256": "05f019ebf559bcaea39935861b5ea163fc280534131508f0ddcf7f1484647a3b"
+    },
+    {
+      "key": "images/lineages/rootwaker-graphic-v1.png",
+      "bytes": 2882936,
+      "sha256": "7596147667d7b3d4ff7d6116113ebb5406751fd4470b627e5c8e8adb3cb7b1b1"
+    },
+    {
+      "key": "images/lineages/rootwaker-graphic-v1.webp",
+      "bytes": 209912,
+      "sha256": "054d61867daa22311487626853a8e4c7dc3c26fbd1f9edab4d3fccc9d9948786"
+    },
+    {
+      "key": "images/lineages/skyborn-graphic-v1.png",
+      "bytes": 2781452,
+      "sha256": "a52dfdcd56155a0223b9cb3d5dcedf55b20632125d362bbc62d03295bb60f7d9"
+    },
+    {
+      "key": "images/lineages/skyborn-graphic-v1.webp",
+      "bytes": 161428,
+      "sha256": "5cd1cdb82dbe61c0ecc4769aca1c03cb4d84f3717e19a891bcdff7e0b715d444"
+    },
+    {
+      "key": "images/lineages/sporeveil-graphic-v1.png",
+      "bytes": 2972209,
+      "sha256": "579a8f8e4efaad03c8746e0bfc1ab31ca603fa7cad59e78e765ee53c4c4f0c93"
+    },
+    {
+      "key": "images/lineages/sporeveil-graphic-v1.webp",
+      "bytes": 186086,
+      "sha256": "e6d0330f125030b82dbad292fbed5f48ede4ac6fd540231e8becf8d4e2883e8a"
+    },
+    {
+      "key": "images/lineages/tidekin-graphic-v1.png",
+      "bytes": 2788654,
+      "sha256": "710e88af1a798810b1052e697a3963d6ee9d163a65ea397ef1f943a1b9419f2a"
+    },
+    {
+      "key": "images/lineages/tidekin-graphic-v1.webp",
+      "bytes": 156766,
+      "sha256": "a238fda304bbe4f861c9c577a4069d8384600e47bccb230f0e96770003ce2282"
+    },
+    {
+      "key": "images/lineages/toneweft-graphic-v1.png",
+      "bytes": 3166009,
+      "sha256": "c54a091740c1e48a6d76ed2ddb80dec1b7c880338acffadf3357f4becd885c40"
+    },
+    {
+      "key": "images/lineages/toneweft-graphic-v1.webp",
+      "bytes": 191110,
+      "sha256": "ea627206089434e56a812c854405337aaefcb294c076a932ad8eebbe2f6468d0"
+    },
+    {
+      "key": "images/lineages/whispercolony-graphic-v1.png",
+      "bytes": 2676168,
+      "sha256": "1353385eb7a0ccead2277d0de3fc74b9cbb92c9e4dd66c327de6cfc9dfb290d5"
+    },
+    {
+      "key": "images/lineages/whispercolony-graphic-v1.webp",
+      "bytes": 128984,
+      "sha256": "6cca964be94fb590080282c450bb9cb9d44c754674ea7ca165b12d95c5dd5d37"
+    }
+  ]
+}
