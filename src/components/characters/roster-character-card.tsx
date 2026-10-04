@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { characters } from "@/db/schema";
-import { aggregateCharacterSheet } from "@/lib/engine";
+import { aggregateRosterSheet } from "@/lib/character/roster-sheet";
 import type { PrimitiveLinkSnapshot, ItemLinkSnapshot, CapabilityLinkSnapshot } from "@/lib/engine/sheet";
 import { rosterComposition } from "@/lib/character/roster-composition";
 import { portraitFrameStyle } from "@/lib/character/portrait-frame";
@@ -15,7 +15,7 @@ export function RosterCharacterCard({
   actions?: React.ReactNode;
   character: RosterCharacter;
 }) {
-  const sheet = aggregateCharacterSheet({
+  const sheet = aggregateRosterSheet({
     level: character.level,
     attrPhysical: character.attrPhysical,
     attrMental: character.attrMental,
