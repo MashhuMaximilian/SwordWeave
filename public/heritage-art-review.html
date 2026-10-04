@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SwordWeave · Heritage art gallery</title>
+<style>
+:root{color-scheme:dark;--gold:#d4b472;--muted:#b8b0a0;--line:#8d744442}
+*{box-sizing:border-box}body{margin:0;color:#f1e9d9;background:radial-gradient(ellipse at 10% 0,#28261f,transparent 45%),#0e141c;font:16px system-ui,sans-serif;min-height:100vh}
+header,main{max-width:1600px;margin:auto;padding:clamp(18px,3vw,44px)}header{padding-bottom:20px}
+.eyebrow{color:var(--gold);font-size:.75rem;text-transform:uppercase;letter-spacing:.18em}h1{font:clamp(2rem,4vw,3.5rem) Georgia,serif;letter-spacing:-.03em;margin:12px 0}header p{color:var(--muted);line-height:1.6;margin:8px 0}
+.toolbar{display:flex;gap:20px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:28px;border-block:1px solid var(--line);padding:18px 0}
+[role=tablist]{display:flex;gap:8px;flex-wrap:wrap}[role=tab]{font:inherit;border:1px solid #79633d;background:#141b23;color:#d8d0c1;padding:12px 18px;border-radius:9px;cursor:pointer;white-space:nowrap}[role=tab] span{font-size:.8rem;margin-left:10px;opacity:.7}[role=tab][aria-selected=true]{background:linear-gradient(135deg,#dbbe7d,#ad8748);color:#181914;border-color:#eed8a5;box-shadow:inset 0 1px 0 #fff5}
+.search{display:flex;flex-direction:column;gap:6px;flex:1;max-width:330px;min-width:180px}.search span{font-size:.75rem;color:var(--muted)}input{width:100%;font:inherit;background:#0b1118;color:#eee3cc;border:1px solid #8e815d;border-radius:8px;padding:11px 14px}button:focus-visible,input:focus-visible{outline:2px solid #f0d18a;outline-offset:4px}
+#result-status{font-size:.85rem;color:var(--muted);margin-top:16px}main{padding-top:0}.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr));gap:24px}
+figure{margin:0;border:1px solid #8d7444;border-radius:12px;overflow:hidden;background:#151c25;box-shadow:0 8px 28px #0003}figure[hidden]{display:none}img{display:block;width:100%;height:auto;aspect-ratio:2/3;object-fit:contain;background:#111820}figcaption{padding:16px 18px;border-top:1px solid var(--line)}h2{font:1.2rem Georgia,serif;margin:0 0 8px}figcaption span{color:var(--gold);font-size:.75rem;text-transform:uppercase;letter-spacing:.08em}#empty{color:var(--muted);padding:24px 0}
+@media(max-width:600px){.toolbar{gap:16px}[role=tablist]{width:100%;gap:6px}[role=tab]{flex:1;padding:11px 9px;font-size:.85rem}[role=tab] span{margin-left:5px}.search{max-width:none;width:100%}.gallery{gap:18px}}
+</style>
+</head>
+<body>
+<header>
+<div class="eyebrow">SwordWeave · Art review</div>
+<h1>Heritage portraits</h1>
+<p>108 approved illustrations, organized by heritage. Full artwork is shown without cropping.</p>
+<div class="toolbar">
+<div role="tablist" aria-label="Heritage category">
+<button id="tab-lineages" role="tab" aria-selected="true" aria-controls="gallery" data-kind="Lineage">Lineages <span>30</span></button>
+<button id="tab-upbringings" role="tab" aria-selected="false" aria-controls="gallery" tabindex="-1" data-kind="Upbringing">Upbringings <span>54</span></button>
+<button id="tab-manifests" role="tab" aria-selected="false" aria-controls="gallery" tabindex="-1" data-kind="Manifest">Manifests <span>24</span></button>
+</div>
+<label class="search"><span>Find a portrait</span><input id="search" type="search" placeholder="Search by name…" autocomplete="off"></label>
+</div>
+<p id="result-status" role="status" aria-live="polite">30 lineages</p>
+</header>
+<main>
+<div id="gallery" class="gallery" role="tabpanel" aria-labelledby="tab-lineages" tabindex="0">
+<figure data-kind="Lineage" data-name="human">
+  <img loading="lazy" decoding="async" src="images/lineages/human-graphic-v1.webp" alt="Human" width="512" height="768">
+  <figcaption><h2>Human</h2><span>Main lineage</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="mountainfolk">
+  <img loading="lazy" decoding="async" src="images/lineages/mountainfolk-graphic-v1.webp" alt="Mountainfolk" width="512" height="768">
+  <figcaption><h2>Mountainfolk</h2><span>Main lineage</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="skyborn">
+  <img loading="lazy" decoding="async" src="images/lineages/skyborn-graphic-v1.webp" alt="Skyborn" width="512" height="768">
+  <figcaption><h2>Skyborn</h2><span>Main lineage</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="tidekin">
+  <img loading="lazy" decoding="async" src="images/lineages/tidekin-graphic-v1.webp" alt="Tidekin" width="512" height="768">
+  <figcaption><h2>Tidekin</h2><span>Main lineage</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="ironborn">
+  <img loading="lazy" decoding="async" src="images/lineages/ironborn-graphic-v1.webp" alt="Ironborn" width="512" height="768">
+  <figcaption><h2>Ironborn</h2><span>Main lineage</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="forestkind">
+  <img loading="lazy" decoding="async" src="images/lineages/forestkind-graphic-v1.webp" alt="Forestkind" width="512" height="768">
+  <figcaption><h2>Forestkind</h2><span>Main lineage</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="ashlung">
+  <img loading="lazy" decoding="async" src="images/lineages/ashlung-graphic-v1.webp" alt="Ashlung" width="512" height="768">
+  <figcaption><h2>Ashlung</h2><span>Main lineage</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="burrowhide">
+  <img loading="lazy" decoding="async" src="images/lineages/burrowhide-graphic-v1.webp" alt="Burrowhide" width="512" height="768">
+  <figcaption><h2>Burrowhide</h2><span>Main lineage</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="toneweft">
+  <img loading="lazy" decoding="async" src="images/lineages/toneweft-graphic-v1.webp" alt="Toneweft" width="512" height="768">
+  <figcaption><h2>Toneweft</h2><span>Main lineage</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="sporeveil">
+  <img loading="lazy" decoding="async" src="images/lineages/sporeveil-graphic-v1.webp" alt="Sporeveil" width="512" height="768">
+  <figcaption><h2>Sporeveil</h2><span>Main lineage</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="claymold">
+  <img loading="lazy" decoding="async" src="images/lineages/claymold-graphic-v1.webp" alt="Claymold" width="512" height="768">
+  <figcaption><h2>Claymold</h2><span>Main lineage</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="mirrorhide">
+  <img loading="lazy" decoding="async" src="images/lineages/mirrorhide-graphic-v1.webp" alt="Mirrorhide" width="512" height="768">
+  <figcaption><h2>Mirrorhide</h2><span>Main lineage</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="flintskin">
+  <img loading="lazy" decoding="async" src="images/lineages/flintskin-graphic-v1.webp" alt="Flintskin" width="512" height="768">
+  <figcaption><h2>Flintskin</h2><span>Main lineage</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="rootwaker">
+  <img loading="lazy" decoding="async" src="images/lineages/rootwaker-graphic-v1.webp" alt="Rootwaker" width="512" height="768">
+  <figcaption><h2>Rootwaker</h2><span>Main lineage</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="latticevein">
+  <img loading="lazy" decoding="async" src="images/lineages/latticevein-graphic-v1.webp" alt="Latticevein" width="512" height="768">
+  <figcaption><h2>Latticevein</h2><span>Main lineage</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="coppervein">
+  <img loading="lazy" decoding="async" src="images/lineages/coppervein-graphic-v1.webp" alt="Coppervein" width="512" height="768">
+  <figcaption><h2>Coppervein</h2><span>Main lineage</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="nightpupil">
+  <img loading="lazy" decoding="async" src="images/lineages/nightpupil-graphic-v1.webp" alt="Nightpupil" width="512" height="768">
+  <figcaption><h2>Nightpupil</h2><span>Main lineage</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="lantern-eyed">
+  <img loading="lazy" decoding="async" src="images/lineages/lantern-eyed-graphic-v1.webp" alt="Lantern-eyed" width="512" height="768">
+  <figcaption><h2>Lantern-eyed</h2><span>Main lineage</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="hollowbone">
+  <img loading="lazy" decoding="async" src="images/lineages/hollowbone-graphic-v1.webp" alt="Hollowbone" width="512" height="768">
+  <figcaption><h2>Hollowbone</h2><span>Main lineage</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="antlerhand">
+  <img loading="lazy" decoding="async" src="images/lineages/antlerhand-graphic-v1.webp" alt="Antlerhand" width="512" height="768">
+  <figcaption><h2>Antlerhand</h2><span>Main lineage</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="chitterkin">
+  <img loading="lazy" decoding="async" src="images/lineages/chitterkin-graphic-v1.webp" alt="Chitterkin" width="512" height="768">
+  <figcaption><h2>Chitterkin</h2><span>Main lineage</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="longreach">
+  <img loading="lazy" decoding="async" src="images/lineages/longreach-graphic-v1.webp" alt="Longreach" width="512" height="768">
+  <figcaption><h2>Longreach</h2><span>Main lineage</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="mirebody">
+  <img loading="lazy" decoding="async" src="images/lineages/mirebody-graphic-v1.webp" alt="Mirebody" width="512" height="768">
+  <figcaption><h2>Mirebody</h2><span>Main lineage</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="kilnmaw">
+  <img loading="lazy" decoding="async" src="images/lineages/kilnmaw-graphic-v1.webp" alt="Kilnmaw" width="512" height="768">
+  <figcaption><h2>Kilnmaw</h2><span>Main lineage</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="hearthspark">
+  <img loading="lazy" decoding="async" src="images/lineages/hearthspark-graphic-v1.webp" alt="Hearthspark" width="512" height="768">
+  <figcaption><h2>Hearthspark</h2><span>Early base</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="duskling">
+  <img loading="lazy" decoding="async" src="images/lineages/duskling-graphic-v1.webp" alt="Duskling" width="512" height="768">
+  <figcaption><h2>Duskling</h2><span>Early base</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="griproot">
+  <img loading="lazy" decoding="async" src="images/lineages/griproot-graphic-v1.webp" alt="Griproot" width="512" height="768">
+  <figcaption><h2>Griproot</h2><span>Early base</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="whispercolony">
+  <img loading="lazy" decoding="async" src="images/lineages/whispercolony-graphic-v1.webp" alt="Whispercolony" width="512" height="768">
+  <figcaption><h2>Whispercolony</h2><span>Early base</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="glidesprout">
+  <img loading="lazy" decoding="async" src="images/lineages/glidesprout-graphic-v1.webp" alt="Glidesprout" width="512" height="768">
+  <figcaption><h2>Glidesprout</h2><span>Early base</span></figcaption>
+</figure>
+<figure data-kind="Lineage" data-name="reachling">
+  <img loading="lazy" decoding="async" src="images/lineages/reachling-graphic-v1.webp" alt="Reachling" width="512" height="768">
+  <figcaption><h2>Reachling</h2><span>Early base</span></figcaption>
+</figure>
+<figure data-kind="Manifest" data-name="steady blade" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/manifests/steady-blade-graphic-v3.webp" alt="Steady Blade" width="512" height="768">
+  <figcaption><h2>Steady Blade</h2><span>Manifest</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="roadside errand runner" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/roadside-errand-runner-graphic-v3.webp" alt="Roadside Errand Runner" width="512" height="768">
+  <figcaption><h2>Roadside Errand Runner</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="workshop sweeper" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/workshop-sweeper-graphic-v3.webp" alt="Workshop Sweeper" width="512" height="768">
+  <figcaption><h2>Workshop Sweeper</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="lantern stall helper" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/lantern-stall-helper-graphic-v3.webp" alt="Lantern Stall Helper" width="512" height="768">
+  <figcaption><h2>Lantern Stall Helper</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="orchard neighbor" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/orchard-neighbor-graphic-v3.webp" alt="Orchard Neighbor" width="512" height="768">
+  <figcaption><h2>Orchard Neighbor</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="agreement recorder" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/agreement-recorder-graphic-v3.webp" alt="Agreement Recorder" width="512" height="768">
+  <figcaption><h2>Agreement Recorder</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="harbor rope hand" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/harbor-rope-hand-graphic-v3.webp" alt="Harbor Rope Hand" width="512" height="768">
+  <figcaption><h2>Harbor Rope Hand</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Manifest" data-name="doorwatch" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/manifests/doorwatch-graphic-v3.webp" alt="Doorwatch" width="512" height="768">
+  <figcaption><h2>Doorwatch</h2><span>Manifest</span></figcaption>
+</figure>
+<figure data-kind="Manifest" data-name="quickstep" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/manifests/quickstep-graphic-v3.webp" alt="Quickstep" width="512" height="768">
+  <figcaption><h2>Quickstep</h2><span>Manifest</span></figcaption>
+</figure>
+<figure data-kind="Manifest" data-name="glimmer caller" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/manifests/glimmer-caller-graphic-v3.webp" alt="Glimmer Caller" width="512" height="768">
+  <figcaption><h2>Glimmer Caller</h2><span>Manifest</span></figcaption>
+</figure>
+<figure data-kind="Manifest" data-name="stitchkeeper" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/manifests/stitchkeeper-graphic-v3.webp" alt="Stitchkeeper" width="512" height="768">
+  <figcaption><h2>Stitchkeeper</h2><span>Manifest</span></figcaption>
+</figure>
+<figure data-kind="Manifest" data-name="patchwright" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/manifests/patchwright-graphic-v3.webp" alt="Patchwright" width="512" height="768">
+  <figcaption><h2>Patchwright</h2><span>Manifest</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="wanderer" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/wanderer-graphic-v3.webp" alt="Wanderer" width="512" height="768">
+  <figcaption><h2>Wanderer</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="ferry ward" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/ferry-ward-graphic-v3.webp" alt="Ferry Ward" width="512" height="768">
+  <figcaption><h2>Ferry Ward</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="marsh salvager" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/marsh-salvager-graphic-v3.webp" alt="Marsh Salvager" width="512" height="768">
+  <figcaption><h2>Marsh Salvager</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="reef courier" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/reef-courier-graphic-v3.webp" alt="Reef Courier" width="512" height="768">
+  <figcaption><h2>Reef Courier</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="caravan watermaster" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/caravan-watermaster-graphic-v3.webp" alt="Caravan Watermaster" width="512" height="768">
+  <figcaption><h2>Caravan Watermaster</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="cartographer&#x27;s apprentice" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/cartographer-s-apprentice-graphic-v3.webp" alt="Cartographer&#x27;s Apprentice" width="512" height="768">
+  <figcaption><h2>Cartographer&#x27;s Apprentice</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="wreck diver" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/wreck-diver-graphic-v3.webp" alt="Wreck Diver" width="512" height="768">
+  <figcaption><h2>Wreck Diver</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="road warden" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/road-warden-graphic-v3.webp" alt="Road Warden" width="512" height="768">
+  <figcaption><h2>Road Warden</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="tinkerer" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/tinkerer-graphic-v3.webp" alt="Tinkerer" width="512" height="768">
+  <figcaption><h2>Tinkerer</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="bell foundry worker" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/bell-foundry-worker-graphic-v3.webp" alt="Bell Foundry Worker" width="512" height="768">
+  <figcaption><h2>Bell Foundry Worker</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="glasswright" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/glasswright-graphic-v3.webp" alt="Glasswright" width="512" height="768">
+  <figcaption><h2>Glasswright</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="quarry rigger" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/quarry-rigger-graphic-v3.webp" alt="Quarry Rigger" width="512" height="768">
+  <figcaption><h2>Quarry Rigger</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="ward tailor" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/ward-tailor-graphic-v3.webp" alt="Ward Tailor" width="512" height="768">
+  <figcaption><h2>Ward Tailor</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="disaster cook" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/disaster-cook-graphic-v3.webp" alt="Disaster Cook" width="512" height="768">
+  <figcaption><h2>Disaster Cook</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="rooftop rigger" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/rooftop-rigger-graphic-v3.webp" alt="Rooftop Rigger" width="512" height="768">
+  <figcaption><h2>Rooftop Rigger</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="courtier" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/courtier-graphic-v3.webp" alt="Courtier" width="512" height="768">
+  <figcaption><h2>Courtier</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="market ledger clerk" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/market-ledger-clerk-graphic-v3.webp" alt="Market Ledger Clerk" width="512" height="768">
+  <figcaption><h2>Market Ledger Clerk</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="canal inspector" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/canal-inspector-graphic-v3.webp" alt="Canal Inspector" width="512" height="768">
+  <figcaption><h2>Canal Inspector</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="witness scribe" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/witness-scribe-graphic-v3.webp" alt="Witness Scribe" width="512" height="768">
+  <figcaption><h2>Witness Scribe</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="city alarm keeper" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/city-alarm-keeper-graphic-v3.webp" alt="City Alarm Keeper" width="512" height="768">
+  <figcaption><h2>City Alarm Keeper</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="village mediator" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/village-mediator-graphic-v3.webp" alt="Village Mediator" width="512" height="768">
+  <figcaption><h2>Village Mediator</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="tavern keeper" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/tavern-keeper-graphic-v3.webp" alt="Tavern Keeper" width="512" height="768">
+  <figcaption><h2>Tavern Keeper</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="smuggler&#x27;s lookout" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/smuggler-s-lookout-graphic-v3.webp" alt="Smuggler&#x27;s Lookout" width="512" height="768">
+  <figcaption><h2>Smuggler&#x27;s Lookout</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="scholar" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/scholar-graphic-v3.webp" alt="Scholar" width="512" height="768">
+  <figcaption><h2>Scholar</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="field surgeon apprentice" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/field-surgeon-apprentice-graphic-v3.webp" alt="Field Surgeon Apprentice" width="512" height="768">
+  <figcaption><h2>Field Surgeon Apprentice</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="archive conservator" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/archive-conservator-graphic-v3.webp" alt="Archive Conservator" width="512" height="768">
+  <figcaption><h2>Archive Conservator</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="weather watcher" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/weather-watcher-graphic-v3.webp" alt="Weather Watcher" width="512" height="768">
+  <figcaption><h2>Weather Watcher</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="reliquary keeper" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/reliquary-keeper-graphic-v3.webp" alt="Reliquary Keeper" width="512" height="768">
+  <figcaption><h2>Reliquary Keeper</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="beast handler&#x27;s aide" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/beast-handler-s-aide-graphic-v3.webp" alt="Beast Handler&#x27;s Aide" width="512" height="768">
+  <figcaption><h2>Beast Handler&#x27;s Aide</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="star surveyor" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/star-surveyor-graphic-v3.webp" alt="Star Surveyor" width="512" height="768">
+  <figcaption><h2>Star Surveyor</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="apothecary apprentice" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/apothecary-apprentice-graphic-v3.webp" alt="Apothecary Apprentice" width="512" height="768">
+  <figcaption><h2>Apothecary Apprentice</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="soldier" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/soldier-graphic-v3.webp" alt="Soldier" width="512" height="768">
+  <figcaption><h2>Soldier</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="bridgewatch veteran" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/bridgewatch-veteran-graphic-v3.webp" alt="Bridgewatch Veteran" width="512" height="768">
+  <figcaption><h2>Bridgewatch Veteran</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="siege mason" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/siege-mason-graphic-v3.webp" alt="Siege Mason" width="512" height="768">
+  <figcaption><h2>Siege Mason</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="firewatch runner" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/firewatch-runner-graphic-v3.webp" alt="Firewatch Runner" width="512" height="768">
+  <figcaption><h2>Firewatch Runner</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="rescue diver" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/rescue-diver-graphic-v3.webp" alt="Rescue Diver" width="512" height="768">
+  <figcaption><h2>Rescue Diver</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="prison keykeeper" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/prison-keykeeper-graphic-v3.webp" alt="Prison Keykeeper" width="512" height="768">
+  <figcaption><h2>Prison Keykeeper</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="boundary keeper" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/boundary-keeper-graphic-v3.webp" alt="Boundary Keeper" width="512" height="768">
+  <figcaption><h2>Boundary Keeper</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="funeral tender" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/funeral-tender-graphic-v3.webp" alt="Funeral Tender" width="512" height="768">
+  <figcaption><h2>Funeral Tender</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="theater maskmaker" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/theater-maskmaker-graphic-v3.webp" alt="Theater Maskmaker" width="512" height="768">
+  <figcaption><h2>Theater Maskmaker</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="salt-road exile" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/salt-road-exile-graphic-v3.webp" alt="Salt-Road Exile" width="512" height="768">
+  <figcaption><h2>Salt-Road Exile</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="pit fighter" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/pit-fighter-graphic-v3.webp" alt="Pit Fighter" width="512" height="768">
+  <figcaption><h2>Pit Fighter</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="festival lantern tender" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/festival-lantern-tender-graphic-v3.webp" alt="Festival Lantern Tender" width="512" height="768">
+  <figcaption><h2>Festival Lantern Tender</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Manifest" data-name="striker" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/manifests/striker-graphic-v3.webp" alt="Striker" width="512" height="768">
+  <figcaption><h2>Striker</h2><span>Manifest</span></figcaption>
+</figure>
+<figure data-kind="Manifest" data-name="guardian" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/manifests/guardian-graphic-v3.webp" alt="Guardian" width="512" height="768">
+  <figcaption><h2>Guardian</h2><span>Manifest</span></figcaption>
+</figure>
+<figure data-kind="Manifest" data-name="elemental shaper" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/manifests/elemental-shaper-graphic-v3.webp" alt="Elemental Shaper" width="512" height="768">
+  <figcaption><h2>Elemental Shaper</h2><span>Manifest</span></figcaption>
+</figure>
+<figure data-kind="Manifest" data-name="hexwright" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/manifests/hexwright-graphic-v3.webp" alt="Hexwright" width="512" height="768">
+  <figcaption><h2>Hexwright</h2><span>Manifest</span></figcaption>
+</figure>
+<figure data-kind="Manifest" data-name="beast signal keeper" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/manifests/beast-signal-keeper-graphic-v3.webp" alt="Beast Signal Keeper" width="512" height="768">
+  <figcaption><h2>Beast Signal Keeper</h2><span>Manifest</span></figcaption>
+</figure>
+<figure data-kind="Manifest" data-name="relic seeker" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/manifests/relic-seeker-graphic-v3.webp" alt="Relic Seeker" width="512" height="768">
+  <figcaption><h2>Relic Seeker</h2><span>Manifest</span></figcaption>
+</figure>
+<figure data-kind="Manifest" data-name="treaty envoy" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/manifests/treaty-envoy-graphic-v3.webp" alt="Treaty Envoy" width="512" height="768">
+  <figcaption><h2>Treaty Envoy</h2><span>Manifest</span></figcaption>
+</figure>
+<figure data-kind="Manifest" data-name="longshot" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/manifests/longshot-graphic-v3.webp" alt="Longshot" width="512" height="768">
+  <figcaption><h2>Longshot</h2><span>Manifest</span></figcaption>
+</figure>
+<figure data-kind="Manifest" data-name="echo duelist" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/manifests/echo-duelist-graphic-v3.webp" alt="Echo Duelist" width="512" height="768">
+  <figcaption><h2>Echo Duelist</h2><span>Manifest</span></figcaption>
+</figure>
+<figure data-kind="Manifest" data-name="threshold warden" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/manifests/threshold-warden-graphic-v3.webp" alt="Threshold Warden" width="512" height="768">
+  <figcaption><h2>Threshold Warden</h2><span>Manifest</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="hollow-city scavenger" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/hollow-city-scavenger-graphic-v3.webp" alt="Hollow-City Scavenger" width="512" height="768">
+  <figcaption><h2>Hollow-City Scavenger</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="night census taker" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/night-census-taker-graphic-v3.webp" alt="Night Census Taker" width="512" height="768">
+  <figcaption><h2>Night Census Taker</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="plague camp volunteer" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/plague-camp-volunteer-graphic-v3.webp" alt="Plague Camp Volunteer" width="512" height="768">
+  <figcaption><h2>Plague Camp Volunteer</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="oath witness" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/oath-witness-graphic-v3.webp" alt="Oath Witness" width="512" height="768">
+  <figcaption><h2>Oath Witness</h2><span>Upbringing</span></figcaption>
+</figure>
+<figure data-kind="Manifest" data-name="skirmisher" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/manifests/skirmisher-graphic-v3.webp" alt="Skirmisher" width="512" height="768">
+  <figcaption><h2>Skirmisher</h2><span>Manifest</span></figcaption>
+</figure>
+<figure data-kind="Manifest" data-name="mystic" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/manifests/mystic-graphic-v3.webp" alt="Mystic" width="512" height="768">
+  <figcaption><h2>Mystic</h2><span>Manifest</span></figcaption>
+</figure>
+<figure data-kind="Manifest" data-name="artificer" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/manifests/artificer-graphic-v3.webp" alt="Artificer" width="512" height="768">
+  <figcaption><h2>Artificer</h2><span>Manifest</span></figcaption>
+</figure>
+<figure data-kind="Manifest" data-name="field medic" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/manifests/field-medic-graphic-v3.webp" alt="Field Medic" width="512" height="768">
+  <figcaption><h2>Field Medic</h2><span>Manifest</span></figcaption>
+</figure>
+<figure data-kind="Manifest" data-name="thread surgeon" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/manifests/thread-surgeon-graphic-v3.webp" alt="Thread Surgeon" width="512" height="768">
+  <figcaption><h2>Thread Surgeon</h2><span>Manifest</span></figcaption>
+</figure>
+<figure data-kind="Manifest" data-name="terrain architect" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/manifests/terrain-architect-graphic-v3.webp" alt="Terrain Architect" width="512" height="768">
+  <figcaption><h2>Terrain Architect</h2><span>Manifest</span></figcaption>
+</figure>
+<figure data-kind="Manifest" data-name="signal captain" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/manifests/signal-captain-graphic-v3.webp" alt="Signal Captain" width="512" height="768">
+  <figcaption><h2>Signal Captain</h2><span>Manifest</span></figcaption>
+</figure>
+<figure data-kind="Manifest" data-name="veil runner" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/manifests/veil-runner-graphic-v3.webp" alt="Veil Runner" width="512" height="768">
+  <figcaption><h2>Veil Runner</h2><span>Manifest</span></figcaption>
+</figure>
+<figure data-kind="Upbringing" data-name="orchard tender" hidden>
+  <img loading="lazy" decoding="async" src="images/heritages/upbringings/orchard-tender-graphic-v3.webp" alt="Orchard Tender" width="512" height="768">
+  <figcaption><h2>Orchard Tender</h2><span>Upbringing</span></figcaption>
+</figure>
+</div>
+<p id="empty" hidden>No portraits match your search in this category.</p>
+</main>
+<script>
+const tabs=[...document.querySelectorAll('[role="tab"]')];
+const portraits=[...document.querySelectorAll('figure')];
+const search=document.getElementById('search');
+const gallery=document.getElementById('gallery');
+let active=tabs[0];
+function update(){
+  const query=search.value.trim().toLocaleLowerCase();
+  let count=0;
+  for(const portrait of portraits){
+    const visible=portrait.dataset.kind===active.dataset.kind&&portrait.dataset.name.includes(query);
+    portrait.hidden=!visible;if(visible)count++;
+  }
+  document.getElementById('result-status').textContent=count+' '+active.dataset.kind.toLowerCase()+(count===1?'':'s')+(query?' matching “'+search.value.trim()+'”':'');
+  document.getElementById('empty').hidden=count!==0;
+}
+function activate(tab){
+  active=tab;
+  for(const item of tabs){const selected=item===tab;item.setAttribute('aria-selected',String(selected));item.tabIndex=selected?0:-1;}
+  gallery.setAttribute('aria-labelledby',tab.id);update();
+}
+for(const tab of tabs){
+  tab.addEventListener('click',()=>activate(tab));
+  tab.addEventListener('keydown',event=>{
+    const index=tabs.indexOf(tab);let next;
+    if(event.key==='ArrowRight')next=tabs[(index+1)%tabs.length];
+    if(event.key==='ArrowLeft')next=tabs[(index+tabs.length-1)%tabs.length];
+    if(event.key==='Home')next=tabs[0];if(event.key==='End')next=tabs[tabs.length-1];
+    if(next){event.preventDefault();activate(next);next.focus();}
+  });
+}
+search.addEventListener('input',update);
+</script>
+</body>
+</html>

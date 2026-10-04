@@ -2,7 +2,7 @@
 
 ## Outcome and scope
 
-Tasks 1–8 are implemented locally as one teaching and interface refinement pass. The goal is a usable first character and first session for a new player, with a shared visual language across public pages, creation, Library, Atelier and the sheet. Task 9 remains a hosting decision; no hosting configuration or assets have been migrated.
+Tasks 1–8 are implemented and deployed as one teaching and interface refinement pass. The goal is a usable first character and first session for a new player, with a shared visual language across public pages, creation, Library, Atelier and the sheet. Task 9 is implemented: public artwork is served from Cloudflare R2 through a Worker. See [public artwork hosting](public-art-hosting.md).
 
 ## Implemented work
 
@@ -22,8 +22,8 @@ Tasks 1–8 are implemented locally as one teaching and interface refinement pas
 - Full working-tree suite: 2,723 passed, 149 failed, 15 skipped. All 149 failing test identities also fail at the previous committed version; the comparison found no newly failing tests. Existing failures include database fixture suites, three historical recipe-card assertions and a clone-route authentication mock. The full suite is not green.
 - CSS parsing and `git diff --check` passed. Scoped lint retains historical effect-state and image/hook warnings; the touched integration files have no errors with the existing effect-state rule excluded.
 - Desktop checks were made during implementation. Final mobile/tablet/light-theme visual validation could not be completed: the browser tool's security policy rejected local navigation. No alternate browser or raw automation workaround was attempted. These renders still need an interactive review; code/build checks are not a substitute.
-- This pass does not change the rules engine or production database, and has not been pushed or deployed.
+- This pass does not change the rules engine or production database. Commits `3594eb7` and `23582c6` were pushed to main, built successfully on Vercel and promoted to swordweave.quest on 4 October 2026.
 
 ## Hosting decision
 
-See the [hosting assessment](image-hosting-assessment-2026-10-04.md) for the inspected Vercel Hobby usage, current asset footprint, public/private image delivery constraints and official pricing sources. The recommendation is to retain Vercel for the app and use Cloudflare R2 for the growing public artwork catalog, with private uploads kept separate. Keeping Vercel and reducing verified-unused deployment assets is the simpler immediate alternative.
+See the [hosting assessment](image-hosting-assessment-2026-10-04.md) for the inspected Vercel Hobby usage, current asset footprint, public/private image delivery constraints and official pricing sources. The recommendation is to retain Vercel for the app and use Cloudflare R2 for the growing public artwork catalog, with private uploads kept separate. The approved R2 migration removed 567.96 MiB of catalog images from future application deployments, preserved existing image paths and verified all 381 uploaded objects.
