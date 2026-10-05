@@ -5,7 +5,6 @@
 // =============================================================================
 
 import Link from "next/link";
-import { V12Navigation } from "@/components/layout/v12-navigation";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db/client";
 import {
@@ -180,7 +179,7 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
   };
 
   return (
-    <><V12Navigation page="Library" /><div className="v12-library-page mx-auto w-full max-w-[1680px] px-5 py-6">
+    <><div className="v12-library-page mx-auto w-full max-w-[1680px] px-5 py-6">
       <header className="v12-library-heading">
       <div className="v12-library-title">
         <div className="min-w-0">

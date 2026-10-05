@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useUser, useClerk } from "@clerk/nextjs";
 import { BookmarkButton } from "./bookmark-button";
 import Link from "next/link";
+import "./collections.css";
 type Collection = {
   id: string;
   name: string;
@@ -16,7 +17,7 @@ type Entry = { targetType: string; targetId: string; name: string };
 type CollectionPageProps = { collectionId?: string; ownerId?: string; embedded?: boolean };
 export function CollectionsClient(props: CollectionPageProps) {
   const { user, isLoaded } = useUser();
-  if (!isLoaded) return props.embedded ? <div className="p-4" role="status">Loading account…</div> : <main className="p-4" role="status">Loading account…</main>;
+  if (!isLoaded) return props.embedded ? <div className="sw-collections-loading" role="status">Loading account…</div> : <main className="sw-collections-loading" role="status">Loading account…</main>;
   return <AccountCollectionsClient key={`${user?.id ?? "anonymous"}:${props.collectionId ?? ""}:${props.ownerId ?? ""}:${props.embedded?"embedded":"page"}`} {...props} />;
 }
 function AccountCollectionsClient({collectionId, ownerId, embedded=false}: CollectionPageProps) {
@@ -29,7 +30,7 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
     [more, setMore] = useState(false),
     [error, setError] = useState(""),
     [name, setName] = useState(""),
-    [parent, setParent] = useState(""),
+    [parent, setParent] = useState(collectionId ?? ""),
     [visibility, setVisibility] = useState("PRIVATE"),
     [renameDraft, setRenameDraft] = useState<string | null>(null),
     [deleteReview, setDeleteReview] = useState(false),
@@ -92,33 +93,34 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
   const Root = embedded ? "div" : "main";
   const Heading = embedded ? "h2" : "h1";
   return (
-    <Root className={`mx-auto max-w-5xl space-y-6 ${embedded ? "p-0" : "p-4 sm:p-8"}`}>
-      {!embedded && <Link href="/collections" className="text-sm text-primary">
+    <Root className={`sw-collections ${embedded ? "sw-collections--embedded" : ""}`}>
+      {!embedded && <Link href="/collections" className="sw-collections-breadcrumb">
         Collections
       </Link>}
-      <Heading className="text-2xl font-semibold">
+      <header className="sw-collections-heading"><span className="sw-collections-medallion" aria-hidden="true">✦</span><div><p className="sw-collections-eyebrow">The collected chronicles</p><Heading>
         {current?.name ?? "Your collections"}
-      </Heading>
-      <p className="text-sm text-muted-foreground">
+      </Heading></div></header>
+      <p className="sw-collections-intro">
         Organize live references to your creations and community entries. Each
         collection has its own visibility.
       </p>
       {error && (
-        <p role="alert" className="text-red-400">
+        <p role="alert" className="sw-collections-error">
           {error}
         </p>
       )}
       {!collectionId && (
         <>
-          <div className="grid gap-3 sm:grid-cols-2">
+          {rows.length === 0 && <p className="sw-collections-empty">Your chronicles begin here. Create a collection to gather entries for your next adventure.</p>}
+          <div className="sw-collections-grid">
             {rows.map((c) => (
               <Link
                 key={c.id}
                 href={`/collections/${c.id}`}
-                className="rounded-lg border border-border bg-card p-4"
+                className="sw-collections-card"
               >
-                <strong>{c.name}</strong>
-                <div className="text-xs text-muted-foreground">
+                <span className="sw-collections-card-seal" aria-hidden="true">✧</span><strong>{c.name}</strong>
+                <div className="sw-collections-meta">
                   {c.visibility.replaceAll("_", " ")}
                   {c.followed ? " · Saved collection" : ""}
                   {c.parent_id && rows.find((p) => p.id === c.parent_id)
@@ -128,56 +130,10 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
               </Link>
             ))}
           </div>
-          {user && (
-            <form
-              className="space-y-3 rounded-lg border p-4"
-              onSubmit={async (e) => {
-                e.preventDefault();
-                if (
-                  await mutate("/api/collections", "POST", {
-                    name,
-                    parentId: parent || null,
-                    visibility,
-                  })
-                )
-                  setName("");
-              }}
-            >
-              <h2 className="font-semibold">Create collection</h2>
-              <input
-                aria-label="Collection name"
-                required
-                maxLength={100}
-                className="w-full rounded border bg-background p-2"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Collection name"
-              />
-              <select
-                aria-label="Parent collection"
-                className="rounded border bg-background p-2"
-                value={parent}
-                onChange={(e) => setParent(e.target.value)}
-              >
-                <option value="">No parent</option>
-                {rows
-                  .filter((c) => c.owner_id === user.id && !c.system_kind)
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-              </select>
-              <Visibility value={visibility} onChange={setVisibility} />
-              <button className="rounded bg-primary px-4 py-2 text-primary-foreground">
-                Create
-              </button>
-            </form>
-          )}
           {!user && (
             <button
               onClick={() => clerk.openSignIn()}
-              className="rounded border p-2"
+              className="sw-collections-button"
             >
               Sign in to create collections
             </button>
@@ -188,35 +144,36 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
         <>
           <Link
             href={`/library/browse?type=ALL&collectionId=${current.id}`}
-            className="inline-block text-sm text-primary"
+            className="sw-collections-button sw-collections-button--primary sw-collections-library"
           >
             Browse this collection in the Library
           </Link>
           {current.parent_id &&
             rows.find((c) => c.id === current.parent_id) && (
               <Link
-                className="block text-sm text-primary"
+                className="sw-collections-breadcrumb"
                 href={`/collections/${current.parent_id}`}
               >
                 In {rows.find((c) => c.id === current.parent_id)?.name}
               </Link>
             )}
-          <div className="grid gap-2 sm:grid-cols-2">
+          {rows.some(c => c.parent_id === current.id) && <h2>Child collections</h2>}
+          <div className="sw-collections-grid">
             {rows
               .filter((c) => c.parent_id === current.id)
               .map((c) => (
                 <Link
                   key={c.id}
                   href={`/collections/${c.id}`}
-                  className="rounded border p-3"
+                  className="sw-collections-card"
                 >
-                  {c.name}
+                  <span className="sw-collections-card-seal" aria-hidden="true">✧</span><strong>{c.name}</strong>
                 </Link>
               ))}
           </div>
           {user && current.owner_id !== user.id && (
             <button
-              className="rounded border p-2"
+              className="sw-collections-button"
               onClick={() =>
                 void mutate(`/api/collections/${current.id}`, "PATCH", {
                   follow: !current.followed,
@@ -228,11 +185,11 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
           )}
           {user && current.owner_id === user.id && current.system_kind && <Visibility value={current.visibility} onChange={v=>void mutate(`/api/collections/${current.id}`,"PATCH",{visibility:v})}/>}
           {user && current.owner_id === user.id && !current.system_kind && (
-            <div className="flex flex-wrap gap-2">
+            <div className="sw-collections-manage sw-collections-panel">
               <select
                 aria-label="Move collection to parent"
                 value={current.parent_id ?? ""}
-                className="rounded border bg-background p-2"
+                className="sw-collections-input"
                 onChange={(e) =>
                   void mutate(`/api/collections/${current.id}`, "PATCH", {
                     parentId: e.target.value || null,
@@ -256,32 +213,32 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
                   })
                 }
               />
-              <button className="rounded border p-2" disabled={pending} onClick={() => setRenameDraft(current.name)}>Rename</button>
-              <button className="rounded border p-2" disabled={pending} onClick={() => setDeleteReview(true)}>Delete collection</button>
-              {renameDraft !== null && <form className="w-full space-y-2 rounded border p-3" onSubmit={async event => {
+              <button className="sw-collections-button" disabled={pending} onClick={() => setRenameDraft(current.name)}>Rename</button>
+              <button className="sw-collections-button" disabled={pending} onClick={() => setDeleteReview(true)}>Delete collection</button>
+              {renameDraft !== null && <form className="sw-collections-review" onSubmit={async event => {
                 event.preventDefault();
                 if (await mutate(`/api/collections/${current.id}`, "PATCH", {name: renameDraft})) setRenameDraft(null);
               }}>
-                <label className="block">Collection name<input required maxLength={100} className="ml-2 rounded border bg-background p-2" value={renameDraft} onChange={event => setRenameDraft(event.target.value)} /></label>
-                <button disabled={pending} className="mr-3 rounded border p-2">Save name</button><button type="button" disabled={pending} className="rounded border p-2" onClick={() => setRenameDraft(null)}>Cancel rename</button>
+                <label className="block">Collection name<input required maxLength={100} className="sw-collections-input" value={renameDraft} onChange={event => setRenameDraft(event.target.value)} /></label>
+                <button disabled={pending} className="sw-collections-button">Save name</button><button type="button" disabled={pending} className="sw-collections-button" onClick={() => setRenameDraft(null)}>Cancel rename</button>
               </form>}
-              {deleteReview && <fieldset className="w-full space-y-2 rounded border border-destructive p-3">
+              {deleteReview && <fieldset className="sw-collections-review sw-collections-review--danger">
                 <legend>Delete {current.name}?</legend><p>Entries remain intact. Choose what happens to child collections.</p>
-                <label className="block">Child collections<select className="ml-2 rounded border bg-background p-2" value={deleteChildren} onChange={event => setDeleteChildren(event.target.value as "move" | "delete")}>
+                <label className="block">Child collections<select className="sw-collections-input" value={deleteChildren} onChange={event => setDeleteChildren(event.target.value as "move" | "delete")}>
                   <option value="move">Move to this collection’s parent</option><option value="delete">Delete child collections too</option>
                 </select></label>
-                <button disabled={pending} className="mr-3 rounded border border-destructive p-2 text-destructive" onClick={async () => {
+                <button disabled={pending} className="sw-collections-button sw-collections-button--danger" onClick={async () => {
                   if (await mutate(`/api/collections/${current.id}`, "DELETE", {children: deleteChildren})) window.location.href = "/collections";
                 }}>Confirm delete collection</button>
-                <button disabled={pending} className="rounded border p-2" onClick={() => setDeleteReview(false)}>Cancel deletion</button>
+                <button disabled={pending} className="sw-collections-button" onClick={() => setDeleteReview(false)}>Cancel deletion</button>
               </fieldset>}
             </div>
           )}
-          <ul className="space-y-2">
+          <ul className="sw-collections-entries">
             {entries.map((e) => (
               <li
                 key={`${e.targetType}:${e.targetId}`}
-                className="flex items-center justify-between rounded border bg-card p-3"
+                className="sw-collections-entry"
               >
                 <Link
                   href={
@@ -289,10 +246,10 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
                       ? `/monsters/${e.targetId}`
                       : `/library/item/${encodeURIComponent(`${e.targetType}:${e.targetId}`)}`
                   }
-                  className="text-primary"
+                  className="sw-collections-entry-link"
                 >
                   {e.name}
-                  <span className="ml-2 text-xs text-muted-foreground">
+                  <span className="sw-collections-entry-kind">
                     {e.targetType.replaceAll("_TEMPLATE", "").toLowerCase()}
                   </span>
                 </Link>
@@ -304,21 +261,67 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
             ))}
           </ul>
           {entries.length === 0 && (
-            <p className="text-muted-foreground">
+            <p className="sw-collections-empty">
               No accessible entries in this collection.
             </p>
           )}
-          <div className="flex gap-3">
-            <button disabled={!page} onClick={() => setPage((p) => p - 1)}>
+          <div className="sw-collections-pagination">
+            <button className="sw-collections-button" disabled={!page || pending} onClick={() => setPage((p) => p - 1)}>
               Previous
             </button>
             <span>Page {page + 1}</span>
-            <button disabled={!more} onClick={() => setPage((p) => p + 1)}>
+            <button className="sw-collections-button" disabled={!more || pending} onClick={() => setPage((p) => p + 1)}>
               Next
             </button>
           </div>
         </>
       )}
+          {user && (!collectionId || (current && current.owner_id === user.id)) && (
+            <form
+              className="sw-collections-create sw-collections-panel"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (
+                  await mutate("/api/collections", "POST", {
+                    name,
+                    parentId: current?.system_kind && parent === current.id ? null : parent || null,
+                    visibility,
+                  })
+                )
+                  setName("");
+              }}
+            >
+              <p className="sw-collections-eyebrow">Begin a new chapter</p><h2>{current && !current.system_kind ? "Create a child collection" : "Create collection"}</h2>
+              <input
+                aria-label="Collection name"
+                required
+                maxLength={100}
+                className="sw-collections-input"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Collection name"
+              />
+              <select
+                aria-label="Parent collection"
+                className="sw-collections-input"
+                value={current?.system_kind && parent === current.id ? "" : parent}
+                onChange={(e) => setParent(e.target.value)}
+              >
+                <option value="">No parent</option>
+                {rows
+                  .filter((c) => c.owner_id === user.id && !c.system_kind)
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+              </select>
+              <Visibility value={visibility} onChange={setVisibility} />
+              <button disabled={pending} className="sw-collections-button sw-collections-button--primary">
+                {pending ? "Creating…" : "Create collection"}
+              </button>
+            </form>
+          )}
     </Root>
   );
 }
@@ -332,7 +335,7 @@ function Visibility({
   return (
     <select
       aria-label="Visibility"
-      className="rounded border bg-background p-2"
+      className="sw-collections-input"
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >
