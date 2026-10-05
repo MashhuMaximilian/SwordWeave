@@ -20,8 +20,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Dna, LayoutGrid, List, ScrollText, UsersRound } from "lucide-react";
+import Link from "next/link";
+import { Dna, FolderOpen, LayoutGrid, List, ScrollText, UsersRound } from "lucide-react";
 import { useModalStack } from "@/components/ui/modal-stack";
+import { CollectionsClient } from "@/components/collections/collections-client";
+import "./creations-tabs.css";
 import { LibraryTable } from "@/components/library/library-table";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
 import { useFilterSlot } from "@/components/layout/right-filter-panel";
@@ -44,11 +47,12 @@ type TypeFilter =
   | "character"
   | "build"
   | "monster";
-type CreationTab = "mechanics" | "heritages" | "characters";
+type CreationTab = "mechanics" | "heritages" | "characters" | "collections";
 const TAB_TYPES: Record<CreationTab, TypeFilter[]> = {
   mechanics: ["primitive", "effect", "capability", "item"],
   heritages: ["template"],
   characters: ["character", "build","monster"],
+  collections: [],
 };
 
 type StatusFilter = "all" | "draft";
@@ -403,12 +407,17 @@ export function CreationsClient({
         TAB_TYPES.characters.includes(TARGET_TYPE_MAP[item.targetType] ?? "primitive"),
       ).length,
     },
+    collections: {
+      description: "Organize your creations into collections",
+      count: collectionRows.length,
+    },
   };
 
   const tabIcon = {
     mechanics: ScrollText,
     heritages: Dna,
     characters: UsersRound,
+    collections: FolderOpen,
   } satisfies Record<CreationTab, typeof ScrollText>;
 
   const mechanicIndexLabel: Record<TypeFilter, string> = {
@@ -425,8 +434,8 @@ export function CreationsClient({
 
   return (
     <div className="v12-creations-browser">
-      <div role="tablist" aria-label="My creations" className="v12-creations-tabs">
-        {([['mechanics', 'Mechanics'], ['heritages', 'Heritages'], ['characters', 'Characters']] as const).map(([key, label]) => {
+      <div role="tablist" aria-label="My creations" className="v12-creations-tabs v12-creations-tabs--with-collections">
+        {([['mechanics', 'Mechanics'], ['heritages', 'Heritages'], ['characters', 'Characters'], ['collections', 'Collections']] as const).map(([key, label]) => {
           const TabIcon = tabIcon[key];
           return (
             <button key={key} type="button" role="tab" aria-selected={tab === key}
@@ -439,6 +448,11 @@ export function CreationsClient({
           );
         })}
       </div>
+      {tab === "collections" ? (
+        <div role="tabpanel" aria-label="Collections" className="v12-creations-collections-panel">
+          <CollectionsClient embedded />
+        </div>
+      ) : <>
       {tab === "mechanics" && (
         <div role="group" aria-label="Mechanic kind" className="v12-creations-subtabs v12-creations-subtabs--mechanics">
           {([['all', 'All mechanics'], ['primitive', 'Primitives'], ['effect', 'Effects'], ['capability', 'Capabilities'], ['item', 'Items']] as const).map(([key, label]) => {
@@ -510,7 +524,7 @@ export function CreationsClient({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3"><a href="/collections" className="text-sm text-primary">Manage collections</a><select aria-label="Filter by collection" className="rounded border bg-background p-2 text-sm" value={collectionFilter} onChange={e=>setCollectionFilter(e.target.value)}><option value="">All collections</option>{collectionRows.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+      <div className="flex flex-wrap items-center gap-3"><Link href="/collections" className="text-sm text-primary">Manage collections</Link><select aria-label="Filter by collection" className="rounded border bg-background p-2 text-sm" value={collectionFilter} onChange={e=>setCollectionFilter(e.target.value)}><option value="">All collections</option>{collectionRows.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
       <div className="v12-creations-index-head">
         <div>
           <span>Archive index</span>
@@ -671,6 +685,7 @@ export function CreationsClient({
           />
         </div>
       )}
+      </>}
     </div>
   );
 }

@@ -13,13 +13,13 @@ type Collection = {
   followed?: boolean;
 };
 type Entry = { targetType: string; targetId: string; name: string };
-type CollectionPageProps = { collectionId?: string; ownerId?: string };
+type CollectionPageProps = { collectionId?: string; ownerId?: string; embedded?: boolean };
 export function CollectionsClient(props: CollectionPageProps) {
   const { user, isLoaded } = useUser();
-  if (!isLoaded) return <main className="p-4" role="status">Loading account…</main>;
-  return <AccountCollectionsClient key={`${user?.id ?? "anonymous"}:${props.collectionId ?? ""}:${props.ownerId ?? ""}`} {...props} />;
+  if (!isLoaded) return props.embedded ? <div className="p-4" role="status">Loading account…</div> : <main className="p-4" role="status">Loading account…</main>;
+  return <AccountCollectionsClient key={`${user?.id ?? "anonymous"}:${props.collectionId ?? ""}:${props.ownerId ?? ""}:${props.embedded?"embedded":"page"}`} {...props} />;
 }
-function AccountCollectionsClient({collectionId, ownerId}: CollectionPageProps) {
+function AccountCollectionsClient({collectionId, ownerId, embedded=false}: CollectionPageProps) {
   const { user } = useUser();
   const clerk = useClerk();
   const [rows, setRows] = useState<Collection[]>([]),
@@ -89,14 +89,16 @@ function AccountCollectionsClient({collectionId, ownerId}: CollectionPageProps) 
       if (alive.current) setPending(false);
     }
   }
+  const Root = embedded ? "div" : "main";
+  const Heading = embedded ? "h2" : "h1";
   return (
-    <main className="mx-auto max-w-5xl space-y-6 p-4 sm:p-8">
-      <Link href="/collections" className="text-sm text-primary">
+    <Root className={`mx-auto max-w-5xl space-y-6 ${embedded ? "p-0" : "p-4 sm:p-8"}`}>
+      {!embedded && <Link href="/collections" className="text-sm text-primary">
         Collections
-      </Link>
-      <h1 className="text-2xl font-semibold">
+      </Link>}
+      <Heading className="text-2xl font-semibold">
         {current?.name ?? "Your collections"}
-      </h1>
+      </Heading>
       <p className="text-sm text-muted-foreground">
         Organize live references to your creations and community entries. Each
         collection has its own visibility.
@@ -317,7 +319,7 @@ function AccountCollectionsClient({collectionId, ownerId}: CollectionPageProps) 
           </div>
         </>
       )}
-    </main>
+    </Root>
   );
 }
 function Visibility({
