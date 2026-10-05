@@ -148,6 +148,7 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
           >
             Browse this collection in the Library
           </Link>
+          {user && current.owner_id === user.id && <a className="sw-collections-button" href="#create-collection">＋ {current.system_kind ? "Create collection" : "Add child collection"}</a>}
           {current.parent_id &&
             rows.find((c) => c.id === current.parent_id) && (
               <Link
@@ -278,7 +279,7 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
       )}
           {user && (!collectionId || (current && current.owner_id === user.id)) && (
             <form
-              className="sw-collections-create sw-collections-panel"
+              id="create-collection" className="sw-collections-create sw-collections-panel"
               onSubmit={async (e) => {
                 e.preventDefault();
                 if (

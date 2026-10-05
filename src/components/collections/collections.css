@@ -5,7 +5,7 @@
   --collection-teal: light-dark(#235e5c, #a0d6cc);
   --collection-surface: light-dark(#f7f3e9, #101b20);
   --collection-raised: light-dark(#eee8d8, #233137);
-  max-width: 1060px; margin: 0 auto; padding: 32px 24px 56px; display: grid; gap: 22px; color: var(--collection-ink); font-family: var(--font-body);
+  width: 100%; max-width: 1060px; margin: 0 auto; padding: 32px 24px 56px; display: grid; gap: 22px; color: var(--collection-ink); font-family: var(--font-body);
 }
 .sw-collections--embedded { padding: 8px 0 24px; }
 .sw-collections h1,.sw-collections h2 { margin: 0; color: var(--collection-gold); font: 500 clamp(24px,3vw,36px)/1.2 var(--font-subtitle); }
