@@ -155,7 +155,7 @@
 .sw-monster-page h2 { font-size:clamp(24px,2.5vw,32px); }
 .sw-monster-page .monster-panel {
   position:relative; border:2px solid transparent; border-radius:8px;
-  background:var(--monster-surface) padding-box,var(--sw-edge-gold,linear-gradient(135deg,var(--monster-accent),var(--border),var(--monster-accent))) border-box;
+  background:linear-gradient(var(--monster-surface),var(--monster-surface)) padding-box,var(--sw-edge-gold,linear-gradient(135deg,var(--monster-accent),var(--border),var(--monster-accent))) border-box;
   box-shadow:var(--v12-shadow,0 8px 24px #0002),inset 0 1px #fff1b533;
   padding:clamp(20px,3vw,32px);
 }
