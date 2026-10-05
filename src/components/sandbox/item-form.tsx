@@ -208,6 +208,13 @@ export function ItemForm({
   );
   const [capabilityIds, setCapabilityIds] = useState<string[]>(initialCapabilityIds);
   const [effectIds, setEffectIds] = useState<string[]>(initialEffectIds);
+  const [sourceCollectionId, setSourceCollectionId] = useState<string | null>(null);
+  useEffect(()=>{
+    if(!initialItem?.id){setSourceCollectionId(null);return;}
+    const type="ITEM"; const ctrl=new AbortController();
+    fetch(`/api/collections/source?targetType=${type}&targetId=${initialItem.id}`,{signal:ctrl.signal}).then(r=>r.json()).then(d=>setSourceCollectionId(d.collection?.id??null)).catch(()=>{});
+    return()=>ctrl.abort();
+  },[initialItem?.id]);
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const [isDirty, setIsDirty] = useState(false);
@@ -496,7 +503,8 @@ export function ItemForm({
       // payload, including the legacy-form path.
       isNotEquippable: form.isNotEquippable,
       isPublic: characterAuthoring ? false : form.isPublic,
-      sourceOrigin: form.sourceOrigin.trim() || null,
+      sourceCollectionId,
+      sourceOrigin: sourceCollectionId ? null : form.sourceOrigin.trim() || null,
       tags: form.tags
         .split(",")
         .map((t) => t.trim())
@@ -1008,6 +1016,8 @@ export function ItemForm({
 
         <AuthorChapter id="publish" title="Publish">
       <AuthorPublishFields
+        sourceCollectionId={sourceCollectionId}
+        onSourceCollectionChange={setSourceCollectionId}
         tags={form.tags}
         sourceOrigin={form.sourceOrigin}
         isPublic={form.isPublic}

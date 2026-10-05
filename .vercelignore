@@ -16,6 +16,7 @@ scripts/output
 mockups
 output
 tmp
+.local-plans
 
 # Public artwork is served by Cloudflare, including CLI deployments.
 public/images/characters

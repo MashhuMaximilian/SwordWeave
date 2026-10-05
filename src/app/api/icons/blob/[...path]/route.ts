@@ -6,17 +6,8 @@
 // URLs are not directly fetchable — every request must come through
 // this proxy which authenticates the viewer first.
 //
-// Auth model: any signed-in user can view any uploaded icon. This is
-// permissive because:
-//   1. The icon is associated with an entity (primitive/effect/etc) and
-//      the entity's visibility tier already gates who can see the
-//      parent. The icon is rendered wherever the parent is rendered.
-//   2. We could narrow this further to check "user can view the entity
-//      that owns this icon" but that requires resolving the blob path
-//      back to an entity row, which is messy. Per-row visibility comes
-//      from the entity lookup, not the icon fetch.
-//   3. Icons are uploaded BY a user and (for now) shown to anyone who
-//      can see them. Same model as profile pictures.
+// Access follows the current entry's visibility, including anonymous public
+// viewers and direct character shares. Owners may preview unattached uploads.
 //
 // Defense:
 //   - Path is validated against the upload allowlist prefix
@@ -29,6 +20,7 @@
 //     their primitive's icon.
 // =============================================================================
 
+import { canReadUploadedArtwork } from "@/lib/assets/upload-access";
 import { auth } from "@clerk/nextjs/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { get } from "@vercel/blob";
@@ -55,13 +47,14 @@ export async function GET(
   ctx: { params: Promise<{ path: string[] }> },
 ) {
   const { userId: clerkUserId } = await auth();
-  if (!clerkUserId) {
-    return new NextResponse("Unauthorized", { status: 401 });
-  }
 
   const { path } = await ctx.params;
   const pathname = (path ?? []).join("/");
   if (!isAllowedPath(pathname)) {
+    return new NextResponse("Not found", { status: 404 });
+  }
+
+  if (!(await canReadUploadedArtwork(pathname, clerkUserId))) {
     return new NextResponse("Not found", { status: 404 });
   }
 

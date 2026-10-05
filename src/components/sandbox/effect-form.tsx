@@ -153,6 +153,13 @@ export function EffectForm({
   const [orderChanged,setOrderChanged]=useState(false);
   const [form, setForm] = useState<EffectFormState>(blankForm);
   const [slots, setSlots] = useState<EffectFormSlot[]>(() => initialPrimitiveIds.flatMap((id, index) => { const primitive = availablePrimitives.find(p => p.id === id); return primitive ? [{ primitiveId: id, primitive, quantity: 1, isMirrored: false, ...initialPrimitiveSlots[id] }] : []; }));
+  const [sourceCollectionId, setSourceCollectionId] = useState<string | null>(null);
+  useEffect(()=>{
+    if(!initialEffect?.id){setSourceCollectionId(null);return;}
+    const type="EFFECT"; const ctrl=new AbortController();
+    fetch(`/api/collections/source?targetType=${type}&targetId=${initialEffect.id}`,{signal:ctrl.signal}).then(r=>r.json()).then(d=>setSourceCollectionId(d.collection?.id??null)).catch(()=>{});
+    return()=>ctrl.abort();
+  },[initialEffect?.id]);
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const [isDirty, setIsDirty] = useState(false);
@@ -310,7 +317,8 @@ export function EffectForm({
       ...(orderChanged?{membershipOrder:slots.map(s=>`primitive:${s.primitiveId}`)}:{}),
       name: form.name,
       narrativeDescription: writeTableGuidance(writeRollResolution(form.narrativeDescription,resolution),table),
-      sourceOrigin: form.sourceOrigin || null,
+      sourceCollectionId,
+      sourceOrigin: sourceCollectionId ? null : form.sourceOrigin || null,
       tags: form.tags
         .split(",")
         .map((t) => t.trim())
@@ -567,6 +575,8 @@ export function EffectForm({
         <AuthorChapter id="table" title="At the table"><RollResolutionEditor value={resolution} onChange={value=>{setResolution(value);setIsDirty(true);}}/></AuthorChapter>
         <AuthorChapter id="publish" title="Publish">
       <AuthorPublishFields
+        sourceCollectionId={sourceCollectionId}
+        onSourceCollectionChange={setSourceCollectionId}
         tags={form.tags}
         sourceOrigin={form.sourceOrigin}
         isPublic={form.isPublic}

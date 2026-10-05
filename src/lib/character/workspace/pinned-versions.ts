@@ -1,6 +1,7 @@
 import { reconstructVersion, type VersionPayload } from "@/lib/versions/delta";
 import type { EntityKind, WorkspaceGraph } from "./model";
 import type { LoadedNode } from "./load-nodes";
+import { readDependencyPins } from "@/lib/versions/dependency-pins";
 
 /** A graph node can represent only one effective version. Never pick the first
  * occurrence when the character has explicitly pinned different versions. */
@@ -13,7 +14,8 @@ export function resolvePinnedNode(kind: EntityKind, entry: LoadedNode, pins: rea
   const failure = (reason: string) => ({ row: { ...entry.row, ...metadata, workspaceVersionIssue: reason }, links: entry.links, versionId, latestVersionId: latest });
   if (unique.length > 1) return failure("This piece has different pinned versions on this character. Choose a single version before editing its rules or moving its memberships.");
   if (unique.length && !selected) return failure("The pinned version is missing. Restore or explicitly choose a valid version before editing this piece.");
-  if (!selected || selected.id === latest) return { row: { ...entry.row, ...metadata }, links: entry.links, versionId, latestVersionId: latest };
+  const directPins = selected && selected.deltaKind === "FULL" ? readDependencyPins(selected.snapshot) : null;
+  if (!selected || (selected.id === latest && !unique.length)) return { row: { ...entry.row, ...metadata }, links: directPins ?? entry.links, versionId, latestVersionId: latest };
   try {
     const chain = entry.versions.filter(v => v.number <= selected.number).sort((a,b) => a.number-b.number).map(v => ({
       versionNumber: v.number,
@@ -34,7 +36,8 @@ export function resolvePinnedNode(kind: EntityKind, entry: LoadedNode, pins: rea
       // Retain the live hash separately for conflict diagnostics; never label
       // historical content with the live definition's content hash.
       workspaceLiveContentHash: entry.row["contentHash"] ?? null,
-      workspaceHistoricalVersion: true,
+      workspaceHistoricalVersion: selected.id !== latest,
+      workspacePinnedSnapshot: true,
     };
     const links: LoadedNode["links"] = [];
     const primitives = Array.isArray(snapshot["primitiveSlots"]) ? snapshot["primitiveSlots"] :
@@ -46,8 +49,9 @@ export function resolvePinnedNode(kind: EntityKind, entry: LoadedNode, pins: rea
     for (const [field, childKind] of [["capabilityIds", "capability"], ["effectIds", "effect"]] as const)
       if (Array.isArray(snapshot[field])) for (const id of snapshot[field])
         if (typeof id === "string") links.push({ kind: childKind, id, data: { [`${childKind}Id`]: id } });
-    row["workspacePinnedMemberships"] = links;
-    return { row, links, versionId, latestVersionId: latest };
+    const immutableLinks = readDependencyPins(snapshot) ?? links;
+    row["workspacePinnedMemberships"] = immutableLinks;
+    return { row, links: immutableLinks, versionId, latestVersionId: latest };
   } catch {
     return failure("The pinned version cannot be reconstructed. Restore it before editing this piece.");
   }

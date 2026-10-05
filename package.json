@@ -24,7 +24,8 @@
     "db:diff-notion": "tsx scripts/_diff-notion-vs-db.ts",
     "db:migrate-v12-library": "tsx scripts/migrate-v12-library.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "usage:report": "tsx scripts/report-platform-usage.mts"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.5.12",

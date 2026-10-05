@@ -37,6 +37,7 @@ export interface FlagDistribution {
 }
 
 type PreviewFlagTargetType =
+  | "MONSTER"
   | "PRIMITIVE"
   | "EFFECT"
   | "CAPABILITY"

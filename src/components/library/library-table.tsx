@@ -26,6 +26,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowRight, ExternalLink, SearchX, User as UserIcon } from "lucide-react";
 import { Markdown } from "@/components/ui/markdown";
 import { EmptyState } from "@/components/ui/empty-state";
+import { BookmarkButton } from "@/components/collections/bookmark-button";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
 import { IconDisplay } from "@/components/icons/icon-display";
 import { cn } from "@/lib/utils";
@@ -253,6 +254,7 @@ function ListItem({
   const isAtelier = surface === "atelier";
   const inner = compact ? (
     <>
+      <BookmarkButton targetType={item.targetType} targetId={item.targetId} />
       <span className="sheet-library-entry-icon" aria-hidden="true">
         <IconDisplay portraitUrl={libraryHeritageArt(item)} iconSource={item.iconSource || "GAME_ICONS"} iconKey={item.iconKey || "lorc/cubes"} iconUrl={item.iconUrl} iconColor={item.iconColor} size={24} alt="" />
       </span>
@@ -320,6 +322,7 @@ function ListItem({
         <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
           <span>♥ {item.likesCount}</span>
           <span>⑂ {item.forkCount}</span>
+          <BookmarkButton targetType={item.targetType} targetId={item.targetId} />
           {authorDisplayUsername(item) && (
             // Phase 9 follow-up: mask admin authors to "by System"
             // via the unified helper. The condition also masks so
@@ -365,7 +368,7 @@ function ListItem({
   }
   return (
     <Link
-      href={`/library/item/${item.id}`}
+      href={item.targetType==="MONSTER"?`/monsters/${item.targetId}`:`/library/item/${item.id}`}
       data-library-row-id={item.id}
       data-preview-trigger="true"
       data-library-kind={item.targetType}
@@ -596,6 +599,7 @@ function GridCard({
 // LikeForkBar accepts a narrower union than LibraryTargetType (no EFFECT yet
 // in some places). Cast here so the table can render any LibraryItem.
 type GridLikeForkTargetType =
+  | "MONSTER"
   | "PRIMITIVE"
   | "CAPABILITY"
   | "CHARACTER"

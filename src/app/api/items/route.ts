@@ -1,7 +1,10 @@
+import { visibilityCondition } from "@/lib/publishing/library-query";
+import { redactExpandedContent } from "@/lib/publishing/redact-expanded-content";
+import { withSourceCollection } from "@/lib/collections/source-save";
 import { withPublishingResponse } from "@/lib/publishing/save-transaction";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { asc, eq, inArray } from "drizzle-orm";
+import { asc, eq, inArray, and, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   itemCapabilities,
@@ -99,18 +102,19 @@ function parseIntInRange(value: unknown, min: number, max: number): number {
  * Optional filters: ?type=WEAPON|ARMOR|TRINKET|ARTIFACT|CONSUMABLE
  */
 export async function GET(request: Request) {
+  const { userId: viewerId } = await auth();
   const { searchParams } = new URL(request.url);
   const typeFilter = searchParams.get("type");
   const rarityFilter = searchParams.get("rarity");
 
-  const whereClauses = [eq(items.isPublic, true)];
+  const whereClauses = [visibilityCondition("ITEM", sql`${items.id}`, sql`${items.userId}`, viewerId ?? undefined, sql`${items.isPublic}`)];
   const type = typeFilter ? parseType(typeFilter) : null;
   if (type) whereClauses.push(eq(items.itemType, type));
   const rarity = rarityFilter ? parseRarity(rarityFilter) : null;
   if (rarity) whereClauses.push(eq(items.rarity, rarity));
 
   const rows = await db.query.items.findMany({
-    where: whereClauses.length === 1 ? whereClauses[0] : undefined,
+    where: and(...whereClauses),
     orderBy: [asc(items.name)],
     with: {
       primitiveLinks: { with: { primitive: true } },
@@ -119,7 +123,7 @@ export async function GET(request: Request) {
     },
   });
 
-  return NextResponse.json({ items: rows });
+  return NextResponse.json({ items: await redactExpandedContent(rows, viewerId) });
 }
 
 /**
@@ -420,6 +424,8 @@ function pickStringOrNull(value: unknown): string | null {
 function pickStringOrDefault(value: unknown, fallback: string): string {
   return typeof value === "string" && value.length > 0 ? value : fallback;
 }
-export async function POST(...args: Parameters<typeof handlePOST>) {
+async function handleCollectionPOST(...args: Parameters<typeof handlePOST>) {
   return withPublishingResponse(() => handlePOST(...args));
 }
+
+export async function POST(...args: Parameters<typeof handleCollectionPOST>) { return withSourceCollection(args[0], "ITEM", () => handleCollectionPOST(...args)); }

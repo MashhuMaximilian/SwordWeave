@@ -723,6 +723,7 @@ function buildAccessRules(links: ReadonlyArray<SheetPrimitiveLink>): ReadonlyArr
 }
 
 import { CharacterReadOnlyProvider, useCharacterReadOnly } from "./character-read-only";
+import { PlaySessionPanel } from "./play-session-panel";
 import { ForkCharacterButton } from "./fork-character-button";
 import type { WorkspaceGraph } from "@/lib/character/workspace/model";
 import type { RuntimeCondition } from "@/lib/hooks/use-runtime-conditions";
@@ -1106,6 +1107,7 @@ function CharacterSheetContent(initialProps: CharacterSheetProps) {
         autoEvaluated={autoEvaluated}
       />
     <div className="v12-character-page mx-auto w-full max-w-[1480px] px-5 pt-20 pb-32" data-character-surface data-sheet-mode={sheetMode} data-read-only={!canDraft} data-character-id={props.id}>
+      {canWrite && <PlaySessionPanel subjectId={props.id} />}
       {!canDraft && <aside className="v12-public-sheet-notice" aria-label="Read-only character">
         <div><strong>Read-only character sheet</strong><span>Read only · Fork to play and make changes to your own copy.</span></div>
         <ForkCharacterButton characterId={props.id} roster label="Fork" />

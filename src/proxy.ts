@@ -8,7 +8,8 @@ const isProtectedRoute = createRouteMatcher([
   "/settings(.*)",
   "/builds(.*)",
   "/items(.*)",
-  "/monsters(.*)",
+  "/monsters/new(.*)",
+  "/monsters/play(.*)",
 ]);
 
 // Routes that are explicitly public

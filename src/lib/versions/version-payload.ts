@@ -9,9 +9,11 @@
 //
 // =============================================================================
 
-import { eq } from "drizzle-orm";
+import { and, eq, lte } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
+  effectVersions,
+  itemVersions,
   capabilityVersions,
   characterVersions,
   primitiveVersions,
@@ -25,6 +27,8 @@ import {
 export type ReconstructableType =
   | "PRIMITIVE"
   | "CAPABILITY"
+  | "EFFECT"
+  | "ITEM"
   | "CHARACTER"
   | "LINEAGE_TEMPLATE"
   | "UPBRINGING_TEMPLATE"
@@ -54,12 +58,12 @@ export async function getVersionPayload(
   targetId: string,
   versionNumber: number,
 ): Promise<ReconstructedVersion | null> {
-  const rows = await fetchVersionRows(targetType, targetId);
-  if (rows.length === 0) return null;
-
-  // Find the row matching the requested version number.
-  const target = rows.find((r) => r.versionNumber === versionNumber);
+  const [target] = await fetchVersionRows(targetType, targetId, versionNumber, true);
   if (!target) return null;
+  // FULL versions are self-contained. DELTA reconstruction needs preceding
+  // rows only; never download newer or unrelated history to open a preview.
+  const rows = target.deltaKind === "FULL" ? [target]
+    : await fetchVersionRows(targetType, targetId, versionNumber);
 
   // Reconstruct the chain. We pass all rows (including those AFTER the
   // target version) — reconstructVersion handles stopping at the right
@@ -121,6 +125,8 @@ interface VersionRowRaw {
 async function fetchVersionRows(
   targetType: ReconstructableType,
   targetId: string,
+  versionNumber: number,
+  exact = false,
 ): Promise<VersionRowRaw[]> {
   switch (targetType) {
     case "PRIMITIVE": {
@@ -134,7 +140,7 @@ async function fetchVersionRows(
           snapshot: primitiveVersions.snapshot,
         })
         .from(primitiveVersions)
-        .where(eq(primitiveVersions.primitiveId, numId))
+        .where(and(eq(primitiveVersions.primitiveId, numId), exact ? eq(primitiveVersions.versionNumber, versionNumber) : lte(primitiveVersions.versionNumber, versionNumber)))
         .orderBy(primitiveVersions.versionNumber);
       return rows;
     }
@@ -147,9 +153,21 @@ async function fetchVersionRows(
           snapshot: capabilityVersions.snapshot,
         })
         .from(capabilityVersions)
-        .where(eq(capabilityVersions.capabilityId, targetId))
+        .where(and(eq(capabilityVersions.capabilityId, targetId), exact ? eq(capabilityVersions.versionNumber, versionNumber) : lte(capabilityVersions.versionNumber, versionNumber)))
         .orderBy(capabilityVersions.versionNumber);
       return rows;
+    }
+    case "EFFECT": {
+      return db.select({id: effectVersions.id, versionNumber: effectVersions.versionNumber,
+        deltaKind: effectVersions.deltaKind, snapshot: effectVersions.snapshot}).from(effectVersions)
+        .where(and(eq(effectVersions.effectId, targetId), exact ? eq(effectVersions.versionNumber, versionNumber) : lte(effectVersions.versionNumber, versionNumber)))
+        .orderBy(effectVersions.versionNumber);
+    }
+    case "ITEM": {
+      return db.select({id: itemVersions.id, versionNumber: itemVersions.versionNumber,
+        deltaKind: itemVersions.deltaKind, snapshot: itemVersions.snapshot}).from(itemVersions)
+        .where(and(eq(itemVersions.itemId, targetId), exact ? eq(itemVersions.versionNumber, versionNumber) : lte(itemVersions.versionNumber, versionNumber)))
+        .orderBy(itemVersions.versionNumber);
     }
     case "CHARACTER": {
       const rows = await db
@@ -160,7 +178,7 @@ async function fetchVersionRows(
           snapshot: characterVersions.snapshot,
         })
         .from(characterVersions)
-        .where(eq(characterVersions.characterId, targetId))
+        .where(and(eq(characterVersions.characterId, targetId), exact ? eq(characterVersions.versionNumber, versionNumber) : lte(characterVersions.versionNumber, versionNumber)))
         .orderBy(characterVersions.versionNumber);
       return rows;
     }
@@ -175,7 +193,7 @@ async function fetchVersionRows(
           snapshot: heritageVersions.snapshot,
         })
         .from(heritageVersions)
-        .where(eq(heritageVersions.templateId, targetId))
+        .where(and(eq(heritageVersions.templateId, targetId), exact ? eq(heritageVersions.versionNumber, versionNumber) : lte(heritageVersions.versionNumber, versionNumber)))
         .orderBy(heritageVersions.versionNumber);
       return rows;
     }

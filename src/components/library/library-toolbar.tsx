@@ -18,13 +18,14 @@
 // =============================================================================
 
 import { ChevronDown, Search, SlidersHorizontal } from "lucide-react";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { LibraryTargetType } from "@/lib/publishing/library-query";
 import type { LibrarySort } from "@/lib/publishing/library-query";
 import type { LibraryView } from "@/lib/preferences/library-prefs";
 
 export interface LibraryToolbarState {
+  collectionId?: string;
   origin?: "all" | "system" | "community";
   tier?: string;
   search: string;
@@ -149,6 +150,7 @@ interface LibraryToolbarProps {
 
 const DEFAULT_TYPE_CHIPS: LibraryTypeChip[] = [
   { key: "ALL", label: "All" },
+  { key: "MONSTER", label: "Monsters & NPCs" },
   { key: "PRIMITIVE", label: "Primitives" },
   { key: "CAPABILITY", label: "Capabilities" },
   { key: "EFFECT", label: "Effects" },
@@ -181,6 +183,8 @@ export function LibraryToolbar({
   primitiveCategories=[],itemTags=[],activeTags=[],showAdvancedFilters=true,showVisibilityFilter=true,
   showSearch=true,searchPlaceholder="Search by name…",forceExpandFilters=false,
 }:LibraryToolbarProps) {
+  const [collectionRows,setCollectionRows]=useState<{id:string;name:string}[]>([]);
+  useEffect(()=>{fetch("/api/collections").then(r=>r.json()).then(d=>setCollectionRows(d.collections??[])).catch(()=>{});},[]);
   const [mobileFiltersOpen,setMobileFiltersOpen]=useState(forceExpandFilters);
   const [familySearch,setFamilySearch]=useState("");
   const filterId=useId();
@@ -189,7 +193,7 @@ export function LibraryToolbar({
   const update=<K extends keyof LibraryToolbarState>(key:K,value:LibraryToolbarState[K])=>onStateChange({...state,[key]:value});
   const mechanicsActive=!!(state.definitionKind||state.mechanicTarget||state.recipient||state.conditionMode||state.minMagnitude||state.maxMagnitude||state.mirrorableOnly);
   const publicationActive=!!(state.author||state.minLikes||state.minForks||state.hasForks||state.fromDate||state.toDate||(state.visibility && state.visibility!=="ANY"));
-  const hasActiveFilters=state.search!==""||state.typeFilter!=="ALL"||!!state.category||!!state.tier||(state.origin??"all")!=="all"||!!state.minBu||!!state.maxBu||tags.length>0||mechanicsActive||publicationActive||activeSubKinds.length>0;
+  const hasActiveFilters=!!state.collectionId||state.search!==""||state.typeFilter!=="ALL"||!!state.category||!!state.tier||(state.origin??"all")!=="all"||!!state.minBu||!!state.maxBu||tags.length>0||mechanicsActive||publicationActive||activeSubKinds.length>0;
   const clear=()=>{
     setFamilySearch("");
     onSubKindsChange?.([]);
@@ -205,6 +209,7 @@ export function LibraryToolbar({
     </div>
     <div id={filterId} className={cn("sw-discovery-body",forceExpandFilters||mobileFiltersOpen?"block":"hidden md:block")}>
       <div className="sw-discovery-grid sw-discovery-primary">
+        {collectionRows.length>0&&<FilterField label="Collection"><select value={state.collectionId??""} onChange={event=>update("collectionId",event.target.value)}><option value="">All entries</option>{collectionRows.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></FilterField>}
         <FilterField label="Browse"><select value={state.typeFilter} onChange={event=>onStateChange({...state,typeFilter:event.target.value as LibraryToolbarState["typeFilter"],category:"",tier:""})}>{!availableTypes.some(type=>type.key===state.typeFilter)?<option value={state.typeFilter}>Current selection</option>:null}{availableTypes.map(type=><option key={type.key} value={type.key}>{type.label}</option>)}</select></FilterField>
         <FilterField label="Sort by"><select value={state.sort} onChange={event=>update("sort",event.target.value as LibrarySort)}>{SORT_OPTIONS.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></FilterField>
       </div>

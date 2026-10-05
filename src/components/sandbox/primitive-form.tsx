@@ -992,6 +992,13 @@ export function PrimitiveForm({
   const [modifierCounter, setModifierCounter] = useState(1);
   const [modifiers, setModifiers] = useState<ModifierDraft[]>([]);
   const [showJsonPreview, setShowJsonPreview] = useState(false);
+  const [sourceCollectionId, setSourceCollectionId] = useState<string | null>(null);
+  useEffect(()=>{
+    if(!initialPrimitive?.id){setSourceCollectionId(null);return;}
+    const type="PRIMITIVE"; const ctrl=new AbortController();
+    fetch(`/api/collections/source?targetType=${type}&targetId=${initialPrimitive.id}`,{signal:ctrl.signal}).then(r=>r.json()).then(d=>setSourceCollectionId(d.collection?.id??null)).catch(()=>{});
+    return()=>ctrl.abort();
+  },[initialPrimitive?.id]);
   const [message, setMessage] = useState("");
   // Local pending flag — independent of useTransition. The previous
   // implementation wrapped the save flow in startTransition() which
@@ -1308,6 +1315,8 @@ export function PrimitiveForm({
               : {}),
             draftHash,
             ...form,
+            sourceCollectionId,
+            sourceOrigin: sourceCollectionId ? "" : form.sourceOrigin,
             familyKey,
             mechanicalOutputText: mechanicalSentence,
             mechanicalRule,
@@ -1951,6 +1960,8 @@ export function PrimitiveForm({
         </AuthorChapter>
         <AuthorChapter id="publish" title="Publish">
       <AuthorPublishFields
+        sourceCollectionId={sourceCollectionId}
+        onSourceCollectionChange={setSourceCollectionId}
         tags={form.tags}
         sourceOrigin={form.sourceOrigin}
         isPublic={form.isPublic}

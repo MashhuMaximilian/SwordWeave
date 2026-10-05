@@ -13,6 +13,8 @@ import {
   UserPlus,
   UserMinus,
 } from "lucide-react";
+import { SourceCollectionLink } from "@/components/collections/source-collection-link";
+import { BookmarkButton } from "@/components/collections/bookmark-button";
 import { ForkSuccessModal } from "@/components/engagement/fork-success-modal";
 import { buildSandboxUrl } from "@/lib/publishing/fork-target";
 
@@ -30,6 +32,7 @@ import { buildSandboxUrl } from "@/lib/publishing/fork-target";
 
 export interface LikeForkBarProps {
   targetType:
+    | "MONSTER"
     | "PRIMITIVE"
     | "EFFECT"
     | "CAPABILITY"
@@ -298,6 +301,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
 
   const handleFork = () => {
     if (!requireAuth()) return;
+    if(props.targetType==="MONSTER"){setError(null);startTransition(async()=>{try{const response=await withFreshToken(()=>fetch(`/api/monsters/${props.targetId}`,{method:"POST"}));const data=await response.json();if(!response.ok)throw new Error(data.error??"Unable to fork monster");stack.clear();router.push(`/monsters/${data.id}`);}catch(e){setError(e instanceof Error?e.message:"Unable to fork monster");}});return;}
     // Phase 1 (round 6 revision of edit-creates-fork.md): clicking
     // Fork no longer creates a fork immediately. Instead it navigates
     // to the sandbox with ?intent=fork&edit=<sourceId>. The actual
@@ -491,6 +495,9 @@ export function LikeForkBar(props: LikeForkBarProps) {
         <span className="tabular-nums" aria-hidden="true">{forks}</span>
         {!props.compact && <span>fork{forks === 1 ? "" : "s"}</span>}
       </button>
+
+      {!props.compact && <SourceCollectionLink targetType={props.targetType} targetId={props.targetId} />}
+      <BookmarkButton targetType={props.targetType} targetId={props.targetId} compact={!!props.compact} />
 
       {showFollow && props.authorUsername && (
         <button

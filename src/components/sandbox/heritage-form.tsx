@@ -206,6 +206,13 @@ export function HeritageForm({
   );
   const [capabilityIds, setCapabilityIds] = useState<string[]>(() => [...new Set(initialCapabilityIds)]);
   const [mirroredSet, setMirroredSet] = useState<Set<string>>(new Set());
+  const [sourceCollectionId, setSourceCollectionId] = useState<string | null>(null);
+  useEffect(()=>{
+    if(!initialTemplate?.id){setSourceCollectionId(null);return;}
+    const type=`${initialTemplate.kind}_TEMPLATE`; const ctrl=new AbortController();
+    fetch(`/api/collections/source?targetType=${type}&targetId=${initialTemplate.id}`,{signal:ctrl.signal}).then(r=>r.json()).then(d=>setSourceCollectionId(d.collection?.id??null)).catch(()=>{});
+    return()=>ctrl.abort();
+  },[initialTemplate?.id]);
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const [isDirty, setIsDirty] = useState(false);
@@ -475,7 +482,8 @@ export function HeritageForm({
       // already POST sourceOrigin + tags. Heritage was missing both;
       // adding them here + on the server closes the gap. Tags are
       // comma-separated in the form; split into string[] for the DB.
-      sourceOrigin: form.sourceOrigin.trim() || null,
+      sourceCollectionId,
+      sourceOrigin: sourceCollectionId ? null : form.sourceOrigin.trim() || null,
       tags: form.tags
         .split(",")
         .map((t) => t.trim())
@@ -797,6 +805,8 @@ export function HeritageForm({
 
         <AuthorChapter id="publish" title="Publish">
       <AuthorPublishFields
+        sourceCollectionId={sourceCollectionId}
+        onSourceCollectionChange={setSourceCollectionId}
         tags={form.tags}
         sourceOrigin={form.sourceOrigin}
         isPublic={form.isPublic}

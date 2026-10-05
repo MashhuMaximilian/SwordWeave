@@ -1,4 +1,6 @@
 "use client";
+import { useUser } from "@clerk/nextjs";
+import { readCreationReturn,setCreationReturnResult } from "@/lib/character/creation-return/model";
 
 // /atelier — unified sandbox client.
 //
@@ -431,6 +433,23 @@ export function AtelierSandboxClient({
   const router = useRouter();
   const pathname = usePathname();
   const currentSearchParams = useSearchParams();
+  const {user:creationReturnUser}=useUser();
+  const creationReturnToken=useRef(currentSearchParams?.get("creationReturn")??null);
+  const [creationReturnSaved,setCreationReturnSaved]=useState<string|null>(null);
+  const [creationReturnError,setCreationReturnError]=useState("");
+  useEffect(()=>{
+    const accountId=creationReturnUser?.id,token=creationReturnToken.current;if(!accountId||!token)return;
+    const record=readCreationReturn(localStorage,token,accountId);if(!record)return;
+    const onSaved=async(event:Event)=>{
+      const detail=(event as CustomEvent<{kind:string;id:string;row?:{kind?:string;name?:string}}>).detail;
+      if(!detail?.id||detail.kind!==record.kind)return;
+      const targetType=detail.kind==="heritage"?`${detail.row?.kind??heritageKind??record.heritageKind}_TEMPLATE`:detail.kind.toUpperCase();
+      try {const response=await fetch(`/api/characters/creation-return?${new URLSearchParams({targetType,targetId:detail.id})}`);const data=await response.json();if(!response.ok)throw new Error(data.error??"Unable to return this saved entry.");setCreationReturnResult(localStorage,token,accountId,data.entry);setCreationReturnSaved(data.entry.name);setCreationReturnError("");}
+      catch(error){setCreationReturnError(error instanceof Error?error.message:"Unable to return this saved entry.");}
+    };
+    window.addEventListener("sw-sandbox-saved",onSaved);return()=>window.removeEventListener("sw-sandbox-saved",onSaved);
+  },[creationReturnUser?.id,heritageKind]);
+
   // Modal stack — the preview popup is pushed here. When we Load/Fork
   // into build we must clear it explicitly: the pathname stays
   // /atelier (unlike the legacy routes), so ModalStackHost's
@@ -1684,6 +1703,7 @@ export function AtelierSandboxClient({
 
   return (
     <>
+      {creationReturnToken.current&&<section className="border-b border-border bg-card p-3 text-sm"><p>{creationReturnSaved?`${creationReturnSaved} saved. Return to select it for your character.`:"Creating for your character draft. Save the entry, then return to character creation."}</p><a className="mt-2 inline-block rounded border px-3 py-2 text-primary" href={`/characters/new?creationReturn=${encodeURIComponent(creationReturnToken.current)}`}>Return to character creation</a>{creationReturnError&&<p role="alert" className="text-red-400">{creationReturnError}</p>}</section>}
       {/* Phase 8.I i1 (Mashu 2026-08-04): malformed-modifier audit.
           Lives at the top of the atelier so it's visible to authors
           editing primitives. NOT in the drawer — drawer follows

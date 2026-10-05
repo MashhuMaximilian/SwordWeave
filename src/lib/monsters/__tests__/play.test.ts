@@ -1,0 +1,13 @@
+import {describe,it,expect} from "vitest";
+import {monsterDefinitionSchema} from "../model";
+import {resolveMonsterPlay} from "../play";
+import type {MonsterSlot} from "../resolve";
+import type {ConsequenceOccurrence} from "@/lib/character/consequences/types";
+const definition=monsterDefinitionSchema.parse({name:"Scout",budget:25,attributes:{physical:3,mental:0,magical:0}});
+const base:MonsterSlot={primitiveId:1,name:"Tough",category:"METRIC",hardModifiers:[{kind:"modify",target:"max_vitality",operation:"add",value:5,stacking:"stack"}],isMirrored:false,isMirrorable:true,mirrorVector:null,originHeritageId:null,originCapabilityId:"a",originEffectId:null,buCost:4,quantity:1,dependencyKey:"p1",item:false,supplyKeys:[["capability:a","primitive:1"],["capability:b","primitive:1"]]};
+describe("monster play uses the existing runtime",()=>{
+ it("retains shared abilities supplied by another active path",()=>{expect(resolveMonsterPlay(definition,[base],{"cap:a":true},7).sheet.maximum).toBe(18);expect(resolveMonsterPlay(definition,[base],{"cap:a":true,"cap:b":true},7).sheet.maximum).toBe(13);});
+ it("applies manual baseline overrides before modifiers without healing",()=>{const result=resolveMonsterPlay(definition,[base],{baselineVitality:30,currentVitality:7},7);expect(result.sheet.maximum).toBe(35);expect(result.sheet.currentVitality).toBe(7);expect(resolveMonsterPlay(definition,[base],{baselineVitality:1,currentVitality:7},7).sheet.currentVitality).toBe(6);});
+ it("applies and resolves custom consequence modifiers using the same primitive resolver",()=>{const occurrence:ConsequenceOccurrence={id:"injury",title:"Injured",description:"Reduced maximum",tags:[],modifiers:[{kind:"modify",target:"max_vitality",operation:"add",value:-10,stacking:"stack"}],durationTier:"manual",active:true,createdAt:1,source:"custom",status:"active"};expect(resolveMonsterPlay(definition,[],{"consequence:injury":occurrence},11).sheet.currentVitality).toBe(3);expect(resolveMonsterPlay(definition,[],{"consequence:injury":{...occurrence,status:"resolved"}},3).sheet.currentVitality).toBe(3);});
+ it("evaluates low vitality conditions automatically and supports the existing explicit override",()=>{const slot={...base,hardModifiers:[{kind:"modify" as const,target:"attack_bonus",operation:"add" as const,value:2,stacking:"stack" as const,condition:{kind:"preset" as const,presetKey:"actor-below-half-hp" as const,customTags:[]}}]};const low=resolveMonsterPlay(definition,[slot],{},3);const full=resolveMonsterPlay(definition,[slot],{},13);expect(low.sheet.resolved.totals["attack_bonus"]).toBe(7);expect(full.sheet.resolved.totals["attack_bonus"]).toBe(5);expect(low.occurrences[0]!.source).toBe("sheet-auto");});
+});

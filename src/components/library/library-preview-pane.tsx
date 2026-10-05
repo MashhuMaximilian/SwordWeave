@@ -72,7 +72,7 @@ export function LibraryPreviewPane({
             </span>
           )}
           <Link
-            href={`/library/item/${item.id}`}
+            href={item.targetType==="MONSTER"?`/monsters/${item.targetId}`:`/library/item/${item.id}`}
             className="inline-flex h-8 items-center gap-1 rounded-md border border-border bg-background px-2 text-xs font-medium hover:bg-accent"
           >
             Open
@@ -180,19 +180,19 @@ export function LibraryPreviewPane({
 
           <section className="v12-preview-action-group grid grid-cols-3 gap-2 border-t border-border pt-4">
             <Link
-              href={`/library/item/${item.id}`}
+              href={item.targetType==="MONSTER"?`/monsters/${item.targetId}`:`/library/item/${item.id}`}
               className="v12-metal-button min-w-0 justify-center"
             >
               Source
               <ArrowRight className="size-3.5 shrink-0" />
             </Link>
-            <ForkMapButton
+            {item.targetType!=="MONSTER"&&<ForkMapButton
               targetType={item.targetType}
               targetId={item.targetId}
               targetName={item.name}
               className="min-w-0 justify-center"
-            />
-            <Link href={`/library/item/${item.id}/versions`} className="v12-metal-button min-w-0 justify-center gap-1.5 text-[11px]">
+            />}
+            <Link href={item.targetType==="MONSTER"?`/monsters/${item.targetId}`:`/library/item/${item.id}/versions`} className="v12-metal-button min-w-0 justify-center gap-1.5 text-[11px]">
               <History className="size-3.5 shrink-0" /> Versions
             </Link>
           </section>
@@ -204,6 +204,7 @@ export function LibraryPreviewPane({
 
 // LikeForkBar accepts a narrower union than LibraryTargetType.
 type GridLikeForkTargetType =
+  | "MONSTER"
   | "PRIMITIVE"
   | "CAPABILITY"
   | "CHARACTER"

@@ -134,9 +134,35 @@ export async function readWorkspace(
     const key: EntityKey = `${kind}:${data[field]}`;
     pins.set(key, [...(pins.get(key) ?? []), data["versionId"]]);
   }
+  const rootPins = new Map([...pins].map(([key, values]) => [key, [...new Set(values)]]));
+  const inheritedPins = new Map<EntityKey, Map<EntityKey, string[]>>();
+  const processedPins = new Map<EntityKey, string>();
+  const pinSignature = (key: EntityKey) => [...new Set(pins.get(key) ?? [])].sort().join("|");
+  function refreshPins(children: Iterable<EntityKey>) {
+    for (const child of children) {
+      const values = new Set(rootPins.get(child) ?? []);
+      for (const memberships of inheritedPins.values()) for (const pin of memberships.get(child) ?? []) values.add(pin);
+      const before = pinSignature(child);
+      pins.set(child, [...values]);
+      if (before !== pinSignature(child)) pending.add(child);
+    }
+  }
+  function reachableKeys() {
+    const reachable = new Set<EntityKey>(extra);
+    const queue = edges.filter(e => e.parent === null).map(e => e.child).concat(extra);
+    for (let i = 0; i < queue.length; i++) {
+      const key = queue[i]!; if (reachable.has(key) && !extra.includes(key)) continue;
+      reachable.add(key);
+      for (const child of edges.filter(e => e.parent === key).map(e => e.child)) if (!reachable.has(child)) queue.push(child);
+    }
+    return reachable;
+  }
   const loaded = new Map<EntityKey, LoadedNode>();
   const attempted = new Set<EntityKey>();
+  let resolutionSteps = 0;
   while (pending.size) {
+    if (++resolutionSteps > 50000) throw new Error("Version dependencies do not converge. Resolve conflicting or cyclic component versions before opening this build.");
+    if (attempted.size > 5000) throw new Error("This build exceeds the supported component graph size.");
     const key = pending.values().next().value!;
     // Drain already-loaded siblings before fetching their children. This keeps
     // the existing queue/edge order, while batching the next whole frontier.
@@ -148,7 +174,9 @@ export async function readWorkspace(
         loaded.set(key, value);
     }
     pending.delete(key);
-    if (nodes.has(key)) continue;
+    const signature = pinSignature(key);
+    if (processedPins.get(key) === signature) continue;
+    processedPins.set(key, signature);
     const split = key.indexOf(":");
     const kind = key.slice(0, split) as EntityKind;
     const id = key.slice(split + 1);
@@ -185,18 +213,46 @@ export async function readWorkspace(
       ),
       data: row,
     });
+    const oldChildren = new Set(inheritedPins.get(key)?.keys() ?? []);
+    const memberships = new Map<EntityKey, string[]>();
+    inheritedPins.set(key, memberships);
+    // A newly discovered pin may select different memberships. Replace the old
+    // outgoing edges rather than retaining live descendants beside the snapshot.
+    for (let i = edges.length - 1; i >= 0; i--) if (edges[i]!.parent === key) edges.splice(i, 1);
     const layout = Array.isArray(row["membershipOrder"])
       ? (row["membershipOrder"] as string[])
       : [];
     for (const l of links) {
+      const childKey: EntityKey = `${l.kind}:${l.id}`;
+      oldChildren.add(childKey);
+      const inheritedVersion = "versionId" in l ? l.versionId : l.data["versionId"];
+      if (typeof inheritedVersion === "string") memberships.set(childKey, [...(memberships.get(childKey) ?? []), inheritedVersion]);
       const memberKey = `${l.kind}:${l.id}${l.data["role"] ? `:${l.data["role"]}` : ""}`;
       const order = layout.indexOf(memberKey);
       edge(key, l.kind, l.id, kind === "item" ? "ITEM" : "ALL", {
         ...l.data,
+        ...(typeof inheritedVersion === "string" ? { versionId: inheritedVersion } : {}),
         ...(order >= 0 ? { sortOrder: order } : {}),
       });
     }
+    refreshPins(oldChildren);
+    // Obsolete descendants cannot keep contributing pins after their supplier
+    // changes version and no other root still reaches them.
+    const reachable = reachableKeys();
+    const orphanChildren = new Set<EntityKey>();
+    for (const [parent, supplied] of inheritedPins) if (!reachable.has(parent)) {
+      for (const child of supplied.keys()) orphanChildren.add(child);
+      inheritedPins.delete(parent);
+      nodes.delete(parent);
+      processedPins.delete(parent);
+      pending.delete(parent);
+      for (let i = edges.length - 1; i >= 0; i--) if (edges[i]!.parent === parent) edges.splice(i, 1);
+    }
+    refreshPins(orphanChildren);
   }
+  const reachable = reachableKeys();
+  for (const key of nodes.keys()) if (!reachable.has(key)) nodes.delete(key);
+  for (let i = edges.length - 1; i >= 0; i--) if (edges[i]!.parent !== null && !reachable.has(edges[i]!.parent!)) edges.splice(i, 1);
   const authorIds = [
     ...new Set(
       [...nodes.values()].flatMap((n) => (n.userId ? [n.userId] : [])),

@@ -5,14 +5,17 @@
 
 import { useCharacterReadOnly, useReadOnlyConditions } from "@/components/characters/character-read-only";
 import { useState, useEffect, useCallback } from "react";
-import { connectConsequenceSync, consequenceSyncReady, consequenceSyncError } from "@/lib/character/consequences/client-sync";
+import { consequenceSyncReady, consequenceSyncError } from "@/lib/character/consequences/client-sync";
+
+import { usePlaySession } from "./use-play-session";
+import { getPlaySessionAccountId, playFieldStorageKey, playFieldStoragePrefix } from "@/lib/play-state/client-sync";
 
 export type DurationTier = "long_rest" | "short_rest" | "manual";
 
 export type RuntimeCondition = import("@/lib/character/consequences/types").ConsequenceOccurrence;
 
 export function condStorageKey(characterId: string, conditionId: string): string {
-  return `sw:cond:${characterId}:${conditionId}`;
+  return playFieldStorageKey("cond", characterId, conditionId);
 }
 
 function readCondition(
@@ -55,7 +58,7 @@ function deleteCondition(characterId: string, conditionId: string): void {
 
 function readAllConditions(characterId: string): RuntimeCondition[] {
   if (typeof window === "undefined") return [];
-  const prefix = `sw:cond:${characterId}:`;
+  const prefix = playFieldStoragePrefix("cond", characterId);
   const out: RuntimeCondition[] = [];
   try {
     for (let i = 0; i < window.localStorage.length; i++) {
@@ -95,6 +98,8 @@ export function useRuntimeConditions(
 ): UseRuntimeConditionsResult {
   const readOnly = useCharacterReadOnly();
   const savedConditions = useReadOnlyConditions();
+  const { session, accountId } = usePlaySession("CHARACTER", characterId, undefined, undefined, { enabled: !readOnly });
+  const canEdit = useCallback(() => !!accountId && getPlaySessionAccountId() === accountId && !!characterId && consequenceSyncReady(characterId), [accountId, characterId]);
   const [conditions, setConditions] = useState<readonly RuntimeCondition[]>([]);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -107,34 +112,33 @@ export function useRuntimeConditions(
       setHydrated(true);
       return;
     }
-    const next = readAllConditions(characterId);
+    const next = accountId && getPlaySessionAccountId() === accountId && consequenceSyncReady(characterId) ? readAllConditions(characterId) : [];
     // Sync acknowledgements and polling often contain identical data. Preserve
     // the reference so the entire stat resolver does not rerun for a no-op.
     setConditions(previous => JSON.stringify(previous) === JSON.stringify(next) ? previous : next);
     setSyncError(consequenceSyncError(characterId));
     // The sheet scanner must wait for saved overrides before creating defaults.
-    setHydrated(consequenceSyncReady(characterId));
-  }, [characterId]);
+    setHydrated(!!accountId && getPlaySessionAccountId() === accountId && consequenceSyncReady(characterId));
+  }, [characterId, accountId]);
 
   useEffect(() => {
-    if (!characterId || readOnly) return;
+    if (!characterId || readOnly || !canEdit()) return;
     // Hydrate this external localStorage source after subscribing to a character.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
     function onChange() {
       refresh();
     }
-    const disconnect = connectConsequenceSync(characterId);
+
     window.addEventListener("sw:consequences-sync", onChange);
     window.addEventListener("storage", onChange);
     window.addEventListener("sw:conditions-changed", onChange);
     return () => {
-      disconnect();
       window.removeEventListener("sw:consequences-sync", onChange);
       window.removeEventListener("storage", onChange);
       window.removeEventListener("sw:conditions-changed", onChange);
     };
-  }, [characterId, refresh, readOnly]);
+  }, [characterId, refresh, readOnly, session, canEdit]);
 
   const create = useCallback<UseRuntimeConditionsResult["create"]>(
     (input) => {
@@ -158,17 +162,18 @@ export function useRuntimeConditions(
         active: input.active ?? true,
       };
       if (readOnly) return cond;
+      if (!canEdit()) throw new Error("Wait for your signed-in session before editing Consequences.");
       if (characterId) writeCondition(characterId, cond);
       window.dispatchEvent(new CustomEvent("sw:conditions-changed"));
       refresh();
       return cond;
     },
-    [characterId, refresh, readOnly],
+    [characterId, refresh, readOnly, canEdit],
   );
 
   const update = useCallback<UseRuntimeConditionsResult["update"]>(
     (id, patch) => {
-      if (!characterId || readOnly) return;
+      if (!characterId || readOnly || !canEdit()) return;
       const existing = readCondition(characterId, id);
       if (!existing) return;
       const merged: RuntimeCondition = { ...existing, ...patch };
@@ -176,33 +181,33 @@ export function useRuntimeConditions(
       window.dispatchEvent(new CustomEvent("sw:conditions-changed"));
       refresh();
     },
-    [characterId, refresh, readOnly],
+    [characterId, refresh, readOnly, canEdit],
   );
 
   const remove = useCallback<UseRuntimeConditionsResult["remove"]>(
     (id) => {
-      if (!characterId || readOnly) return;
+      if (!characterId || readOnly || !canEdit()) return;
       deleteCondition(characterId, id);
       window.dispatchEvent(new CustomEvent("sw:conditions-changed"));
       refresh();
     },
-    [characterId, refresh, readOnly],
+    [characterId, refresh, readOnly, canEdit],
   );
 
   const toggle = useCallback<UseRuntimeConditionsResult["toggle"]>(
     (id, currentActive) => {
-      if (!characterId || readOnly) return;
+      if (!characterId || readOnly || !canEdit()) return;
       const existing = readCondition(characterId, id);
       if (!existing) return;
       const active = !(currentActive ?? existing.manualOverride ?? existing.active);
       update(id, { manualOverride: active });
     },
-    [characterId, update, readOnly],
+    [characterId, update, readOnly, canEdit],
   );
 
   if (readOnly) return { syncError: null, conditions: savedConditions, hydrated: true, create, update, remove, toggle, refresh: () => {} };
-  return { syncError, conditions: loadedCharacterId === characterId ? conditions : [],
-    hydrated: hydrated && loadedCharacterId === characterId, create, update, remove, toggle, refresh };
+  return { syncError, conditions: accountId && session.ready && session.status !== "legacy" && loadedCharacterId === characterId ? conditions : [],
+    hydrated: !!accountId && session.ready && session.status !== "legacy" && hydrated && loadedCharacterId === characterId, create, update, remove, toggle, refresh };
 }
 
 /**

@@ -1,8 +1,11 @@
+import { visibilityCondition } from "@/lib/publishing/library-query";
+import { redactExpandedContent } from "@/lib/publishing/redact-expanded-content";
+import { withSourceCollection } from "@/lib/collections/source-save";
 import { withPublishingResponse } from "@/lib/publishing/save-transaction";
 import { consequenceBehaviorSchema } from "@/lib/character/consequences/validation";
 import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { asc, or, eq, isNull, and } from "drizzle-orm";
+import { asc, or, eq, isNull, and, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { primitives, primitiveMarketClassifications } from "@/db/schema";
 import {
@@ -48,15 +51,9 @@ async function saveMarketClassification(primitiveId: number, familyKey: string, 
   });
 }
 export async function GET() {
-  const user = await currentUser();
+  const { userId: viewerId } = await auth();
   const rows = await db.query.primitives.findMany({
-    where: user
-      ? or(
-          eq(primitives.isPublic, true),
-          isNull(primitives.userId),
-          eq(primitives.userId, user.id),
-        )
-      : or(eq(primitives.isPublic, true), isNull(primitives.userId)),
+    where: visibilityCondition("PRIMITIVE", sql`${primitives.id}`, sql`${primitives.userId}`, viewerId ?? undefined, sql`${primitives.isPublic}`),
     orderBy: [asc(primitives.category), asc(primitives.name)],
   });
 
@@ -713,6 +710,8 @@ async function handlePOST(request: Request) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
-export async function POST(...args: Parameters<typeof handlePOST>) {
+async function handleCollectionPOST(...args: Parameters<typeof handlePOST>) {
   return withPublishingResponse(() => handlePOST(...args));
 }
+
+export async function POST(...args: Parameters<typeof handleCollectionPOST>) { return withSourceCollection(args[0], "PRIMITIVE", () => handleCollectionPOST(...args)); }

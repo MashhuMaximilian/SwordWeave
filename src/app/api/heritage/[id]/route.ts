@@ -1,3 +1,6 @@
+import { visibleEntries } from "@/lib/collections/service";
+import { redactExpandedContent } from "@/lib/publishing/redact-expanded-content";
+import { withSourceCollection } from "@/lib/collections/source-save";
 import { parseLineageSize, isCharacterSize } from "@/lib/heritage/lineage-size";
 import { withPublishingResponse } from "@/lib/publishing/save-transaction";
 import { NextResponse } from "next/server";
@@ -101,6 +104,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const { userId: viewerId } = await auth();
+  if (!(await visibleEntries(["LINEAGE_TEMPLATE","UPBRINGING_TEMPLATE","MANIFEST_TEMPLATE"].map(targetType => ({targetType,targetId:id})), viewerId)).length) return NextResponse.json({error:"Entry not found."},{status:404});
 
   const row = await db.query.heritage.findFirst({
     where: eq(heritage.id, id),
@@ -379,7 +384,7 @@ export async function GET(
     }),
   }).transitiveBu;
 
-  return NextResponse.json({ template: { ...row, computedBu } });
+  return NextResponse.json({ template: await redactExpandedContent({ ...row, computedBu }, viewerId) });
 }
 
 /**
@@ -983,6 +988,8 @@ function pickStringOrDefault(value: unknown, fallback: string): string {
   return typeof value === "string" && value.length > 0 ? value : fallback;
 }
 
-export async function PATCH(...args: Parameters<typeof handlePATCH>) {
+async function collectionPATCH(...args: Parameters<typeof handlePATCH>) {
   return withPublishingResponse(() => handlePATCH(...args));
 }
+
+export async function PATCH(...args: Parameters<typeof collectionPATCH>) { return withSourceCollection(args[0], "HERITAGE", () => collectionPATCH(...args)); }

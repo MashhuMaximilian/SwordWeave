@@ -548,6 +548,8 @@ export const NAV_LINKS: FabItem[] = [
     ),
     href: "/characters",
   },
+  { kind: "link", key: "collections", label: "Collections", icon: <FabIcon iconKey="delapouite/bookshelf" alt="Collections" />, href: "/collections" },
+  { kind: "link", key: "monsters", label: "Monsters", icon: <FabIcon iconKey="lorc/dragon-head" alt="Monsters" />, href: "/monsters" },
   { kind: "link", key: "rules", label: "Play guide", icon: <FabIcon iconKey="delapouite/rule-book" alt="Play guide" />, href: "/rules" },
 ];
 

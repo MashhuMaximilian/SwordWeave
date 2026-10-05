@@ -1,3 +1,5 @@
+import { monsters } from "@/db/schema/monsters";
+import { monsterLibraryColumns,monsterToLibraryItem } from "@/lib/publishing/monster-library-item";
 import { redirect } from "next/navigation";
 import { and, asc, desc, eq, or, isNull } from "drizzle-orm";
 import Link from "next/link";
@@ -57,8 +59,9 @@ export default async function CreationsPage({
   // "My creations" = rows the user authored. We pull all entity types in
   // parallel and let the client filter by type/status. Drafts = private
   // (isPublic=false); Published = public.
-  const [primitiveRows, effectRows, capabilityRows, templateRows, itemRows, characterRows, buildRows] =
+  const [primitiveRows, effectRows, capabilityRows, templateRows, itemRows, characterRows, buildRows,monsterRows] =
     await Promise.all([
+
       db.query.primitives.findMany({
         where: eq(primitives.userId, ownerClerkId),
         orderBy: [asc(primitives.name)],
@@ -96,6 +99,7 @@ export default async function CreationsPage({
         where: eq(builds.userId, ownerClerkId),
         orderBy: [desc(builds.level), asc(builds.name)],
       }),
+      db.select(monsterLibraryColumns).from(monsters).where(eq(monsters.userId,ownerClerkId)).orderBy(asc(monsters.name)),
     ]);
 
   // Look up publication rows for every (targetType, targetId) the user
@@ -172,6 +176,7 @@ export default async function CreationsPage({
     ...itemRows.map((r) => itemToLibraryItem(r, visFor("ITEM", r.id))),
     ...characterRows.map((r) => characterToLibraryItem(r, visFor("CHARACTER", r.id))),
     ...buildRows.map((r) => buildToLibraryItem(r, visFor("BUILD_TEMPLATE", r.id))),
+    ...monsterRows.map(monsterToLibraryItem),
   ];
 
   // Fetch engagement state for the user AND the count aggregates in
@@ -203,6 +208,7 @@ export default async function CreationsPage({
     item: itemRows.length,
     character: characterRows.length,
     build: buildRows.length,
+    monster:monsterRows.length,
   };
   const totalCreations = Object.values(counts).reduce((sum, count) => sum + count, 0);
   const mechanicsCount = counts.primitive + counts.effect + counts.capability + counts.item;

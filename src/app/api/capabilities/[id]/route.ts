@@ -1,3 +1,6 @@
+import { visibleEntries } from "@/lib/collections/service";
+import { redactExpandedContent } from "@/lib/publishing/redact-expanded-content";
+import { withSourceCollection } from "@/lib/collections/source-save";
 import { withPublishingResponse } from "@/lib/publishing/save-transaction";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
@@ -86,6 +89,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const { userId: viewerId } = await auth();
+  if (!(await visibleEntries([{targetType:"CAPABILITY",targetId:id}], viewerId)).length) return NextResponse.json({error:"Entry not found."},{status:404});
   try {
   // Use a simple direct select first (avoids drizzle's nested
   // relational query which was silently failing with no error
@@ -243,7 +248,7 @@ export async function GET(
     }),
   }).transitiveBu;
 
-  return NextResponse.json({ capability: { ...row, computedBu } });
+  return NextResponse.json({ capability: await redactExpandedContent({ ...row, computedBu }, viewerId) });
   } catch (err) {
     console.error("[GET capabilities] FULL ERROR:", err);
     // Try EVERY way to extract error info
@@ -961,6 +966,8 @@ function pickStringOrDefault(value: unknown, fallback: string): string {
   return typeof value === "string" && value.length > 0 ? value : fallback;
 }
 
-export async function PATCH(...args: Parameters<typeof handlePATCH>) {
+async function collectionPATCH(...args: Parameters<typeof handlePATCH>) {
   return withPublishingResponse(() => handlePATCH(...args));
 }
+
+export async function PATCH(...args: Parameters<typeof collectionPATCH>) { return withSourceCollection(args[0], "CAPABILITY", () => collectionPATCH(...args)); }

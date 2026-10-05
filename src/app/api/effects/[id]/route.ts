@@ -1,3 +1,6 @@
+import { visibleEntries } from "@/lib/collections/service";
+import { redactExpandedContent } from "@/lib/publishing/redact-expanded-content";
+import { withSourceCollection } from "@/lib/collections/source-save";
 import { withPublishingResponse } from "@/lib/publishing/save-transaction";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
@@ -68,6 +71,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const { userId: viewerId } = await auth();
+  if (!(await visibleEntries([{targetType:"EFFECT",targetId:id}], viewerId)).length) return NextResponse.json({error:"Entry not found."},{status:404});
   const effect = await db.query.effects.findFirst({
     where: eq(effects.id, id),
     with: {
@@ -82,7 +87,7 @@ export async function GET(
     return NextResponse.json({ error: "Effect not found." }, { status: 404 });
   }
 
-  return NextResponse.json({ effect });
+  return NextResponse.json({ effect: await redactExpandedContent(effect, viewerId) });
 }
 
 /**
@@ -471,6 +476,8 @@ function pickStringOrDefault(value: unknown, fallback: string): string {
   return typeof value === "string" && value.length > 0 ? value : fallback;
 }
 
-export async function PATCH(...args: Parameters<typeof handlePATCH>) {
+async function collectionPATCH(...args: Parameters<typeof handlePATCH>) {
   return withPublishingResponse(() => handlePATCH(...args));
 }
+
+export async function PATCH(...args: Parameters<typeof collectionPATCH>) { return withSourceCollection(args[0], "EFFECT", () => collectionPATCH(...args)); }

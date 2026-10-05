@@ -20,6 +20,7 @@ describe("workspace version pins", () => {
     expect(result.row["buCost"]).toBe(4); expect(result.row["hardModifiers"]).toEqual([{ value: 1 }]);
     expect(result.row["contentHash"]).toBeUndefined(); expect(entry.row["name"]).toBe("New rule");
   });
+  it("uses immutable latest snapshot when explicitly pinned, including absent rule fields",()=>{const result=resolvePinnedNode("primitive",entry,["latest"]);expect(result.row["hardModifiers"]).toBeUndefined();expect(result.row["workspacePinnedSnapshot"]).toBe(true);expect(result.row["workspaceHistoricalVersion"]).toBe(false);});
   it("recognizes legacy seed snapshot envelopes", () => {
     const seeded = structuredClone(entry); seeded.versions[0]!.snapshot = { id: 1, data: entry.versions[0]!.snapshot };
     expect(resolvePinnedNode("primitive", seeded, ["old"]).row["name"]).toBe("Old rule");

@@ -25,6 +25,39 @@ beforeEach(() => {
   state.batches=[];
 });
 describe("workspace breadth batching", () => {
+  it("revisits a primitive when a container discovered later pins its older version", async () => {
+    state.slots["character_heritages"]=[{heritageId:"h1"}];
+    state.slots["character_primitives"]=[{primitiveId:1,source:"PERSONAL"}];
+    const primitive=state.nodes.get("primitive:1") as LoadedNode;
+    primitive.versions=[{id:"old",number:1,latest:false,deltaKind:"FULL",snapshot:{name:"Pinned old",buCost:1,hardModifiers:[]}},{id:"new",number:2,latest:true,deltaKind:"FULL",snapshot:{name:"New"}}];
+    (state.nodes.get("capability:c1") as LoadedNode).links=[{kind:"primitive",id:1,data:{versionId:"old"}}];
+    const graph=await readWorkspace("character");
+    expect(graph.nodes.find(n=>n.key==="primitive:1")?.name).toBe("Pinned old");
+    expect(graph.nodes.find(n=>n.key==="primitive:1")?.versionId).toBe("old");
+    expect(state.batches.flat().filter(k=>k==="primitive:1")).toHaveLength(1);
+  });
+  it("replaces a previously processed container's outgoing live memberships after a late pin",async()=>{
+    state.slots["character_heritages"]=[{heritageId:"h1"}];
+    state.slots["character_capabilities"]=[{capabilityId:"c1",slotTab:"MANIFEST"}];
+    (state.nodes.get("heritage:h1") as LoadedNode).links=[{kind:"capability",id:"c2",data:{}}];
+    (state.nodes.get("capability:c2") as LoadedNode).links=[{kind:"capability",id:"c1",data:{versionId:"old"}}];
+    const c1=state.nodes.get("capability:c1") as LoadedNode;
+    c1.versions=[{id:"old",number:1,latest:false,deltaKind:"FULL",snapshot:{name:"Pinned container",primitiveSlots:[{primitiveId:2}]}},{id:"new",number:2,latest:true,deltaKind:"FULL",snapshot:{name:"Live"}}];
+    const graph=await readWorkspace("character");
+    expect(graph.nodes.find(n=>n.key==="capability:c1")?.name).toBe("Pinned container");
+    expect(graph.edges.filter(e=>e.parent==="capability:c1").map(e=>e.child)).toEqual(["primitive:2"]);
+    expect(graph.nodes.some(n=>n.key==="primitive:1")).toBe(false);
+  });
+  it("retains a conflict when the direct pin and a later inherited pin disagree",async()=>{
+    state.slots["character_heritages"]=[{heritageId:"h1"}];
+    state.slots["character_primitives"]=[{primitiveId:1,source:"PERSONAL",versionId:"new"}];
+    const primitive=state.nodes.get("primitive:1") as LoadedNode;
+    primitive.versions=[{id:"old",number:1,latest:false,deltaKind:"FULL",snapshot:{name:"Old"}},{id:"new",number:2,latest:true,deltaKind:"FULL",snapshot:{name:"New"}}];
+    (state.nodes.get("capability:c1") as LoadedNode).links=[{kind:"primitive",id:1,data:{versionId:"old"}}];
+    const graph=await readWorkspace("character");const node=graph.nodes.find(n=>n.key==="primitive:1");
+    expect(node?.versionId).toBeNull();expect(node?.data["workspaceVersionIssue"]).toMatch(/different pinned versions/);
+  });
+
   it("loads all sibling descendants together without changing membership order", async () => {
     const graph = await readWorkspace("character");
     expect(state.batches).toEqual([["heritage:h1","heritage:h2"],["capability:c1","capability:c2"],["primitive:1","primitive:2"]]);

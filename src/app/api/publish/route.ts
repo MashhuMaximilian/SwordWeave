@@ -15,6 +15,10 @@ import {
   publishVisibilityEnum,
   heritage,
 } from "@/db/schema";
+import { loadWorkspaceNodes } from "@/lib/character/workspace/load-nodes";
+import { captureCharacterSnapshot } from "@/lib/character/capture-character-snapshot";
+import { findLatestVersion as findLatestAuthoredVersion } from "@/lib/versions/auto-snapshot";
+import { resolveContentVersionId } from "@/lib/versions/content-hash";
 import { publishTarget, unpublishTarget } from "@/lib/publishing/publish-service";
 
 const PublishSchema = z.object({
@@ -40,144 +44,29 @@ async function loadSnapshot(
   targetId: string,
   authorClerkUserId: string,
 ): Promise<Record<string, unknown> | null> {
-  if (targetType === "CAPABILITY") {
-    const row = await db.query.capabilities.findFirst({
-      where: (table, { eq, and }) =>
-        and(
-          eq(table.id, targetId),
-          eq(table.userId, authorClerkUserId),
-        ),
-      with: {
-        primitiveLinks: {
-          with: { primitive: true },
-        },
-      },
-    });
-    if (!row) return null;
-    return {
-      id: row.id,
-      name: row.name,
-      type: row.type,
-      sourceType: row.sourceType,
-      verboseDescription: row.verboseDescription,
-      tags: row.tags,
-      metadata: row.metadata,
-      primitiveLinks: row.primitiveLinks.map((l) => ({
-        primitiveId: l.primitiveId,
-        quantity: l.quantity,
-        sortOrder: l.sortOrder,
-      })),
-    };
-  }
-  if (targetType === "PRIMITIVE") {
-    const row = await db.query.primitives.findFirst({
-      where: (table, { eq, and }) =>
-        and(
-          eq(table.id, Number(targetId)),
-          eq(table.userId, authorClerkUserId),
-        ),
-    });
-    if (!row) return null;
-    return {
-      id: row.id,
-      name: row.name,
-      category: row.category,
-      costTier: row.costTier,
-      buCost: row.buCost,
-      mechanicalOutputText: row.mechanicalOutputText,
-      narrativeRule: row.narrativeRule,
-      isMirrorable: row.isMirrorable,
-      mirrorVector: row.mirrorVector,
-      hardModifiers: row.hardModifiers,
-    };
-  }
-  if (targetType === "EFFECT") {
-    const row = await db.query.effects.findFirst({
-      where: (table, { eq, and }) =>
-        and(
-          eq(table.id, targetId),
-          eq(table.userId, authorClerkUserId),
-        ),
-      with: {
-        primitiveLinks: { with: { primitive: true } },
-      },
-    });
-    if (!row) return null;
-    return {
-      id: row.id,
-      name: row.name,
-      narrativeDescription: row.narrativeDescription,
-      tags: row.tags,
-      primitiveLinks: row.primitiveLinks.map((l) => ({
-        primitiveId: l.primitiveId,
-        quantity: l.quantity,
-        sortOrder: l.sortOrder,
-      })),
-    };
-  }
-  if (targetType === "ITEM") {
-    const row = await db.query.items.findFirst({
-      where: (table, { eq, and }) =>
-        and(
-          eq(table.id, targetId),
-          eq(table.userId, authorClerkUserId),
-        ),
-    });
-    if (!row) return null;
-    return {
-      id: row.id,
-      name: row.name,
-      itemType: row.itemType,
-      rarity: row.rarity,
-      buCost: row.buCost,
-      description: row.description,
-      slotCost: row.slotCost,
-      isTwoHanded: row.isTwoHanded,
-      isConsumable: row.isConsumable,
-      actsAsFocus: row.actsAsFocus,
-      tags: row.tags,
-    };
-  }
   if (targetType === "CHARACTER") {
-    // characters.userId is text (Clerk ID format) — same shape as
-    // primitives/capabilities/heritage/effects/items. The call below
-    // passes the Clerk ID via the authorClerkUserId parameter.
-    const row = await db.query.characters.findFirst({
-      where: (table, { eq, and }) =>
-        and(eq(table.id, targetId), eq(table.userId, authorClerkUserId)),
-    });
+    const row = await db.query.characters.findFirst({ where: (t, {and,eq}) => and(eq(t.id,targetId),eq(t.userId,authorClerkUserId)) });
     if (!row) return null;
-    return {
-      id: row.id,
-      name: row.name,
-      level: row.level,
-      size: row.size,
-      notes: row.notes,
-      portraitUrl: row.portraitUrl,
-    };
+    await captureCharacterSnapshot({ characterId: targetId, publishedByUserId: authorClerkUserId });
+    return (await findLatestAuthoredVersion("character", targetId))?.snapshot as Record<string,unknown> ?? null;
   }
-  if (
-    targetType === "LINEAGE_TEMPLATE" ||
-    targetType === "UPBRINGING_TEMPLATE" ||
-    targetType === "MANIFEST_TEMPLATE"
-  ) {
-    const row = await db.query.heritage.findFirst({
-      where: (table, { eq, and }) =>
-        and(
-          eq(table.id, targetId),
-          eq(table.userId, authorClerkUserId),
-        ),
-    });
-    if (!row) return null;
-    return {
-      id: row.id,
-      name: row.name,
-      kind: row.kind,
-      description: row.description,
-      imageUrl: row.imageUrl,
-    };
+  const kind = targetType === "PRIMITIVE" ? "primitive" : targetType === "CAPABILITY" ? "capability" : targetType === "EFFECT" ? "effect" : targetType === "ITEM" ? "item" : ["LINEAGE_TEMPLATE","UPBRINGING_TEMPLATE","MANIFEST_TEMPLATE"].includes(targetType) ? "heritage" : null;
+  if (!kind) return null;
+  const loaded = await loadWorkspaceNodes([`${kind}:${targetId}`]);
+  const entry = loaded.get(`${kind}:${targetId}`);
+  if (!entry || entry.row["userId"] !== authorClerkUserId) return null;
+  if (kind === "heritage" && entry.row["kind"] !== targetType.replace("_TEMPLATE", "")) return null;
+  const versionKind = kind === "heritage" ? "template" : kind;
+  const latest = await findLatestAuthoredVersion(versionKind, targetId);
+  if (latest && entry.row["contentHash"] && latest.versionId === resolveContentVersionId(versionKind, targetId, String(entry.row["contentHash"]))) return latest.snapshot as Record<string,unknown>;
+  // Compatibility for older definitions without a canonical snapshot. Copy
+  // only this entry's metadata and its relationship settings, never children.
+  const snapshot = Object.fromEntries(Object.entries(entry.row).filter(([key]) => !["id","userId","createdAt","updatedAt","contentHash"].includes(key)));
+  for (const childKind of ["primitive","capability","effect","item","heritage"] as const) {
+    const links = entry.links.filter(link => link.kind === childKind);
+    if (links.length) snapshot[`${childKind}Slots`] = links.map(link => ({...link.data,[`${childKind}Id`]:link.id}));
   }
-  return null;
+  return snapshot;
 }
 
 export async function POST(req: NextRequest) {

@@ -29,6 +29,7 @@ export const publishTargetTypeEnum = pgEnum("publish_target_type", [
   "UPBRINGING_TEMPLATE",
   "MANIFEST_TEMPLATE",
   "BUILD_TEMPLATE",
+  "MONSTER",
 ]);
 
 export const publishVisibilityEnum = pgEnum("publish_visibility", [

@@ -42,12 +42,13 @@ type TypeFilter =
   | "template"
   | "item"
   | "character"
-  | "build";
+  | "build"
+  | "monster";
 type CreationTab = "mechanics" | "heritages" | "characters";
 const TAB_TYPES: Record<CreationTab, TypeFilter[]> = {
   mechanics: ["primitive", "effect", "capability", "item"],
   heritages: ["template"],
-  characters: ["character", "build"],
+  characters: ["character", "build","monster"],
 };
 
 type StatusFilter = "all" | "draft";
@@ -79,6 +80,7 @@ const TYPE_CHIPS: Array<{ key: TypeFilter; label: string }> = [
   { key: "item", label: "Items" },
   { key: "character", label: "Characters" },
   { key: "build", label: "Builds" },
+  { key: "monster", label: "Monsters & NPCs" },
 ];
 
 // Map LibraryItem.targetType to TypeFilter.
@@ -91,7 +93,7 @@ const TARGET_TYPE_MAP: Record<string, TypeFilter> = {
   MANIFEST_TEMPLATE: "template",
   ITEM: "item",
   CHARACTER: "character",
-  MONSTER: "character",
+  MONSTER: "monster",
   BUILD_TEMPLATE: "build",
 };
 
@@ -107,13 +109,18 @@ export function CreationsClient({
     (TYPE_CHIPS.find((c) => c.key === initialType)?.key ?? "all") as TypeFilter,
   );
   const [tab, setTab] = useState<CreationTab>(
-    initialType === "template" ? "heritages" : ["character", "build"].includes(initialType) ? "characters" : "mechanics",
+    initialType === "template" ? "heritages" : ["character", "build","monster"].includes(initialType) ? "characters" : "mechanics",
   );
   const [status, setStatus] = useState<StatusFilter>(
     initialStatus === "draft" ? "draft" : "all",
   );
   // Phase 9 follow-up: two new orthogonal filter dimensions.
   const [kind, setKind] = useState<KindFilter>("all");
+  const [collectionFilter,setCollectionFilter]=useState("");
+  const [collectionRows,setCollectionRows]=useState<{id:string;name:string;system_kind:string|null}[]>([]);
+  const [collectionMemberships,setCollectionMemberships]=useState<{collectionId:string;targetType:string;targetId:string}[]>([]);
+
+
   const [visibility, setVisibility] = useState<VisibilityFilter>("all");
   const [heritageKind, setHeritageKind] = useState("all");
   const [search, setSearch] = useState("");
@@ -330,9 +337,17 @@ export function CreationsClient({
   );
   useFilterSlot(filterSlot);
 
+  useEffect(()=>{
+    const load=async()=>{
+      const chunks=Array.from({length:Math.ceil(items.length/500)},(_,i)=>items.slice(i*500,(i+1)*500));
+      const [list,matches]=await Promise.all([fetch("/api/collections").then(r=>r.json()),Promise.all(chunks.map(chunk=>fetch("/api/collections/matches",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({entries:chunk.map(item=>({targetType:item.targetType,targetId:item.targetId}))})}).then(r=>r.json()))).then(results=>({memberships:results.flatMap(r=>r.memberships??[])}))]);
+      setCollectionRows(list.collections??[]);setCollectionMemberships(matches.memberships??[]);
+    }; void load().catch(()=>{});window.addEventListener("sw-collections-changed",load);return()=>window.removeEventListener("sw-collections-changed",load);
+  },[items]);
   const filteredItems = useMemo(() => {
     const q = search.toLowerCase().trim();
     return items.filter((item) => {
+      if(collectionFilter){const selected=collectionRows.find(c=>c.id===collectionFilter);if(selected?.system_kind==="ORIGINAL"&&item.sourceOrigin?.startsWith("fork:"))return false;if(selected?.system_kind==="FORKS"&&!item.sourceOrigin?.startsWith("fork:"))return false;if(selected?.system_kind!=="ORIGINAL"&&selected?.system_kind!=="FORKS"&&!collectionMemberships.some(m=>m.collectionId===collectionFilter&&m.targetType===item.targetType&&m.targetId===item.targetId))return false;}
       const mapped = TARGET_TYPE_MAP[item.targetType] ?? "primitive";
       if (!TAB_TYPES[tab].includes(mapped)) return false;
       if (tab === "heritages" && heritageKind !== "all" && item.targetType !== heritageKind) return false;
@@ -361,7 +376,7 @@ export function CreationsClient({
       if (q && !item.name.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [items, tab, heritageKind, type, status, kind, visibility, search]);
+  }, [collectionFilter, collectionRows, collectionMemberships, items, tab, heritageKind, type, status, kind, visibility, search]);
 
   const hasActiveFilters =
     type !== "all" ||
@@ -383,7 +398,7 @@ export function CreationsClient({
       ).length,
     },
     characters: {
-      description: "Living sheets and reusable builds",
+      description: "Character sheets, reusable builds, and Monster / NPC templates",
       count: items.filter((item) =>
         TAB_TYPES.characters.includes(TARGET_TYPE_MAP[item.targetType] ?? "primitive"),
       ).length,
@@ -405,6 +420,7 @@ export function CreationsClient({
     template: "Heritage templates",
     character: "Living character sheets",
     build: "Reusable character builds",
+    monster:"Monster and NPC templates",
   };
 
   return (
@@ -494,6 +510,7 @@ export function CreationsClient({
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-3"><a href="/collections" className="text-sm text-primary">Manage collections</a><select aria-label="Filter by collection" className="rounded border bg-background p-2 text-sm" value={collectionFilter} onChange={e=>setCollectionFilter(e.target.value)}><option value="">All collections</option>{collectionRows.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
       <div className="v12-creations-index-head">
         <div>
           <span>Archive index</span>
@@ -524,6 +541,7 @@ export function CreationsClient({
             engagement={initialEngagement}
             currentUserInternalId={currentUserInternalId}
             onSelect={(item) => {
+              if(item.targetType==="MONSTER"){router.push(`/monsters/${item.targetId}`);return;}
               if (!stack.canPush) return;
               const isDraft = item.publishedAt === null;
               stack.push({

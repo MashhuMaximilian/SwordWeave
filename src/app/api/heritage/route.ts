@@ -1,8 +1,11 @@
+import { visibilityCondition } from "@/lib/publishing/library-query";
+import { redactExpandedContent } from "@/lib/publishing/redact-expanded-content";
+import { withSourceCollection } from "@/lib/collections/source-save";
 import { parseLineageSize, isCharacterSize } from "@/lib/heritage/lineage-size";
 import { withPublishingResponse } from "@/lib/publishing/save-transaction";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { asc, desc, eq, inArray, or } from "drizzle-orm";
+import { asc, desc, eq, inArray, or, and, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   primitives,
@@ -50,6 +53,7 @@ function parseTags(value: unknown): string[] {
  * Optional filters: ?kind=lineage|upbringing|manifest
  */
 export async function GET(request: Request) {
+  const { userId: viewerId } = await auth();
   const { searchParams } = new URL(request.url);
   const kindFilter = searchParams.get("kind");
 
@@ -58,7 +62,7 @@ export async function GET(request: Request) {
     : undefined;
 
   const rows = await db.query.heritage.findMany({
-    where: whereClause,
+    where: and(whereClause, visibilityCondition(sql`(${heritage.kind}::text || '_TEMPLATE')`, sql`${heritage.id}`, sql`${heritage.userId}`, viewerId ?? undefined, sql`${heritage.isPublic}`)),
     orderBy: [asc(heritage.kind), asc(heritage.name)],
     with: {
       primitiveLinks: {
@@ -76,7 +80,7 @@ export async function GET(request: Request) {
   });
 
   // Filter to public only
-  const publicRows = rows.filter((r) => r.isPublic);
+  const publicRows = rows;
 
   // Compute BU per template
   const enriched = publicRows.map((t) => {
@@ -88,7 +92,7 @@ export async function GET(request: Request) {
     return { ...t, computedBu: bu };
   });
 
-  return NextResponse.json({ heritage: enriched });
+  return NextResponse.json({ heritage: await redactExpandedContent(enriched, viewerId) });
 }
 
 /**
@@ -359,6 +363,8 @@ function pickStringOrNull(value: unknown): string | null {
 function pickStringOrDefault(value: unknown, fallback: string): string {
   return typeof value === "string" && value.length > 0 ? value : fallback;
 }
-export async function POST(...args: Parameters<typeof handlePOST>) {
+async function handleCollectionPOST(...args: Parameters<typeof handlePOST>) {
   return withPublishingResponse(() => handlePOST(...args));
 }
+
+export async function POST(...args: Parameters<typeof handleCollectionPOST>) { return withSourceCollection(args[0], "HERITAGE", () => handleCollectionPOST(...args)); }

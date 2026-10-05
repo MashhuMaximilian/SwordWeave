@@ -1,4 +1,5 @@
 "use client";
+import { playFieldStorageKey } from "@/lib/play-state/client-sync";
 import { useCharacterReadOnly } from "./character-read-only";
 import { useRuntimeConditions } from "@/lib/hooks/use-runtime-conditions";
 import { useCharacterSupplyGraph } from "@/lib/hooks/use-character-supply-graph";
@@ -45,6 +46,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Zap, Power, CheckCircle2, ExternalLink, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { emitCharacterLogAdded } from "@/lib/character/character-events";
+import { queuePlayChanges } from "@/lib/play-state/client-sync";
 import { notifyToggleChanged, effStorageKey } from "@/lib/hooks/use-toggle-state";
 import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
@@ -194,7 +196,7 @@ export function CapabilityActionButtons({
 }
 
 function storageKey(characterId: string, capabilityId: string) {
-  return `sw:cap:${characterId}:${capabilityId}`;
+  return playFieldStorageKey("cap", characterId, capabilityId);
 }
 
 /**
@@ -434,7 +436,7 @@ export function CapabilityCard({
   }> | null>(null);
   const [bundleLoading, setBundleLoading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
-  const [toggling, setToggling] = useState(false);
+  const toggling = false;
   const [triggerPending, setTriggerPending] = useState(false);
   const [consequencePreview,setConsequencePreview] = useState<ConsequencePackagePreview|null>(null);
   // Brief flash to confirm a trigger. Cleared after ~1.2s.
@@ -563,75 +565,16 @@ export function CapabilityCard({
     };
   }, [capability.id, showPrimitives]);
 
-  const toggleInFlight = useRef(false);
   const triggerInFlight = useRef(false);
   const handleToggle = useCallback(async () => {
-    if (readOnly || toggleInFlight.current) return;
-    toggleInFlight.current = true;
-    const next = !active;
-
-    // Optimistic UI update — feels instant.
-    setActive(next);
-    writeToggle(characterId, capability.id, next);
-    notifyToggleChanged();
-    setToggling(true);
-
+    if (readOnly) return;
     try {
-      const res = await fetch(
-        `/api/characters/${characterId}/capabilities/${capability.id}/toggle`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ active: next }),
-        },
-      );
-
-      if (!res.ok) {
-        // Revert optimistic update on failure.
-        setActive(!next);
-        writeToggle(characterId, capability.id, !next);
-    notifyToggleChanged();
-        const body = await res.json().catch(() => ({}));
-        const msg =
-          (body as { error?: string }).error ?? "Failed to toggle capability.";
-        showToast(msg, "error");
-        return;
-      }
-
-      const data = (await res.json()) as ToggleResponse;
-      // Reconcile with server's view of truth.
-      setActive(data.capability.active);
-      writeToggle(characterId, capability.id, data.capability.active);
-
-    notifyToggleChanged();
-      showToast(
-        next ? `Activated "${capability.name}"` : `Deactivated "${capability.name}"`,
-        "success",
-      );
-      // Mashu 2026-07-28: notify the History tab (and
-      // any other listener) so it re-fetches the log
-      // entries WITHOUT a router.refresh() that would
-      // remount this CapabilityCard and undo the toggle.
-      emitCharacterLogAdded(characterId);
-      // Mashu 2026-07-28: don't call router.refresh() here.
-      // It re-fetches the page, which can cause the
-      // CapabilityCard to remount and reset its local
-      // state, undoing the toggle. The audit log entry is
-      // written server-side; the user can switch tabs
-      // and back (or click the History tab) to see it.
-    } catch (err) {
-      setActive(!next);
-      writeToggle(characterId, capability.id, !next);
-    notifyToggleChanged();
-      showToast(
-        err instanceof Error ? err.message : "Network error.",
-        "error",
-      );
-    } finally {
-      toggleInFlight.current = false;
-      setToggling(false);
-    }
-  }, [active, capability.id, capability.name, characterId, showToast, toggling, readOnly]);
+      const next = !active;
+      queuePlayChanges("CHARACTER", characterId, [{ field: `cap:${capability.id}`, value: next ? null : true }]);
+      setActive(next);
+      showToast(next ? `Activated "${capability.name}"` : `Deactivated "${capability.name}"`, "success");
+    } catch (error) { showToast(error instanceof Error ? error.message : "Unable to queue toggle.", "error"); }
+  }, [active, capability.id, capability.name, characterId, showToast, readOnly]);
 
   const handleTrigger = useCallback(async () => {
     if (readOnly || triggerInFlight.current) return;
@@ -927,8 +870,8 @@ export function CapabilityCard({
             )}
             title={
               showActive
-                ? "Active — click to deactivate. Persists in localStorage; logs to History."
-                : "Inactive — click to activate. Persists in localStorage; logs to History."
+                ? "Active — click to deactivate. Saved with your session across devices."
+                : "Inactive — click to activate. Saved with your session across devices."
             }
           >
             <Power className="size-3" />

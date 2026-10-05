@@ -9,6 +9,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { db } from "@/db/client";
+import { visibleEntries } from "@/lib/collections/service";
 import {
   flagTarget,
   getFlagAggregate,
@@ -30,6 +31,7 @@ const TargetTypeSchema = z.enum([
   "UPBRINGING_TEMPLATE",
   "MANIFEST_TEMPLATE",
   "BUILD_TEMPLATE",
+  "MONSTER",
 ]);
 
 const ReasonSchema = z.enum([
@@ -42,7 +44,7 @@ const ReasonSchema = z.enum([
 
 const FlagSchema = z.object({
   targetType: TargetTypeSchema,
-  targetId: z.string().min(1),
+  targetId: z.string().min(1).max(128),
   versionId: z.string().uuid().optional(),
   reason: ReasonSchema,
   note: z.string().max(500).optional(),
@@ -68,6 +70,10 @@ export async function GET(req: NextRequest) {
   }
   if (requestedVersionId && !isUuid(requestedVersionId)) {
     return NextResponse.json({ error: "versionId must be a UUID" }, { status: 400 });
+  }
+  const { userId } = await auth();
+  if (!(await visibleEntries([{ targetType: parsedType.data, targetId }], userId)).length) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
   const versionId = requestedVersionId ?? resolveVirtualVersionId(parsedType.data, targetId);
   try {
@@ -123,6 +129,10 @@ export async function POST(req: NextRequest) {
       { error: "targetId is required" },
       { status: 400 },
     );
+  }
+
+  if (!(await visibleEntries([{ targetType, targetId }], userId)).length) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const finalVersionId =
@@ -194,6 +204,10 @@ export async function DELETE(req: NextRequest) {
       { error: "versionId must be a UUID" },
       { status: 400 },
     );
+  }
+
+  if (!(await visibleEntries([{ targetType: typeCheck.data, targetId }], userId)).length) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const finalVersionId =

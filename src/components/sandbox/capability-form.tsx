@@ -231,6 +231,13 @@ export function CapabilityForm({
     target: "Single", shape: "Direct", size: "One target", placement: "Target",
     range: "Touch", output: "None", duration: "Instant", casting: "Action",
   });
+  const [sourceCollectionId, setSourceCollectionId] = useState<string | null>(null);
+  useEffect(()=>{
+    if(!initialCapability?.id){setSourceCollectionId(null);return;}
+    const type="CAPABILITY"; const ctrl=new AbortController();
+    fetch(`/api/collections/source?targetType=${type}&targetId=${initialCapability.id}`,{signal:ctrl.signal}).then(r=>r.json()).then(d=>setSourceCollectionId(d.collection?.id??null)).catch(()=>{});
+    return()=>ctrl.abort();
+  },[initialCapability?.id]);
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const [isDirty, setIsDirty] = useState(false);
@@ -505,7 +512,8 @@ export function CapabilityForm({
       type: form.type,
       sourceType: form.sourceType,
       verboseDescription: writeTableGuidance(writeRollResolution(form.verboseDescription,resolution), includeTable ? tableDraft : null),
-      sourceOrigin: form.sourceOrigin.trim() || null,
+      sourceCollectionId,
+      sourceOrigin: sourceCollectionId ? null : form.sourceOrigin.trim() || null,
       tags: form.tags
         .split(",")
         .map((t) => t.trim())
@@ -1058,6 +1066,8 @@ export function CapabilityForm({
         </AuthorChapter>
         <AuthorChapter id="publish" title="Publish">
       <AuthorPublishFields
+        sourceCollectionId={sourceCollectionId}
+        onSourceCollectionChange={setSourceCollectionId}
         tags={form.tags}
         sourceOrigin={form.sourceOrigin}
         isPublic={form.isPublic}

@@ -14,6 +14,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { db } from "@/db/client";
+import { visibleEntries } from "@/lib/collections/service";
 import {
   setReaction,
   removeReaction,
@@ -28,15 +29,17 @@ const TargetTypeSchema = z.enum([
   "CAPABILITY",
   "CHARACTER",
   "ITEM",
+  "EFFECT",
   "LINEAGE_TEMPLATE",
   "UPBRINGING_TEMPLATE",
   "MANIFEST_TEMPLATE",
   "BUILD_TEMPLATE",
+  "MONSTER",
 ]);
 
 const ReactionSchema = z.object({
   targetType: TargetTypeSchema,
-  targetId: z.string().min(1),
+  targetId: z.string().min(1).max(128),
   versionId: z.string().uuid().optional(),
   kind: z.enum(["LIKE", "DISLIKE"]),
 });
@@ -89,6 +92,10 @@ export async function POST(req: NextRequest) {
       { error: "targetId is required" },
       { status: 400 },
     );
+  }
+
+  if (!(await visibleEntries([{ targetType, targetId }], userId)).length) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const finalVersionId =
@@ -153,6 +160,10 @@ export async function DELETE(req: NextRequest) {
       { error: "versionId must be a UUID" },
       { status: 400 },
     );
+  }
+
+  if (!(await visibleEntries([{ targetType: typeCheck.data, targetId }], userId)).length) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const finalVersionId =

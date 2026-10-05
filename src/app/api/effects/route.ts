@@ -1,7 +1,10 @@
+import { visibilityCondition } from "@/lib/publishing/library-query";
+import { redactExpandedContent } from "@/lib/publishing/redact-expanded-content";
+import { withSourceCollection } from "@/lib/collections/source-save";
 import { withPublishingResponse } from "@/lib/publishing/save-transaction";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { asc, desc, eq } from "drizzle-orm";
+import { asc, desc, eq, and, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { effectPrimitives, effects } from "@/db/schema/engine";
 import {
@@ -95,7 +98,9 @@ function parsePrimitiveSlots(value: unknown): PrimitiveSlotInput[] {
 }
 
 export async function GET() {
+  const { userId: viewerId } = await auth();
   const rows = await db.query.effects.findMany({
+    where: visibilityCondition("EFFECT", sql`${effects.id}`, sql`${effects.userId}`, viewerId ?? undefined, sql`${effects.isPublic}`),
     orderBy: [desc(effects.createdAt), asc(effects.name)],
     with: {
       primitiveLinks: {
@@ -107,7 +112,7 @@ export async function GET() {
     },
   });
 
-  return NextResponse.json({ effects: rows });
+  return NextResponse.json({ effects: await redactExpandedContent(rows, viewerId) });
 }
 
 /**
@@ -293,6 +298,8 @@ function pickStringOrDefault(value: unknown, fallback: string): string {
   return typeof value === "string" && value.length > 0 ? value : fallback;
 }
 
-export async function POST(...args: Parameters<typeof handlePOST>) {
+async function handleCollectionPOST(...args: Parameters<typeof handlePOST>) {
   return withPublishingResponse(() => handlePOST(...args));
 }
+
+export async function POST(...args: Parameters<typeof handleCollectionPOST>) { return withSourceCollection(args[0], "EFFECT", () => handleCollectionPOST(...args)); }

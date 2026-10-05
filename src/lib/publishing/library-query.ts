@@ -1,3 +1,5 @@
+import { monsters } from "@/db/schema/monsters";
+import { monsterLibraryColumns,monsterToLibraryItem } from "./monster-library-item";
 import {
   canonicalLibraryCategory,
   libraryCategoryMembers,
@@ -81,6 +83,7 @@ export type LibrarySort =
   | "BU_DESC"
   | "ALPHABETICAL_DESC";
 export type LibraryTargetType =
+  | "MONSTER"
   | "PRIMITIVE"
   | "CAPABILITY"
   | "EFFECT"
@@ -96,6 +99,7 @@ export type LibraryTargetType =
   | "BUILD_TEMPLATE";
 
 export interface LibraryQuery {
+  collectionId?: string;
   origin?: "all" | "system" | "community";
   tier?: number;
   targetType?: LibraryTargetType;
@@ -346,7 +350,41 @@ export async function queryCompleteLibrary(q: LibraryQuery): Promise<LibraryItem
   return (await queryLibraryResult(q, true)).items;
 }
 
-type LibraryFetchQuery = LibraryQuery & { complete?: boolean };
+type LibraryFetchQuery = LibraryQuery & { complete?: boolean; metadataOnly?: boolean; pageIds?: string[]; candidateBudget?:{remaining:number} };
+const LIBRARY_CANDIDATE_LIMIT = 5000;
+export class LibraryQueryBudgetError extends Error { constructor(){super("Library query exceeds 5,000 candidates. Choose a type, collection, author or narrower search.");this.name="LibraryQueryBudgetError";} }
+/** Rendered mechanics, transitive BU and mechanic search require the full candidate
+ * graph. Normal browsing sorts only metadata and hydrates the selected page. */
+function canStageLibrary(q:LibraryQuery):boolean {
+ return !q.search?.trim() && !["BU","BU_DESC"].includes(q.sort??"LIKES")
+  && q.minBu===undefined && q.maxBu===undefined && !q.tier && !q.definitionKind
+  && !q.mirrorableOnly && !q.recipient && !q.conditionMode && !q.mechanicTarget
+  && q.magnitude===undefined && q.minMagnitude===undefined && q.maxMagnitude===undefined && !q.tags?.length;
+}
+function libraryProjection<T extends Record<string,unknown>>(q:LibraryFetchQuery,columns:T):T {
+ if(!q.metadataOnly)return columns;
+ const keep=new Set(["id","name","userId","createdAt","sourceOrigin","kind","visibility","forkedFromId"]);
+ return Object.fromEntries(Object.entries(columns).filter(([key])=>keep.has(key))) as T;
+}
+function candidateCondition(q:LibraryFetchQuery,targetType:LibraryTargetType|"HERITAGE",id:SQL):SQL {
+ if(!q.pageIds)return sql`true`;
+ const ids=q.pageIds.filter(key=>targetType==="HERITAGE"?/_TEMPLATE:/.test(key)&&!key.startsWith("BUILD_TEMPLATE:"):key.startsWith(`${targetType}:`)).map(key=>key.slice(key.indexOf(":")+1));
+ return ids.length?sql`${id}::text IN (${sql.join(ids.map(value=>sql`${value}`),sql`,`)})`:sql`false`;
+}
+function metadataItems(rows:Record<string,unknown>[],type:LibraryTargetType|"HERITAGE"):LibraryItem[]{
+ return rows.map(row=>{
+  const targetType=type==="HERITAGE"?`${row["kind"]}_TEMPLATE` as LibraryTargetType:type;
+  const targetId=String(row["id"]);
+  return {id:`${targetType}:${targetId}`,targetType,targetId,name:String(row["name"]),description:null,category:null,buCost:null,iconSource:null,iconKey:null,iconUrl:null,iconColor:"#ffffff",authorId:row["userId"] as string|null,authorUsername:null,authorDisplayName:null,authorAvatarUrl:null,authorIsAdmin:false,publishedAt:row["createdAt"] as Date|null,likesCount:0,dislikesCount:0,forkCount:0,tags:[],sourceOrigin:row["sourceOrigin"] as string|null};
+ });
+}
+/** Hard request budget with explicit failure; never return truncated totals. */
+async function readLibraryCandidates<T>(query:PromiseLike<T[]> & {limit?:(limit:number)=>PromiseLike<T[]>},q:LibraryFetchQuery):Promise<T[]> {
+ const rows=await(!q.complete && query.limit?query.limit(q.pageIds?Math.min(q.pageIds.length,100):LIBRARY_CANDIDATE_LIMIT+1):query);
+ if(!q.complete&&rows.length>LIBRARY_CANDIDATE_LIMIT)throw new LibraryQueryBudgetError();
+ if(q.candidateBudget){q.candidateBudget.remaining-=rows.length;if(q.candidateBudget.remaining<0)throw new LibraryQueryBudgetError();}
+ return rows;
+}
 
 async function queryLibraryResult(q: LibraryQuery, complete: boolean): Promise<LibraryResult> {
   if (/^(system|srd)$/i.test(q.authorUsername?.trim() ?? "")) {
@@ -360,41 +398,9 @@ async function queryLibraryResult(q: LibraryQuery, complete: boolean): Promise<L
   // Read authorized entity branches in parallel, then batch shared author and
   // engagement enrichment across the union below.
   const fetchQuery = { ...q, ...(q.search?.trim() ? {search: q.search.trim().split(/\s+/)[0]!} : {}), complete };
-  const wantAll = !q.targetType;
-  const fetchJobs: Promise<LibraryItem[]>[] = [];
-  if (wantAll || q.targetType === "PRIMITIVE") {
-    fetchJobs.push(fetchPrimitives(fetchQuery));
-  }
-  if (wantAll || q.targetType === "CAPABILITY") {
-    fetchJobs.push(fetchCapabilities(fetchQuery));
-  }
-  if (wantAll || q.targetType === "EFFECT") {
-    fetchJobs.push(fetchEffects(fetchQuery));
-  }
-  if (wantAll || q.targetType === "ITEM") {
-    fetchJobs.push(fetchItems(fetchQuery));
-  }
-  if (
-    wantAll ||
-    q.targetType === "LINEAGE_TEMPLATE" ||
-    q.targetType === "UPBRINGING_TEMPLATE" ||
-    q.targetType === "MANIFEST_TEMPLATE"
-  ) {
-    fetchJobs.push(fetchTemplates(fetchQuery));
-  }
-  if (wantAll || q.targetType === "BUILD_TEMPLATE") {
-    fetchJobs.push(fetchBuilds(fetchQuery));
-  }
-  // PLAN Eilxina Part A (Mashu 2026-09-09): surface CHARACTER rows
-  // in the library codex. The type was already in LibraryTargetType
-  // but no fetch branch existed — the dispatch union was lying. With
-  // this addition, /library?targetType=CHARACTER + the browse page
-  // finally return published characters.
-  if (wantAll || q.targetType === "CHARACTER") {
-    fetchJobs.push(fetchCharacters(fetchQuery));
-  }
-  const branches = await Promise.all(fetchJobs);
-  const items: LibraryItem[] = branches.flat();
+  const staged=!complete&&canStageLibrary(q);
+  const items=await fetchLibraryBranches({...fetchQuery,metadataOnly:staged});
+  if(!complete&&items.length>LIBRARY_CANDIDATE_LIMIT)throw new LibraryQueryBudgetError();
 
   // Enrich the authorized union once, rather than re-reading the same authors
   // and aggregate tables for every entity type. Keep this request-scoped:
@@ -447,11 +453,58 @@ async function queryLibraryResult(q: LibraryQuery, complete: boolean): Promise<L
   });
 
   const total = filtered.length;
-  const paged = complete ? filtered : filtered.slice(offset, offset + limit);
+  let paged = complete ? filtered : filtered.slice(offset, offset + limit);
+  if(staged&&paged.length){
+    const selected=paged;
+    const hydrated=await fetchLibraryBranches({...fetchQuery,pageIds:selected.map(item=>item.id),metadataOnly:false});
+    const map=new Map(hydrated.map(item=>[item.id,item]));
+    paged=selected.flatMap(metadata=>{const item=map.get(metadata.id);if(!item)return [];return [{...item,authorUsername:metadata.authorUsername,authorDisplayName:metadata.authorDisplayName,authorAvatarUrl:metadata.authorAvatarUrl,authorIsAdmin:metadata.authorIsAdmin,likesCount:metadata.likesCount,dislikesCount:metadata.dislikesCount,forkCount:metadata.forkCount}];});
+  }
 
   const flagCounts = await loadLibraryFlagCounts(paged);
   for (const item of paged) item.flagCount = flagCounts.get(item.id) ?? 0;
   return { items: paged, total, limit, offset };
+}
+
+async function fetchLibraryBranches(q:LibraryFetchQuery):Promise<LibraryItem[]>{
+  q={...q,...(!q.complete?{candidateBudget:{remaining:LIBRARY_CANDIDATE_LIMIT}}:{})};
+  const wantAll = !q.targetType;
+  const fetchJobs: Promise<LibraryItem[]>[] = [];
+  if (wantAll || q.targetType === "PRIMITIVE") {
+    fetchJobs.push(fetchPrimitives(q));
+  }
+  if (wantAll || q.targetType === "CAPABILITY") {
+    fetchJobs.push(fetchCapabilities(q));
+  }
+  if (wantAll || q.targetType === "EFFECT") {
+    fetchJobs.push(fetchEffects(q));
+  }
+  if (wantAll || q.targetType === "ITEM") {
+    fetchJobs.push(fetchItems(q));
+  }
+  if (
+    wantAll ||
+    q.targetType === "LINEAGE_TEMPLATE" ||
+    q.targetType === "UPBRINGING_TEMPLATE" ||
+    q.targetType === "MANIFEST_TEMPLATE"
+  ) {
+    fetchJobs.push(fetchTemplates(q));
+  }
+  if (wantAll || q.targetType === "BUILD_TEMPLATE") {
+    fetchJobs.push(fetchBuilds(q));
+  }
+  // PLAN Eilxina Part A (Mashu 2026-09-09): surface CHARACTER rows
+  // in the library codex. The type was already in LibraryTargetType
+  // but no fetch branch existed — the dispatch union was lying. With
+  // this addition, /library?targetType=CHARACTER + the browse page
+  // finally return published characters.
+  if (wantAll || q.targetType === "CHARACTER") {
+    fetchJobs.push(fetchCharacters(q));
+  }
+  if(wantAll||q.targetType==="MONSTER")fetchJobs.push(fetchMonsters(q));
+  const branches = await Promise.all(fetchJobs);
+  return branches.flat();
+
 }
 
 function compactComposition(parts: Array<string | null | undefined>): string | null {
@@ -624,6 +677,17 @@ function uniquePrimitiveBu(paths: LibraryCompositionPath[]) {
  *   - viewerClerkId: the Clerk user ID of the viewer, or undefined
  *     for "anonymous viewer" (e.g. unauthenticated browse).
  */
+/** Collections filter live references; entry visibility remains enforced by each branch. */
+export function collectionMembershipCondition(q:LibraryQuery,type:string|SQL,id:SQL,owner:SQL,origin:SQL):SQL {
+ if(!q.collectionId)return sql`true`;
+ const viewer=q.viewerClerkId??null;
+ return sql`EXISTS(SELECT 1 FROM collections c WHERE c.id::text=${q.collectionId} AND
+ (c.owner_id=${viewer} OR c.visibility='PUBLIC' OR (c.visibility='FOLLOWERS_ONLY' AND EXISTS(SELECT 1 FROM follows f JOIN users a ON a.id=f.following_id JOIN users v ON v.id=f.follower_id WHERE a.clerk_user_id=c.owner_id AND v.clerk_user_id=${viewer}))) AND
+ ((c.system_kind='ORIGINAL' AND c.owner_id=${owner} AND (${origin} IS NULL OR ${origin} NOT LIKE 'fork:%')) OR
+ (c.system_kind='FORKS' AND c.owner_id=${owner} AND ${origin} LIKE 'fork:%') OR
+ ((c.system_kind IS NULL OR c.system_kind='FAVORITES') AND EXISTS(SELECT 1 FROM collection_entries ce WHERE ce.collection_id=c.id AND ce.target_type=CAST(${type} AS text) AND ce.target_id=CAST(${id} AS text)))))`;
+}
+
 export function visibilityCondition(
   targetType: string | SQL,
   entityIdExpr: SQL,
@@ -686,6 +750,21 @@ export function visibilityCondition(
   return or(isOwner, isPublic, isFollowersOnlyVisible, legacyPublic)!;
 }
 
+async function fetchMonsters(q:LibraryFetchQuery):Promise<LibraryItem[]> {
+ const viewer=q.viewerClerkId??null;
+ if(q.pageIds&&!q.pageIds.some(key=>key.startsWith("MONSTER:")))return [];
+ const conditions:SQL[]=[candidateCondition(q,"MONSTER",sql`${monsters.id}`),sql`(${monsters.visibility}='PUBLIC' OR ${monsters.userId}=${viewer} OR (${monsters.visibility}='FOLLOWERS_ONLY' AND EXISTS(SELECT 1 FROM follows f JOIN users a ON a.id=f.following_id JOIN users v ON v.id=f.follower_id WHERE a.clerk_user_id=${monsters.userId} AND v.clerk_user_id=${viewer})))`];
+ if(q.collectionId)conditions.push(collectionMembershipCondition(q,"MONSTER",sql`${monsters.id}`,sql`${monsters.userId}`,sql`CASE WHEN ${monsters.forkedFromId} IS NOT NULL THEN 'fork:' || ${monsters.forkedFromId}::text ELSE NULL END`));
+ if(q.authorClerkId)conditions.push(eq(monsters.userId,q.authorClerkId));
+ if(q.authorUsername)conditions.push(sql`EXISTS(SELECT 1 FROM users u WHERE u.clerk_user_id=${monsters.userId} AND u.username=${q.authorUsername})`);
+ if(q.search)conditions.push(ilike(monsters.name,`%${q.search}%`));
+ if(q.visibility)conditions.push(eq(monsters.visibility,q.visibility));
+ if(q.kind==="fork")conditions.push(sql`${monsters.forkedFromId} IS NOT NULL`);
+ if(q.kind==="creation")conditions.push(isNull(monsters.forkedFromId));
+ const rows=await readLibraryCandidates(db.select(monsterLibraryColumns).from(monsters).where(and(...conditions)),q);
+ return rows.map(monsterToLibraryItem);
+}
+
 async function fetchPrimitives(q: LibraryFetchQuery): Promise<LibraryItem[]> {
   // Phase 9 follow-up: when filtering by authorClerkId (profile page),
   // surface only the rows the viewer is allowed to see — owner sees
@@ -697,7 +776,9 @@ async function fetchPrimitives(q: LibraryFetchQuery): Promise<LibraryItem[]> {
   // Every browsing surface uses the same publication/owner/follower gate
   // as adding a Library entry to a character. Legacy explicit public flags
   // apply only when no publication record has ever overridden them.
-  const conditions: SQL[] = [];
+  if(q.pageIds&&!q.pageIds.some(key=>key.startsWith("PRIMITIVE:")))return [];
+  const conditions: SQL[] = [candidateCondition(q,"PRIMITIVE",sql`${primitives.id}`)];
+  if(q.collectionId)conditions.push(collectionMembershipCondition(q,"PRIMITIVE",sql`${primitives.id}`,sql`${primitives.userId}`,sql`${primitives.sourceOrigin}`));
   // Templates live in the canonical ladder; exact-entry results contain only
   // complete, executable expressions.
   if (q.definitionKind) conditions.push(eq(primitives.definitionKind, q.definitionKind));
@@ -755,7 +836,7 @@ async function fetchPrimitives(q: LibraryFetchQuery): Promise<LibraryItem[]> {
   }
 
   const entityQuery = db
-    .select({
+    .select(libraryProjection(q,{
       id: primitives.id,
       name: primitives.name,
       category: primitives.category,
@@ -794,7 +875,7 @@ async function fetchPrimitives(q: LibraryFetchQuery): Promise<LibraryItem[]> {
         WHERE pv.primitive_id = ${primitives.id}
         ORDER BY pv.version_number DESC LIMIT 1
       )`,
-    })
+    }))
     .from(primitives)
     .leftJoin(
       primitiveMarketClassifications,
@@ -805,7 +886,8 @@ async function fetchPrimitives(q: LibraryFetchQuery): Promise<LibraryItem[]> {
       eq(lexiconFamilies.key, primitiveMarketClassifications.familyKey),
     )
     .where(and(...conditions));
-  const rows = await entityQuery;
+  const rows = await readLibraryCandidates(entityQuery,q);
+  if(q.metadataOnly)return metadataItems(rows,"PRIMITIVE");
 
   const lineageCounts = new Map<string, { direct: number; descendants: number }>();
   if (rows.length) {
@@ -897,7 +979,9 @@ async function fetchPrimitives(q: LibraryFetchQuery): Promise<LibraryItem[]> {
 }
 
 async function fetchCapabilities(q: LibraryFetchQuery): Promise<LibraryItem[]> {
-  const conditions: SQL[] = [];
+  if(q.pageIds&&!q.pageIds.some(key=>key.startsWith("CAPABILITY:")))return [];
+  const conditions: SQL[] = [candidateCondition(q,"CAPABILITY",sql`${capabilities.id}`)];
+  if(q.collectionId)conditions.push(collectionMembershipCondition(q,"CAPABILITY",sql`${capabilities.id}`,sql`${capabilities.userId}`,sql`${capabilities.sourceOrigin}`));
   if (q.authorClerkId) {
     conditions.push(eq(capabilities.userId, q.authorClerkId));
     conditions.push(
@@ -955,7 +1039,7 @@ async function fetchCapabilities(q: LibraryFetchQuery): Promise<LibraryItem[]> {
   }
 
   const entityQuery = db
-    .select({
+    .select(libraryProjection(q,{
       id: capabilities.id,
       name: capabilities.name,
       type: capabilities.type,
@@ -975,10 +1059,11 @@ async function fetchCapabilities(q: LibraryFetchQuery): Promise<LibraryItem[]> {
       iconProposedKey: capabilities.iconProposedKey,
       iconProposedUrl: capabilities.iconProposedUrl,
       iconProposedColor: capabilities.iconProposedColor,
-    })
+    }))
     .from(capabilities)
     .where(and(...conditions));
-  const rows = await entityQuery;
+  const rows = await readLibraryCandidates(entityQuery,q);
+  if(q.metadataOnly)return metadataItems(rows,"CAPABILITY");
 
   // Compute BU totals by joining primitive_links + primitives
   const capabilityIds = rows.map((r) => r.id);
@@ -1068,7 +1153,9 @@ async function fetchCapabilities(q: LibraryFetchQuery): Promise<LibraryItem[]> {
 // /api/creations/visibility — see the CHARACTER case added in Part A).
 // =============================================================================
 async function fetchCharacters(q: LibraryFetchQuery): Promise<LibraryItem[]> {
-  const conditions: SQL[] = [];
+  if(q.pageIds&&!q.pageIds.some(key=>key.startsWith("CHARACTER:")))return [];
+  const conditions: SQL[] = [candidateCondition(q,"CHARACTER",sql`${characters.id}`)];
+  if(q.collectionId)conditions.push(collectionMembershipCondition(q,"CHARACTER",sql`${characters.id}`,sql`${characters.userId}`,sql`${characters.sourceOrigin}`));
   if (q.authorClerkId) {
     conditions.push(eq(characters.userId, q.authorClerkId));
     conditions.push(
@@ -1086,7 +1173,10 @@ async function fetchCharacters(q: LibraryFetchQuery): Promise<LibraryItem[]> {
     // true for rows with NO publication row at all (the EXISTS
     // subquery is vacuously false). We need both: not-unpublished
     // AND an active PUBLIC publication row.
-    conditions.push(
+    if(q.collectionId){
+      const visible=visibilityCondition("CHARACTER",sql`${characters.id}`,sql`${characters.userId}`,q.viewerClerkId,sql`${characters.isPublic}`);
+      conditions.push(q.viewerClerkId?sql`(${visible} OR EXISTS(SELECT 1 FROM character_shares cs JOIN users u ON u.id=cs.shared_with_user_id WHERE cs.character_id=${characters.id} AND cs.revoked_at IS NULL AND u.clerk_user_id=${q.viewerClerkId}))`:visible);
+    }else conditions.push(
       sql`EXISTS (
         SELECT 1 FROM publications
         WHERE target_type = 'CHARACTER'
@@ -1107,7 +1197,7 @@ async function fetchCharacters(q: LibraryFetchQuery): Promise<LibraryItem[]> {
   }
 
   const entityQuery = db
-    .select({
+    .select(libraryProjection(q,{
       id: characters.id,
       name: characters.name,
       level: characters.level,
@@ -1123,10 +1213,11 @@ async function fetchCharacters(q: LibraryFetchQuery): Promise<LibraryItem[]> {
       userId: characters.userId,
       createdAt: characters.createdAt,
       sourceOrigin: characters.sourceOrigin,
-    })
+    }))
     .from(characters)
     .where(and(...conditions));
-  const rows = await entityQuery;
+  const rows = await readLibraryCandidates(entityQuery,q);
+  if(q.metadataOnly)return metadataItems(rows,"CHARACTER");
 
 
   return rows.map((r) => {
@@ -1167,7 +1258,9 @@ async function fetchCharacters(q: LibraryFetchQuery): Promise<LibraryItem[]> {
 }
 
 async function fetchEffects(q: LibraryFetchQuery): Promise<LibraryItem[]> {
-  const conditions: SQL[] = [];
+  if(q.pageIds&&!q.pageIds.some(key=>key.startsWith("EFFECT:")))return [];
+  const conditions: SQL[] = [candidateCondition(q,"EFFECT",sql`${effects.id}`)];
+  if(q.collectionId)conditions.push(collectionMembershipCondition(q,"EFFECT",sql`${effects.id}`,sql`${effects.userId}`,sql`${effects.sourceOrigin}`));
   if (q.authorClerkId) {
     conditions.push(eq(effects.userId, q.authorClerkId));
     conditions.push(
@@ -1213,7 +1306,7 @@ async function fetchEffects(q: LibraryFetchQuery): Promise<LibraryItem[]> {
   }
 
   const entityQuery = db
-    .select({
+    .select(libraryProjection(q,{
       id: effects.id,
       name: effects.name,
       narrativeDescription: effects.narrativeDescription,
@@ -1231,10 +1324,11 @@ async function fetchEffects(q: LibraryFetchQuery): Promise<LibraryItem[]> {
       iconProposedKey: effects.iconProposedKey,
       iconProposedUrl: effects.iconProposedUrl,
       iconProposedColor: effects.iconProposedColor,
-    })
+    }))
     .from(effects)
     .where(and(...conditions));
-  const rows = await entityQuery;
+  const rows = await readLibraryCandidates(entityQuery,q);
+  if(q.metadataOnly)return metadataItems(rows,"EFFECT");
 
 
   // Compute BU total via primitive_links (uses buCost × quantity)
@@ -1300,7 +1394,9 @@ async function fetchEffects(q: LibraryFetchQuery): Promise<LibraryItem[]> {
 }
 
 async function fetchItems(q: LibraryFetchQuery): Promise<LibraryItem[]> {
-  const conditions: SQL[] = [];
+  if(q.pageIds&&!q.pageIds.some(key=>key.startsWith("ITEM:")))return [];
+  const conditions: SQL[] = [candidateCondition(q,"ITEM",sql`${items.id}`)];
+  if(q.collectionId)conditions.push(collectionMembershipCondition(q,"ITEM",sql`${items.id}`,sql`${items.userId}`,sql`${items.sourceOrigin}`));
   if (q.authorClerkId) {
     conditions.push(eq(items.userId, q.authorClerkId));
     conditions.push(
@@ -1384,7 +1480,7 @@ async function fetchItems(q: LibraryFetchQuery): Promise<LibraryItem[]> {
     // join. Skip — filter in caller.
   }
   const entityQuery = db
-    .select({
+    .select(libraryProjection(q,{
       id: items.id,
       name: items.name,
       itemType: items.itemType,
@@ -1405,10 +1501,11 @@ async function fetchItems(q: LibraryFetchQuery): Promise<LibraryItem[]> {
       iconProposedKey: items.iconProposedKey,
       iconProposedUrl: items.iconProposedUrl,
       iconProposedColor: items.iconProposedColor,
-    })
+    }))
     .from(items)
     .where(and(...conditions));
-  const rows = await entityQuery;
+  const rows = await readLibraryCandidates(entityQuery,q);
+  if(q.metadataOnly)return metadataItems(rows,"ITEM");
 
   const compositionMap = new Map<string, string[]>();
   const itemIds = rows.map((row) => row.id);
@@ -1479,8 +1576,10 @@ async function fetchItems(q: LibraryFetchQuery): Promise<LibraryItem[]> {
 }
 
 async function fetchTemplates(q: LibraryFetchQuery): Promise<LibraryItem[]> {
-  const conditions: SQL[] = [];
+  if(q.pageIds&&!q.pageIds.some(key=>/^(LINEAGE|UPBRINGING|MANIFEST)_TEMPLATE:/.test(key)))return [];
+  const conditions: SQL[] = [candidateCondition(q,"HERITAGE",sql`${heritage.id}`)];
   const publicationType = sql`CASE ${heritage.kind} WHEN 'LINEAGE' THEN 'LINEAGE_TEMPLATE' WHEN 'UPBRINGING' THEN 'UPBRINGING_TEMPLATE' ELSE 'MANIFEST_TEMPLATE' END::publish_target_type`;
+  if(q.collectionId)conditions.push(collectionMembershipCondition(q,publicationType,sql`${heritage.id}`,sql`${heritage.userId}`,sql`${heritage.sourceOrigin}`));
   if (q.authorClerkId) {
     conditions.push(eq(heritage.userId, q.authorClerkId));
     conditions.push(
@@ -1566,7 +1665,7 @@ async function fetchTemplates(q: LibraryFetchQuery): Promise<LibraryItem[]> {
   }
 
   const entityQuery = db
-    .select({
+    .select(libraryProjection(q,{
       id: heritage.id,
       name: heritage.name,
       kind: heritage.kind,
@@ -1590,10 +1689,11 @@ async function fetchTemplates(q: LibraryFetchQuery): Promise<LibraryItem[]> {
       iconProposedKey: heritage.iconProposedKey,
       iconProposedUrl: heritage.iconProposedUrl,
       iconProposedColor: heritage.iconProposedColor,
-    })
+    }))
     .from(heritage)
     .where(and(...conditions));
-  const rows = await entityQuery;
+  const rows = await readLibraryCandidates(entityQuery,q);
+  if(q.metadataOnly)return metadataItems(rows,"HERITAGE");
 
   const compositionMap = new Map<string, string[]>();
   const templateIds = rows.map((row) => row.id);
@@ -1689,7 +1789,9 @@ async function fetchTemplates(q: LibraryFetchQuery): Promise<LibraryItem[]> {
 // =============================================================================
 
 async function fetchBuilds(q: LibraryFetchQuery): Promise<LibraryItem[]> {
-  const conditions: SQL[] = [];
+  if(q.pageIds&&!q.pageIds.some(key=>key.startsWith("BUILD_TEMPLATE:")))return [];
+  const conditions: SQL[] = [candidateCondition(q,"BUILD_TEMPLATE",sql`${builds.id}`)];
+  if(q.collectionId)conditions.push(collectionMembershipCondition(q,"BUILD_TEMPLATE",sql`${builds.id}`,sql`${builds.userId}`,sql`${builds.sourceOrigin}`));
   if (q.authorClerkId) {
     conditions.push(eq(builds.userId, q.authorClerkId));
     conditions.push(
@@ -1727,7 +1829,7 @@ async function fetchBuilds(q: LibraryFetchQuery): Promise<LibraryItem[]> {
   }
 
   const entityQuery = db
-    .select({
+    .select(libraryProjection(q,{
       id: builds.id,
       name: builds.name,
       description: builds.description,
@@ -1749,10 +1851,11 @@ async function fetchBuilds(q: LibraryFetchQuery): Promise<LibraryItem[]> {
       // (Forks only / Creations only) — fork rows have sourceOrigin
       // starting with "fork:", creations are everything else.
       sourceOrigin: builds.sourceOrigin,
-    })
+    }))
     .from(builds)
     .where(and(...conditions));
-  const rows = await entityQuery;
+  const rows = await readLibraryCandidates(entityQuery,q);
+  if(q.metadataOnly)return metadataItems(rows,"BUILD_TEMPLATE");
 
 
   return rows.map((r) => {

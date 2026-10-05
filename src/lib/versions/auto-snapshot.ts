@@ -12,8 +12,8 @@
  *   - The transitive walk in T5.5 uses these ids to find stale slots.
  *
  * Idempotency: re-calling recordVersion with the same args is a no-op
- * (the content-addressed id matches an existing row, which is updated in
- * place with is_latest=true and a fresh publishedAt timestamp).
+ * (the content-addressed id matches an existing immutable row; only its
+ * latest flag changes when explicitly returning to earlier content).
  *
  * If the caller provides a versionNumber, it's used as-is (caller is
  * responsible for monotonic ordering). Otherwise versionNumber is computed
@@ -24,11 +24,8 @@
  * (text, e.g. "user_2abc...") and resolves it to the internal users.id
  * uuid before insert. Pass null explicitly to skip the resolution.
  *
- * Migration 0024 (2026-07-08) added the missing unique index on
- * (entity_id, version_number) for primitive_versions, capability_versions,
- * and template_versions. Without it, the ON CONFLICT clause in the upsert
- * below fails with SQLSTATE 42P10. If you see that error in prod logs,
- * re-run `pnpm exec tsx scripts/sync-pending-migrations.mts`.
+ * Unique entity/version-number indexes protect historical payloads.
+ * A collision fails the transaction instead of rewriting an existing version.
  */
 
 import { and, desc, eq, max, ne } from "drizzle-orm";
@@ -42,6 +39,9 @@ import {
   type versionDeltaKindEnum,
 } from "@/db/schema";
 import { resolveContentVersionId } from "./content-hash";
+import { withDatabaseTransaction } from "@/db/client";
+import { sql } from "drizzle-orm";
+import { withDependencyPins } from "./capture-dependency-pins";
 import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 
 /** The 5 entity kinds that have a _versions table. */
@@ -164,6 +164,14 @@ type DeltaKind = (typeof versionDeltaKindEnum.enumValues)[number];
 export async function recordVersion(
   args: RecordVersionArgs,
 ): Promise<RecordVersionResult> {
+  return withDatabaseTransaction(async (tx) => {
+    // Serialize both save and publish writers without changing existing IDs.
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${args.entityKind + ":" + args.entityId}))`);
+    return recordVersionLocked(args);
+  });
+}
+
+async function recordVersionLocked(args: RecordVersionArgs): Promise<RecordVersionResult> {
   const { entityKind, entityId, contentHash, snapshot } = args;
   const ref = versionTableFor(entityKind);
   if (!ref) {
@@ -183,88 +191,31 @@ export async function recordVersion(
   // dependency with the schema re-exports.
   const { db } = await import("@/db/client");
 
-  // Find the max versionNumber for this entity. If the caller didn't
-  // provide one, this becomes max(existing) + 1, or 1 for first version.
-  let versionNumber = args.versionNumber;
-  if (versionNumber === undefined) {
-    const maxResult = await db
-      .select({ m: max(ref.versionNumber) })
-      .from(ref.table)
-      .where(eq(ref.foreignKey, fkValue as never));
-    versionNumber = (maxResult[0]?.m ?? 0) + 1;
+  // Existing immutable content is never rewritten on an identical save.
+  const [existing] = await db.select({ id: ref.id, versionNumber: ref.versionNumber,
+    isLatest: ref.isLatest }).from(ref.table).where(eq(ref.id, versionId)).limit(1);
+  if (existing) {
+    if (!existing.isLatest) {
+      await db.update(ref.table).set({ isLatest: false }).where(and(
+        eq(ref.foreignKey, fkValue as never), eq(ref.isLatest, true), ne(ref.id, versionId)));
+      await db.update(ref.table).set({ isLatest: true }).where(eq(ref.id, versionId));
+    }
+    return { versionId, versionNumber: existing.versionNumber, isLatest: true };
   }
-
-  // Set the previous latest to is_latest=false (only if it isn't the
-  // version row we're about to upsert).
-  await db
-    .update(ref.table)
-    .set({ isLatest: false })
-    .where(
-      and(
-        eq(ref.foreignKey, fkValue as never),
-        eq(ref.isLatest, true),
-        ne(ref.id, versionId),
-      ),
-    );
-
-  // Upsert the new version row. The unique key is (entity_id, versionNumber)
-  // for the standard publish flow, but for auto-snapshots we also dedupe
-  // by id: if a row with the same content-addressed id already exists,
-  // refresh its is_latest + published_at.
+  const maxResult = await db.select({ m: max(ref.versionNumber) }).from(ref.table)
+    .where(eq(ref.foreignKey, fkValue as never));
+  const versionNumber = args.versionNumber ?? (maxResult[0]?.m ?? 0) + 1;
+  await db.update(ref.table).set({ isLatest: false }).where(and(
+    eq(ref.foreignKey, fkValue as never), eq(ref.isLatest, true)));
   const deltaKind: DeltaKind = "FULL";
   const now = new Date();
+  const publishedByUserId = args.publishedByUserId == null ? null
+    : (await resolveUserIdByClerkId(args.publishedByUserId)) ?? null;
 
-  // published_by_user_id is `uuid` (internal users.id), not the Clerk text
-  // ID the route has in hand. Resolve the mapping here so the routes can
-  // keep passing the Clerk ID. If the user is not in the users table yet
-  // (e.g. first-ever save before the profile sync has run), this returns
-  // null and we omit the publisher rather than blocking the save.
-  const publishedByUserId =
-    args.publishedByUserId === undefined
-      ? null
-      : args.publishedByUserId === null
-        ? null
-        : (await resolveUserIdByClerkId(args.publishedByUserId)) ?? null;
+  const pinnedSnapshot = await withDependencyPins(snapshot);
 
-  // Phase 8.I i2.5e (Mashu 2026-08-05): the content-addressed
-  // `versionId` can collide with an existing row when the user
-  // re-saves the SAME content (idempotent re-save). The previous
-  // ON CONFLICT only handled `(primitive_id, version_number)`
-  // and the new save was attempting to bump version_number from
-  // N to N+1 even when content was unchanged → primary key
-  // violation on the existing `id`.
-  //
-  // Fix: first, if a row with this id already exists, UPDATE
-  // it in place (no version_number bump). This is the true
-  // idempotent-save the original comment promised.
-  const existing = await db
-    .select({ id: ref.id, versionNumber: ref.versionNumber })
-    .from(ref.table)
-    .where(eq(ref.id, versionId))
-    .limit(1);
-
-  if (existing[0]) {
-    // Same content — update in place. We do NOT bump
-    // version_number (idempotent), but we DO refresh the
-    // is_latest flag and the published_at timestamp.
-    await db
-      .update(ref.table)
-      .set({
-        isLatest: true,
-        publishedAt: now,
-        snapshot,
-        publishedByUserId,
-      })
-      .where(eq(ref.id, versionId));
-    return {
-      versionId,
-      versionNumber: existing[0].versionNumber,
-      isLatest: true,
-    };
-  }
-
-  // Different content (new versionId). Proceed with the original
-  // upsert logic.
+  // Different content (new versionId). Insert a fresh immutable snapshot. A conflicting version number
+  // is an error, never permission to replace historical content.
   // PLAN Eilxina Part E (Mashu 2026-09-09): "character" maps to
   // characterVersions.characterId.
   const fkColumnName =
@@ -281,19 +232,11 @@ export async function recordVersion(
       versionNumber,
       isLatest: true,
       deltaKind,
-      snapshot,
+      snapshot: pinnedSnapshot,
       publishedByUserId,
       publishedAt: now,
     } as never)
-    .onConflictDoUpdate({
-      target: [ref.foreignKey, ref.versionNumber],
-      set: {
-        isLatest: true,
-        publishedAt: now,
-        snapshot,
-        publishedByUserId,
-      },
-    });
+;
 
   return {
     versionId,

@@ -1,4 +1,8 @@
 "use client";
+import { useUser } from "@clerk/nextjs";
+import { CreationAtelierAction } from "./creation-atelier-action";
+import { availableLegacyCreationDrafts,claimLegacyCreationDraft,creationDraftKey,creationModeKey,readCreationReturn,writeCreationDraft } from "@/lib/character/creation-return/model";
+import { useCreationAuthoringReturn } from "@/lib/character/creation-return/client";
 import {
   quickbuildCost,
   shuffleQuickbuild,
@@ -165,7 +169,6 @@ const FAMILY_KEYS: Record<PackageSlot, string> = {
 };
 
 const ROMAN = ["", "I", "II", "III", "IV", "V"] as const;
-const DRAFT_KEY = "swordweave-character-creation-v3";
 
 interface PrimitiveOption {
   id: number;
@@ -232,7 +235,15 @@ function clamp(value: number, min: number, max: number) {
   );
 }
 
-export function NewCharacterForm() {
+export function NewCharacterForm() { const {user}=useUser();return <AccountNewCharacterForm key={user?.id??"loading"} accountId={user?.id??null}/>; }
+function AccountNewCharacterForm({accountId}:{accountId:string|null}) {
+  const [legacyDrafts,setLegacyDrafts]=useState<("complete"|"quick")[]>([]);
+  useEffect(()=>{if(accountId)try{setLegacyDrafts(availableLegacyCreationDrafts(localStorage));}catch{}},[accountId]);
+  const legacyResume=legacyDrafts.length>0&&accountId?<aside><p>An earlier draft is saved on this device. Resume it to assign it to your signed-in account.</p>{legacyDrafts.map(mode=><button key={mode} type="button" onClick={()=>{try{claimLegacyCreationDraft(localStorage,accountId,mode,crypto.randomUUID());window.location.assign("/characters/new");}catch(error){setReturnNotice(error instanceof Error?error.message:"Unable to resume earlier draft.");}}}>Resume earlier {mode==="quick"?"Quickbuild":"complete"} draft</button>)}</aside>:null;
+  const draftKey=accountId?creationDraftKey(accountId,"complete"):null;
+  const [returnNotice,setReturnNotice]=useState("");
+  const [hydratedAccount,setHydratedAccount]=useState<string|null>(null);
+  const [creationDraftId,setCreationDraftId]=useState<string|null>(null);
   const [creationMode, setCreationMode] = useState<"complete" | "quick" | null>(
     null,
   );
@@ -271,11 +282,17 @@ export function NewCharacterForm() {
   const [draftLoaded, setDraftLoaded] = useState(false);
 
   useEffect(() => {
+    if(!accountId||!draftKey)return;
     const timer = window.setTimeout(() => {
       try {
-        const saved = window.localStorage.getItem(DRAFT_KEY);
+        const token=new URL(window.location.href).searchParams.get("creationReturn");
+        const returned=readCreationReturn(localStorage,token,accountId);
+        const storedMode=returned?.mode??localStorage.getItem(creationModeKey(accountId));
+        if(storedMode==="complete"||storedMode==="quick")setCreationMode(storedMode);
+        const saved = window.localStorage.getItem(returned?.mode==="complete"?`${draftKey}:${returned.draftId}`:draftKey);
         if (saved) {
           const draft = JSON.parse(saved) as {
+            draftId?:string;
             state?: FormState;
             selectedPrimitiveIds?: number[];
             mirroredPrimitiveIds?: number[];
@@ -285,6 +302,7 @@ export function NewCharacterForm() {
             packageShuffleBudget?: number | null;
             step?: StepId;
           };
+          setCreationDraftId(draft.draftId??crypto.randomUUID());
           if (
             draft.state &&
             typeof draft.state.name === "string" &&
@@ -330,17 +348,19 @@ export function NewCharacterForm() {
       } catch {
         /* A damaged or unavailable local draft should never block creation. */
       }
-      setDraftLoaded(true);
+      setCreationDraftId(current=>current??crypto.randomUUID());setHydratedAccount(accountId);setDraftLoaded(true);
     }, 0);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [accountId,draftKey]);
 
+  useEffect(()=>{if(accountId&&draftLoaded&&hydratedAccount===accountId){if(creationMode)localStorage.setItem(creationModeKey(accountId),creationMode);else localStorage.removeItem(creationModeKey(accountId));}},[accountId,draftLoaded,hydratedAccount,creationMode]);
   useEffect(() => {
-    if (!draftLoaded) return;
+    if (!draftLoaded||!draftKey||hydratedAccount!==accountId) return;
     try {
-      window.localStorage.setItem(
-        DRAFT_KEY,
+      writeCreationDraft(window.localStorage,
+        draftKey,creationDraftId,
         JSON.stringify({
+          draftId:creationDraftId,
           state,
           selectedPrimitiveIds,
           mirroredPrimitiveIds,
@@ -355,6 +375,7 @@ export function NewCharacterForm() {
     }
   }, [
     draftLoaded,
+    creationDraftId,
     state,
     selectedPrimitiveIds,
     mirroredPrimitiveIds,
@@ -381,6 +402,10 @@ export function NewCharacterForm() {
     return payload.primitives ?? [];
   }, []);
 
+  useCreationAuthoringReturn(accountId,"complete",draftLoaded&&hydratedAccount===accountId,creationDraftId,async entry=>{
+    if(entry.targetType!=="PRIMITIVE")throw new Error("This creation step accepts primitives. You can add other entries from the character sheet.");
+    const refreshed=await loadPrimitives();if(!refreshed.some(p=>p.id===Number(entry.targetId)))throw new Error("The saved primitive could not be loaded. Try returning again.");setSelectedPrimitiveIds(previous=>[...new Set([...previous,Number(entry.targetId)])]);starterApplied.current=true;setReturnNotice(`${entry.name} selected for your character.`);
+  },message=>setError(message));
   useEffect(() => {
     let current = true;
     fetch("/api/primitives")
@@ -668,7 +693,8 @@ export function NewCharacterForm() {
       selectedPrimitiveIds.length === preset.items.length &&
       preset.items.every((item) => selectedPrimitiveIds.includes(item.id))
     )
-      setSelectedPrimitiveIds([]);
+      setCreationDraftId(crypto.randomUUID());
+    setSelectedPrimitiveIds([]);
   }
 
   function shufflePackages(requestedBudget: number) {
@@ -699,7 +725,7 @@ export function NewCharacterForm() {
     )
       return;
     try {
-      window.localStorage.removeItem(DRAFT_KEY);
+      if(draftKey)window.localStorage.removeItem(draftKey);
     } catch {
       /* Storage may be unavailable. */
     }
@@ -804,7 +830,7 @@ export function NewCharacterForm() {
             payload.error ?? "The character could not be created.",
           );
         try {
-          window.localStorage.removeItem(DRAFT_KEY);
+          if(draftKey)window.localStorage.removeItem(draftKey);
         } catch {
           /* Storage may be unavailable. */
         }
@@ -830,6 +856,8 @@ export function NewCharacterForm() {
         className="sw-creation-choice"
         aria-labelledby="creation-mode-heading"
       >
+        {legacyResume}
+        {returnNotice&&<p role="status">{returnNotice}</p>}
         <span className="sw-creation-choice__eyebrow">Your next adventure</span>
         <h2 id="creation-mode-heading">How would you like to begin?</h2>
         <p>
@@ -859,17 +887,23 @@ export function NewCharacterForm() {
     );
   if (creationMode === "quick")
     return (
+      <>{legacyResume}
       <QuickBuildForm
+        key={accountId??"loading"}
+        accountId={accountId}
         primitives={primitives}
         options={options}
         primitivesLoading={catalogLoading}
         onRefreshPrimitives={loadPrimitives}
         onChangeMode={() => setCreationMode(null)}
       />
-    );
+    </>);
 
   return (
     <div className="sw-character-forge">
+      {legacyResume}
+      {phone&&<CreationAtelierAction accountId={draftLoaded&&hydratedAccount===accountId?accountId:null} draftId={creationDraftId} mode="complete" persistDraft={()=>{if(!draftKey)throw new Error("Wait for your account to load.");const data=JSON.stringify({draftId:creationDraftId,state,selectedPrimitiveIds,mirroredPrimitiveIds,savedMirrorIds,savedPackages,packageShuffleBudget,step});localStorage.setItem(draftKey,data);localStorage.setItem(`${draftKey}:${creationDraftId}`,data);}}/>}
+      {returnNotice&&<p role="status" className="text-sm text-primary">{returnNotice}</p>}
       <aside
         className="sw-character-forge__rail"
         aria-label="Character creation progress"
@@ -1190,7 +1224,6 @@ export function NewCharacterForm() {
   );
 }
 
-const QUICK_DRAFT_KEY = "swordweave-quickbuild-v1";
 const HERITAGE_LABELS: Record<QuickbuildKind, string> = {
   LINEAGE: "Lineage",
   UPBRINGING: "Upbringing",
@@ -1252,12 +1285,14 @@ function QuickbuildSection({ title, number, reading, subtitle, className = "", c
 }
 
 function QuickBuildForm({
+  accountId,
   primitives,
   options,
   onChangeMode,
   onRefreshPrimitives,
   primitivesLoading,
 }: {
+  accountId:string|null;
   primitives: PrimitiveOption[];
   options: Record<PackageSlot, PrimitiveOption[]>;
   onChangeMode: () => void;
@@ -1265,6 +1300,9 @@ function QuickBuildForm({
   primitivesLoading: boolean;
 }) {
   const router = useRouter();
+  const draftKey=accountId?creationDraftKey(accountId,"quick"):null;
+  const [returnNotice,setReturnNotice]=useState("");
+  const [creationDraftId,setCreationDraftId]=useState<string|null>(null);
   const phone = useIsMobile();
   const [state, setState] = useState<FormState>(INITIAL_STATE);
   const [selection, setSelection] = useState<QuickbuildSelection>({
@@ -1379,6 +1417,7 @@ function QuickBuildForm({
         setCatalog(next);
         setCatalogError(null);
       }
+      return next;
     } catch (reason) {
       if (!signal?.aborted)
         setCatalogError(
@@ -1400,11 +1439,14 @@ function QuickBuildForm({
     };
   }, [loadCatalog]);
   useEffect(() => {
+    if(!draftKey)return;
     const timer = window.setTimeout(() => {
       try {
-        const raw = window.localStorage.getItem(QUICK_DRAFT_KEY);
+        const record=accountId?readCreationReturn(localStorage,new URL(window.location.href).searchParams.get("creationReturn"),accountId):null;
+        const raw = window.localStorage.getItem(record?.mode==="quick"?`${draftKey}:${record.draftId}`:draftKey);
         if (raw) {
           const draft = JSON.parse(raw);
+          setCreationDraftId(draft.draftId??crypto.randomUUID());
           if (draft.state)
             setState({
               ...INITIAL_STATE,
@@ -1442,18 +1484,19 @@ function QuickBuildForm({
       } catch {
         /* A local draft is optional. */
       }
-      setLoaded(true);
+      setCreationDraftId(current=>current??crypto.randomUUID());setLoaded(true);
       if (window.matchMedia("(min-width:768px)").matches)
         nameInput.current?.focus();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [draftKey]);
   useEffect(() => {
-    if (loaded)
+    if (loaded&&draftKey)
       try {
-        window.localStorage.setItem(
-          QUICK_DRAFT_KEY,
+        writeCreationDraft(window.localStorage,
+          draftKey,creationDraftId,
           JSON.stringify({
+            draftId:creationDraftId,
             state,
             selection,
             shuffleLimits,
@@ -1469,6 +1512,7 @@ function QuickBuildForm({
       }
   }, [
     loaded,
+    creationDraftId,
     state,
     selection,
     shuffleLimits,
@@ -1478,6 +1522,13 @@ function QuickBuildForm({
     savedMirrorIds,
     savedPackages,
   ]);
+  useCreationAuthoringReturn(accountId,"quick",loaded,creationDraftId,async entry=>{
+    if(entry.targetType==="PRIMITIVE"){await onRefreshPrimitives();setPackageIds(previous=>[...new Set([...previous,Number(entry.targetId)])]);}
+    else if(entry.targetType==="ITEM"){setItemIds(previous=>[...new Set([...previous,entry.targetId])]);}
+    else if(entry.targetType.endsWith("_TEMPLATE")){const refreshed=await loadCatalog();if(!refreshed?.heritages.some(h=>h.id===entry.targetId))throw new Error("The saved heritage could not be loaded. Try returning again.");const kind=entry.targetType.replace("_TEMPLATE","") as QuickbuildKind;setSelection(previous=>({...previous,[kind]:entry.targetId}));}
+    else throw new Error("Add this entry from the character sheet after creation.");
+    setReturnNotice(`${entry.name} selected for your character.`);
+  },message=>setError(message));
   useEffect(() => {
     const missing = itemIds.filter((id) => !itemDetails[id]);
     if (!missing.length) return;
@@ -1704,7 +1755,7 @@ function QuickBuildForm({
         if (!response.ok || !data.character?.id)
           throw Error(data.error ?? "Your character could not be created.");
         try {
-          window.localStorage.removeItem(QUICK_DRAFT_KEY);
+          if(draftKey)window.localStorage.removeItem(draftKey);
         } catch {
           /* Storage can be unavailable. */
         }
@@ -1721,6 +1772,8 @@ function QuickBuildForm({
 
   return (
     <div className="sw-quickbuild">
+      {phone&&<CreationAtelierAction accountId={loaded?accountId:null} draftId={creationDraftId} mode="quick" quick persistDraft={()=>{if(!draftKey)throw new Error("Wait for your account to load.");const data=JSON.stringify({draftId:creationDraftId,state,selection,shuffleLimits,packageIds,mirrorIds,itemIds,savedMirrorIds,savedPackages});localStorage.setItem(draftKey,data);localStorage.setItem(`${draftKey}:${creationDraftId}`,data);}}/>}
+      {returnNotice&&<p role="status" className="text-sm text-primary">{returnNotice}</p>}
       <header className="sw-quickbuild__heading">
         <h2>Quickbuild</h2>
         <button type="button" className="sw-forge-reset" onClick={onChangeMode}>

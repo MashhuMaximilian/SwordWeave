@@ -456,6 +456,34 @@
       "when": 1791028800000,
       "tag": "0068_lineage_default_size",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1791200000000,
+      "tag": "0069_session_play_state",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1791200001000,
+      "tag": "0070_collections",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1791200002000,
+      "tag": "0071_monsters",
+      "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1791200003000,
+      "tag": "0072_monster_engagement",
+      "breakpoints": true
     }
   ]
 }

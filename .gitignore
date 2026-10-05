@@ -66,3 +66,6 @@ t4.tsx
 /public/images/characters/
 /public/images/lineages/
 /public/images/heritages/
+
+# Private planning notes and production repair snapshots
+/.local-plans/

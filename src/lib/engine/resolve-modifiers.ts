@@ -113,6 +113,8 @@ export interface ResolvedPrimitiveSlot {
 }
 
 export interface ResolvedCharacterInput {
+  /** Optional entity baselines; player callers retain existing defaults. */
+  readonly metricBaselines?: Readonly<Record<string, number>>;
   readonly characterId: string;
   readonly level: number;
   readonly pb: number;
@@ -264,6 +266,7 @@ export function resolveModifiers(
   const byTarget: Record<string, ModifierContribution[]> = {};
   const totals: Record<string, number> = {};
   const mirrorCosts: MirrorCostAttribution[] = [];
+  Object.assign(totals, input.metricBaselines ?? {});
 
   // Phase 8.L round 54 (Mashu 2026-08-14): SEED BASE ATTRIBUTES into
   // totals["attribute.X"] so multiply/divide work correctly. Without

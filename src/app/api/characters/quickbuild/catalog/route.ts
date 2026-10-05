@@ -1,5 +1,8 @@
+import { visibleEntries } from "@/lib/collections/service";
+import { auth } from "@clerk/nextjs/server";
+import { visibilityCondition } from "@/lib/publishing/library-query";
 import { NextResponse } from "next/server";
-import { eq, asc, inArray } from "drizzle-orm";
+import { eq, asc, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   heritage,
@@ -21,6 +24,7 @@ import {
 
 /** Flat, bounded queries avoid PostgreSQL alias truncation on deep Drizzle joins. */
 export async function GET() {
+  const { userId } = await auth();
   const rows = await db
     .select({
       id: heritage.id,
@@ -33,7 +37,15 @@ export async function GET() {
       userId: heritage.userId,
     })
     .from(heritage)
-    .where(eq(heritage.isPublic, true))
+    .where(
+      visibilityCondition(
+        sql`CASE ${heritage.kind} WHEN 'LINEAGE' THEN 'LINEAGE_TEMPLATE' WHEN 'UPBRINGING' THEN 'UPBRINGING_TEMPLATE' ELSE 'MANIFEST_TEMPLATE' END::publish_target_type`,
+        sql`${heritage.id}`,
+        sql`${heritage.userId}`,
+        userId ?? undefined,
+        sql`${heritage.isPublic}`,
+      ),
+    )
     .orderBy(asc(heritage.name));
   const ids = rows.map((h) => h.id);
   if (!ids.length) return NextResponse.json({ heritages: [], primitives: [] });
@@ -148,6 +160,14 @@ export async function GET() {
         })),
     })),
   };
+  const readablePrimitives = new Set(
+    (
+      await visibleEntries(
+        costs.map((p) => ({ targetType: "PRIMITIVE", targetId: String(p.id) })),
+        userId ?? null,
+      )
+    ).map((p) => p.targetId),
+  );
   const rulesById = new Map(costs.map((p) => [p.id, p]));
   for (const h of catalog.heritages) {
     const resolved = quickbuildCost(catalog, {
@@ -157,17 +177,23 @@ export async function GET() {
     h.cost = resolved.netCost;
     h.rules = resolved.expansion.primitives.flatMap((slot) => {
       const p = rulesById.get(slot.primitiveId);
-      if (!p) return [];
-      const descriptive = (p.mechanicalRule as { family?: string } | null)?.family === "DESCRIPTIVE";
+      if (!p || !readablePrimitives.has(String(p.id))) return [];
+      const descriptive =
+        (p.mechanicalRule as { family?: string } | null)?.family ===
+        "DESCRIPTIVE";
       const mechanicalText = descriptive ? "" : p.mechanicalOutputText.trim();
       return [
         {
           primitiveId: p.id,
           name: p.name,
-          mechanical: !descriptive && Boolean(mechanicalText || p.hardModifiers.length),
+          mechanical:
+            !descriptive && Boolean(mechanicalText || p.hardModifiers.length),
           text: slot.isMirrored
             ? mirrorConsequence(p)
-            : mechanicalText || p.narrativeRule.trim() || p.mechanicalOutputText.trim() || p.name,
+            : mechanicalText ||
+              p.narrativeRule.trim() ||
+              p.mechanicalOutputText.trim() ||
+              p.name,
           source: slot.originEffectId
             ? ("effect" as const)
             : slot.originCapabilityId

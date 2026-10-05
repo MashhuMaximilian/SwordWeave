@@ -1,8 +1,9 @@
+import { setPlaySessionAccount, playFieldStorageKey } from "@/lib/play-state/client-sync";
 import { consequenceJson } from "../json";
 import { afterEach, expect, it, vi } from "vitest";
 import { connectConsequenceSync, consequenceSyncReady } from "../client-sync";
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { setPlaySessionAccount(null); vi.unstubAllGlobals(); });
 it("does not mark a fresh browser ready until saved overrides are installed", async () => {
   const values = new Map<string, string>();
   vi.stubGlobal("localStorage", {
@@ -10,17 +11,18 @@ it("does not mark a fresh browser ready until saved overrides are installed", as
     getItem: (k: string) => values.get(k) ?? null, setItem: (k: string, v: string) => values.set(k,v), removeItem: (k: string) => values.delete(k),
   });
   vi.stubGlobal("window", new EventTarget());
-  vi.stubGlobal("document", { visibilityState: "visible" });
+  vi.stubGlobal("document", Object.assign(new EventTarget(), { visibilityState: "visible" }));
+  vi.stubGlobal("navigator", { onLine: true });
   let finish!: (response: Response) => void;
   const occurrence = {id: "sheet-auto-primitive-42-0", title: "Saved Self override", manualOverride: true, active: false};
-  const records = [{id: occurrence.id, revision: 5, occurrence}];
-  vi.stubGlobal("fetch", vi.fn().mockImplementationOnce(() => new Promise(resolve => {finish=resolve;})).mockResolvedValue({ok: true, json: async () => ({records})}));
-  const disconnect = connectConsequenceSync("fresh-sync-test");
+  const state = { revision: 5, overrides: { [`consequence:${occurrence.id}`]: occurrence }, fieldRevisions: { [`consequence:${occurrence.id}`]: 5 } };
+  vi.stubGlobal("fetch", vi.fn().mockImplementationOnce(() => new Promise(resolve => {finish=resolve;})).mockResolvedValue({ok: true, json: async () => ({state})}));
+  const disconnect = connectConsequenceSync("fresh-sync-test", "account-a");
   try {
     expect(consequenceSyncReady("fresh-sync-test")).toBe(false);
-    finish(Response.json({records}));
+    finish(Response.json({state}));
     await vi.waitFor(() => expect(consequenceSyncReady("fresh-sync-test")).toBe(true));
-    expect(JSON.parse(values.get(`sw:cond:fresh-sync-test:${occurrence.id}`)!)).toMatchObject({manualOverride: true});
+    expect(JSON.parse(values.get(playFieldStorageKey("cond", "fresh-sync-test", occurrence.id))!)).toMatchObject({manualOverride: true});
   } finally { disconnect(); }
 });
 

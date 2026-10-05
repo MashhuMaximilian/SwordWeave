@@ -1,4 +1,5 @@
 "use client";
+import { playFieldStorageKey, playFieldStoragePrefix } from "@/lib/play-state/client-sync";
 
 /**
  * use-toggle-state.ts — Phase 8.L round 38 (Mashu 2026-08-13)
@@ -35,6 +36,7 @@
  *     safely pipe primitives through without explicit gating.
  */
 
+import { usePlaySession } from "./use-play-session";
 import { useCharacterReadOnly } from "@/components/characters/character-read-only";
 import { useSyncExternalStore, useCallback } from "react";
 import { createToggleStateStore, emptyToggleSnapshot } from "./toggle-state-store";
@@ -44,11 +46,11 @@ import { createToggleStateStore, emptyToggleSnapshot } from "./toggle-state-stor
  * Used to avoid collisions across the localStorage namespace.
  */
 export function capStorageKey(characterId: string, capabilityId: string): string {
-  return `sw:cap:${characterId}:${capabilityId}`;
+  return playFieldStorageKey("cap", characterId, capabilityId);
 }
 
 export function effStorageKey(characterId: string, effectId: string): string {
-  return `sw:eff:${characterId}:${effectId}`;
+  return playFieldStorageKey("eff", characterId, effectId);
 }
 
 /**
@@ -82,8 +84,8 @@ function readAllOffKeys(characterId: string): {
   const offEffectIds = new Set<string>();
   if (typeof window === "undefined") return { offCapabilityIds, offEffectIds };
 
-  const capPrefix = `sw:cap:${characterId}:`;
-  const effPrefix = `sw:eff:${characterId}:`;
+  const capPrefix = playFieldStoragePrefix("cap", characterId);
+  const effPrefix = playFieldStoragePrefix("eff", characterId);
   try {
     for (let i = 0; i < window.localStorage.length; i++) {
       const key = window.localStorage.key(i);
@@ -133,7 +135,7 @@ const toggleStore = createToggleStateStore(readAllOffKeys, (id, refresh) => {
   const onChange = (event: Event) => {
     if (event.type === "storage") {
       const key = (event as StorageEvent).key;
-      if (key && !key.startsWith(`sw:cap:${id}:`) && !key.startsWith(`sw:eff:${id}:`)) return;
+      if (key && !key.startsWith(playFieldStoragePrefix("cap", id)) && !key.startsWith(playFieldStoragePrefix("eff", id))) return;
     }
     refresh();
   };
@@ -147,12 +149,13 @@ const toggleStore = createToggleStateStore(readAllOffKeys, (id, refresh) => {
 const serverSnapshot = () => emptyToggleSnapshot;
 export function useToggleState(characterId: string | null): UseToggleStateResult {
   const readOnly = useCharacterReadOnly();
+  const { session } = usePlaySession("CHARACTER", characterId, undefined, undefined, { enabled: !readOnly });
   const id = readOnly ? "" : characterId ?? "";
   const subscribe = useCallback((listener: () => void) => toggleStore.subscribe(id, listener), [id]);
   const snapshot = useCallback(() => toggleStore.getSnapshot(id), [id]);
   const refresh = useCallback(() => toggleStore.refresh(id), [id]);
   const state = useSyncExternalStore(subscribe, snapshot, serverSnapshot);
-  return { ...state, refresh };
+  return { ...(session.ready && session.status !== "legacy" ? state : emptyToggleSnapshot), refresh };
 }
 
 /**

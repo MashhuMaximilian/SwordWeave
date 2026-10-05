@@ -19,6 +19,7 @@ import { db } from "@/db/client";
 import { forkAggregates, forks, users } from "@/db/schema";
 
 export type ForkTargetType =
+  | "MONSTER"
   | "PRIMITIVE"
   | "CAPABILITY"
   | "EFFECT"

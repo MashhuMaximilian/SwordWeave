@@ -43,6 +43,7 @@ interface PageProps {
     type?: string;
     sort?: string;
     view?: string;
+    collectionId?: string;
     category?: string;
     q?: string;
     author?: string;
@@ -107,6 +108,7 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
     listPrimitiveCategories(),
     listItemTags(),
     queryLibrary({
+      ...(params.collectionId?{collectionId:params.collectionId}:{}),
       ...(targetType !== "ALL" ? { targetType } : {}),
       ...(category ? { category } : {}),
       ...(search ? { search } : {}),
@@ -154,6 +156,7 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
 
   const initialState: LibraryToolbarState = {
     ...EMPTY_LIBRARY_TOOLBAR_STATE,
+    collectionId:params.collectionId??"",
     origin: params.origin === "system" || params.origin === "community" ? params.origin : "all",
     tier: params.tier ?? "",
     mechanicTarget: params.mechanicTarget ?? "", recipient: ["self", "target", "scene"].includes(params.recipient ?? "") ? params.recipient as "self" | "target" | "scene" : "", conditionMode: params.conditionMode === "conditional" || params.conditionMode === "always" ? params.conditionMode : "", minMagnitude: params.minMagnitude ?? "", maxMagnitude: params.maxMagnitude ?? "",

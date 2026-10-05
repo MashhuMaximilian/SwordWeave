@@ -26,6 +26,7 @@ import {
   authorDisplayUsername,
 } from "@/lib/publishing/author-display";
 import type { LibraryItem, LibraryTargetType } from "@/lib/publishing/library-query";
+import { useCollectionFilter } from "@/components/collections/use-collection-filter";
 import { matchesLibraryFilters } from "@/lib/publishing/filter-library-items";
 import { sortLibraryItems } from "@/lib/publishing/sort-library-items";
 import { useFilterSlot } from "@/components/layout/right-filter-panel";
@@ -467,13 +468,14 @@ export function GrammarLibrary({
     }
   }, [libraryItems, optimisticItems, flushOptimisticIfMatched]);
 
+  const collectionAllowed=useCollectionFilter(toolbarState.collectionId,combinedItems);
   const deferredToolbarState = useDeferredValue(toolbarState);
   const filteredItems = useMemo(() => {
     const allowedKeys = availableTypes.map(type => type.key);
     return sortLibraryItems(combinedItems.filter(item =>
       (allowedKeys.includes("ALL") || allowedKeys.includes(item.targetType)) &&
-      matchesLibraryFilters(item, deferredToolbarState)), deferredToolbarState.sort);
-  }, [combinedItems, availableTypes, deferredToolbarState]);
+      (!collectionAllowed||collectionAllowed.has(item.id)) && matchesLibraryFilters(item, deferredToolbarState)), deferredToolbarState.sort);
+  }, [combinedItems, availableTypes, deferredToolbarState,collectionAllowed]);
 
   // Right-side filter panel slot: render the full toolbar inside it.
   // The search bar is duplicated in the column header for quick access.

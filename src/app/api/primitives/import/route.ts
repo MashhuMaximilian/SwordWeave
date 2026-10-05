@@ -4,12 +4,15 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { primitives } from "@/db/schema";
 import { parsePrimitivePackage } from "@/lib/packages/primitive-package";
+import { readBoundedJson, RequestSizeError } from "@/lib/http/read-bounded-json";
 
 export async function POST(request: Request) {
   try {
     const { userId } = await auth.protect();
-    const body: unknown = await request.json();
+    const body = await readBoundedJson(request);
     const records = parsePrimitivePackage(body);
+
+    if (records.length > 1000) return NextResponse.json({ error: "Import at most 1,000 primitives per package." }, { status: 413 });
 
     if (records.length === 0) {
       return NextResponse.json(
@@ -65,6 +68,6 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error.";
 
-    return NextResponse.json({ error: message }, { status: 400 });
+    return NextResponse.json({ error: message }, { status: error instanceof RequestSizeError ? 413 : 400 });
   }
 }

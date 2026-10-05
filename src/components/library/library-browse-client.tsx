@@ -177,7 +177,7 @@ export function LibraryBrowseClient({
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
     if (state.typeFilter !== "ALL" && !state.typeFilter.startsWith("GROUP_")) params.set("targetType", state.typeFilter);
-    for (const key of ["category", "origin", "tier", "sort", "minBu", "maxBu", "minForks", "fromDate", "toDate", "definitionKind", "minLikes", "mechanicTarget", "recipient", "conditionMode", "minMagnitude", "maxMagnitude"] as const) if (state[key]) params.set(key, String(state[key]));
+    for (const key of ["collectionId", "category", "origin", "tier", "sort", "minBu", "maxBu", "minForks", "fromDate", "toDate", "definitionKind", "minLikes", "mechanicTarget", "recipient", "conditionMode", "minMagnitude", "maxMagnitude"] as const) if (state[key]) params.set(key, String(state[key]));
     if (state.search) params.set("q", state.search);
     if (state.author) params.set("authorUsername", state.author);
     if (state.tags) params.set("tags", state.tags);
@@ -230,6 +230,7 @@ export function LibraryBrowseClient({
       if (next.origin && next.origin !== "all") params.set("origin", next.origin);
       if (next.tier) params.set("tier", next.tier);
       if (next.typeFilter !== "ALL" || phone) params.set("type", next.typeFilter);
+      if (next.collectionId) params.set("collectionId",next.collectionId);
       if (next.category) params.set("category", next.category);
       if (next.search) params.set("q", next.search);
       if (next.author) params.set("author", next.author);
@@ -586,10 +587,10 @@ export function LibraryBrowseClient({
                   <section className="v12-inspector-section"><h3>Design meaning</h3><Markdown>{selectedItem.verboseDescription}</Markdown></section>
                 ) : null}
                 {selectedItem.tags.length ? <section className="v12-inspector-section"><h3>Tags</h3><div className="v12-inspector-tags">{selectedItem.tags.map((tag) => <span className="v12-tag" key={tag}>{tag}</span>)}</div></section> : null}
-                <LibraryProvenance targetType={selectedItem.targetType} targetId={selectedItem.targetId} name={selectedItem.name} author={libraryAuthorLabel(selectedItem)} />
+                {selectedItem.targetType!=="MONSTER"&&<LibraryProvenance targetType={selectedItem.targetType} targetId={selectedItem.targetId} name={selectedItem.name} author={libraryAuthorLabel(selectedItem)} />}
                 <div className="v12-inspector-actions pt-3">
                   <a
-                    href={selectedItem.definitionKind === "TEMPLATE"
+                    href={selectedItem.targetType==="MONSTER"?`/monsters/${selectedItem.targetId}`:selectedItem.definitionKind === "TEMPLATE"
                       ? `/atelier?build=primitive&new=1&specialize=${selectedItem.targetId}`
                       : `/atelier?build=${atelierBuildForTarget(selectedItem.targetType)}&edit=${selectedItem.targetId}&intent=load`}
                     className="v12-metal-button v12-metal-button--primary"
@@ -621,13 +622,13 @@ export function LibraryBrowseClient({
                   <PreviewFlagSummary targetType={selectedItem.targetType} targetId={selectedItem.targetId} />
                 </div>
                 <div className="v12-inspector-actions v12-inspector-reference-actions border-t border-border pt-3">
-                  <a href={`/library/item/${selectedItem.id}`} className="v12-metal-button gap-1.5 text-[11px]"><ExternalLink className="size-3.5 shrink-0" />Source</a>
-                  <ForkMapButton key={selectedItem.id}
+                  <a href={selectedItem.targetType==="MONSTER"?`/monsters/${selectedItem.targetId}`:`/library/item/${selectedItem.id}`} className="v12-metal-button gap-1.5 text-[11px]"><ExternalLink className="size-3.5 shrink-0" />Source</a>
+                  {selectedItem.targetType!=="MONSTER"&&<ForkMapButton key={selectedItem.id}
                     targetType={selectedItem.targetType}
                     targetId={selectedItem.targetId}
                     targetName={selectedItem.name}
-                  />
-                  <a className="v12-metal-button gap-1.5 text-[11px]" href={`/library/item/${selectedItem.id}/versions`}><History className="size-3.5 shrink-0" />Versions</a>
+                  />}
+                  <a className="v12-metal-button gap-1.5 text-[11px]" href={selectedItem.targetType==="MONSTER"?`/monsters/${selectedItem.targetId}`:`/library/item/${selectedItem.id}/versions`}><History className="size-3.5 shrink-0" />Versions</a>
                 </div>
               </>
             ) : (
@@ -649,7 +650,7 @@ export function LibraryBrowseClient({
         size="xl"
       >
         {selectedItem ? (
-          <div className="v12-library-modal-layout"><FetchedEntityPreview key={selectedItem.id} targetType={selectedItem.targetType} targetId={selectedItem.targetId} owner={{ authorId:selectedItem.authorId, authorUsername:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorUsername, authorDisplayName:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorDisplayName, isOwner:selectedItem.authorId === currentUserInternalId, sourceOrigin:libraryOrigin(selectedItem) === "system" ? "SRD" : selectedItem.sourceOrigin }} /></div>
+          <div className="v12-library-modal-layout">{selectedItem.targetType==="MONSTER"?<iframe title={selectedItem.name} src={`/monsters/${selectedItem.targetId}`} className="h-[75dvh] w-full border-0"/>:<FetchedEntityPreview key={selectedItem.id} targetType={selectedItem.targetType} targetId={selectedItem.targetId} owner={{ authorId:selectedItem.authorId, authorUsername:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorUsername, authorDisplayName:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorDisplayName, isOwner:selectedItem.authorId === currentUserInternalId, sourceOrigin:libraryOrigin(selectedItem) === "system" ? "SRD" : selectedItem.sourceOrigin }} />}</div>
         ) : null}
       </DetailModal>
       <DetailModal

@@ -1,3 +1,6 @@
+import { auth } from "@clerk/nextjs/server";
+import { visibleEntries } from "@/lib/collections/service";
+import { redactExpandedContent } from "@/lib/publishing/redact-expanded-content";
 import { NextResponse } from "next/server";
 import { mechanicalDescriptionFromModifiers, renderStoredMechanicalRule } from "@/lib/primitives/mechanical-rule";
 import type { HardModifier } from "@/types/swordweave";
@@ -23,13 +26,17 @@ export async function GET(
 ) {
   const { id } = await params;
 
+
   const parsedId = Number.parseInt(id, 10);
-  if (!Number.isFinite(parsedId) || parsedId <= 0) {
+  if (!/^\d+$/.test(id) || !Number.isSafeInteger(parsedId) || parsedId <= 0) {
     return NextResponse.json(
       { error: "Invalid primitive id." },
       { status: 400 },
     );
   }
+
+  const { userId: viewerId } = await auth();
+  if (!(await visibleEntries([{targetType:"PRIMITIVE",targetId:id}], viewerId)).length) return NextResponse.json({error:"Entry not found."},{status:404});
 
   const row = await db.query.primitives.findFirst({
     where: eq(primitives.id, parsedId),

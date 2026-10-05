@@ -1,4 +1,5 @@
 "use client";
+import { playFieldStoragePrefix } from "@/lib/play-state/client-sync";
 
 /**
  * Phase 9.1 + 9.2 (Mashu 2026-09-06): Inline primitive picker sheet.
@@ -237,7 +238,7 @@ export function InlinePrimitiveSheet({
       setLoading(true);
       setError(null);
       try {
-        const prefix = `sw:cond:${characterId}:`;
+        const prefix = playFieldStoragePrefix("cond", characterId);
         const out: CharacterConditionRow[] = [];
         for (let i = 0; i < window.localStorage.length; i++) {
           const key = window.localStorage.key(i);

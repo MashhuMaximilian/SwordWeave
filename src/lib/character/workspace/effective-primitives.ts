@@ -9,7 +9,7 @@ export function effectivePrimitiveDefinition<P extends Record<string, unknown>>(
 ): P {
   if (!versionId) return primitive;
   const effective = resolvePinnedNode("primitive", { row: primitive, links: [], versions }, [versionId]);
-  if (!effective.row["workspaceHistoricalVersion"]) return primitive;
+  if (!effective.row["workspacePinnedSnapshot"] && !effective.row["workspaceHistoricalVersion"]) return primitive;
   // Optional mechanics absent in an older snapshot must not leak in from its
   // newer live definition. Identity/audit fields remain the slotted entity's.
   return { ...primitive, ...effective.row, hardModifiers: effective.row["hardModifiers"] ?? [],

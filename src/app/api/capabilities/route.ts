@@ -1,7 +1,10 @@
+import { visibilityCondition } from "@/lib/publishing/library-query";
+import { redactExpandedContent } from "@/lib/publishing/redact-expanded-content";
+import { withSourceCollection } from "@/lib/collections/source-save";
 import { withPublishingResponse } from "@/lib/publishing/save-transaction";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { asc, eq, inArray } from "drizzle-orm";
+import { asc, eq, inArray, and, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   capabilities,
@@ -35,8 +38,9 @@ import { autoPublishOnCreate } from "@/lib/publishing/auto-publish";
  * Returns capabilities with their primitive links.
  */
 export async function GET() {
+  const { userId: viewerId } = await auth();
   const rows = await db.query.capabilities.findMany({
-    where: eq(capabilities.isPublic, true),
+    where: visibilityCondition("CAPABILITY", sql`${capabilities.id}`, sql`${capabilities.userId}`, viewerId ?? undefined, sql`${capabilities.isPublic}`),
     orderBy: [asc(capabilities.name)],
     with: {
       primitiveLinks: {
@@ -53,7 +57,7 @@ export async function GET() {
     },
   });
 
-  return NextResponse.json({ capabilities: rows });
+  return NextResponse.json({ capabilities: await redactExpandedContent(rows, viewerId) });
 }
 
 /**
@@ -358,6 +362,8 @@ function pickStringOrDefault(value: unknown, fallback: string): string {
   return typeof value === "string" && value.length > 0 ? value : fallback;
 }
 
-export async function POST(...args: Parameters<typeof handlePOST>) {
+async function handleCollectionPOST(...args: Parameters<typeof handlePOST>) {
   return withPublishingResponse(() => handlePOST(...args));
 }
+
+export async function POST(...args: Parameters<typeof handleCollectionPOST>) { return withSourceCollection(args[0], "CAPABILITY", () => handleCollectionPOST(...args)); }

@@ -1,0 +1,50 @@
+"use client";
+import {useEffect,useState} from "react";
+import Link from "next/link";
+import {getEffectivePlayState,queuePlayChanges} from "@/lib/play-state/client-sync";
+import {usePlaySession} from "@/lib/hooks/use-play-session";
+import {PlaySessionPanel} from "@/components/characters/play-session-panel";
+import {evaluateCondition} from "@/lib/engine/condition-evaluator";
+import {rollDice} from "@/lib/engine/runtime-resolver";
+import {resolveMonsterPlay,customMonsterConsequence} from "@/lib/monsters/play";
+import type {PinnedDefinition} from "@/lib/monsters/service";
+import type {ConsequenceOccurrence,ConsequenceBehavior} from "@/lib/character/consequences/types";
+import type {HardModifier} from "@/types/swordweave";
+import type {MonsterSlot} from "@/lib/monsters/resolve";
+import {MonsterSummary} from "./monster-workbench";
+import "./monster-ui.css";
+export function MonsterPlaySheet({id}:{id:string}){
+ const [packages,setPackages]=useState<{key:string;name:string;hash:string;vitalityDelta:number;pieces:{id:number;title:string;description:string;versionId:string|null;modifiers:HardModifier[];behavior:ConsequenceBehavior}[]}[]>([]);
+ const [copyData,setCopyData]=useState<{accountId:string;copy:{name:string;templateVersion:number;currentVitality:number;definition:PinnedDefinition}}|null>(null),[error,setError]=useState(""),[roll,setRoll]=useState(""),[title,setTitle]=useState(""),[description,setDescription]=useState(""),[consequenceTarget,setConsequenceTarget]=useState("attack_bonus"),[consequenceAmount,setConsequenceAmount]=useState(0);const endpoint=`/api/monsters/copies/${id}`;
+ const syncEndpoint=`${endpoint}?session=1`;
+ const {session,accountId}=usePlaySession("MONSTER_PLAY_COPY",id,syncEndpoint,undefined,{method:"PATCH"});
+ useEffect(()=>{if(!accountId)return;let active=true;const abort=new AbortController();fetch(endpoint,{signal:abort.signal,cache:"no-store"}).then(async r=>{const b=await r.json();if(!r.ok)throw new Error(b.error);if(active){setCopyData({accountId,copy:b.copy});setPackages(b.packages??[]);}}).catch(e=>{if(active)setError(e.message);});return()=>{active=false;abort.abort();};},[accountId,id,endpoint]);
+ const copy=copyData?.accountId===accountId?copyData.copy:null;
+ if(!copy||!session.ready)return <main className="p-6">{error||"Loading play copy…"}<PlaySessionPanel subjectKind="MONSTER_PLAY_COPY" subjectId={id} endpoint={syncEndpoint} method="PATCH"/></main>;
+ const overrides=getEffectivePlayState("MONSTER_PLAY_COPY",id).overrides;const slots:MonsterSlot[]=copy.definition.resolvedSlots??[];const {sheet,occurrences,context}=resolveMonsterPlay(copy.definition,slots,overrides,copy.currentVitality);
+ function change(field:string,value:unknown){queuePlayChanges("MONSTER_PLAY_COPY",id,[{field,value}]);}
+ function check(label:string,bonus:number){const result=rollDice("1d20");setRoll(`${label}: ${result.rolls.join(" + ")} + ${bonus} = ${result.total+bonus}`);}
+ const toggles=[...new Set(slots.flatMap(s=>(s.supplyKeys??[]).flat().filter(k=>k.startsWith("capability:")||k.startsWith("effect:"))))];
+ return <main className="sw-monster-page monster-play-page space-y-5"><header className="monster-panel monster-play-header"><Link href="/monsters">Monsters &amp; NPCs</Link><p className="monster-kicker">Private play copy · pinned template version {copy.templateVersion}</p><h1 className="text-3xl">{copy.name}</h1><p>{copy.definition.concept}</p>{error&&<p role="alert">{error}</p>}</header><MonsterSummary sheet={sheet}/><section className="monster-panel monster-vitality-panel"><h2>Vitality</h2><div className="monster-settings-grid"><label className="monster-field">Current Vitality<input type="number" min="0" max={sheet.maximum} value={sheet.currentVitality} onChange={e=>{const n=Number(e.target.value);if(Number.isSafeInteger(n)&&n>=0&&n<=sheet.maximum)change("currentVitality",n);}}/></label><label className="monster-field">Manual baseline Vitality<input type="number" min="1" value={typeof overrides["baselineVitality"]==="number"?overrides["baselineVitality"]:copy.definition.baselineVitality??""} onChange={e=>{const n=Number(e.target.value);if(!e.target.value)change("baselineVitality",null);else if(Number.isSafeInteger(n)&&n>0)change("baselineVitality",n);}}/></label></div></section>
+ <section className="monster-panel monster-roll-panel"><h2>Roll checks</h2><div className="monster-actions"><button className="border p-2" onClick={()=>check("Attack",sheet.resolved.totals["attack_bonus"]??0)}>Roll attack</button>{(["physical","mental","magical"] as const).map(k=><button className="border p-2" key={k} onClick={()=>check(`${k} save`,sheet.resolved.totals[`${k}_saving_throw`]??0)}>Roll {k} save</button>)}{sheet.practices.map(p=><button className="border p-2" key={p.practice} onClick={()=>check(p.practice,p.total)}>Roll {p.practice}</button>)}</div>{roll&&<output className="monster-roll-result" aria-live="polite">{roll}</output>}</section>
+ <section className="monster-panel monster-abilities-panel"><h2 className="text-xl">Abilities &amp; effects</h2><div className="monster-actions">{packages.map(p=><button className="mr-2 border p-2" key={p.key} disabled={p.key.startsWith("capability:")&&overrides[p.key.replace("capability:","cap:")]===true||p.key.startsWith("effect:")&&overrides[p.key.replace("effect:","eff:")]===true} onClick={()=>{const applicationId=crypto.randomUUID();const changes=p.pieces.map(piece=>{const occurrence:ConsequenceOccurrence={...customMonsterConsequence(piece.title,piece.description),id:crypto.randomUUID(),applicationId,sourceEntityId:String(piece.id),sourceEntityType:"primitive",sourceVersionId:piece.versionId,modifiers:piece.modifiers,restrictions:piece.behavior.restrictions,recovery:piece.behavior.recovery,applicationSnapshot:{vitalityDelta:piece.behavior.vitalityDelta,modifiers:piece.modifiers,restrictions:piece.behavior.restrictions}};return {field:`consequence:${occurrence.id}`,value:occurrence as unknown};});changes.push({field:"currentVitality",value:Math.max(0,Math.min(sheet.maximum,sheet.currentVitality+p.vitalityDelta))});queuePlayChanges("MONSTER_PLAY_COPY",id,changes);}}>Use {p.name}</button>)}</div>{toggles.map(k=>{const field=k.replace("capability:","cap:").replace("effect:","eff:");const displayName=slots.find(s=>s.supplyNames?.[k])?.supplyNames?.[k]??k;return <label className="monster-check" key={k}><input type="checkbox" checked={overrides[field]!==true} onChange={e=>change(field,e.target.checked?null:true)}/>Enable {displayName}</label>;})}{slots.map(s=><details className="monster-slot-detail" key={s.dependencyKey}><summary>{s.name} ×{s.quantity}{s.isMirrored?" (mirrored)":""}</summary>{s.hardModifiers.map((m,i)=><p key={i}>{m.target}: {m.operation} {typeof m.value==="object"?JSON.stringify(m.value):String(m.value)}</p>)}</details>)}</section>
+ <section className="monster-panel monster-consequences-panel">
+  <h2>Consequences</h2>
+  {occurrences.map(c=><article className="monster-consequence" key={c.id}>
+   <div><strong>{c.title}</strong>{c.description&&<p>{c.description}</p>}</div>
+   <div className="monster-actions"><label className="monster-check"><input type="checkbox" checked={c.status!=="resolved"&&(c.manualOverride??(c.source==="sheet-auto"?evaluateCondition(c.modifiers[0]?.condition as never,context):c.active))} onChange={e=>change(`consequence:${c.id}`,{...c,manualOverride:e.target.checked})}/>Active</label>
+    <button onClick={()=>change(`consequence:${c.id}`,{...c,status:"resolved",active:false,manualOverride:false,resolvedAt:Date.now()})}>Resolve</button>
+    {c.source==="custom"&&<button onClick={()=>change(`consequence:${c.id}`,null)}>Delete</button>}
+   </div>
+  </article>)}
+  <h3>Add a consequence</h3>
+  <div className="monster-settings-grid">
+   <label className="monster-field">Title<input aria-label="Consequence title" placeholder="Consequence" value={title} onChange={e=>setTitle(e.target.value)}/></label>
+   <label className="monster-field">Description<textarea aria-label="Consequence description" value={description} onChange={e=>setDescription(e.target.value)}/></label>
+  </div>
+  <label className="monster-field">Optional modifier<div className="monster-modifier-row"><select aria-label="Modifier target" value={consequenceTarget} onChange={e=>setConsequenceTarget(e.target.value)}>{["attack_bonus","save_dc","max_vitality","speed","physical_saving_throw","mental_saving_throw","magical_saving_throw","attribute.physical","attribute.mental","attribute.magical",...sheet.practices.map(p=>`skill_practice_check.${p.practice}`)].map(k=><option key={k}>{k}</option>)}</select><input aria-label="Modifier amount" type="number" value={consequenceAmount} onChange={e=>setConsequenceAmount(Number(e.target.value))}/></div></label>
+  <button disabled={!title.trim()} onClick={()=>{const c=customMonsterConsequence(title.trim(),description);if(Number.isSafeInteger(consequenceAmount)&&consequenceAmount!==0)c.modifiers=[{kind:"modify",target:consequenceTarget,operation:"add",value:consequenceAmount,stacking:"stack"}];change(`consequence:${c.id}`,c);setTitle("");setDescription("");}}>Add consequence</button>
+ </section>
+ <PlaySessionPanel subjectKind="MONSTER_PLAY_COPY" subjectId={id} endpoint={syncEndpoint} method="PATCH"/>
+ <button className="monster-delete-copy" onClick={async()=>{if(!confirm("Delete this finished play copy?"))return;const r=await fetch(endpoint,{method:"DELETE"});if(r.ok)location.href="/monsters";else setError("Unable to delete copy.");}}>Delete finished copy</button></main>;
+}

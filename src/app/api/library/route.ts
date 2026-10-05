@@ -18,7 +18,7 @@ import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 import { loadLibraryEngagement } from "@/lib/engagement/library-engagement";
 import { applyViewerEngagement } from "@/lib/engagement/library-viewer-state";
 import { parseSort, parseType } from "@/lib/library-url-params";
-import { queryLibrary } from "@/lib/publishing/library-query";
+import { queryLibrary,LibraryQueryBudgetError } from "@/lib/publishing/library-query";
 
 export async function GET(req: NextRequest) {
   const { userId: clerkUserId } = await auth();
@@ -44,6 +44,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const result = await queryLibrary({
+      ...(sp.get("collectionId") ? {collectionId:sp.get("collectionId")!} : {}),
       ...(clerkUserId && !publicOnly ? { viewerClerkId: clerkUserId } : {}),
       ...(origin === "system" || origin === "community" ? { origin } : {}),
       ...(tier !== null && tier !== "" && Number.isInteger(Number(tier)) && Number(tier) >= 0 ? { tier: Number(tier) } : {}),
@@ -70,6 +71,7 @@ export async function GET(req: NextRequest) {
     }
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
+    if(err instanceof LibraryQueryBudgetError)return NextResponse.json({error:err.message},{status:422});
     console.error("[library] error:", err);
     return NextResponse.json(
       { error: "Failed to query library" },

@@ -12,8 +12,9 @@
 // - Visibility tiers: PUBLIC, FOLLOWERS_ONLY, PRIVATE
 // =============================================================================
 
+import { withDependencyPins } from "@/lib/versions/capture-dependency-pins";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { db } from "@/db/client";
+import { db, withDatabaseTransaction } from "@/db/client";
 import {
   capabilityVersions,
   characterVersions,
@@ -28,8 +29,8 @@ import {
 import {
   compactSnapshot,
   computeSelfDescribingDelta,
-  createFullSnapshot,
-  type SelfDescribingDelta,
+  reconstructVersion,
+  type VersionPayload,
 } from "@/lib/versions/delta";
 
 // Drizzle pgEnum doesn't auto-export TS types, so infer them from the
@@ -110,14 +111,14 @@ async function findLatestVersion(
  */
 async function supersedePreviousLatest(
   targetType: PublishTargetType,
-  previousVersionId: string,
+  targetId: string,
 ): Promise<void> {
   const versionTable = versionTableFor(targetType);
   if (!versionTable) return;
   await db
     .update(versionTable.table)
     .set({ isLatest: false })
-    .where(eq(versionTable.id, previousVersionId));
+    .where(and(eq(versionTable.foreignKey,targetType === "PRIMITIVE" ? Number(targetId) : targetId),eq(versionTable.table.isLatest,true)));
 }
 
 /**
@@ -141,7 +142,7 @@ async function insertVersionRow(
   const rows = (await db
     .insert(versionTable.table)
     .values({
-      [versionTable.foreignKey.name]:
+      [targetType === "PRIMITIVE" ? "primitiveId" : targetType === "CHARACTER" ? "characterId" : targetType === "CAPABILITY" ? "capabilityId" : targetType === "EFFECT" ? "effectId" : targetType === "ITEM" ? "itemId" : "templateId"]:
         targetType === "PRIMITIVE" ? Number(targetId) : targetId,
       versionNumber,
       isLatest: true,
@@ -242,57 +243,53 @@ function versionTableFor(targetType: PublishTargetType) {
 export async function publishTarget(
   input: PublishInput,
 ): Promise<PublishResult> {
+  const kind = input.targetType === "PRIMITIVE" ? "primitive" : input.targetType === "CHARACTER" ? "character" : input.targetType === "CAPABILITY" ? "capability" : input.targetType === "EFFECT" ? "effect" : input.targetType === "ITEM" ? "item" : "template";
+  return withDatabaseTransaction(async tx => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${kind + ":" + input.targetId}))`);
+    return publishTargetLocked(input);
+  });
+}
+
+async function publishTargetLocked(input: PublishInput): Promise<PublishResult> {
   const { targetType, targetId, authorId, visibility, snapshot } = input;
-
-  const cleanSnapshot = compactSnapshot(snapshot);
-
-  // Find latest version (for delta computation) — dispatches by targetType
+  const cleanSnapshot = compactSnapshot(await withDependencyPins(snapshot));
   const latest = await findLatestVersion(targetType, targetId);
-
-  let nextVersionNumber: number;
-  let deltaKind: "FULL" | "DELTA";
-  let payload: { snapshot: Record<string, unknown> } | {
-    delta: SelfDescribingDelta;
-  };
-
-  if (!latest) {
-    nextVersionNumber = 1;
-    deltaKind = "FULL";
-    payload = { snapshot: createFullSnapshot(cleanSnapshot).data };
-  } else {
-    nextVersionNumber = latest.versionNumber + 1;
-    deltaKind = "DELTA";
-    // For simplicity we assume the latest FULL row was created at the
-    // most recent version (storage convention: latest version is always
-    // FULL for fast reads). Older versions reconstruct via delta chain.
-    const prevSnapshot = latest.snapshot ?? {};
-    const delta = computeSelfDescribingDelta(prevSnapshot, cleanSnapshot);
-    payload = { delta };
-  }
-
-  // Mark old latest as no-longer-latest
+  let previous: Record<string, unknown> | null = null;
   if (latest) {
-    await supersedePreviousLatest(targetType, latest.id);
+    // A latest DELTA is a patch, not the prior object. Reconstruct before diffing.
+    const chain = await getVersionChain(targetType, targetId);
+    previous = reconstructVersion(chain.sort((a,b) => a.versionNumber-b.versionNumber).map(row => ({
+      versionNumber: row.versionNumber,
+      payload: (row.deltaKind === "FULL" ? { kind: "FULL", data: row.snapshot ?? {} }
+        : { kind: "DELTA", patch: row.snapshot ?? {} }) as VersionPayload,
+    })), latest.versionNumber);
+  }
+  const delta = previous ? computeSelfDescribingDelta(compactSnapshot(previous), cleanSnapshot) : null;
+  const unchanged = latest && delta && Object.keys(delta).length === 0;
+  const nextVersionNumber = unchanged ? latest.versionNumber : (latest?.versionNumber ?? 0) + 1;
+  const deltaKind = unchanged ? latest.deltaKind : previous ? "DELTA" : "FULL";
+  let versionId: string;
+  if (unchanged) {
+    versionId = latest.id;
+    const versionTable=versionTableFor(targetType)!;
+    await supersedePreviousLatest(targetType,targetId);
+    await db.update(versionTable.table).set({isLatest:true}).where(eq(versionTable.id,versionId));
+  }
+  else {
+    if (latest) await supersedePreviousLatest(targetType, targetId);
+    versionId = await insertVersionRow(targetType, targetId, nextVersionNumber, deltaKind,
+      deltaKind === "FULL" ? cleanSnapshot : delta as Record<string, unknown>, authorId);
   }
 
-  // Insert new version row (in the correct table for this targetType)
-  const snapshotJson: Record<string, unknown> =
-    deltaKind === "FULL"
-      ? "snapshot" in payload
-        ? payload.snapshot
-        : {}
-      : "delta" in payload
-        ? (payload.delta as Record<string, unknown>)
-        : {};
-
-  const versionId = await insertVersionRow(
-    targetType,
-    targetId,
-    nextVersionNumber,
-    deltaKind,
-    snapshotJson,
-    authorId,
-  );
+  // Publishing unchanged content updates visibility without another version or publication.
+  const [existingPublication] = await db.select({ id: publications.id }).from(publications)
+    .where(and(eq(publications.targetType, targetType), eq(publications.targetId, targetId),
+      eq(publications.versionId, versionId), eq(publications.authorId, authorId),
+      sql`${publications.unpublishedAt} IS NULL`)).limit(1);
+  if (existingPublication) {
+    await db.update(publications).set({ visibility }).where(eq(publications.id, existingPublication.id));
+    return { publicationId: existingPublication.id, versionId, versionNumber: nextVersionNumber, isLatest: true, deltaKind };
+  }
 
   // Insert publication row
   const [pubRow] = await db

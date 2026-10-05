@@ -1,4 +1,5 @@
 "use client";
+import { playFieldStorageKey } from "@/lib/play-state/client-sync";
 import { browserUuid } from "@/lib/browser-uuid";
 import { ConsequenceRestrictionsEditor } from "./consequence-restrictions-editor";
 import type { AccessRestriction } from "@/lib/character/consequences/types";
@@ -403,7 +404,7 @@ export function ConditionComposer({
         modifiers: hardMods,
         durationTier, recovery, restrictions,
       };
-      const key = `sw:cond:${characterId}:${initial.id}`;
+      const key = playFieldStorageKey("cond", characterId, initial.id);
       try {
         window.localStorage.setItem(key, JSON.stringify(updated));
       } catch {
@@ -426,7 +427,7 @@ export function ConditionComposer({
         createdAt: Date.now(),
         source: "custom",
       };
-      const key = `sw:cond:${characterId}:${id}`;
+      const key = playFieldStorageKey("cond", characterId, id);
       try {
         window.localStorage.setItem(key, JSON.stringify(newCond));
       } catch {

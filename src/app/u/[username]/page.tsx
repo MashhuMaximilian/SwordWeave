@@ -197,6 +197,8 @@ export default async function ProfilePage({
         </div>
       </div>
 
+      {userClerkId && <Link href={`/collections?owner=${encodeURIComponent(userClerkId)}`} className="my-5 inline-flex items-center gap-2 rounded-md border border-sword-border bg-sword-surface px-4 py-2 text-sword-fg">Browse collections →</Link>}
+
       <ProfileEntriesSection
         userId={profile.id}
         clerkUserId={profile.clerkUserId ?? null}

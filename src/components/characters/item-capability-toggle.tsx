@@ -1,4 +1,5 @@
 "use client";
+import { playFieldStorageKey } from "@/lib/play-state/client-sync";
 
 /**
  * ItemCapabilityToggle — Phase 8.4 v23 (Mashu 2026-07-29),
@@ -31,6 +32,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useToasts } from "@/components/ui/toast";
+import { queuePlayChanges } from "@/lib/play-state/client-sync";
 import { emitCharacterLogAdded } from "@/lib/character/character-events";
 import { CapabilityActionButtons } from "@/components/characters/capability-card";
 
@@ -54,7 +56,7 @@ function storageKey(
   itemId: string,
   capabilityId: string,
 ): string {
-  return `sw:itemcap:${characterId}:${itemId}:${capabilityId}`;
+  return playFieldStorageKey("itemcap", characterId, `${itemId}:${capabilityId}`);
 }
 
 function readStorage(
@@ -104,76 +106,24 @@ export function ItemCapabilityToggle({
 }: ItemCapabilityToggleProps) {
   const { showToast } = useToasts();
   const [active, setActive] = useState(false);
-  const [toggling, setToggling] = useState(false);
+  const toggling = false;
   const [triggerPending, setTriggerPending] = useState(false);
 
   // Hydrate from localStorage on mount.
   useEffect(() => {
-    setActive(readStorage(characterId, itemId, capability.id));
+    const update = () => setActive(readStorage(characterId, itemId, capability.id));
+    update(); window.addEventListener("sw:toggle-changed", update); window.addEventListener("storage", update);
+    return () => { window.removeEventListener("sw:toggle-changed", update); window.removeEventListener("storage", update); };
   }, [characterId, itemId, capability.id]);
 
   const handleToggle = useCallback(async () => {
-    if (toggling) return;
-    const next = !active;
-
-    // Optimistic UI update.
-    setActive(next);
-    writeStorage(characterId, itemId, capability.id, next);
-    setToggling(true);
-
     try {
-      const res = await fetch(
-        `/api/characters/${characterId}/capabilities/${capability.id}/toggle`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ active: next, itemId }),
-        },
-      );
-
-      if (!res.ok) {
-        // Revert optimistic update on failure.
-        setActive(!next);
-        writeStorage(characterId, itemId, capability.id, !next);
-        const body = await res.json().catch(() => ({}));
-        const msg =
-          (body as { error?: string }).error ??
-          "Failed to toggle capability.";
-        showToast(msg, "error");
-        return;
-      }
-
-      const data = (await res.json()) as {
-        capability: { id: string; name: string; active: boolean };
-      };
-      setActive(data.capability.active);
-      writeStorage(characterId, itemId, capability.id, data.capability.active);
-      showToast(
-        next
-          ? `Activated "${capability.name}"`
-          : `Deactivated "${capability.name}"`,
-        "success",
-      );
-      emitCharacterLogAdded(characterId);
-    } catch (err) {
-      setActive(!next);
-      writeStorage(characterId, itemId, capability.id, !next);
-      showToast(
-        err instanceof Error ? err.message : "Network error.",
-        "error",
-      );
-    } finally {
-      setToggling(false);
-    }
-  }, [
-    active,
-    capability.id,
-    capability.name,
-    characterId,
-    itemId,
-    showToast,
-    toggling,
-  ]);
+      const next = !active;
+      queuePlayChanges("CHARACTER", characterId, [{ field: `itemcap:${itemId}:${capability.id}`, value: next ? true : null }]);
+      setActive(next);
+      showToast(next ? `Activated "${capability.name}"` : `Deactivated "${capability.name}"`, "success");
+    } catch (error) { showToast(error instanceof Error ? error.message : "Unable to queue toggle.", "error"); }
+  }, [active, capability.id, capability.name, characterId, itemId, showToast]);
 
   const handleTrigger = useCallback(async () => {
     if (triggerPending) return;

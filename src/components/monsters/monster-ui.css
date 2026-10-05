@@ -1,0 +1,144 @@
+/* Monster authoring and play surfaces use the same quiet, token-based panels
+   as the rest of SwordWeave. The V12 palette swaps through shared variables. */
+.sw-monster-page {
+  --monster-accent: var(--sw-text-gold, var(--primary));
+  --monster-surface: var(--sw-surface-fill, var(--card));
+  --monster-inset: var(--sw-inset-fill, var(--muted));
+  --monster-muted: var(--muted-foreground);
+  width: min(100%, 1100px);
+  margin-inline: auto;
+  padding: clamp(16px, 3vw, 32px);
+  padding-bottom: calc(32px + env(safe-area-inset-bottom));
+  color: var(--foreground);
+}
+.sw-monster-page :is(h1, h2, h3) { text-wrap: balance; }
+.sw-monster-page h1 { overflow-wrap: anywhere; }
+.sw-monster-page .monster-panel {
+  min-width: 0;
+  padding: clamp(14px, 2.2vw, 22px);
+  border: 1px solid color-mix(in srgb, var(--monster-accent) 30%, var(--border));
+  border-radius: 9px;
+  background: var(--monster-surface);
+  box-shadow: inset 0 1px color-mix(in srgb, white 5%, transparent), 0 5px 18px #00000012;
+}
+.sw-monster-page .monster-panel > h2 { margin: 0 0 14px; color: var(--monster-accent); }
+.sw-monster-page .monster-page-heading { display: grid; gap: 8px; }
+.sw-monster-page .monster-page-heading > a,.sw-monster-page .monster-play-header > a { color: var(--primary); }
+.sw-monster-page .monster-kicker { margin: 0; color: var(--monster-muted); font-size: .82rem; letter-spacing: .04em; }
+.sw-monster-page .monster-subsection { display: grid; gap: 12px; padding-top: 14px; border-top: 1px solid var(--border); }
+.sw-monster-page .monster-subsection h3,.sw-monster-page .monster-panel h3 { color: var(--monster-accent); }
+.sw-monster-page .monster-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; font-weight: 600; }
+.sw-monster-page .monster-field > :is(input,select,textarea),.sw-monster-page .monster-modifier-row > :is(input,select) { width: 100%; }
+.sw-monster-page .monster-reference-picker,.sw-monster-page .monster-settings-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; align-items: end; }
+.sw-monster-page .monster-reference-picker > button { grid-column: 1 / -1; justify-self: start; }
+.sw-monster-page .monster-attribute-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
+.sw-monster-page .monster-inline-control { display: flex; gap: 12px; align-items: center; }
+.sw-monster-page .monster-inline-control > input { width: 100%; }
+.sw-monster-page .monster-check { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; font-weight: 500; }
+.sw-monster-page .monster-check input { flex: 0 0 auto; }
+.sw-monster-page .monster-budget { margin-block: 5px; }
+.sw-monster-page .monster-practice-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(160px,100%),1fr)); gap: 10px; }
+.sw-monster-page .monster-practice-value,.sw-monster-page .monster-stat-grid > p { display: flex; justify-content: space-between; gap: 8px; margin: 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 5px; background: var(--monster-inset); }
+.sw-monster-page .monster-summary .monster-stat-grid { grid-template-columns: repeat(auto-fit,minmax(min(145px,100%),1fr)); }
+.sw-monster-page .monster-summary .monster-stat-grid strong { color: var(--monster-accent); }
+.sw-monster-page .monster-summary > h3 { margin-block: 16px 8px; }
+.sw-monster-page .monster-reference-title { display: grid; gap: 3px; overflow-wrap: anywhere; }
+.sw-monster-page .monster-reference-title > span { color: var(--monster-muted); font-size: .8rem; }
+.sw-monster-page .monster-reference-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.sw-monster-page .monster-reference-controls .monster-field { max-width: 240px; }
+.sw-monster-page .monster-reference-controls .monster-field input { width: 110px; }
+.sw-monster-page .monster-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sw-monster-page .monster-actions > * { min-width: 44px; }
+.sw-monster-page .monster-actions .monster-primary-action { color: var(--primary-foreground); background: var(--primary); font-weight: 700; }
+.sw-monster-page .monster-list-row,.sw-monster-page .monster-copy-link { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; padding: 10px 0; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.sw-monster-page .monster-copy-link { display: block; }
+.sw-monster-page .monster-muted { color: var(--monster-muted); }
+.sw-monster-page .monster-roll-result { display: block; margin-top: 12px; padding: 12px; border-inline-start: 3px solid var(--primary); border-radius: 4px; background: var(--monster-inset); font-weight: 700; }
+.sw-monster-page .monster-toggle-list { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-block: 12px; }
+.sw-monster-page .monster-slot-detail { padding-block: 4px; border-top: 1px solid var(--border); }
+.sw-monster-page .monster-slot-detail p { overflow-wrap: anywhere; color: var(--monster-muted); }
+.sw-monster-page .monster-consequence { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.sw-monster-page .monster-consequence > :first-child { min-width: 0; overflow-wrap: anywhere; }
+.sw-monster-page .monster-modifier-row { display: grid; grid-template-columns: minmax(0,1fr) minmax(90px,140px); gap: 8px; }
+.sw-monster-page .monster-delete-copy { min-height: 44px; padding: 8px 12px; border: 1px solid var(--destructive); border-radius: 5px; color: var(--destructive); }
+.sw-monster-page .monster-shuffle-columns { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin-block: 14px; }
+.sw-monster-page .monster-shuffle-columns > div { min-width: 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--monster-inset); }
+.sw-monster-page .monster-shuffle-columns h3 { margin-bottom: 8px; }
+.sw-monster-page .monster-shuffle-columns p { overflow-wrap: anywhere; padding-block: 5px; border-bottom: 1px solid var(--border); }
+.sw-monster-page .monster-signin-callout { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--monster-surface); }
+.sw-monster-page .monster-panel :is(input:not([type=checkbox]), textarea, select) {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  color: var(--foreground);
+  border: 1px solid var(--input);
+  border-radius: 5px;
+  background: var(--monster-inset);
+}
+.sw-monster-page .monster-panel textarea { min-height: 96px; resize: vertical; }
+.sw-monster-page .monster-panel input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--primary); vertical-align: middle; }
+.sw-monster-page .monster-panel :is(button, a.monster-action) {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  max-width: 100%;
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--monster-accent) 48%, var(--border));
+  border-radius: 5px;
+  color: var(--foreground);
+  background: var(--monster-inset);
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+.sw-monster-page .monster-panel button:hover { border-color: var(--monster-accent); filter: brightness(1.04); }
+.sw-monster-page .monster-panel button:disabled { opacity: .5; cursor: not-allowed; }
+.sw-monster-page :is(button, a, input, textarea, select, summary):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.sw-monster-page .monster-panel :is(label, .monster-field) { min-width: 0; }
+.sw-monster-page .monster-stat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.sw-monster-page .monster-reference-list { display: grid; gap: 10px; }
+.sw-monster-page .monster-reference {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px 14px;
+  align-items: center;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--monster-inset) 65%, transparent);
+}
+.sw-monster-page .monster-reference > :first-child { min-width: 0; overflow-wrap: anywhere; }
+.sw-monster-page .monster-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sw-monster-page .monster-summary { border-inline-start: 3px solid var(--primary); }
+.sw-monster-page .monster-budget { display: flex; flex-wrap: wrap; gap: 8px 18px; color: var(--monster-muted); }
+.sw-monster-page .monster-budget strong { color: var(--monster-accent); }
+.sw-monster-page [role=alert] { padding: 10px 12px; border: 1px solid var(--destructive); border-radius: 5px; }
+.sw-monster-page details > summary { min-height: 44px; padding-block: 10px; cursor: pointer; }
+
+@media (max-width: 760px) {
+  .sw-monster-page { padding-inline: 14px; }
+  .sw-monster-page .monster-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sw-monster-page .monster-reference { grid-template-columns: minmax(0, 1fr); }
+  .sw-monster-page .monster-panel :is(input:not([type=checkbox]), textarea, select) { width: 100%; font-size: 16px; }
+  .sw-monster-page .monster-panel :is(button, a.monster-action) { min-height: 44px; }
+  .sw-monster-page .monster-actions > * { flex: 1 1 150px; }
+  .sw-monster-page .monster-reference-picker,.sw-monster-page .monster-settings-grid,.sw-monster-page .monster-attribute-grid { grid-template-columns: minmax(0,1fr); }
+  .sw-monster-page .monster-reference-picker > button { grid-column: auto; justify-self: stretch; }
+  .sw-monster-page .monster-reference-controls { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); align-items: center; }
+  .sw-monster-page .monster-reference-controls .monster-field { grid-column: 1 / -1; max-width: none; }
+  .sw-monster-page .monster-reference-controls .monster-field input { width: 100%; }
+  .sw-monster-page .monster-consequence { align-items: flex-start; flex-direction: column; }
+  .sw-monster-page .monster-roll-panel .monster-actions > * { flex: 1 1 135px; }
+  .sw-monster-page .monster-inline-control > input { width: auto; flex: 1; }
+  .sw-monster-page .monster-shuffle-columns { grid-template-columns: minmax(0,1fr); }
+}
+@media (max-width: 390px) {
+  .sw-monster-page .monster-stat-grid { grid-template-columns: minmax(0, 1fr); }
+}

@@ -11,6 +11,8 @@ export function V12Navigation({ page }: { page: "Library" | "Atelier" }) {
         <Link href="/library/browse">Library</Link>
         <Link href="/atelier">Atelier</Link>
         <Link href="/characters">Characters</Link>
+        <Link href="/monsters">Monsters</Link>
+        <Link href="/collections">Collections</Link>
         <Link href="/rules">Rules</Link>
         <Link href="/atelier?build=primitive&new=1">Author a rule</Link>
         <Link href="/creations">My collection</Link>
@@ -21,6 +23,7 @@ export function V12Navigation({ page }: { page: "Library" | "Atelier" }) {
       <Link aria-current={page === "Library" ? "page" : undefined} href="/library/browse">Library</Link>
       <Link aria-current={page === "Atelier" ? "page" : undefined} href="/atelier">Atelier</Link>
       <Link href="/characters">Character</Link>
+      <Link href="/monsters">Monsters</Link>
       <Link href="/rules">Rules</Link>
       <Link href="/atelier?build=primitive&new=1">Author</Link>
       <Link className="v12-navigation-collection" href="/creations">My collection</Link>

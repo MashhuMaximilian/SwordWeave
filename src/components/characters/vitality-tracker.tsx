@@ -25,12 +25,12 @@ import { EditableNumberInput } from "@/components/ui/editable-number-input";
  */
 
 import { useEffect, useRef, useState } from "react";
-import { emitCharacterLogAdded, emitVitalityChanged } from "@/lib/character/character-events";
+import { queuePlayChanges, getEffectivePlayState, getPlaySessionAccountId, subscribePlaySession } from "@/lib/play-state/client-sync";
+import { usePlaySession } from "@/lib/hooks/use-play-session";
 import { Heart, Minus, Plus, BedDouble, Coffee } from "lucide-react";
 import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 
-import type { VitalityRuntimeUpdate } from "@/lib/character/vitality-update";
 
 export interface VitalityTrackerProps {
   characterId: string;
@@ -64,22 +64,6 @@ export interface VitalityTrackerProps {
   };
 }
 
-interface ApplyResponse {
-  character: { id: string; currentVitality: number; level: number };
-  max: number;
-  runtime: VitalityRuntimeUpdate;
-  delta: { prev: number; next: number; applied: number };
-  note?: string;
-}
-
-interface RestResponse {
-  character: { id: string; currentVitality: number; level: number };
-  max: number;
-  runtime: VitalityRuntimeUpdate;
-  restType: "long" | "short";
-  vitalityRestored: number;
-}
-
 export function VitalityTracker({
   characterId,
   max,
@@ -89,6 +73,8 @@ export function VitalityTracker({
   attrBestTotals,
 }: VitalityTrackerProps) {
   const readOnly = useCharacterReadOnly();
+  const { session, accountId } = usePlaySession("CHARACTER", characterId, undefined, undefined, { enabled: !readOnly });
+  const sessionReady = session.ready && session.status !== "legacy";
   const mutationPending = useRef(false);
   const { showToast } = useToasts();
 
@@ -99,16 +85,11 @@ export function VitalityTracker({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"damage" | "heal">("damage");
   const [amount, setAmount] = useState("");
-  const [pending, setPending] = useState(false);
-  const [restPending, setRestPending] = useState<"long" | "short" | null>(
-    null,
-  );
+  const pending = false;
+  const restPending: "long" | "short" | null = null;
 
-  // Keep optimistic state in sync if the server pushes a new value
-  // (e.g. after a refresh triggered by an external action).
-  useEffect(() => {
-    setOptimisticCurrent(safeCurrent);
-  }, [safeCurrent]);
+  const [baseCurrent, setBaseCurrent] = useState(safeCurrent);
+  if (baseCurrent !== safeCurrent) { setBaseCurrent(safeCurrent); setOptimisticCurrent(safeCurrent); }
 
   const percent =
     max > 0
@@ -125,145 +106,47 @@ export function VitalityTracker({
     setDialogOpen(true);
   }
 
+  function applySessionVitality(next: number) {
+    if (!sessionReady || !accountId || getPlaySessionAccountId() !== accountId) throw new Error("Wait for your signed-in session before editing vitality.");
+    queuePlayChanges("CHARACTER", characterId, [{ field: "currentVitality", value: next }]);
+    setOptimisticCurrent(next);
+    onCurrentChange?.(next);
+  }
+
+  useEffect(() => subscribePlaySession("CHARACTER", characterId, () => {
+    const value = getEffectivePlayState("CHARACTER", characterId).overrides["currentVitality"];
+    if (typeof value === "number") { setOptimisticCurrent(Math.min(max, value)); onCurrentChange?.(Math.min(max, value)); }
+  }), [characterId, max, onCurrentChange, accountId, sessionReady]);
+
   async function submitApply(e: React.FormEvent) {
     e.preventDefault();
-    if (readOnly) return;
-    if (mutationPending.current) return;
+    if (readOnly || !sessionReady || !accountId || getPlaySessionAccountId() !== accountId || mutationPending.current) return;
     const num = Number(amount);
-    if (!Number.isFinite(num) || num <= 0) {
-      showToast("Enter a positive number.", "error");
-      return;
-    }
+    if (!Number.isFinite(num) || num <= 0) { showToast("Enter a positive number.", "error"); return; }
     const delta = dialogMode === "damage" ? -Math.floor(num) : Math.floor(num);
-
-    mutationPending.current = true;
-    setPending(true);
-    const clamped = Math.max(0, Math.min(max, (optimisticCurrent ?? 0) + delta));
-    setOptimisticCurrent(clamped);
-    onCurrentChange?.(clamped);
-    setDialogOpen(false);
-
     try {
-      const res = await fetch(`/api/characters/${characterId}/vitality`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ delta, source: "manual" }),
-      });
-
-      if (!res.ok) {
-        setOptimisticCurrent(safeCurrent);
-        onCurrentChange?.(safeCurrent);
-        const body = await res.json().catch(() => ({}));
-        const msg =
-          (body as { error?: string }).error ?? "Failed to update vitality.";
-        showToast(msg, "error");
-        return;
-      }
-
-      const data = (await res.json()) as ApplyResponse;
-      setOptimisticCurrent(data.character.currentVitality);
-      onCurrentChange?.(data.character.currentVitality);
-      emitVitalityChanged(characterId, data.character.currentVitality, data.max, data.runtime);
-      emitCharacterLogAdded(characterId);
-
-      const verb = dialogMode === "damage" ? "Damage" : "Heal";
-      const actualDelta = data.delta.applied;
-      const wasClamped = actualDelta !== delta;
-      const note = wasClamped
-        ? `${verb} ${Math.abs(actualDelta)} (clamped from ${Math.abs(delta)}).`
-        : `${verb} ${Math.abs(actualDelta)} applied.`;
-      showToast(note, "success");
-    } catch (err) {
-      setOptimisticCurrent(safeCurrent);
-      onCurrentChange?.(safeCurrent);
-      showToast(
-        err instanceof Error ? err.message : "Network error.",
-        "error",
-      );
-    } finally {
-      mutationPending.current = false;
-      setPending(false);
-    }
+      applySessionVitality(Math.max(0, Math.min(max, optimisticCurrent + delta)));
+      setDialogOpen(false);
+      showToast("Vitality updated. Session sync retains this change until saved.", "success");
+    } catch (error) { showToast(error instanceof Error ? error.message : "Unable to queue vitality.", "error"); }
   }
 
   async function submitRest(restType: "long" | "short") {
-    if (readOnly) return;
-    if (mutationPending.current) return;
-    mutationPending.current = true;
-    const optimisticRest = restType === "long"
-      ? max
-      : Math.min(max, optimisticCurrent + Math.ceil(max / 2));
-    setRestPending(restType);
-    setOptimisticCurrent(optimisticRest);
-    onCurrentChange?.(optimisticRest);
+    if (readOnly || !sessionReady || !accountId || getPlaySessionAccountId() !== accountId || mutationPending.current) return;
     try {
-      const res = await fetch(`/api/characters/${characterId}/rest`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ restType }),
-      });
-
-      if (!res.ok) {
-        setOptimisticCurrent(safeCurrent);
-        onCurrentChange?.(safeCurrent);
-        const body = await res.json().catch(() => ({}));
-        const msg =
-          (body as { error?: string }).error ?? "Failed to rest.";
-        showToast(msg, "error");
-        return;
+      const next = restType === "long" ? max : Math.min(max, optimisticCurrent + Math.ceil(max / 2));
+      const state = getEffectivePlayState("CHARACTER", characterId);
+      const changes: import("@/lib/play-state/model").PlayMutation["changes"] = [{ field: "currentVitality", value: next }];
+      for (const [field, value] of Object.entries(state.overrides)) {
+        if (!field.startsWith("consequence:") || !value || typeof value !== "object") continue;
+        const condition = value as import("@/lib/character/consequences/types").ConsequenceOccurrence;
+        if (condition.active && condition.durationTier === (restType === "long" ? "long_rest" : "short_rest")) changes.push({ field, value: { ...condition, active: false } });
       }
-
-      const data = (await res.json()) as RestResponse;
-      setOptimisticCurrent(data.character.currentVitality);
-      onCurrentChange?.(data.character.currentVitality);
-      emitVitalityChanged(characterId, data.character.currentVitality, data.max, data.runtime);
-      emitCharacterLogAdded(characterId);
-
-      const restored = data.vitalityRestored;
-      const verb = restType === "long" ? "Long rest" : "Short rest";
-      const note =
-        restored > 0
-          ? `${verb} complete. +${restored} vitality.`
-          : `${verb} complete. Already at full vitality.`;
-      showToast(note, "success");
-
-      // Phase 8.L round 49 (Mashu 2026-08-14): when the player
-      // rests, mark matching runtime conditions as inactive.
-      // Long rest clears long_rest conditions; short rest clears
-      // short_rest conditions. Manual conditions are untouched.
-      try {
-        const matchTier = restType === "long" ? "long_rest" : "short_rest";
-        const prefix = `sw:cond:${characterId}:`;
-        for (let i = 0; i < window.localStorage.length; i++) {
-          const key = window.localStorage.key(i);
-          if (!key || !key.startsWith(prefix)) continue;
-          const raw = window.localStorage.getItem(key);
-          if (!raw) continue;
-          try {
-            const cond = JSON.parse(raw);
-            if (cond.durationTier === matchTier && cond.active) {
-              cond.active = false;
-              window.localStorage.setItem(key, JSON.stringify(cond));
-            }
-          } catch {
-            // skip malformed
-          }
-        }
-        window.dispatchEvent(new CustomEvent("sw:conditions-changed"));
-      } catch {
-        // ignore localStorage errors
-      }
-    } catch (err) {
-      setOptimisticCurrent(safeCurrent);
-      onCurrentChange?.(safeCurrent);
-      showToast(
-        err instanceof Error ? err.message : "Network error.",
-        "error",
-      );
-    } finally {
-      mutationPending.current = false;
-      setRestPending(null);
-    }
+      if (changes.length > 64) throw new Error("This rest changes too many Consequences. Resolve some Consequences before resting.");
+      queuePlayChanges("CHARACTER", characterId, changes, restType === "long" ? "long_rest" : "short_rest");
+      setOptimisticCurrent(next); onCurrentChange?.(next);
+      showToast(`${restType === "long" ? "Long" : "Short"} rest saved locally.`, "success");
+    } catch (error) { showToast(error instanceof Error ? error.message : "Unable to queue rest.", "error"); }
   }
 
   // Phase 8.3g v3 (Mashu 2026-07-28): compact mode now
@@ -332,7 +215,7 @@ export function VitalityTracker({
           type="button"
           onClick={() => openDialog("damage")}
           disabled={
-            readOnly || pending || restPending !== null || optimisticCurrent === 0
+            readOnly || !sessionReady || pending || restPending !== null || optimisticCurrent === 0
           }
           className={cn(
             "v12-vitality-command is-damage inline-flex flex-1 items-center justify-center gap-1 whitespace-nowrap font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70",
@@ -347,7 +230,7 @@ export function VitalityTracker({
           type="button"
           onClick={() => openDialog("heal")}
           disabled={
-            readOnly || pending || restPending !== null || optimisticCurrent >= max
+            readOnly || !sessionReady || pending || restPending !== null || optimisticCurrent >= max
           }
           className={cn(
             "v12-vitality-command is-heal inline-flex flex-1 items-center justify-center gap-1 whitespace-nowrap font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70",
@@ -362,7 +245,7 @@ export function VitalityTracker({
           type="button"
           onClick={() => submitRest("long")}
           disabled={
-            readOnly || pending || restPending !== null || optimisticCurrent === max
+            readOnly || !sessionReady || pending || restPending !== null || optimisticCurrent === max
           }
           className={cn(
             "v12-vitality-command is-rest inline-flex flex-1 items-center justify-center gap-1 whitespace-nowrap font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70",
@@ -378,7 +261,7 @@ export function VitalityTracker({
           type="button"
           onClick={() => submitRest("short")}
           disabled={
-            readOnly || pending || restPending !== null || optimisticCurrent === max
+            readOnly || !sessionReady || pending || restPending !== null || optimisticCurrent === max
           }
           className={cn(
             "v12-vitality-command is-rest inline-flex flex-1 items-center justify-center gap-1 whitespace-nowrap font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70",

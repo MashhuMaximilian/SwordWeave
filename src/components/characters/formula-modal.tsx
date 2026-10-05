@@ -1,4 +1,5 @@
 "use client";
+import { playFieldStoragePrefix } from "@/lib/play-state/client-sync";
 
 /**
  * formula-modal.tsx — Phase 8.4 v25 (Mashu 2026-07-30)
@@ -386,7 +387,7 @@ export function FormulaModal({
     if (typeof window === "undefined" || !characterId) return;
     try {
       const off = new Set<string>();
-      const prefix = `sw:cap:${characterId}:`;
+      const prefix = playFieldStoragePrefix("cap", characterId);
       for (let i = 0; i < window.localStorage.length; i++) {
         const key = window.localStorage.key(i);
         if (key && key.startsWith(prefix)) {

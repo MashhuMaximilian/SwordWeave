@@ -2,6 +2,7 @@
 import { IconDisplay } from "@/components/icons/icon-display";
 
 const icons: Record<string, string> = {
+  MONSTER:"lorc/monster-grasp", monster:"lorc/monster-grasp",
   ALL: "delapouite/bookshelf", GROUP_MECHANICS: "lorc/cubeforce", mechanics: "lorc/cubeforce",
   PRIMITIVE: "delapouite/cube", primitive: "delapouite/cube",
   EFFECT: "lorc/cubes", effect: "lorc/cubes",
@@ -11,6 +12,7 @@ const icons: Record<string, string> = {
   MANIFEST_TEMPLATE: "caro-asercion/tarot-11-justice", ITEM: "lorc/battle-gear", item: "lorc/battle-gear",
 };
 export const PHONE_RECORD_TYPES = [
+  {value:"MONSTER",label:"Monsters & NPCs"},
   {value:"ALL",label:"All"},{value:"PRIMITIVE",label:"Primitives"},{value:"EFFECT",label:"Effects"},
   {value:"CAPABILITY",label:"Capabilities"},{value:"LINEAGE_TEMPLATE",label:"Lineages"},
   {value:"UPBRINGING_TEMPLATE",label:"Upbringings"},{value:"MANIFEST_TEMPLATE",label:"Manifests"},{value:"ITEM",label:"Items"},

@@ -27,6 +27,7 @@ import {
   authorDisplayUsername,
 } from "@/lib/publishing/author-display";
 import type { LibraryItem, LibraryTargetType } from "@/lib/publishing/library-query";
+import { useCollectionFilter } from "@/components/collections/use-collection-filter";
 import { matchesLibraryFilters } from "@/lib/publishing/filter-library-items";
 import { sortLibraryItems } from "@/lib/publishing/sort-library-items";
 import { cn } from "@/lib/utils";
@@ -384,11 +385,12 @@ export function HeritageLibrary({
   // Filter items by toolbar search/typeFilter. The build-mode gate is
   // removed — the user can see any kind in the blueprint library per the
   // user's spec.
+  const collectionAllowed=useCollectionFilter(toolbarState.collectionId,combinedItems);
   const deferredToolbarState = useDeferredValue(toolbarState);
   const filteredItems = useMemo(() => sortLibraryItems(
-    combinedItems.filter(item => matchesLibraryFilters(item, deferredToolbarState)),
+    combinedItems.filter(item => (!collectionAllowed||collectionAllowed.has(item.id)) && matchesLibraryFilters(item, deferredToolbarState)),
     deferredToolbarState.sort,
-  ), [combinedItems, deferredToolbarState]);
+  ), [combinedItems, deferredToolbarState,collectionAllowed]);
 
   // Card click → push to modal stack. The "Load into build" action still
   // calls the parent's onSelect; we pop the stack afterwards. Sub-entity
