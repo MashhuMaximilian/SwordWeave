@@ -26,6 +26,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import { LibraryToolbar } from "@/components/library/library-toolbar";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
 import { FetchedEntityPreview } from "@/components/preview/entity-preview";
+import { MonsterTemplatePreview } from "@/components/monsters/monster-template-preview";
 import { DetailModal } from "@/components/ui/detail-modal";
 import { useFilterSlot } from "@/components/layout/right-filter-panel";
 import { useGlobalControls } from "@/components/layout/global-controls";
@@ -57,6 +58,7 @@ const ENTITY_ICONS: Record<string, string> = {
   UPBRINGING_TEMPLATE: "delapouite/plant-roots",
   MANIFEST_TEMPLATE: "caro-asercion/tarot-11-justice",
   ITEM: "lorc/battle-gear",
+  MONSTER: "lorc/monster-grasp",
 };
 
 function LibraryEntityIcon({ item, size = 24 }: { item: LibraryItem; size?: number }) {
@@ -567,6 +569,7 @@ export function LibraryBrowseClient({
                     {selectedItem.buCost ?? 0} BU
                   </span>
                 </div>
+                {selectedItem.targetType === "MONSTER" ? <MonsterTemplatePreview key={selectedItem.id} id={selectedItem.targetId} compact /> : null}
                 {selectedItem.mechanicalDescription ? <div className="v12-rule" data-readable-rule>
                   <Markdown>{selectedItem.mechanicalDescription}</Markdown>
                 </div> : null}
@@ -650,7 +653,7 @@ export function LibraryBrowseClient({
         size="xl"
       >
         {selectedItem ? (
-          <div className="v12-library-modal-layout">{selectedItem.targetType==="MONSTER"?<iframe title={selectedItem.name} src={`/monsters/${selectedItem.targetId}`} className="h-[75dvh] w-full border-0"/>:<FetchedEntityPreview key={selectedItem.id} targetType={selectedItem.targetType} targetId={selectedItem.targetId} owner={{ authorId:selectedItem.authorId, authorUsername:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorUsername, authorDisplayName:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorDisplayName, isOwner:selectedItem.authorId === currentUserInternalId, sourceOrigin:libraryOrigin(selectedItem) === "system" ? "SRD" : selectedItem.sourceOrigin }} />}</div>
+          <div className="v12-library-modal-layout">{selectedItem.targetType==="MONSTER"?<MonsterTemplatePreview key={selectedItem.id} id={selectedItem.targetId}/>:<FetchedEntityPreview key={selectedItem.id} targetType={selectedItem.targetType} targetId={selectedItem.targetId} owner={{ authorId:selectedItem.authorId, authorUsername:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorUsername, authorDisplayName:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorDisplayName, isOwner:selectedItem.authorId === currentUserInternalId, sourceOrigin:libraryOrigin(selectedItem) === "system" ? "SRD" : selectedItem.sourceOrigin }} />}</div>
         ) : null}
       </DetailModal>
       <DetailModal

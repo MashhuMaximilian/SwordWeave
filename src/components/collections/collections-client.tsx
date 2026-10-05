@@ -112,24 +112,8 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
       {!collectionId && (
         <>
           {rows.length === 0 && <p className="sw-collections-empty">Your chronicles begin here. Create a collection to gather entries for your next adventure.</p>}
-          <div className="sw-collections-grid">
-            {rows.map((c) => (
-              <Link
-                key={c.id}
-                href={`/collections/${c.id}`}
-                className="sw-collections-card"
-              >
-                <span className="sw-collections-card-seal" aria-hidden="true">✧</span><strong>{c.name}</strong>
-                <div className="sw-collections-meta">
-                  {c.visibility.replaceAll("_", " ")}
-                  {c.followed ? " · Saved collection" : ""}
-                  {c.parent_id && rows.find((p) => p.id === c.parent_id)
-                    ? ` · In ${rows.find((p) => p.id === c.parent_id)?.name}`
-                    : ""}
-                </div>
-              </Link>
-            ))}
-          </div>
+          {rows.some(c => c.system_kind) && <section className="sw-collections-section"><p className="sw-collections-eyebrow">Automatic collections</p><div className="sw-collections-grid">{rows.filter(c => c.system_kind).map(c => <Link key={c.id} href={`/collections/${c.id}`} className="sw-collections-card"><span className="sw-collections-card-seal" aria-hidden="true">✦</span><strong>{c.name}</strong><span className="sw-collections-meta">{c.visibility.replaceAll("_", " ").toLowerCase()}</span></Link>)}</div></section>}
+          <section className="sw-collections-section"><div className="sw-collections-section-heading"><h2>Collection branches</h2>{user && <a href="#create-collection" className="sw-collections-breadcrumb" onClick={() => setParent("")}>＋ Create a root</a>}</div><CollectionTree rows={rows.filter(c => !c.system_kind)} />{!rows.some(c => !c.system_kind) && <p className="sw-collections-branch-empty">Create a root collection, then add child collections inside it.</p>}</section>
           {!user && (
             <button
               onClick={() => clerk.openSignIn()}
@@ -148,30 +132,9 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
           >
             Browse this collection in the Library
           </Link>
-          {user && current.owner_id === user.id && <a className="sw-collections-button" href="#create-collection">＋ {current.system_kind ? "Create collection" : "Add child collection"}</a>}
-          {current.parent_id &&
-            rows.find((c) => c.id === current.parent_id) && (
-              <Link
-                className="sw-collections-breadcrumb"
-                href={`/collections/${current.parent_id}`}
-              >
-                In {rows.find((c) => c.id === current.parent_id)?.name}
-              </Link>
-            )}
-          {rows.some(c => c.parent_id === current.id) && <h2>Child collections</h2>}
-          <div className="sw-collections-grid">
-            {rows
-              .filter((c) => c.parent_id === current.id)
-              .map((c) => (
-                <Link
-                  key={c.id}
-                  href={`/collections/${c.id}`}
-                  className="sw-collections-card"
-                >
-                  <span className="sw-collections-card-seal" aria-hidden="true">✧</span><strong>{c.name}</strong>
-                </Link>
-              ))}
-          </div>
+          {user && current.owner_id === user.id && <a className="sw-collections-button" href="#create-collection" onClick={() => setParent(current.system_kind ? "" : current.id)}>＋ {current.system_kind ? "Create collection" : "Add child collection"}</a>}
+          <nav aria-label="Collection path" className="sw-collections-path"><Link href="/collections">Collections</Link>{collectionAncestors(current, rows).map(c => <span key={c.id}><span aria-hidden="true"> / </span><Link href={`/collections/${c.id}`}>{c.name}</Link></span>)}<span aria-hidden="true"> / </span><strong>{current.name}</strong></nav>
+          <section className="sw-collections-section sw-collections-branch-panel"><div className="sw-collections-section-heading"><h2>{current.system_kind ? "Automatic collection" : "Inside this collection"}</h2><span className="sw-collections-meta">{current.visibility.replaceAll("_", " ").toLowerCase()}</span></div>{!current.system_kind && <div className="sw-collections-current"><span aria-hidden="true">◇</span><strong>{current.name}</strong><CollectionTree rows={rows.filter(c => !c.system_kind)} parentId={current.id} /></div>}{!current.system_kind && !rows.some(c => c.parent_id === current.id) && <p className="sw-collections-branch-empty">No child collections yet.</p>}</section>
           {user && current.owner_id !== user.id && (
             <button
               className="sw-collections-button"
@@ -197,12 +160,12 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
                   })
                 }
               >
-                <option value="">No parent</option>
+                <option value="">Root collection</option>
                 {rows
-                  .filter((c) => c.id !== current.id && !c.system_kind)
+                  .filter((c) => c.owner_id === user.id && !c.system_kind && !isDescendant(c, current.id, rows))
                   .map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name}
+                      {collectionLabel(c, rows)}
                     </option>
                   ))}
               </select>
@@ -235,6 +198,7 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
               </fieldset>}
             </div>
           )}
+          <h2>Collected entries</h2>
           <ul className="sw-collections-entries">
             {entries.map((e) => (
               <li
@@ -308,12 +272,12 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
                 value={current?.system_kind && parent === current.id ? "" : parent}
                 onChange={(e) => setParent(e.target.value)}
               >
-                <option value="">No parent</option>
+                <option value="">Root collection</option>
                 {rows
                   .filter((c) => c.owner_id === user.id && !c.system_kind)
                   .map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name}
+                      {collectionLabel(c, rows)}
                     </option>
                   ))}
               </select>
@@ -345,4 +309,30 @@ function Visibility({
       <option value="PRIVATE">Private</option>
     </select>
   );
+}
+
+function collectionAncestors(collection: Collection, rows: Collection[]) {
+  const path: Collection[] = [], seen = new Set([collection.id]);
+  let parentId = collection.parent_id;
+  while (parentId && !seen.has(parentId)) {
+    const parent = rows.find(c => c.id === parentId);
+    if (!parent) break;
+    seen.add(parent.id); path.unshift(parent); parentId = parent.parent_id;
+  }
+  return path;
+}
+function collectionLabel(collection: Collection, rows: Collection[]) {
+  return [...collectionAncestors(collection, rows), collection].map(c => c.name).join(" / ");
+}
+function isDescendant(collection: Collection, id: string, rows: Collection[]) {
+  return collection.id === id || collectionAncestors(collection, rows).some(c => c.id === id);
+}
+function CollectionTree({ rows, parentId = null, seen = [] }: { rows: Collection[]; parentId?: string | null; seen?: string[] }) {
+  const children = rows.filter(c => !seen.includes(c.id) && (parentId ? c.parent_id === parentId : !c.parent_id || !rows.some(p => p.id === c.parent_id)));
+  if (!children.length) return null;
+  return <ul className="sw-collections-tree">{children.map(c => {
+    const hasChildren = rows.some(child => child.parent_id === c.id && !seen.includes(child.id));
+    const heading = <><Link href={`/collections/${c.id}`} className="sw-collections-tree-link"><span aria-hidden="true">◇</span><strong>{c.name}</strong></Link><span className="sw-collections-tree-visibility">{c.visibility.replaceAll("_", " ").toLowerCase()}{c.followed ? " · saved" : ""}</span></>;
+    return <li key={c.id} className="sw-collections-tree-node">{hasChildren ? <details open><summary><span className="sw-collections-tree-toggle" aria-hidden="true">›</span>{heading}</summary><CollectionTree rows={rows} parentId={c.id} seen={[...seen, c.id]} /></details> : <div className="sw-collections-tree-leaf"><span className="sw-collections-tree-toggle" aria-hidden="true">·</span>{heading}</div>}</li>;
+  })}</ul>;
 }

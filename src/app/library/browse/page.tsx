@@ -203,12 +203,15 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
         <Link className={["EFFECT", "CAPABILITY", "LINEAGE_TEMPLATE", "UPBRINGING_TEMPLATE", "MANIFEST_TEMPLATE", "ITEM"].includes(targetType) ? "is-active" : ""} href="/library/browse?type=CAPABILITY">
           Creations
         </Link>
+        <Link className={targetType === "MONSTER" ? "is-active" : ""} href="/library/browse?type=MONSTER">
+          Monsters &amp; NPCs
+        </Link>
         <Link href="/creations">My collection</Link>
         <Link href="/library">Library hub ↗</Link>
       </nav>
       </header>
 
-      {targetType !== "PRIMITIVE" && targetType !== "ALL" ? (
+      {targetType !== "PRIMITIVE" && targetType !== "ALL" && targetType !== "MONSTER" ? (
         <nav className="v12-library-submodes" aria-label="Creation types">
           {[
             ["CAPABILITY", "Capabilities"],
