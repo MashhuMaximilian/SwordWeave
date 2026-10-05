@@ -2,7 +2,7 @@
    as the rest of SwordWeave. The V12 palette swaps through shared variables. */
 .sw-monster-page {
   --monster-accent: var(--sw-text-gold, var(--primary));
-  --monster-surface: var(--sw-surface-fill, var(--card));
+  --monster-surface: var(--sw-surface-fill, linear-gradient(var(--card), var(--card)));
   --monster-inset: var(--sw-inset-fill, var(--muted));
   --monster-muted: var(--muted-foreground);
   width: min(100%, 1100px);
@@ -155,14 +155,14 @@
 .sw-monster-page h2 { font-size:clamp(24px,2.5vw,32px); }
 .sw-monster-page .monster-panel {
   position:relative; border:2px solid transparent; border-radius:8px;
-  background:linear-gradient(var(--monster-surface),var(--monster-surface)) padding-box,var(--sw-edge-gold,linear-gradient(135deg,var(--monster-accent),var(--border),var(--monster-accent))) border-box;
+  background:var(--monster-surface) padding-box,var(--sw-edge-gold,linear-gradient(135deg,var(--monster-accent),var(--border),var(--monster-accent))) border-box;
   box-shadow:var(--v12-shadow,0 8px 24px #0002),inset 0 1px #fff1b533;
   padding:clamp(20px,3vw,32px);
 }
 .sw-monster-page .monster-panel[hidden],.sw-monster-page [hidden] { display:none; }
 .sw-monster-page .monster-panel > p { max-width:70ch; line-height:1.55; }
 .sw-monster-page .monster-kicker { font:500 11px/1.5 var(--font-system,system-ui); letter-spacing:.14em; text-transform:uppercase; color:var(--monster-accent); }
-.sw-monster-page .monster-bestiary-hero { padding-block:clamp(28px,5vw,56px); background:linear-gradient(110deg,color-mix(in srgb,var(--monster-accent) 8%,var(--monster-surface)),var(--monster-surface)) padding-box,var(--sw-edge-teal,linear-gradient(135deg,var(--primary),var(--border))) border-box; }
+.sw-monster-page .monster-bestiary-hero { padding-block:clamp(28px,5vw,56px); background:var(--monster-surface) padding-box,var(--sw-edge-teal,linear-gradient(135deg,var(--primary),var(--border))) border-box; }
 .sw-monster-page .monster-bestiary-hero h1 { margin-block:12px 16px; }
 .sw-monster-page .monster-bestiary-hero .monster-action { margin-top:24px; background:var(--primary); color:var(--primary-foreground); }
 .sw-monster-page .monster-template-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr)); gap:16px; }
