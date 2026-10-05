@@ -46,6 +46,8 @@ import {
   type FlagReason,
 } from "@/lib/engagement/flags-service";
 import { getForkSource } from "@/lib/publishing/fork-lineage";
+import { visibleEntries } from "@/lib/collections/service";
+import { redactExpandedContent } from "@/lib/publishing/redact-expanded-content";
 import { checkVisibility } from "@/lib/publishing/visibility";
 import {
   bulkResolveLatestVersionNumbers,
@@ -197,6 +199,36 @@ async function fetchEffectPrimitives(
     out.set(r.effectId, arr);
   }
   return out;
+}
+
+/** Redact the direct row and flat-query maps together, with one permission batch.
+ * Call after computing the actual composition cost, before building any view. */
+async function readableSourceComposition<T>(
+  row: T,
+  viewer: string | null,
+  maps: {
+    capPrimMap?: Map<string, CapPrimitiveRow[]>;
+    capEffectMap?: Map<string, CapEffectEntry[]>;
+    effectPrimMap?: Map<string, EffectPrimitiveRow[]>;
+  } = {},
+) {
+  const mapRows = {
+    capabilityLinks: [...new Set([...maps.capPrimMap?.keys() ?? [], ...maps.capEffectMap?.keys() ?? []])].map(capabilityId => ({
+      capabilityId,
+      capability: {
+        primitiveLinks: maps.capPrimMap?.get(capabilityId) ?? [],
+        effectLinks: (maps.capEffectMap?.get(capabilityId) ?? []).map(effect => ({ effectId: effect.effectId, effect })),
+      },
+    })),
+    effectLinks: [...maps.effectPrimMap ?? []].map(([effectId, primitiveLinks]) => ({ effectId, effect: { primitiveLinks } })),
+  };
+  const [readableRow, readableMaps] = await redactExpandedContent<[T, typeof mapRows]>([row, mapRows], viewer);
+  return {
+    row: readableRow,
+    capPrimMap: new Map(readableMaps.capabilityLinks.map(link => [link.capabilityId, link.capability.primitiveLinks])),
+    capEffectMap: new Map(readableMaps.capabilityLinks.map(link => [link.capabilityId, link.capability.effectLinks.map(effect => effect.effect)])),
+    effectPrimMap: new Map(readableMaps.effectLinks.map(link => [link.effectId, link.effect.primitiveLinks])),
+  };
 }
 
 export const dynamic = "force-dynamic";
@@ -413,6 +445,7 @@ async function loadFlagsAndTags(
 async function loadForkSource(
   targetType: string,
   targetId: string,
+  viewer: string | null,
 ): Promise<{
   sourceTargetType: string;
   sourceTargetId: string;
@@ -424,7 +457,7 @@ async function loadForkSource(
       targetType as never,
       targetId,
     );
-    if (!src) return null;
+    if (!src || !(await visibleEntries([{ targetType: src.sourceTargetType, targetId: src.sourceTargetId }], viewer)).length) return null;
     return {
       sourceTargetType: src.sourceTargetType,
       sourceTargetId: src.sourceTargetId,
@@ -852,7 +885,7 @@ async function PrimitiveDetail({
   const engagement = await loadEngagement("PRIMITIVE", String(id), currentUserId);
   const [{ flagDistribution, flagNotes }, forkSource] = await Promise.all([
     loadFlagsAndTags("PRIMITIVE", String(id), []),
-    loadForkSource("PRIMITIVE", String(id)),
+    loadForkSource("PRIMITIVE", String(id), viewerClerkId),
   ]);
 
   return (
@@ -871,7 +904,7 @@ async function PrimitiveDetail({
       engagement={engagement}
       currentUserId={currentUserId}
       tags={[]}
-      sourceOrigin={row.sourceOrigin ?? null}
+      sourceOrigin={row.sourceOrigin?.startsWith("fork:") && !forkSource ? null : row.sourceOrigin ?? null}
       flagDistribution={flagDistribution}
       flagNotes={flagNotes}
       forkSource={forkSource}
@@ -896,7 +929,7 @@ async function PrimitiveDetail({
             mirrorVector: row.mirrorVector,
             mirrorBuCredit: row.mirrorBuCredit,
             mirrorEligibilityNotes: row.mirrorEligibilityNotes,
-            sourceOrigin: row.sourceOrigin ?? null,
+            sourceOrigin: row.sourceOrigin?.startsWith("fork:") && !forkSource ? null : row.sourceOrigin ?? null,
             tags: row.tags ?? [],
             hardModifiers: row.hardModifiers,
             iconSource: row.iconSource,
@@ -949,7 +982,7 @@ async function CapabilityDetail({
   currentUserId,
   viewerClerkId,
 }: DetailProps & { id: string }) {
-  const row = await db.query.capabilities.findFirst({
+  let row = await db.query.capabilities.findFirst({
     where: (table, { eq }) => eq(table.id, id),
     with: {
       primitiveLinks: {
@@ -981,7 +1014,7 @@ async function CapabilityDetail({
   // the source page can render a "Primitives from effects" section like
   // the atelier does.
   const effectIds = row.effectLinks.map((l) => l.effectId);
-  const [effectPrimMap, _capabilityEffectPrimMap] = await Promise.all([
+  let [effectPrimMap, _capabilityEffectPrimMap] = await Promise.all([
     fetchEffectPrimitives(effectIds),
     // CapabilityDetail never bundles other capabilities; the second slot
     // is a placeholder for symmetry with TemplateDetail / ItemDetail.
@@ -1003,16 +1036,16 @@ async function CapabilityDetail({
     })),
   });
   const buTotal = Math.abs(transitive.transitiveBu);
-  // Direct primitives count = transitive - primitives only reachable via effects
-  const directPrimitiveCount = row.primitiveLinks.length;
-  const effectPrimitiveCount =
-    transitive.transitiveCount - directPrimitiveCount;
+  const readable = await readableSourceComposition(row, viewerClerkId, { effectPrimMap });
+  row = readable.row;
+  effectPrimMap = readable.effectPrimMap;
+  const effectPrimitiveCount = new Set(row.effectLinks.flatMap(link => (effectPrimMap.get(link.effectId) ?? []).map(primitive => primitive.primitiveId))).size;
 
   const engagement = await loadEngagement("CAPABILITY", id, currentUserId);
   const [{ flagDistribution, flagNotes }, forkSource, versionMap, effectBuMap] =
     await Promise.all([
       loadFlagsAndTags("CAPABILITY", id, row.tags ?? []),
-      loadForkSource("CAPABILITY", id),
+      loadForkSource("CAPABILITY", id, viewerClerkId),
       bulkResolveLatestVersionNumbers([
         ...row.primitiveLinks.map((l) => ({
           kind: "primitive" as const,
@@ -1041,7 +1074,7 @@ async function CapabilityDetail({
       engagement={engagement}
       currentUserId={currentUserId}
       tags={row.tags ?? []}
-      sourceOrigin={row.sourceOrigin ?? null}
+      sourceOrigin={row.sourceOrigin?.startsWith("fork:") && !forkSource ? null : row.sourceOrigin ?? null}
       flagDistribution={flagDistribution}
       flagNotes={flagNotes}
       forkSource={forkSource}
@@ -1053,7 +1086,7 @@ async function CapabilityDetail({
       <section className="grid gap-3 sm:grid-cols-2">
         <DataField label="Type" value={row.type} />
         <DataField label="Source" value={row.sourceType} />
-        {row.sourceOrigin && (
+        {row.sourceOrigin && (!row.sourceOrigin.startsWith("fork:") || forkSource) && (
           <DataField label="Origin" value={sourceDisplayLabel(row.sourceOrigin) ?? "SRD"} />
         )}
       </section>
@@ -1196,7 +1229,7 @@ async function TemplateDetail({
   currentUserId,
   viewerClerkId,
 }: DetailProps & { id: string }) {
-  const row = await db.query.heritage.findFirst({
+  let row = await db.query.heritage.findFirst({
     where: (table, { eq }) => eq(table.id, id),
     with: {
       primitiveLinks: { with: { primitive: true } },
@@ -1249,7 +1282,7 @@ async function TemplateDetail({
   const capabilityIds = row.capabilityLinks
     .filter((l) => l.capability != null)
     .map((l) => l.capabilityId);
-  const { capPrimMap, capEffectMap } = await fetchCapabilityTransitive(capabilityIds);
+  let { capPrimMap, capEffectMap } = await fetchCapabilityTransitive(capabilityIds);
 
   // Phase 8.1 batch 13.4 follow-up: compute transitive BU so the header
   // shows the same total the modal preview shows (direct primitives +
@@ -1280,6 +1313,11 @@ async function TemplateDetail({
     })),
   });
 
+  const readable = await readableSourceComposition(row, viewerClerkId, { capPrimMap, capEffectMap });
+  row = readable.row;
+  capPrimMap = readable.capPrimMap;
+  capEffectMap = readable.capEffectMap;
+
   const [{ flagDistribution, flagNotes }, forkSource, versionMap, capabilityBuMap] =
     await Promise.all([
       loadFlagsAndTags(
@@ -1287,7 +1325,7 @@ async function TemplateDetail({
         id,
         [], // heritage don't have a tags column yet
       ),
-      loadForkSource(targetTypeForEngagement, id),
+      loadForkSource(targetTypeForEngagement, id, viewerClerkId),
       // Resolve latest published version for every composed primitive and
       // capability. Templates compose heritage (no effect link table for
       // heritage), so we only need primitives + capabilities here.
@@ -1329,7 +1367,7 @@ async function TemplateDetail({
       engagement={engagement}
       currentUserId={currentUserId}
       tags={[]}
-      sourceOrigin={row.sourceOrigin ?? null}
+      sourceOrigin={row.sourceOrigin?.startsWith("fork:") && !forkSource ? null : row.sourceOrigin ?? null}
       flagDistribution={flagDistribution}
       flagNotes={flagNotes}
       forkSource={forkSource}
@@ -1560,13 +1598,13 @@ async function EffectDetail({
   });
   if (!vis.allowed) notFound();
 
-  const primitiveLinks = await db.query.effectPrimitives.findMany({
+  let primitiveLinks = await db.query.effectPrimitives.findMany({
     where: (table, { eq }) => eq(table.effectId, id),
     with: { primitive: true },
   });
 
   // Step 2: separately load children (this effect as parent) — 1 level
-  const childEdges = await db.query.effectEffects.findMany({
+  let childEdges = await db.query.effectEffects.findMany({
     where: (table, { eq }) => eq(table.parentEffectId, id),
     with: {
       childEffect: {
@@ -1578,7 +1616,7 @@ async function EffectDetail({
   });
 
   // Step 3: separately load parents (effects that nest this one)
-  const parentEdges = await db.query.effectEffects.findMany({
+  let parentEdges = await db.query.effectEffects.findMany({
     where: (table, { eq }) => eq(table.childEffectId, id),
     with: {
       parentEffect: true,
@@ -1592,12 +1630,26 @@ async function EffectDetail({
     buTotal += Math.abs(link.primitive.buCost * link.quantity);
   }
 
+  const [readableChildren, readableParents] = await redactExpandedContent([
+    { primitiveLinks, effectLinks: childEdges.map(edge => ({ effectId: edge.childEffectId, effect: edge.childEffect })) },
+    { effectLinks: parentEdges.map(edge => ({ effectId: edge.parentEffectId, effect: edge.parentEffect })) },
+  ] as const, viewerClerkId);
+  primitiveLinks = readableChildren.primitiveLinks;
+  childEdges = childEdges.flatMap(edge => {
+    const child = readableChildren.effectLinks.find(link => link.effectId === edge.childEffectId);
+    return child ? [{ ...edge, childEffect: child.effect }] : [];
+  });
+  parentEdges = parentEdges.flatMap(edge => {
+    const parent = readableParents.effectLinks.find(link => link.effectId === edge.parentEffectId);
+    return parent ? [{ ...edge, parentEffect: parent.effect }] : [];
+  });
+
   const author = await resolveAuthorByClerkId(effectRow.userId);
   const engagement = await loadEngagement("EFFECT", id, currentUserId);
   const [{ flagDistribution, flagNotes }, forkSource, versionMap] =
     await Promise.all([
       loadFlagsAndTags("EFFECT", id, effectRow.tags ?? []),
-      loadForkSource("EFFECT", id),
+      loadForkSource("EFFECT", id, viewerClerkId),
       bulkResolveLatestVersionNumbers([
         ...primitiveLinks.map((l) => ({
           kind: "primitive" as const,
@@ -1630,7 +1682,7 @@ async function EffectDetail({
       engagement={engagement}
       currentUserId={currentUserId}
       tags={effectRow.tags ?? []}
-      sourceOrigin={effectRow.sourceOrigin ?? null}
+      sourceOrigin={effectRow.sourceOrigin?.startsWith("fork:") && !forkSource ? null : effectRow.sourceOrigin ?? null}
       flagDistribution={flagDistribution}
       flagNotes={flagNotes}
       forkSource={forkSource}
@@ -1817,7 +1869,7 @@ async function ItemDetail({
 
   // Items compose primitives + effects + capabilities (the user's spec
   // for item composition). Load all three in parallel.
-  const [primitiveLinks, effectLinks, capabilityLinks] = await Promise.all([
+  let [primitiveLinks, effectLinks, capabilityLinks] = await Promise.all([
     db.query.itemPrimitives.findMany({
       where: (table, { eq }) => eq(table.itemId, id),
       with: { primitive: true },
@@ -1841,36 +1893,9 @@ async function ItemDetail({
   // the atelier preview does.
   const capabilityIds = capabilityLinks.map((l) => l.capabilityId);
   const effectIds = effectLinks.map((l) => l.effectId);
-  const [{ capPrimMap, capEffectMap }, effectPrimMap] = await Promise.all([
+  let [{ capPrimMap, capEffectMap }, effectPrimMap] = await Promise.all([
     fetchCapabilityTransitive(capabilityIds),
     fetchEffectPrimitives(effectIds),
-  ]);
-
-  const [
-    { flagDistribution, flagNotes },
-    forkSource,
-    versionMap,
-    effectBuMap,
-    capabilityBuMap,
-  ] = await Promise.all([
-    loadFlagsAndTags("ITEM", id, itemRow.tags ?? []),
-    loadForkSource("ITEM", id),
-    bulkResolveLatestVersionNumbers([
-      ...primitiveLinks.map((l) => ({
-        kind: "primitive" as const,
-        id: l.primitiveId,
-      })),
-      ...effectLinks.map((l) => ({ kind: "effect" as const, id: l.effectId })),
-      ...capabilityLinks.map((l) => ({
-        kind: "capability" as const,
-        id: l.capabilityId,
-      })),
-    ]),
-    // Mashu 2026-07-09: per-effect + per-capability BU cost so the
-    // "Composed effects" and "Composed capabilities" containers show
-    // each row's own cost (not just the parent total).
-    bulkComputeEffectBuCost(effectLinks.map((l) => l.effectId)),
-    bulkComputeCapabilityBuCost(capabilityLinks.map((l) => l.capabilityId)),
   ]);
 
   // Phase 8.1 batch 13.2 follow-up: transitive BU = direct primitives +
@@ -1912,6 +1937,37 @@ async function ItemDetail({
       ? Math.abs(transitive.transitiveBu)
       : Math.max(itemRow.buCost, 0);
 
+  const readable = await readableSourceComposition({ primitiveLinks, effectLinks, capabilityLinks }, viewerClerkId, { capPrimMap, capEffectMap, effectPrimMap });
+  ({ primitiveLinks, effectLinks, capabilityLinks } = readable.row);
+  ({ capPrimMap, capEffectMap, effectPrimMap } = readable);
+
+  const [
+    { flagDistribution, flagNotes },
+    forkSource,
+    versionMap,
+    effectBuMap,
+    capabilityBuMap,
+  ] = await Promise.all([
+    loadFlagsAndTags("ITEM", id, itemRow.tags ?? []),
+    loadForkSource("ITEM", id, viewerClerkId),
+    bulkResolveLatestVersionNumbers([
+      ...primitiveLinks.map((l) => ({
+        kind: "primitive" as const,
+        id: l.primitiveId,
+      })),
+      ...effectLinks.map((l) => ({ kind: "effect" as const, id: l.effectId })),
+      ...capabilityLinks.map((l) => ({
+        kind: "capability" as const,
+        id: l.capabilityId,
+      })),
+    ]),
+    // Mashu 2026-07-09: per-effect + per-capability BU cost so the
+    // "Composed effects" and "Composed capabilities" containers show
+    // each row's own cost (not just the parent total).
+    bulkComputeEffectBuCost(effectLinks.map((l) => l.effectId)),
+    bulkComputeCapabilityBuCost(capabilityLinks.map((l) => l.capabilityId)),
+  ]);
+
   // Rarity class for the chip. itemRarityEnum is the schema enum;
   // we map each value to a tailwind color pair. Cast through string
   // to defeat Drizzle's literal-type narrowing in the chained
@@ -1951,7 +2007,7 @@ async function ItemDetail({
       engagement={engagement}
       currentUserId={currentUserId}
       tags={itemRow.tags ?? []}
-      sourceOrigin={itemRow.sourceOrigin ?? null}
+      sourceOrigin={itemRow.sourceOrigin?.startsWith("fork:") && !forkSource ? null : itemRow.sourceOrigin ?? null}
       flagDistribution={flagDistribution}
       flagNotes={flagNotes}
       forkSource={forkSource}
@@ -1989,7 +2045,7 @@ async function ItemDetail({
           {itemRow.actsAsFocus ? (
             <DataField label="Acts as focus" value="Yes" />
           ) : null}
-          {itemRow.sourceOrigin ? (
+          {itemRow.sourceOrigin && (!itemRow.sourceOrigin.startsWith("fork:") || forkSource) ? (
             <DataField label="Source" value={itemRow.sourceOrigin} />
           ) : null}
         </div>

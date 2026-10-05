@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, useId } from "react";
 import { useClerk, useSession } from "@clerk/nextjs";
 import { Bookmark } from "lucide-react";
+import Link from "next/link";
 import { createPortal } from "react-dom";
 import { InstrumentDialogFrame } from "@/components/ui/instrument-dialog";
 import { useBookmarkSaved } from "./bookmark-state";
@@ -11,15 +12,13 @@ type Collection = {
   system_kind: string | null;
   owner_id: string;
 };
-export function BookmarkButton({
-  targetType,
-  targetId,
-  compact = true,
-}: {
-  targetType: string;
-  targetId: string;
-  compact?: boolean;
-}) {
+type BookmarkProps = { targetType: string; targetId: string; compact?: boolean };
+export function BookmarkButton(props: BookmarkProps) {
+  const {session, isLoaded} = useSession();
+  if (!isLoaded) return <button disabled aria-label="Loading collections" className="h-6 min-w-6"><Bookmark className="h-3 w-3" aria-hidden="true" /></button>;
+  return <AccountBookmarkButton key={`${session?.user.id ?? "anonymous"}:${props.targetType}:${props.targetId}`} {...props} />;
+}
+function AccountBookmarkButton({targetType, targetId, compact = true}: BookmarkProps) {
   const clerk = useClerk();
   const { session } = useSession();
   const { saved, setSaved } = useBookmarkSaved(
@@ -35,9 +34,13 @@ export function BookmarkButton({
   const panel = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const titleId = useId();
+  const alive = useRef(true);
+  const requestController = useRef<AbortController | null>(null);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; requestController.current?.abort(); }; }, []);
   useEffect(() => {
     if (!open || !panel.current) return;
     const element = panel.current;
+    const returnFocus = trigger.current;
     element
       .querySelector<HTMLElement>("input, button")
       ?.focus({ preventScroll: true });
@@ -78,7 +81,7 @@ export function BookmarkButton({
     return () => {
       document.removeEventListener("keydown", onKey, true);
       document.body.style.overflow = overflow;
-      trigger.current?.focus({ preventScroll: true });
+      returnFocus?.focus({ preventScroll: true });
     };
   }, [open]);
   async function show() {
@@ -90,10 +93,14 @@ export function BookmarkButton({
     setError("");
     try {
       await session.getToken({ skipCache: true });
+      if (!alive.current) return;
+      requestController.current = new AbortController();
       const response = await fetch(
         `/api/collections?targetType=${encodeURIComponent(targetType)}&targetId=${encodeURIComponent(targetId)}`,
+        {signal: requestController.current.signal, cache: "no-store"},
       );
       const data = await response.json();
+      if (!alive.current) return;
       if (!response.ok) throw new Error(data.error);
       const editable = data.collections.filter(
         (c: Collection) =>
@@ -110,28 +117,31 @@ export function BookmarkButton({
       );
       setOpen(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unable to load collections");
+      if (alive.current) setError(e instanceof Error ? e.message : "Unable to load collections");
     } finally {
-      setPending(false);
+      if (alive.current) setPending(false);
     }
   }
   async function save() {
     setPending(true);
+    requestController.current = new AbortController();
     try {
       const response = await fetch("/api/collections", {
+        signal: requestController.current.signal,
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ targetType, targetId, collectionIds: selected }),
       });
       const data = await response.json();
+      if (!alive.current) return;
       if (!response.ok) throw new Error(data.error);
       setSaved(selected.length > 0);
       setOpen(false);
       window.dispatchEvent(new Event("sw-collections-changed"));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unable to save bookmark");
+      if (alive.current) setError(e instanceof Error ? e.message : "Unable to save bookmark");
     } finally {
-      setPending(false);
+      if (alive.current) setPending(false);
     }
   }
   return (
@@ -204,12 +214,12 @@ export function BookmarkButton({
                   </label>
                 ))}
               </div>
-              <a
+              <Link
                 className="mt-3 block text-xs text-primary"
                 href="/collections"
               >
                 Manage collections
-              </a>
+              </Link>
               {error && (
                 <p role="alert" className="text-sm text-red-400">
                   {error}

@@ -1,5 +1,6 @@
+import { privateJson } from "@/lib/http/private-json";
 import { auth } from "@clerk/nextjs/server";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
 import { collectionContents } from "@/lib/collections/service";
 export async function POST(
@@ -16,9 +17,9 @@ export async function POST(
     })
     .safeParse(await req.json().catch(() => null));
   if (!input.success)
-    return NextResponse.json({ error: "Invalid entries" }, { status: 400 });
+    return privateJson({ error: "Invalid entries" }, { status: 400 });
   try {
-    if (!input.data.entries.length) return NextResponse.json({ entries: [] });
+    if (!input.data.entries.length) return privateJson({ entries: [] });
     const result = await collectionContents(
       id,
       userId,
@@ -26,9 +27,9 @@ export async function POST(
       input.data.entries,
       500,
     );
-    return NextResponse.json({ entries: result.entries });
+    return privateJson({ entries: result.entries });
   } catch {
-    return NextResponse.json(
+    return privateJson(
       { error: "Collection not found" },
       { status: 404 },
     );

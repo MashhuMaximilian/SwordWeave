@@ -1,5 +1,6 @@
+import { privateJson } from "@/lib/http/private-json";
 import { auth } from "@clerk/nextjs/server";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { collectionTargetTables } from "@/lib/collections/service";
@@ -16,14 +17,14 @@ const allowed = new Set([
 export async function GET(req: NextRequest) {
   const { userId } = await auth();
   if (!userId)
-    return NextResponse.json(
+    return privateJson(
       { error: "Sign in to resume character creation." },
       { status: 401 },
     );
   const type = req.nextUrl.searchParams.get("targetType") ?? "",
     id = req.nextUrl.searchParams.get("targetId") ?? "";
   if (!allowed.has(type) || !id)
-    return NextResponse.json(
+    return privateJson(
       { error: "Invalid saved entry." },
       { status: 400 },
     );
@@ -36,9 +37,9 @@ export async function GET(req: NextRequest) {
     sql`SELECT e.id::text AS "targetId",${type} AS "targetType",e.name FROM ${sql.identifier(table)} e WHERE e.id::text=${id} AND e.user_id=${userId} ${kind} LIMIT 1`,
   );
   if (!result.rows[0])
-    return NextResponse.json(
+    return privateJson(
       { error: "This saved entry is not owned by your account." },
       { status: 404 },
     );
-  return NextResponse.json({ entry: result.rows[0] });
+  return privateJson({ entry: result.rows[0] });
 }

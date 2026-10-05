@@ -66,6 +66,11 @@
 .sw-monster-page .monster-shuffle-columns h3 { margin-bottom: 8px; }
 .sw-monster-page .monster-shuffle-columns p { overflow-wrap: anywhere; padding-block: 5px; border-bottom: 1px solid var(--border); }
 .sw-monster-page .monster-signin-callout { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--monster-surface); }
+.sw-monster-page .monster-copy-form { flex: 1 1 100%; display: grid; gap: 10px; min-width: min(100%,280px); padding: 14px; border: 1px solid var(--border); border-radius: 6px; background: var(--monster-inset); }
+.sw-monster-page .monster-copy-form h3 { margin: 0; color: var(--monster-accent); }
+.sw-monster-page .monster-copy-form p { margin: 0; color: var(--monster-muted); }
+.sw-monster-page .monster-delete-confirm { border-color: var(--destructive); }
+.sw-monster-page .monster-delete-confirm .monster-delete-copy { color: var(--destructive-foreground); background: var(--destructive); }
 .sw-monster-page .monster-panel :is(input:not([type=checkbox]), textarea, select) {
   min-width: 0;
   max-width: 100%;

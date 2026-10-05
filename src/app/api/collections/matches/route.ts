@@ -1,5 +1,6 @@
+import { privateJson } from "@/lib/http/private-json";
 import { auth } from "@clerk/nextjs/server";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
@@ -11,7 +12,7 @@ import {
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
   if (!userId)
-    return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
+    return privateJson({ error: "Unauthenticated" }, { status: 401 });
   const parsed = z
     .object({
       entries: z
@@ -20,9 +21,9 @@ export async function POST(req: NextRequest) {
     })
     .safeParse(await req.json().catch(() => null));
   if (!parsed.success)
-    return NextResponse.json({ error: "Invalid entries" }, { status: 400 });
+    return privateJson({ error: "Invalid entries" }, { status: 400 });
   const visible = await visibleEntries(parsed.data.entries, userId);
-  if (!visible.length) return NextResponse.json({ userId, memberships: [] });
+  if (!visible.length) return privateJson({ userId, memberships: [] });
   const refs = new Set(visible.map((r) => `${r.targetType}:${r.targetId}`));
   const memberships = await db
     .select({
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
         ),
       ),
     );
-  return NextResponse.json({
+  return privateJson({
     userId,
     memberships: memberships.filter((m) =>
       refs.has(`${m.targetType}:${m.targetId}`),

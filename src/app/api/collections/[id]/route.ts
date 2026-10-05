@@ -1,5 +1,6 @@
+import { privateJson } from "@/lib/http/private-json";
 import { auth } from "@clerk/nextjs/server";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, withDatabaseTransaction } from "@/db/client";
@@ -14,7 +15,7 @@ export async function GET(req: NextRequest, ctx: Context) {
   const { userId } = await auth();
   const { id } = await ctx.params;
   try {
-    return NextResponse.json(
+    return privateJson(
       await collectionContents(
         id,
         userId,
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest, ctx: Context) {
       ),
     );
   } catch {
-    return NextResponse.json(
+    return privateJson(
       { error: "Collection not found" },
       { status: 404 },
     );
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest, ctx: Context) {
 export async function PATCH(req: NextRequest, ctx: Context) {
   const { userId } = await auth();
   if (!userId)
-    return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
+    return privateJson({ error: "Unauthenticated" }, { status: 401 });
   const { id } = await ctx.params;
   const input = z
     .object({
@@ -42,7 +43,7 @@ export async function PATCH(req: NextRequest, ctx: Context) {
     })
     .safeParse(await req.json().catch(() => null));
   if (!input.success)
-    return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+    return privateJson({ error: "Invalid input" }, { status: 400 });
   try {
     const c = await getCollection(id, userId);
     if (input.data.follow !== undefined) {
@@ -60,14 +61,14 @@ export async function PATCH(req: NextRequest, ctx: Context) {
               eq(collectionFollows.collectionId, id),
             ),
           );
-      return NextResponse.json({ ok: true });
+      return privateJson({ ok: true });
     }
     if (c["owner_id"] !== userId) throw new Error("Only your collections can be edited");
     if(c["system_kind"]&&(input.data.name!==undefined||input.data.parentId!==undefined)) throw new Error("Automatic collection names and hierarchy are fixed");
     await db.update(collections).set(input.data).where(eq(collections.id, id));
-    return NextResponse.json({ ok: true });
+    return privateJson({ ok: true });
   } catch (e) {
-    return NextResponse.json(
+    return privateJson(
       { error: e instanceof Error ? e.message : "Unable to edit collection" },
       { status: 400 },
     );
@@ -76,7 +77,7 @@ export async function PATCH(req: NextRequest, ctx: Context) {
 export async function DELETE(req: NextRequest, ctx: Context) {
   const { userId } = await auth();
   if (!userId)
-    return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
+    return privateJson({ error: "Unauthenticated" }, { status: 401 });
   const { id } = await ctx.params;
   const input = z
     .object({
@@ -85,7 +86,7 @@ export async function DELETE(req: NextRequest, ctx: Context) {
     })
     .safeParse(await req.json().catch(() => ({})));
   if (!input.success)
-    return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+    return privateJson({ error: "Invalid input" }, { status: 400 });
   try {
     await withDatabaseTransaction(async (tx) => {
       const [c] = await tx
@@ -120,9 +121,9 @@ export async function DELETE(req: NextRequest, ctx: Context) {
       }
       await tx.delete(collections).where(eq(collections.id, id));
     });
-    return NextResponse.json({ ok: true });
+    return privateJson({ ok: true });
   } catch (e) {
-    return NextResponse.json(
+    return privateJson(
       { error: e instanceof Error ? e.message : "Unable to delete collection" },
       { status: 400 },
     );

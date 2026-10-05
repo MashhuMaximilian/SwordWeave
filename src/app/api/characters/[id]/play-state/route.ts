@@ -1,5 +1,5 @@
+import { privateJson } from "@/lib/http/private-json";
 import { auth } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { db, withDatabaseTransaction } from "@/db/client";
 import { characters, characterConsequences } from "@/db/schema";
@@ -14,7 +14,7 @@ import { appendCharacterLog } from "@/lib/character/character-log";
 import { validatePlayReferences } from "@/lib/play-state/references";
 import { readWorkspace } from "@/lib/character/workspace/read";
 import { readPlayState, reconcilePlayState, mutatePlayState } from "@/lib/play-state/service";
-import { readBoundedJson } from "@/lib/http/read-bounded-json";
+import { RequestSizeError, readBoundedJson } from "@/lib/http/read-bounded-json";
 import type { WorkspaceGraph } from "@/lib/character/workspace/model";
 async function canonical(id: string) {
   const [character] = await db.select().from(characters).where(eq(characters.id, id)).for("update");
@@ -30,21 +30,21 @@ function buildRefs(graph: WorkspaceGraph) {
   return graph.nodes.map(node => `${node.kind}:${node.id}:${node.versionId ?? "unversioned"}`).sort();
 }
 function failure(error: unknown) {
-  if (error instanceof PlayConflict) return NextResponse.json({ error: error.message, state: error.state, conflicts: error.fields }, { status: 409 });
-  return NextResponse.json({ error: error instanceof Error ? error.message : "Session save failed." }, { status: error instanceof Error && error.name === "CharacterAccessDenied" ? 403 : 400 });
+  if (error instanceof PlayConflict) return privateJson({ error: error.message, state: error.state, conflicts: error.fields }, { status: 409 });
+  return privateJson({ error: error instanceof Error ? error.message : "Session save failed." }, { status: error instanceof RequestSizeError ? 413 : error instanceof Error && error.name === "CharacterAccessDenied" ? 403 : 400 });
 }
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId } = await auth.protect(); const { id } = await params;
+    const { userId } = await auth(); if (!userId) return privateJson({error:"Unauthorized."},{status:401}); const { id } = await params;
     await resolveCharacterAccess(userId, id, { require: "EDITOR" });
     const state = await withDatabaseTransaction(() => canonical(id));
     const { max, graph } = await loadCharacterMaxVitality(id);
-    return NextResponse.json({ state, buildRefs: buildRefs(graph), max, runtime: vitalityRuntimeUpdate(await readDraftSheet(id, graph)) });
+    return privateJson({ state, buildRefs: buildRefs(graph), max, runtime: vitalityRuntimeUpdate(await readDraftSheet(id, graph)) });
   } catch (error) { return failure(error); }
 }
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { userId } = await auth.protect(); const { id } = await params;
+    const { userId } = await auth(); if (!userId) return privateJson({error:"Unauthorized."},{status:401}); const { id } = await params;
     const mutation = playMutationSchema.parse(await readBoundedJson(request, 131072));
     if (mutation.changes.some(c => c.field === "baselineVitality")) throw new Error("Character baseline vitality is authored in the build.");
     await resolveCharacterAccess(userId, id, { require: "EDITOR" });
@@ -100,6 +100,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     });
     bustResolverCache(id);
     const { max, graph } = await loadCharacterMaxVitality(id);
-    return NextResponse.json({ state: result, max, runtime: vitalityRuntimeUpdate(await readDraftSheet(id, graph)) });
+    return privateJson({ state: result, max, runtime: vitalityRuntimeUpdate(await readDraftSheet(id, graph)) });
   } catch (error) { return failure(error); }
 }

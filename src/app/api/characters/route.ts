@@ -1,9 +1,11 @@
+import { privateJson } from "@/lib/http/private-json";
+import { visibilityCondition } from "@/lib/publishing/library-query";
 import { creationSize } from "@/lib/heritage/lineage-size";
 import { adoptCreationPurchases, FREE_CREATION_PRIMITIVES, missingCreationAccess } from "@/lib/character/creation-primitives";
 import { parseBackstory } from "@/lib/character/character-backstory";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   capabilityEffects,
@@ -95,28 +97,28 @@ function parseUuidArray(value: unknown): string[] {
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const userFilter = searchParams.get("user");
-
-  let whereClause: ReturnType<typeof eq> | undefined;
-  if (userFilter === "me") {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-    }
-    whereClause = eq(characters.userId, userId);
-  }
-
-  const rows = await db.query.characters.findMany({
-    where: whereClause,
-    orderBy: [asc(characters.level), asc(characters.name)],
-    with: {
-      primitiveLinks: { with: { primitive: true } },
-      capabilityLinks: { with: { capability: true } },
-      itemLinks: { with: { item: true } },
-    },
-  });
-
-  return NextResponse.json({ characters: rows });
+  const { userId } = await auth();
+  const ownOnly = searchParams.get("user") === "me";
+  if (ownOnly && !userId) return privateJson({error: "Unauthorized."}, {status: 401});
+  const publicOnly = searchParams.get("scope") === "public";
+  const viewer = publicOnly ? null : userId;
+  const internalId = viewer ? await resolveUserIdByClerkId(viewer) : null;
+  const own = viewer ? or(eq(characters.userId, viewer), ...(internalId ? [eq(characters.userId, internalId)] : []))! : sql`false`;
+  const visible = visibilityCondition("CHARACTER", sql`${characters.id}`, sql`${characters.userId}`, viewer ?? undefined, sql`${characters.isPublic}`);
+  const shared = viewer ? sql`EXISTS (SELECT 1 FROM character_shares cs JOIN users u ON u.id=cs.shared_with_user_id WHERE cs.character_id=${characters.id} AND cs.revoked_at IS NULL AND u.clerk_user_id=${viewer})` : sql`false`;
+  const limit = Math.max(1, Math.min(100, Math.floor(Number(searchParams.get("limit")) || 100)));
+  const offset = Math.max(0, Math.min(1000000, Math.floor(Number(searchParams.get("offset")) || 0)));
+  // Rosters return metadata; complete, permission-checked graphs load on opening a sheet.
+  const rows = await db.select({
+    id: characters.id, userId: characters.userId, name: characters.name, size: characters.size,
+    lineageName: characters.lineageName, upbringingName: characters.upbringingName, manifestName: characters.manifestName,
+    level: characters.level, attrPhysical: characters.attrPhysical, attrMental: characters.attrMental, attrMagical: characters.attrMagical,
+    attrProficient: characters.attrProficient, currentVitality: characters.currentVitality,
+    startingBu: characters.startingBu, buSpent: characters.buSpent, dmBonusBu: characters.dmBonusBu,
+    portraitUrl: characters.portraitUrl, portraitFrame: characters.portraitFrame, isPublic: characters.isPublic,
+    createdAt: characters.createdAt, updatedAt: characters.updatedAt,
+  }).from(characters).where(ownOnly ? own : or(visible, own, shared)).orderBy(asc(characters.level), asc(characters.name)).limit(limit + 1).offset(offset);
+  return privateJson({characters: rows.slice(0, limit), limit, offset, hasMore: rows.length > limit});
 }
 
 /**

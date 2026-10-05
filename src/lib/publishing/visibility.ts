@@ -26,7 +26,7 @@ export interface VisibilityCheckResult {
  * - PRIVATE: only the owner can see
  *
  * Checks publications table FIRST (source of truth), then falls back
- * to isPublic boolean. On any error, falls back to isPublic (fail-open).
+ * to isPublic boolean. On a permission lookup failure, deny access.
  */
 export async function checkVisibility(input: {
   targetType: string;
@@ -45,11 +45,6 @@ export async function checkVisibility(input: {
   // System content (no owner) is always public
   if (!ownerId) {
     return { allowed: true };
-  }
-
-  // Not logged in + not public = not allowed
-  if (!viewerId && !isPublic) {
-    return { allowed: false, reason: "private" };
   }
 
   try {
@@ -112,7 +107,8 @@ export async function checkVisibility(input: {
       return { allowed: false, reason: "private" };
     }
   } catch {
-    // Publication query failed — fall through to isPublic fallback
+    // An unavailable permission lookup must not expose follower/private content.
+    return { allowed: false, reason: "private" };
   }
 
   // No publication row at all — fall back to isPublic boolean

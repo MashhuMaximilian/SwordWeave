@@ -1,7 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useUser, useClerk } from "@clerk/nextjs";
 import { BookmarkButton } from "./bookmark-button";
+import Link from "next/link";
 type Collection = {
   id: string;
   name: string;
@@ -12,13 +13,13 @@ type Collection = {
   followed?: boolean;
 };
 type Entry = { targetType: string; targetId: string; name: string };
-export function CollectionsClient({
-  collectionId,
-  ownerId,
-}: {
-  collectionId?: string;
-  ownerId?: string;
-}) {
+type CollectionPageProps = { collectionId?: string; ownerId?: string };
+export function CollectionsClient(props: CollectionPageProps) {
+  const { user, isLoaded } = useUser();
+  if (!isLoaded) return <main className="p-4" role="status">Loading account…</main>;
+  return <AccountCollectionsClient key={`${user?.id ?? "anonymous"}:${props.collectionId ?? ""}:${props.ownerId ?? ""}`} {...props} />;
+}
+function AccountCollectionsClient({collectionId, ownerId}: CollectionPageProps) {
   const { user } = useUser();
   const clerk = useClerk();
   const [rows, setRows] = useState<Collection[]>([]),
@@ -29,16 +30,29 @@ export function CollectionsClient({
     [error, setError] = useState(""),
     [name, setName] = useState(""),
     [parent, setParent] = useState(""),
-    [visibility, setVisibility] = useState("PRIVATE");
-  async function load() {
-    setError("");
+    [visibility, setVisibility] = useState("PRIVATE"),
+    [renameDraft, setRenameDraft] = useState<string | null>(null),
+    [deleteReview, setDeleteReview] = useState(false),
+    [deleteChildren, setDeleteChildren] = useState<"move" | "delete">("move"),
+    [pending, setPending] = useState(false);
+  const alive = useRef(true);
+  const controller = useRef<AbortController | null>(null);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; controller.current?.abort(); }; }, []);
+  const load = useCallback(async () => {
+    if (!alive.current) return;
+    controller.current?.abort();
+    const reading = new AbortController(); controller.current = reading;
+    const currentRequest = () => alive.current && !reading.signal.aborted;
     try {
       const r = await fetch(
         collectionId
           ? `/api/collections/${collectionId}?page=${page}`
           : `/api/collections${ownerId ? `?owner=${encodeURIComponent(ownerId)}` : ""}`,
+        {signal: reading.signal, cache: "no-store"},
       );
       const d = await r.json();
+      if (!currentRequest()) return;
+      setError("");
       if (!r.ok) throw new Error(d.error);
       if (collectionId) {
         setCurrent(d.collection);
@@ -46,35 +60,40 @@ export function CollectionsClient({
         setMore(d.hasMore);
         const own = await fetch(
           `/api/collections?owner=${encodeURIComponent(d.collection.owner_id)}`,
+          {signal: reading.signal, cache: "no-store"},
         ).then((r) => r.json());
-        setRows(own.collections ?? []);
+        if (currentRequest()) setRows(own.collections ?? []);
       } else setRows(d.collections);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unable to load collections");
+      if (currentRequest()) setError(e instanceof Error ? e.message : "Unable to load collections");
     }
-  }
-  useEffect(() => {
-    void load();
   }, [collectionId, ownerId, page]);
+  useEffect(() => {
+    // Schedule the account/page read after the committed render.
+    void Promise.resolve().then(load);
+  }, [load]);
   async function mutate(url: string, method: string, body: unknown) {
-    const r = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const d = await r.json();
-    if (!r.ok) {
-      setError(d.error);
+    if (pending || !alive.current) return false;
+    setPending(true);
+    try {
+      const r = await fetch(url, {method, headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+      const d = await r.json();
+      if (!alive.current) return false;
+      if (!r.ok) throw new Error(d.error ?? "Unable to save collection");
+      await load();
+      return alive.current;
+    } catch (e) {
+      if (alive.current) setError(e instanceof Error ? e.message : "Unable to save collection");
       return false;
+    } finally {
+      if (alive.current) setPending(false);
     }
-    await load();
-    return true;
   }
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-4 sm:p-8">
-      <a href="/collections" className="text-sm text-primary">
+      <Link href="/collections" className="text-sm text-primary">
         Collections
-      </a>
+      </Link>
       <h1 className="text-2xl font-semibold">
         {current?.name ?? "Your collections"}
       </h1>
@@ -91,7 +110,7 @@ export function CollectionsClient({
         <>
           <div className="grid gap-3 sm:grid-cols-2">
             {rows.map((c) => (
-              <a
+              <Link
                 key={c.id}
                 href={`/collections/${c.id}`}
                 className="rounded-lg border border-border bg-card p-4"
@@ -104,7 +123,7 @@ export function CollectionsClient({
                     ? ` · In ${rows.find((p) => p.id === c.parent_id)?.name}`
                     : ""}
                 </div>
-              </a>
+              </Link>
             ))}
           </div>
           {user && (
@@ -165,32 +184,32 @@ export function CollectionsClient({
       )}
       {current && (
         <>
-          <a
+          <Link
             href={`/library/browse?type=ALL&collectionId=${current.id}`}
             className="inline-block text-sm text-primary"
           >
             Browse this collection in the Library
-          </a>
+          </Link>
           {current.parent_id &&
             rows.find((c) => c.id === current.parent_id) && (
-              <a
+              <Link
                 className="block text-sm text-primary"
                 href={`/collections/${current.parent_id}`}
               >
                 In {rows.find((c) => c.id === current.parent_id)?.name}
-              </a>
+              </Link>
             )}
           <div className="grid gap-2 sm:grid-cols-2">
             {rows
               .filter((c) => c.parent_id === current.id)
               .map((c) => (
-                <a
+                <Link
                   key={c.id}
                   href={`/collections/${c.id}`}
                   className="rounded border p-3"
                 >
                   {c.name}
-                </a>
+                </Link>
               ))}
           </div>
           {user && current.owner_id !== user.id && (
@@ -235,35 +254,25 @@ export function CollectionsClient({
                   })
                 }
               />
-              <button
-                className="rounded border p-2"
-                onClick={() => {
-                  const next = window.prompt("Collection name", current.name);
-                  if (next)
-                    void mutate(`/api/collections/${current.id}`, "PATCH", {
-                      name: next,
-                    });
-                }}
-              >
-                Rename
-              </button>
-              <button
-                className="rounded border p-2"
-                onClick={async () => {
-                  const choice = window.prompt(
-                    "Delete collection? Entries remain intact. Type MOVE to move children to this collection's parent, or DELETE to delete its child collections.",
-                  );
-                  if (choice !== "MOVE" && choice !== "DELETE") return;
-                  if (
-                    await mutate(`/api/collections/${current.id}`, "DELETE", {
-                      children: choice === "MOVE" ? "move" : "delete",
-                    })
-                  )
-                    window.location.href = "/collections";
-                }}
-              >
-                Delete collection
-              </button>
+              <button className="rounded border p-2" disabled={pending} onClick={() => setRenameDraft(current.name)}>Rename</button>
+              <button className="rounded border p-2" disabled={pending} onClick={() => setDeleteReview(true)}>Delete collection</button>
+              {renameDraft !== null && <form className="w-full space-y-2 rounded border p-3" onSubmit={async event => {
+                event.preventDefault();
+                if (await mutate(`/api/collections/${current.id}`, "PATCH", {name: renameDraft})) setRenameDraft(null);
+              }}>
+                <label className="block">Collection name<input required maxLength={100} className="ml-2 rounded border bg-background p-2" value={renameDraft} onChange={event => setRenameDraft(event.target.value)} /></label>
+                <button disabled={pending} className="mr-3 rounded border p-2">Save name</button><button type="button" disabled={pending} className="rounded border p-2" onClick={() => setRenameDraft(null)}>Cancel rename</button>
+              </form>}
+              {deleteReview && <fieldset className="w-full space-y-2 rounded border border-destructive p-3">
+                <legend>Delete {current.name}?</legend><p>Entries remain intact. Choose what happens to child collections.</p>
+                <label className="block">Child collections<select className="ml-2 rounded border bg-background p-2" value={deleteChildren} onChange={event => setDeleteChildren(event.target.value as "move" | "delete")}>
+                  <option value="move">Move to this collection’s parent</option><option value="delete">Delete child collections too</option>
+                </select></label>
+                <button disabled={pending} className="mr-3 rounded border border-destructive p-2 text-destructive" onClick={async () => {
+                  if (await mutate(`/api/collections/${current.id}`, "DELETE", {children: deleteChildren})) window.location.href = "/collections";
+                }}>Confirm delete collection</button>
+                <button disabled={pending} className="rounded border p-2" onClick={() => setDeleteReview(false)}>Cancel deletion</button>
+              </fieldset>}
             </div>
           )}
           <ul className="space-y-2">
@@ -272,7 +281,7 @@ export function CollectionsClient({
                 key={`${e.targetType}:${e.targetId}`}
                 className="flex items-center justify-between rounded border bg-card p-3"
               >
-                <a
+                <Link
                   href={
                     e.targetType === "MONSTER"
                       ? `/monsters/${e.targetId}`
@@ -284,7 +293,7 @@ export function CollectionsClient({
                   <span className="ml-2 text-xs text-muted-foreground">
                     {e.targetType.replaceAll("_TEMPLATE", "").toLowerCase()}
                   </span>
-                </a>
+                </Link>
                 <BookmarkButton
                   targetType={e.targetType}
                   targetId={e.targetId}

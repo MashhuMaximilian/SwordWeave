@@ -1,3 +1,4 @@
+import { privateJson } from "@/lib/http/private-json";
 // =============================================================================
 // GET /api/library — browse the public library with sort + filter
 // Query params:
@@ -13,7 +14,7 @@
 // =============================================================================
 
 import { auth } from "@clerk/nextjs/server";
-import { NextResponse, type NextRequest } from "next/server";
+import { type NextRequest } from "next/server";
 import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 import { loadLibraryEngagement } from "@/lib/engagement/library-engagement";
 import { applyViewerEngagement } from "@/lib/engagement/library-viewer-state";
@@ -69,11 +70,11 @@ export async function GET(req: NextRequest) {
       const engagement = await loadLibraryEngagement(viewerId, result.items);
       result.items = applyViewerEngagement(result.items, engagement);
     }
-    return NextResponse.json({ ok: true, ...result });
+    return privateJson({ ok: true, ...result });
   } catch (err) {
-    if(err instanceof LibraryQueryBudgetError)return NextResponse.json({error:err.message},{status:422});
+    if(err instanceof LibraryQueryBudgetError)return privateJson({error:err.message},{status:422});
     console.error("[library] error:", err);
-    return NextResponse.json(
+    return privateJson(
       { error: "Failed to query library" },
       { status: 500 },
     );

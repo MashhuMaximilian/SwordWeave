@@ -1,5 +1,6 @@
+import { privateJson } from "@/lib/http/private-json";
 import { auth } from "@clerk/nextjs/server";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { collectionSources } from "@/db/schema/collections";
@@ -10,7 +11,7 @@ export async function GET(req: NextRequest) {
     targetId = req.nextUrl.searchParams.get("targetId") ?? "";
   try {
     if (!(await visibleEntries([{ targetType, targetId }], userId)).length)
-      return NextResponse.json({ collection: null });
+      return privateJson({ collection: null });
     const [source] = await db
       .select()
       .from(collectionSources)
@@ -20,12 +21,12 @@ export async function GET(req: NextRequest) {
           eq(collectionSources.targetId, targetId),
         ),
       );
-    if (!source) return NextResponse.json({ collection: null });
+    if (!source) return privateJson({ collection: null });
     const collection = await getCollection(source.collectionId, userId);
-    return NextResponse.json({
+    return privateJson({
       collection: { id: collection["id"], name: collection["name"] },
     });
   } catch {
-    return NextResponse.json({ collection: null });
+    return privateJson({ collection: null });
   }
 }
