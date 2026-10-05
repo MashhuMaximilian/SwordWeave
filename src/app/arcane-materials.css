@@ -425,3 +425,19 @@ body[data-ui="v12"] [data-preview-trigger="true"]:focus-visible [aria-label="Eng
     background:#f6d6bf!important;color:#702822!important;border-color:#702822!important;
   }
 }
+
+/* Archive card materials have stronger base rules than generic preview rows. */
+body[data-ui="v12"] .v12-creations-results.is-grid [data-library-row-id][data-preview-trigger="true"]:focus-visible {
+  background:var(--sw-metal-gold)!important;color:var(--sw-metal-gold-ink)!important;
+}
+body[data-ui="v12"] .v12-creations-results [data-library-row-id][data-preview-trigger="true"]:focus-visible [data-library-meta] {
+  background:#fff3c6!important;color:#271903!important;border-color:#806029!important;
+}
+@media(hover:hover) {
+  body[data-ui="v12"] .v12-creations-results.is-grid [data-library-row-id][data-preview-trigger="true"]:hover {
+    background:var(--sw-metal-gold)!important;color:var(--sw-metal-gold-ink)!important;
+  }
+  body[data-ui="v12"] .v12-creations-results [data-library-row-id][data-preview-trigger="true"]:hover [data-library-meta] {
+    background:#fff3c6!important;color:#271903!important;border-color:#806029!important;
+  }
+}
