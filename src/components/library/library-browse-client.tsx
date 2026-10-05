@@ -399,18 +399,18 @@ export function LibraryBrowseClient({
         ) : null}
         {isPrimitiveMode ? <div className="v12-library-resizer" role="separator" aria-label="Resize category column" onPointerDown={(event) => startResize("left", event)} /> : null}
         <main className="v12-library-results min-h-0">
-          <section className={`v12-family-panel${familyExpanded ? " is-expanded" : " is-collapsed"}`} aria-label="Selected market family">
+          <section className={`v12-family-panel${familyExpanded ? " is-expanded" : " is-collapsed"}`} aria-label={state.typeFilter === "MONSTER" ? "Creature catalogue" : "Selected market family"}>
           <div className="v12-market-hero">
             <div>
-              <p className="v12-kicker">Lexicon category · canonical family</p>
+              <p className="v12-kicker">{state.typeFilter === "MONSTER" ? "Bestiary · creatures for your story" : "Lexicon category · canonical family"}</p>
               <h2>
-                {effectiveCategoryLabel ||
+                {state.typeFilter === "MONSTER" ? "Monsters & NPCs" : effectiveCategoryLabel ||
                   (state.typeFilter === "ALL"
                     ? "The complete SwordWeave corpus"
                     : state.typeFilter.replaceAll("_", " ").toLowerCase())}
               </h2>
               <p>
-                {isPrimitiveMode && effectiveCategory ? "The rows define canonical tiers. Creating here opens the general primitive author with this family prefilled." : "Browse exact versions, inspect provenance, and carry the chosen record into the Atelier without losing its source lineage."}
+                {state.typeFilter === "MONSTER" ? "Explore creatures, inspect their practices and abilities, then bring an independent copy to your table." : isPrimitiveMode && effectiveCategory ? "The rows define canonical tiers. Creating here opens the general primitive author with this family prefilled." : "Browse exact versions, inspect provenance, and carry the chosen record into the Atelier without losing its source lineage."}
               </p>
             </div>
             {isPrimitiveMode && effectiveCategory ? (
@@ -447,7 +447,7 @@ export function LibraryBrowseClient({
           <div className="v12-results-heading">
             {phone ? <PhoneTypeChoices label="Record type" value={state.typeFilter} options={PHONE_RECORD_TYPES} onChange={value=>onStateChange({...state,typeFilter:value as LibraryToolbarState["typeFilter"],category:"",tier:""})}/> : <div>
               <p className="v12-kicker">Exact entries</p>
-              <h3>Canonical references and community expressions</h3>
+              <h3>{state.typeFilter === "MONSTER" ? "Creatures of the weave" : "Canonical references and community expressions"}</h3>
             </div>}
             <span>{discovery.total.toLocaleString()} records</span>
           </div>
@@ -598,7 +598,7 @@ export function LibraryBrowseClient({
                       : `/atelier?build=${atelierBuildForTarget(selectedItem.targetType)}&edit=${selectedItem.targetId}&intent=load`}
                     className="v12-metal-button v12-metal-button--primary"
                   >
-                    {selectedItem.definitionKind === "TEMPLATE" ? "Specialize" : "Use exact entry"}
+                    {selectedItem.targetType === "MONSTER" ? "Open creature sheet" : selectedItem.definitionKind === "TEMPLATE" ? "Specialize" : "Use exact entry"}
                   </a>
                   {selectedForkTarget ? (
                     <a

@@ -184,13 +184,13 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
       <div className="v12-library-title">
         <div className="min-w-0">
           <p className="v12-kicker">
-            Public knowledge instrument
+            {targetType === "MONSTER" ? "SwordWeave bestiary" : "Public knowledge instrument"}
           </p>
           <h1 className="v12-entity-title mt-2 text-4xl leading-tight tracking-wide">
-            Find a possibility. Choose an exact expression.
+            {targetType === "MONSTER" ? "Find a creature. Give it a place in your story." : "Find a possibility. Choose an exact expression."}
           </h1>
           <p className="mt-2 max-w-3xl text-base leading-7 text-muted-foreground">
-            BU Market families are the Lexicon Categories. Canonical components and community expressions share one stable index.
+            {targetType === "MONSTER" ? "Browse reusable monsters and NPCs, preview their sheets, and make a private copy for play." : "BU Market families are the Lexicon Categories. Canonical components and community expressions share one stable index."}
           </p>
         </div>
 
