@@ -13,3 +13,13 @@
 .creature-identity-glyph{border-radius:50%;color:var(--sw-text-gold,var(--primary))}
 .monster-character-sheet .creature-use-button{color:var(--foreground);background:var(--sw-surface-fill,var(--secondary));border-color:var(--primary)}
 .monster-character-sheet .creature-use-button:hover{color:var(--sw-text-on-gold,#241b08);background:var(--sw-metal-gold,linear-gradient(120deg,#bf9444,#ffedab,#ad813c));border-color:#e5c270}
+/* Match the readable scale of the player instrument, especially on phones. */
+.creature-identity h1{font-size:28px}.creature-identity-meta{font-size:13px}.creature-eyebrow{font-size:11px}
+.creature-vitality-chip{white-space:nowrap;flex-shrink:0}
+.creature-tabs button{font-size:14px}.creature-section-intro,.creature-empty,.creature-entity-body,.creature-entity>p,.creature-story{font-size:15px}
+.creature-practices button{font-size:14px;padding:9px 14px}.creature-practices summary{font-size:14px}
+.creature-attributes span,.creature-combat span{font-size:11px}.creature-attributes button{font-size:12px}.creature-entity summary{font-size:16px}.creature-entity summary span{font-size:12px}
+.creature-content h2{font-size:26px}.creature-capability-effect{font-size:15px}.monster-character-sheet .creature-capability-heading h3{font-size:20px}
+.monster-character-sheet .monster-abilities-panel>.monster-check{padding:14px 16px;border:1px solid var(--border);border-radius:6px;margin:10px 0;background:var(--sw-surface-fill,var(--card));font-size:15px}
+.creature-vitality-controls{font-size:14px}.creature-vitality-controls h2{font-size:16px}.creature-damage-row label{font-size:12px}.creature-damage-row button{font-size:13px}.creature-baseline summary{font-size:13px}
+@media(max-width:767px){.creature-identity h1{font-size:22px}.creature-identity-meta{font-size:12px}.creature-tabs button{font-size:11px}.creature-eyebrow{font-size:10px}.creature-vitality-chip{font-size:12px}.creature-content h2{font-size:24px}}
