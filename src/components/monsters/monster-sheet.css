@@ -4,7 +4,7 @@
 .creature-back {font-size:10px;color:var(--muted-foreground)}
 .creature-identity-row {display:flex;align-items:center;gap:10px}
 .creature-identity-glyph {display:grid;place-items:center;flex-shrink:0;width:40px;height:40px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--primary)}
-.creature-identity h1 {font-size:20px;line-height:1.2;font-family:var(--font-display,serif)}
+.creature-identity h1 {font-size:20px;line-height:1.2;font-family:var(--font-subtitle,var(--font-body,sans-serif))}
 .creature-eyebrow {font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-foreground)}
 .creature-identity-meta {font-size:10px;color:var(--muted-foreground);text-transform:capitalize}
 .creature-identity-deck {max-height:65dvh;overflow-y:auto;padding:12px 2px}
@@ -16,7 +16,7 @@
 .creature-tabs button {display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--muted-foreground);padding:5px 12px}
 .creature-tabs button[aria-current] {color:var(--primary)}
 .creature-tabs button>span {display:none}
-.monster-character-sheet .creature-stat-column {position:fixed;bottom:54px;left:0;right:0;z-index:29;border-top:1px solid var(--border);background:var(--background)}
+body[data-ui="v12"] .monster-character-sheet .creature-stat-column.v12-bottom-drawer {position:fixed;bottom:54px;left:0;right:0;z-index:29;border-top:1px solid var(--border);background:var(--background)}
 .creature-stat-body {max-height:65dvh;overflow-y:auto;padding:12px;max-width:1080px;margin:auto}
 .creature-stat-body>div {max-width:640px;margin:auto}
 .creature-vitality-controls {max-width:640px;margin:16px auto 0;font-size:12px}
@@ -30,7 +30,7 @@
 .creature-baseline p {font-size:11px;margin:8px 0;color:var(--muted-foreground)}
 .monster-character-sheet :is(input:not([type=checkbox]),textarea,select) {background:var(--background);border:1px solid var(--border);border-radius:5px;padding:7px;font-size:12px}
 .monster-character-sheet .monster-panel {border:0!important;background:transparent!important;padding:0!important;box-shadow:none!important}
-.monster-character-sheet .monster-panel>h2,.creature-content>section>h2 {font-family:var(--font-display,serif);font-size:20px;margin-bottom:12px}
+.monster-character-sheet .monster-panel>h2,.creature-content>section>h2 {font-family:var(--font-subtitle,var(--font-body,sans-serif));font-size:20px;margin-bottom:12px}
 .creature-section-intro,.creature-empty {font-size:12px;line-height:1.6;color:var(--muted-foreground);margin-bottom:14px}
 .creature-story {line-height:1.75}
 .creature-source,.creature-snapshot-note {font-size:11px;color:var(--muted-foreground);margin-top:14px}
@@ -46,3 +46,30 @@
 .monster-character-sheet [hidden] {display:none!important}
 .monster-character-sheet button:disabled {opacity:.5}
 @media(max-width:767px) {.monster-character-sheet {padding-inline:10px!important}.creature-identity h1{font-size:18px}.creature-identity-row{gap:7px}.creature-stat-column .v12-bottom-drawer-toggle>span:nth-child(2){font-size:10px}.creature-stat-body{padding:10px}.creature-tabs button{font-size:10px;padding-inline:7px}}
+
+/* These controls use the player identity action material with explicit compact sizing. */
+body[data-ui="v12"] .creature-sheet-button {
+ min-height:31px;padding:6px 10px;gap:5px;border:1px solid transparent!important;border-radius:4px!important;
+ background:linear-gradient(180deg,color-mix(in srgb,var(--v12-brass) 8%,var(--v12-raised)),var(--v12-inset)) padding-box,var(--v12-silver-edge) border-box!important;
+ color:var(--v12-paper);font:500 12px/1.25 var(--font-subtitle);box-shadow:inset 0 1px rgb(255 255 255 / 7%);text-decoration:none;
+}
+body[data-ui="v12"] .creature-sheet-button:hover:not(:disabled) {
+ background:linear-gradient(180deg,color-mix(in srgb,var(--v12-brass) 18%,var(--v12-raised)),var(--v12-inset)) padding-box,var(--v12-gold-edge) border-box!important;
+ color:var(--v12-gold-hi);
+}
+body[data-ui="v12"] .monster-character-sheet .creature-identity h1 {font-family:var(--font-subtitle,var(--font-body,sans-serif));font-weight:500}
+body[data-ui="v12"] .monster-character-sheet .creature-stat-column .creature-stat-body {max-height:65dvh;overflow-y:auto}
+
+.creature-dock-numbers {display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px 12px;min-width:0;font-variant-numeric:tabular-nums}
+.creature-dock-numbers>span {display:flex;align-items:baseline;gap:4px;min-width:0}
+.creature-dock-numbers small {font-size:9px;color:var(--muted-foreground)}
+.creature-dock-numbers strong {font-size:12px;font-weight:600}
+@media(max-width:767px) {
+ body[data-ui="v12"] .monster-character-sheet .creature-stat-column .v12-bottom-drawer-toggle {gap:7px;padding-inline:8px;min-width:0}
+ .creature-stat-column .v12-bottom-drawer-toggle>span:first-child {flex-shrink:0;font-size:10px;gap:4px}
+ .creature-stat-column .v12-bottom-drawer-toggle>svg {flex-shrink:0;width:12px}
+ .creature-dock-numbers {grid-template-columns:repeat(3,minmax(0,1fr));gap:3px 8px}
+ .creature-dock-numbers>span {gap:3px}
+ .creature-dock-numbers small {font-size:8px}
+ .creature-dock-numbers strong {font-size:10px}
+}
