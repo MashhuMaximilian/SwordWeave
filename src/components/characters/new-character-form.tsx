@@ -170,7 +170,7 @@ const FAMILY_KEYS: Record<PackageSlot, string> = {
 
 const ROMAN = ["", "I", "II", "III", "IV", "V"] as const;
 
-interface PrimitiveOption {
+export interface PrimitiveOption {
   id: number;
   name: string;
   category: string;
@@ -239,7 +239,7 @@ export function NewCharacterForm() { const {user}=useUser();return <AccountNewCh
 function AccountNewCharacterForm({accountId}:{accountId:string|null}) {
   const [legacyDrafts,setLegacyDrafts]=useState<("complete"|"quick")[]>([]);
   useEffect(()=>{if(accountId)try{setLegacyDrafts(availableLegacyCreationDrafts(localStorage));}catch{}},[accountId]);
-  const legacyResume=legacyDrafts.length>0&&accountId?<aside><p>An earlier draft is saved on this device. Resume it to assign it to your signed-in account.</p>{legacyDrafts.map(mode=><button key={mode} type="button" onClick={()=>{try{claimLegacyCreationDraft(localStorage,accountId,mode,crypto.randomUUID());window.location.assign("/characters/new");}catch(error){setReturnNotice(error instanceof Error?error.message:"Unable to resume earlier draft.");}}}>Resume earlier {mode==="quick"?"Quickbuild":"complete"} draft</button>)}</aside>:null;
+  const legacyResume=legacyDrafts.length>0&&accountId?<aside className="sw-forge-draft-recovery"><p>An earlier draft is saved on this device. Resume it to assign it to your signed-in account.</p>{legacyDrafts.map(mode=><button key={mode} type="button" onClick={()=>{try{claimLegacyCreationDraft(localStorage,accountId,mode,crypto.randomUUID());window.location.assign("/characters/new");}catch(error){setReturnNotice(error instanceof Error?error.message:"Unable to resume earlier draft.");}}}>Resume earlier {mode==="quick"?"Quickbuild":"complete"} draft</button>)}</aside>:null;
   const draftKey=accountId?creationDraftKey(accountId,"complete"):null;
   const [returnNotice,setReturnNotice]=useState("");
   const [hydratedAccount,setHydratedAccount]=useState<string|null>(null);
@@ -902,8 +902,8 @@ function AccountNewCharacterForm({accountId}:{accountId:string|null}) {
   return (
     <div className="sw-character-forge">
       {legacyResume}
-      {phone&&<CreationAtelierAction accountId={draftLoaded&&hydratedAccount===accountId?accountId:null} draftId={creationDraftId} mode="complete" persistDraft={()=>{if(!draftKey)throw new Error("Wait for your account to load.");const data=JSON.stringify({draftId:creationDraftId,state,selectedPrimitiveIds,mirroredPrimitiveIds,savedMirrorIds,savedPackages,packageShuffleBudget,step});localStorage.setItem(draftKey,data);localStorage.setItem(`${draftKey}:${creationDraftId}`,data);}}/>}
-      {returnNotice&&<p role="status" className="text-sm text-primary">{returnNotice}</p>}
+      {phone&&<div className="sw-forge-authoring-return"><CreationAtelierAction accountId={draftLoaded&&hydratedAccount===accountId?accountId:null} draftId={creationDraftId} mode="complete" persistDraft={()=>{if(!draftKey)throw new Error("Wait for your account to load.");const data=JSON.stringify({draftId:creationDraftId,state,selectedPrimitiveIds,mirroredPrimitiveIds,savedMirrorIds,savedPackages,packageShuffleBudget,step});localStorage.setItem(draftKey,data);localStorage.setItem(`${draftKey}:${creationDraftId}`,data);}}/></div>}
+      {returnNotice&&<p role="status" className="sw-forge-return-notice text-sm text-primary">{returnNotice}</p>}
       <aside
         className="sw-character-forge__rail"
         aria-label="Character creation progress"
@@ -1773,7 +1773,7 @@ function QuickBuildForm({
   return (
     <div className="sw-quickbuild">
       {phone&&<CreationAtelierAction accountId={loaded?accountId:null} draftId={creationDraftId} mode="quick" quick persistDraft={()=>{if(!draftKey)throw new Error("Wait for your account to load.");const data=JSON.stringify({draftId:creationDraftId,state,selection,shuffleLimits,packageIds,mirrorIds,itemIds,savedMirrorIds,savedPackages});localStorage.setItem(draftKey,data);localStorage.setItem(`${draftKey}:${creationDraftId}`,data);}}/>}
-      {returnNotice&&<p role="status" className="text-sm text-primary">{returnNotice}</p>}
+      {returnNotice&&<p role="status" className="sw-forge-return-notice text-sm text-primary">{returnNotice}</p>}
       <header className="sw-quickbuild__heading">
         <h2>Quickbuild</h2>
         <button type="button" className="sw-forge-reset" onClick={onChangeMode}>
@@ -4180,7 +4180,7 @@ function DomainAuthoringDrawer({
   return null;
 }
 
-function PrimitiveSelectCard({
+export function PrimitiveSelectCard({
   item,
   selected,
   onToggle,

@@ -11,11 +11,11 @@ body[data-ui="v12"] .sw-forge-page {
     light-dark(var(--sw-surface),#090d12);
   background-size: auto, 48px 48px, 48px 48px, auto;
 }
-body[data-ui="v12"] .sw-forge-page__masthead { max-width:1440px;grid-template-columns:210px 1fr;margin-bottom:22px; }
+body[data-ui="v12"] .sw-forge-page__masthead { max-width:none;grid-template-columns:210px 1fr;margin-bottom:22px; }
 body[data-ui="v12"] .sw-forge-page__masthead h1 { color:var(--forge-gold-light);font-size:clamp(32px,3.2vw,47px); }
 body[data-ui="v12"] .sw-forge-page__masthead p { max-width:70ch;font-size:16px;line-height:1.45; }
 body[data-ui="v12"] .sw-character-forge {
-  max-width:1440px;min-height:680px;grid-template-columns:210px minmax(0,1fr);
+  max-width:none;min-height:680px;grid-template-columns:210px minmax(0,1fr);
   border:2px solid transparent;border-radius:9px;padding:0;
   background:linear-gradient(light-dark(var(--sw-surface),#10161c),light-dark(var(--sw-surface-deep),#080c10)) padding-box,
     linear-gradient(130deg,#67421c 0%,#fff1b8 10%,#bd8842 24%,#626b70 51%,#f7d98f 78%,#865623 100%) border-box;
@@ -416,3 +416,11 @@ body[data-ui="v12"] .sw-character-forge :is(button,input,select,textarea):focus-
  body[data-ui="v12"] .sw-access-presets>div>button:not(.sw-access-presets__custom),body[data-ui="v12"] .sw-access-presets>div>button.sw-access-presets__custom {min-height:0;padding:13px;}
  body[data-ui="v12"] .sw-character-forge__footer-actions>button {font-size:11px;white-space:normal;}
 }
+
+/* Notices span the forge instead of consuming the progress column. */
+body[data-ui="v12"] .sw-character-forge > :is(.sw-forge-draft-recovery,.sw-forge-return-notice,.sw-forge-authoring-return) { grid-column:1 / -1; }
+body[data-ui="v12"] .sw-forge-draft-recovery { padding:12px 18px;border-bottom:1px solid var(--border);background:var(--sw-surface-raised); }
+body[data-ui="v12"] .sw-forge-draft-recovery p { margin:0 0 8px;font-size:14px; }
+body[data-ui="v12"] .sw-forge-draft-recovery button { padding:8px 12px;border:1px solid var(--border);border-radius:5px;margin-right:8px;color:var(--primary); }
+body[data-ui="v12"] .sw-character-forge__rail { min-width:0; }
+body[data-ui="v12"] .sw-character-forge__workbench { min-width:0; }

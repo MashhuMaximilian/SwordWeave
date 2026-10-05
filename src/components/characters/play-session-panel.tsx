@@ -1,4 +1,5 @@
 "use client";
+import "./play-session-panel.css";
 import { useState } from "react";
 import { getEffectivePlayState, getPlaySessionAccountId, getPlaySessionComparison, queuePlayChanges, resolvePlayConflict, retryPlaySync } from "@/lib/play-state/client-sync";
 import { consequenceJson } from "@/lib/character/consequences/json";
@@ -29,26 +30,26 @@ export function PlaySessionPanel({ subjectKind = "CHARACTER", subjectId, endpoin
     .filter(field => consequenceJson(currentOverrides[field]) !== consequenceJson(preview[field]))
     .map(field => ({ field, local: currentOverrides[field], saved: preview[field] })) : [];
   const labels = { loading: "Loading session…", saved: "Session saved", pending: "Saving session…", offline: "Offline · session edits stay on this device", conflict: "Session conflict · choose which changes to keep", legacy: "Browser session differs from saved session", error: "Session needs attention" };
-  return <section className="rounded-lg border border-border bg-card px-3 py-2 text-xs" aria-label="Session synchronization">
+  return <section className="v12-session-controls rounded-lg border border-border bg-card px-3 py-3 text-sm" aria-label="Session synchronization">
     <div className="flex flex-wrap items-center gap-3"><span role="status">{!accountId ? isLoaded ? "Sign in to continue your session" : "Loading account…" : labels[session.status]}{session?.pending ? ` · ${session.pending} queued` : ""}</span>
-      <button type="button" disabled={!session.ready} onClick={download} className="underline">Export session JSON</button>
-      <label className="cursor-pointer underline">Preview session backup<input disabled={!session.ready} type="file" accept="application/json,.json" className="sr-only" onChange={async event => {
+      <button type="button" disabled={!session.ready} onClick={download} className="v12-session-action">Save session</button>
+      <label className="v12-session-action cursor-pointer">Load session<input disabled={!session.ready} type="file" accept="application/json,.json" className="sr-only" onChange={async event => {
         const file = event.target.files?.[0]; if (!file) return;
         const importingAccount = accountId;
         try { if (file.size > 1048576) throw new Error("Session backup exceeds 1MB."); const data = JSON.parse(await file.text()); if (getPlaySessionAccountId() !== importingAccount) return; setPreview(previewSessionBackup(data, subjectKind, subjectId, session?.buildRefs ?? buildRefs ?? [])); setError(null); } catch (e) { if (getPlaySessionAccountId() === importingAccount) setError(e instanceof Error ? e.message : "Invalid session backup."); }
         event.target.value = "";
       }} /></label>
-      {session?.status === "error" && <button type="button" className="underline" onClick={() => retryPlaySync(subjectKind, subjectId)}>Retry</button>}
+      {session?.status === "error" && <button type="button" className="v12-session-action" onClick={() => retryPlaySync(subjectKind, subjectId)}>Retry</button>}
     </div>
     {(session?.status === "legacy" || session?.status === "conflict") && <div className="mt-2 flex flex-wrap items-center gap-3">
       <span>{session.status === "legacy" ? "Continue with this device's browser session or the saved session. A recovery copy is retained." : `Conflicting fields: ${session.conflicts.join(", ") || "session fields"}.`}</span>
-      <button type="button" onClick={() => void resolve("local")} className="underline">Keep local changes</button><button type="button" onClick={() => void resolve("server")} className="underline">Use saved session</button>
+      <button type="button" onClick={() => void resolve("local")} className="v12-session-action">Keep local changes</button><button type="button" onClick={() => void resolve("server")} className="v12-session-action">Use saved session</button>
     </div>}
     {comparison.length > 0 && <SessionValues rows={comparison} first="This device" second="Saved session" caption="Session differences" />}
     {preview && <div className="mt-2"><p>Backup matches this sheet and its build. Restoring changes {backupChanges.length} session overrides (vitality, inactive toggles and Consequences), including {backupChanges.filter(change => change.saved === undefined).length} removals.</p>
       <SessionValues rows={backupChanges} first="Current session" second="Backup" caption="Backup changes" />
-      <button type="button" className="mr-3 underline" disabled={!session.ready || session.status === "legacy"} onClick={() => { try { const current = getEffectivePlayState(subjectKind, subjectId).overrides; const changes = [...new Set([...Object.keys(current), ...Object.keys(preview)])].filter(field => consequenceJson(current[field]) !== consequenceJson(preview[field])).map(field => ({ field, value: preview[field] ?? null })); if (changes.length) queuePlayChanges(subjectKind, subjectId, changes); setPreview(null); } catch (e) { setError(e instanceof Error ? e.message : "Restore failed."); } }}>Restore session values</button>
-      <button type="button" className="underline" onClick={() => setPreview(null)}>Cancel</button></div>}
+      <button type="button" className="v12-session-action mr-3" disabled={!session.ready || session.status === "legacy"} onClick={() => { try { const current = getEffectivePlayState(subjectKind, subjectId).overrides; const changes = [...new Set([...Object.keys(current), ...Object.keys(preview)])].filter(field => consequenceJson(current[field]) !== consequenceJson(preview[field])).map(field => ({ field, value: preview[field] ?? null })); if (changes.length) queuePlayChanges(subjectKind, subjectId, changes); setPreview(null); } catch (e) { setError(e instanceof Error ? e.message : "Restore failed."); } }}>Load these changes</button>
+      <button type="button" className="v12-session-action" onClick={() => setPreview(null)}>Cancel</button></div>}
     {(error || session?.error) && <p className="mt-2 text-destructive" role="alert">{error ?? session?.error}</p>}
   </section>;
 }

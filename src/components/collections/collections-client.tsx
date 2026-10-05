@@ -3,6 +3,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useUser, useClerk } from "@clerk/nextjs";
 import { BookmarkButton } from "./bookmark-button";
 import Link from "next/link";
+import { FolderTree, Folder, ChevronRight, BookOpen } from "lucide-react";
+import { useModalStack } from "@/components/ui/modal-stack";
+import { EmptyState } from "@/components/ui/empty-state";
+import { CollectionEntryPreview } from "./collection-entry-preview";
 import "./collections.css";
 type Collection = {
   id: string;
@@ -23,6 +27,7 @@ export function CollectionsClient(props: CollectionPageProps) {
 function AccountCollectionsClient({collectionId, ownerId, embedded=false}: CollectionPageProps) {
   const { user } = useUser();
   const clerk = useClerk();
+  const stack = useModalStack();
   const [rows, setRows] = useState<Collection[]>([]),
     [current, setCurrent] = useState<Collection | null>(null),
     [entries, setEntries] = useState<Entry[]>([]),
@@ -97,12 +102,11 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
       {!embedded && <Link href="/collections" className="sw-collections-breadcrumb">
         Collections
       </Link>}
-      <header className="sw-collections-heading"><span className="sw-collections-medallion" aria-hidden="true">✦</span><div><p className="sw-collections-eyebrow">The collected chronicles</p><Heading>
+      <header className="sw-collections-heading"><span className="sw-collections-medallion" aria-hidden="true"><FolderTree size={24} /></span><div><p className="sw-collections-eyebrow">Collection index</p><Heading>
         {current?.name ?? "Your collections"}
       </Heading></div></header>
       <p className="sw-collections-intro">
-        Organize live references to your creations and community entries. Each
-        collection has its own visibility.
+        Group your creations and saved entries into collections. Expand a branch to open its child collections.
       </p>
       {error && (
         <p role="alert" className="sw-collections-error">
@@ -111,9 +115,8 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
       )}
       {!collectionId && (
         <>
-          {rows.length === 0 && <p className="sw-collections-empty">Your chronicles begin here. Create a collection to gather entries for your next adventure.</p>}
-          {rows.some(c => c.system_kind) && <section className="sw-collections-section"><p className="sw-collections-eyebrow">Automatic collections</p><div className="sw-collections-grid">{rows.filter(c => c.system_kind).map(c => <Link key={c.id} href={`/collections/${c.id}`} className="sw-collections-card"><span className="sw-collections-card-seal" aria-hidden="true">✦</span><strong>{c.name}</strong><span className="sw-collections-meta">{c.visibility.replaceAll("_", " ").toLowerCase()}</span></Link>)}</div></section>}
-          <section className="sw-collections-section"><div className="sw-collections-section-heading"><h2>Collection branches</h2>{user && <a href="#create-collection" className="sw-collections-breadcrumb" onClick={() => setParent("")}>＋ Create a root</a>}</div><CollectionTree rows={rows.filter(c => !c.system_kind)} />{!rows.some(c => !c.system_kind) && <p className="sw-collections-branch-empty">Create a root collection, then add child collections inside it.</p>}</section>
+          {rows.some(c => c.system_kind) && <section className="sw-collections-section"><p className="sw-collections-eyebrow">Automatic collections</p><div className="sw-collections-grid">{rows.filter(c => c.system_kind).map(c => <Link key={c.id} href={`/collections/${c.id}`} className="sw-collections-card"><span className="sw-collections-card-seal" aria-hidden="true"><BookOpen size={19} /></span><strong>{c.name}</strong><span className="sw-collections-meta">{c.visibility.replaceAll("_", " ").toLowerCase()}</span></Link>)}</div></section>}
+          <section className="sw-collections-section"><div className="sw-collections-section-heading"><h2>Collection branches</h2>{user && <a href="#create-collection" className="sw-collections-breadcrumb" onClick={() => setParent("")}>＋ Create a root</a>}</div><CollectionTree rows={rows.filter(c => !c.system_kind)} />{!rows.some(c => !c.system_kind) && <EmptyState compact icon={FolderTree} title="Start a collection branch" description="Create a root for a campaign, theme, or project. Add child collections to organize its entries." />}</section>
           {!user && (
             <button
               onClick={() => clerk.openSignIn()}
@@ -126,15 +129,15 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
       )}
       {current && (
         <>
-          <Link
+          <div className="sw-collections-actions"><Link
             href={`/library/browse?type=ALL&collectionId=${current.id}`}
             className="sw-collections-button sw-collections-button--primary sw-collections-library"
           >
-            Browse this collection in the Library
+            Browse in Library
           </Link>
-          {user && current.owner_id === user.id && <a className="sw-collections-button" href="#create-collection" onClick={() => setParent(current.system_kind ? "" : current.id)}>＋ {current.system_kind ? "Create collection" : "Add child collection"}</a>}
+          {user && current.owner_id === user.id && <a className="sw-collections-button" href="#create-collection" onClick={() => setParent(current.system_kind ? "" : current.id)}>＋ {current.system_kind ? "Create collection" : "Add child collection"}</a>}</div>
           <nav aria-label="Collection path" className="sw-collections-path"><Link href="/collections">Collections</Link>{collectionAncestors(current, rows).map(c => <span key={c.id}><span aria-hidden="true"> / </span><Link href={`/collections/${c.id}`}>{c.name}</Link></span>)}<span aria-hidden="true"> / </span><strong>{current.name}</strong></nav>
-          <section className="sw-collections-section sw-collections-branch-panel"><div className="sw-collections-section-heading"><h2>{current.system_kind ? "Automatic collection" : "Inside this collection"}</h2><span className="sw-collections-meta">{current.visibility.replaceAll("_", " ").toLowerCase()}</span></div>{!current.system_kind && <div className="sw-collections-current"><span aria-hidden="true">◇</span><strong>{current.name}</strong><CollectionTree rows={rows.filter(c => !c.system_kind)} parentId={current.id} /></div>}{!current.system_kind && !rows.some(c => c.parent_id === current.id) && <p className="sw-collections-branch-empty">No child collections yet.</p>}</section>
+          {!current.system_kind && <section className="sw-collections-section sw-collections-branch-panel"><div className="sw-collections-section-heading"><h2>{current.system_kind ? "Automatic collection" : "Inside this collection"}</h2><span className="sw-collections-meta">{current.visibility.replaceAll("_", " ").toLowerCase()}</span></div>{!current.system_kind && <div className="sw-collections-current"><Folder size={18} aria-hidden="true" /><strong>{current.name}</strong><CollectionTree rows={rows.filter(c => !c.system_kind)} parentId={current.id} /></div>}{!current.system_kind && !rows.some(c => c.parent_id === current.id) && <p className="sw-collections-branch-empty">No child collections yet. Add a child to begin a branch.</p>}</section>}
           {user && current.owner_id !== user.id && (
             <button
               className="sw-collections-button"
@@ -205,19 +208,9 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
                 key={`${e.targetType}:${e.targetId}`}
                 className="sw-collections-entry"
               >
-                <Link
-                  href={
-                    e.targetType === "MONSTER"
-                      ? `/monsters/${e.targetId}`
-                      : `/library/item/${encodeURIComponent(`${e.targetType}:${e.targetId}`)}`
-                  }
-                  className="sw-collections-entry-link"
-                >
-                  {e.name}
-                  <span className="sw-collections-entry-kind">
-                    {e.targetType.replaceAll("_TEMPLATE", "").toLowerCase()}
-                  </span>
-                </Link>
+                <button type="button" className="sw-collections-entry-link" onClick={() => {
+                  if (stack.canPush) stack.push({ key: `collection-entry:${e.targetType}:${e.targetId}`, label: e.name, category: e.targetType.replaceAll("_TEMPLATE", ""), content: <CollectionEntryPreview targetType={e.targetType} targetId={e.targetId} /> });
+                }}><span className="sw-collections-entry-icon" aria-hidden="true"><BookOpen size={18} /></span><span>{e.name}<span className="sw-collections-entry-kind">{e.targetType.replaceAll("_TEMPLATE", "").toLowerCase()} · Preview details</span></span><ChevronRight size={16} aria-hidden="true" /></button>
                 <BookmarkButton
                   targetType={e.targetType}
                   targetId={e.targetId}
@@ -226,11 +219,9 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
             ))}
           </ul>
           {entries.length === 0 && (
-            <p className="sw-collections-empty">
-              No accessible entries in this collection.
-            </p>
+            <EmptyState compact icon={BookOpen} title="No entries to display" description="Save an entry from the Library or My Creations and choose this collection. Only entries you can access appear here." primaryAction={{ label: "Browse Library", href: "/library/browse" }} />
           )}
-          <div className="sw-collections-pagination">
+          {(page > 0 || more) && <div className="sw-collections-pagination">
             <button className="sw-collections-button" disabled={!page || pending} onClick={() => setPage((p) => p - 1)}>
               Previous
             </button>
@@ -238,7 +229,7 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
             <button className="sw-collections-button" disabled={!more || pending} onClick={() => setPage((p) => p + 1)}>
               Next
             </button>
-          </div>
+          </div>}
         </>
       )}
           {user && (!collectionId || (current && current.owner_id === user.id)) && (
@@ -256,7 +247,7 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
                   setName("");
               }}
             >
-              <p className="sw-collections-eyebrow">Begin a new chapter</p><h2>{current && !current.system_kind ? "Create a child collection" : "Create collection"}</h2>
+              <p className="sw-collections-eyebrow">Collection setup</p><h2>{current && !current.system_kind ? "Create a child collection" : "Create collection"}</h2>
               <input
                 aria-label="Collection name"
                 required
@@ -332,7 +323,7 @@ function CollectionTree({ rows, parentId = null, seen = [] }: { rows: Collection
   if (!children.length) return null;
   return <ul className="sw-collections-tree">{children.map(c => {
     const hasChildren = rows.some(child => child.parent_id === c.id && !seen.includes(child.id));
-    const heading = <><Link href={`/collections/${c.id}`} className="sw-collections-tree-link"><span aria-hidden="true">◇</span><strong>{c.name}</strong></Link><span className="sw-collections-tree-visibility">{c.visibility.replaceAll("_", " ").toLowerCase()}{c.followed ? " · saved" : ""}</span></>;
+    const heading = <><Link href={`/collections/${c.id}`} className="sw-collections-tree-link"><Folder size={18} aria-hidden="true" /><strong>{c.name}</strong></Link><span className="sw-collections-tree-visibility">{c.visibility.replaceAll("_", " ").toLowerCase()}{c.followed ? " · saved" : ""}</span></>;
     return <li key={c.id} className="sw-collections-tree-node">{hasChildren ? <details open><summary><span className="sw-collections-tree-toggle" aria-hidden="true">›</span>{heading}</summary><CollectionTree rows={rows} parentId={c.id} seen={[...seen, c.id]} /></details> : <div className="sw-collections-tree-leaf"><span className="sw-collections-tree-toggle" aria-hidden="true">·</span>{heading}</div>}</li>;
   })}</ul>;
 }

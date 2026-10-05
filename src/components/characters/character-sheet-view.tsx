@@ -1107,7 +1107,6 @@ function CharacterSheetContent(initialProps: CharacterSheetProps) {
         autoEvaluated={autoEvaluated}
       />
     <div className="v12-character-page mx-auto w-full max-w-[1480px] px-5 pt-20 pb-32" data-character-surface data-sheet-mode={sheetMode} data-read-only={!canDraft} data-character-id={props.id}>
-      {canWrite && <PlaySessionPanel subjectId={props.id} />}
       {!canDraft && <aside className="v12-public-sheet-notice" aria-label="Read-only character">
         <div><strong>Read-only character sheet</strong><span>Read only · Fork to play and make changes to your own copy.</span></div>
         <ForkCharacterButton characterId={props.id} roster label="Fork" />
@@ -1477,6 +1476,7 @@ function CharacterSheetContent(initialProps: CharacterSheetProps) {
           compact, collapsed-by-default block at the top of the
           screen. Hidden on >= md. */}
       <SheetIdentityHeader
+        sessionControls={canWrite ? <PlaySessionPanel subjectId={props.id} /> : undefined}
         characterId={props.id}
         name={props.name}
         level={props.level}

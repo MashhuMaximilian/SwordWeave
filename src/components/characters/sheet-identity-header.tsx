@@ -40,7 +40,7 @@ import { useCharacterReadOnly } from "./character-read-only";
  * Hide on >= md screens via Tailwind's md:hidden.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
   ChevronDown,
@@ -110,6 +110,7 @@ function debtBarColor(
 }
 
 export interface SheetIdentityHeaderProps {
+  readonly sessionControls?: ReactNode;
   readonly characterId: string;
   readonly name: string;
   readonly level: number;
@@ -227,6 +228,7 @@ export function SheetIdentityHeader({
   characterVersionCount,
   ownerShares,
   viewerPermission,
+  sessionControls,
 }: SheetIdentityHeaderProps) {
   const readOnly = useCharacterReadOnly();
   const [hydrated, setHydrated] = useState(false);
@@ -645,6 +647,7 @@ export function SheetIdentityHeader({
             )}
             </div>
           </div>
+          {sessionControls}
           {!canLevelUp ? (
             <p className="mt-2 text-xs text-muted-foreground">
               Max level reached.

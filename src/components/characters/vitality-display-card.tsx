@@ -79,6 +79,8 @@ export interface VitalityDisplayCardProps {
   /** Direct resolver input. Used for the helper functions that
    * need slots + PB + proficient + attributes. */
   resolverInput: Parameters<typeof resolveAttributeModifier>[0];
+  /** Use an already resolved non-character sheet without running character baselines again. */
+  displayTotals?: { totals: ResolvedModifiers["totals"]; baselinePb: number; baselineVitality: number; proficiencyFormula: string; vitalityFormula: string };
 }
 
 export function VitalityDisplayCard({
@@ -88,6 +90,7 @@ export function VitalityDisplayCard({
   proficientAttribute,
   resolver,
   resolverInput,
+  displayTotals,
 }: VitalityDisplayCardProps) {
   const [provenanceTarget, setProvenanceTarget] = useState<string | null>(null);
 
@@ -98,7 +101,9 @@ export function VitalityDisplayCard({
 
   // Compute the primary save DC (one number, from the proficient
   // attribute). If no proficient, falls back to physical.
-  const primaryDc = resolvePrimarySaveDc(resolverInput);
+  const attributeValue = (input: typeof resolverInput, attr: Attribute) => displayTotals ? { total: displayTotals.totals[`attribute.${attr}`] ?? input.attributes[attr], contributions: resolver.byTarget[`attribute.${attr}`] ?? [] } : resolveAttributeModifier(input, attr);
+  const saveValue = (input: typeof resolverInput, attr: Attribute) => displayTotals ? { total: displayTotals.totals[SAVE_TARGET[attr]] ?? 0, contributions: resolver.byTarget[SAVE_TARGET[attr]] ?? [] } : resolveSaveValue(input, attr);
+  const primaryDc = displayTotals ? {total: displayTotals.totals["save_dc"] ?? 5, attr: proficientAttribute ?? "physical", scopedTarget: "save_dc", contributions: resolver.byTarget["save_dc"] ?? []} : resolvePrimarySaveDc(resolverInput);
 
   const closeProvenance = () => setProvenanceTarget(null);
 
@@ -180,8 +185,8 @@ export function VitalityDisplayCard({
       <div className="mt-2 grid grid-cols-4 gap-1.5">
         {(["physical", "mental", "magical"] as const).map((attr) => {
           const isProficient = proficientAttribute === attr;
-          const mod = resolveAttributeModifier(resolverInput, attr);
-          const sv = resolveSaveValue(resolverInput, attr);
+          const mod = attributeValue(resolverInput, attr);
+          const sv = saveValue(resolverInput, attr);
           return (
             <div
               key={attr}
@@ -281,16 +286,16 @@ export function VitalityDisplayCard({
           <FormulaModal
             title="Max Vitality"
             total={max}
-            formula="Max Vitality = (10 + Proficiency Bonus) × level, then apply Vitality primitive contributions. PB may also change through primitives."
-            breakdown={contributionsToSteps(MAX_VITALITY_TARGET, resolver)}
+            formula={displayTotals?.vitalityFormula ?? "Max Vitality = (10 + Proficiency Bonus) × level, then apply Vitality primitive contributions. PB may also change through primitives."}
+            breakdown={displayTotals ? [{label:"Baseline Vitality",value:displayTotals.baselineVitality},...contributionsToSteps(MAX_VITALITY_TARGET, resolver)] : contributionsToSteps(MAX_VITALITY_TARGET, resolver)}
             onClose={closeProvenance}
           />
         ) : provenanceTarget === "proficiency_bonus" ? (
           <FormulaModal
             title="Proficiency Bonus"
             total={pb}
-            formula="PB = 2 + floor((level − 1) / 4), then apply PB primitives. There is no level cap."
-            breakdown={[
+            formula={displayTotals?.proficiencyFormula ?? "PB = 2 + floor((level − 1) / 4), then apply PB primitives. There is no level cap."}
+            breakdown={displayTotals ? [{label:"Baseline PB",value:displayTotals.baselinePb},...contributionsToSteps("proficiency_bonus",resolver)] : [
               { label: "Base PB", value: 2 },
               {
                 label: `Level bonus (L${resolverInput.level})`,
@@ -303,7 +308,7 @@ export function VitalityDisplayCard({
         ) : provenanceTarget.startsWith("attribute.") ? (
           <FormulaModal
             title={`${ATTR_FULL[provenanceTarget.split(".").pop() as Attribute]} modifier`}
-            total={resolveAttributeModifier(
+            total={attributeValue(
               resolverInput,
               provenanceTarget.split(".").pop() as Attribute,
             ).total}
@@ -327,7 +332,7 @@ export function VitalityDisplayCard({
             breakdown={[
               { label: "Base", value: 5 },
               { label: "PB", value: pb },
-              { label: `${ATTR_FULL[primaryDc.attr]} attribute`, value: resolveAttributeModifier(resolverInput, primaryDc.attr).total },
+              { label: `${ATTR_FULL[primaryDc.attr]} attribute`, value: attributeValue(resolverInput, primaryDc.attr).total },
               ...contributionsToSteps("save_dc", resolver),
             ]}
             onClose={closeProvenance}
@@ -335,7 +340,7 @@ export function VitalityDisplayCard({
         ) : Object.values(SAVE_TARGET).includes(provenanceTarget) ? (
           <FormulaModal
             title={`${ATTR_FULL[Object.entries(SAVE_TARGET).find(([, target]) => target === provenanceTarget)?.[0] as Attribute]} save`}
-            total={resolveSaveValue(
+            total={saveValue(
               resolverInput,
               Object.entries(SAVE_TARGET).find(([, target]) => target === provenanceTarget)?.[0] as Attribute,
             ).total}
@@ -343,7 +348,7 @@ export function VitalityDisplayCard({
             breakdown={[
               {
                 label: "Attribute",
-                value: resolveAttributeModifier(
+                value: attributeValue(
                   resolverInput,
                   Object.entries(SAVE_TARGET).find(([, target]) => target === provenanceTarget)?.[0] as Attribute,
                 ).total,
