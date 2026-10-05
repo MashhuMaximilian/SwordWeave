@@ -73,3 +73,14 @@ body[data-ui="v12"] .monster-character-sheet .creature-stat-column .creature-sta
  .creature-dock-numbers small {font-size:8px}
  .creature-dock-numbers strong {font-size:10px}
 }
+/* Player drawer sections have named grid areas; this copy groups the same cards in two columns. */
+body[data-ui="v12"] .monster-character-sheet .creature-stat-body.v12-bottom-drawer-body {
+ display:grid!important;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)!important;
+ grid-template-areas:none!important;gap:20px!important;width:100%;padding:16px;
+}
+body[data-ui="v12"] .monster-character-sheet .creature-stat-body > :is(.v12-drawer-section,.creature-vitality-controls) {
+ grid-area:auto!important;grid-column:auto!important;min-width:0;width:100%;max-width:none;margin:0;
+}
+@media(max-width:767px) {
+ body[data-ui="v12"] .monster-character-sheet .creature-stat-body.v12-bottom-drawer-body {grid-template-columns:minmax(0,1fr)!important;gap:12px!important;padding:12px;}
+}
