@@ -1,6 +1,6 @@
 # Session continuity, collections and monsters — rollout and storage audit
 
-Implemented 2026-10-05. The detailed working plan and account-specific reports live in ignored `.local-plans/`; they must not be deployed or committed.
+Implemented and deployed to https://www.swordweave.quest on 2026-10-05 (deployment `dpl_GNGyKbBVPJ9AmZWDSKSG5tEefZrn`). The detailed working plan and account-specific reports live in ignored `.local-plans/`; they must not be deployed or committed.
 
 ## Service boundaries and verified allowance
 
@@ -80,6 +80,6 @@ Focused tests cover pinned nested components, publication idempotency, player re
 
 The final focused release runs passed **1,236 tests across 113 files**, with 15 tests skipped in one additional file. Production build and TypeScript validation passed. Eleven real-database integration checks passed with all fixture writes rolled back. Browser checks covered signed-in session status, bookmark selection, collections, creature calculation/preview, portrait/landscape/tablet widths and both themes. Automated tests cover two-client conflicts and offline queues; these are not a claim of testing two physical devices. The in-app browser did not report a download event for the session backup, so a real mobile download/import round trip remains a manual release check.
 
-The preexisting full suite also contains failures tied to seeded catalog assumptions and older mocks/narrative expectations. Keep these distinct from focused phase results; a targeted passing run is not a claim that the complete suite passes. Native browser prompts were replaced with inline collection rename/delete and monster copy create/delete reviews, including cancellation and pending guards. Final release test/build output is recorded privately under `.local-plans/` and temporary logs.
+The preexisting full suite also contains failures tied to seeded catalog assumptions and older mocks/narrative expectations. Keep these distinct from focused phase results; a targeted passing run is not a claim that the complete suite passes. Final live checks confirmed anonymous public source access, private template 404s, protected session 401s, Futoshi absent from public character discovery, and `private, no-store` API responses. A private monster copy persisted damage, a manual Vitality override and a consequence after reopening; increasing maximum Vitality left current Vitality unchanged. The disposable creature and copy used for this check were removed afterward. Native browser prompts were replaced with inline collection rename/delete and monster copy create/delete reviews, including cancellation and pending guards. Final release test/build output is recorded privately under `.local-plans/` and temporary logs.
 
 Deferred: DM workspace/encounters, general entity JSON interoperability, printed/digital handbooks, AI/MCP authoring, historical R2 archival and destructive cleanup.
