@@ -1,0 +1,91 @@
+/* Shared cards keep their complete material when a name or action is hovered.
+   Nested cards highlight independently; a parent never recolors a hovered child. */
+body[data-ui="v12"] :is(.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row):focus-within:not(:has(:is([data-component-card],.sw-character-component-row,.sw-character-item-row):focus-within)) {
+  background:var(--sw-metal-gold)!important;color:var(--sw-metal-gold-ink)!important;
+  --foreground:#271903;--muted-foreground:#49351b;--character-ink:#271903;
+  --v12-paper:#271903;--v12-soft:#49351b;--v12-faint:#49351b;--v12-copper-hi:#53300f;
+  --sw-text-mechanical:#53300f;--sw-text-narrative:#49351b;
+}
+@media (hover:hover) {
+  body[data-ui="v12"] :is(.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row):hover:not(:has(:is([data-component-card],.sw-character-component-row,.sw-character-item-row):hover)) {
+    background:var(--sw-metal-gold)!important;color:var(--sw-metal-gold-ink)!important;
+    --foreground:#271903;--muted-foreground:#49351b;--character-ink:#271903;
+    --v12-paper:#271903;--v12-soft:#49351b;--v12-faint:#49351b;--v12-copper-hi:#53300f;
+    --sw-text-mechanical:#53300f;--sw-text-narrative:#49351b;
+  }
+  body[data-ui="v12"] :is(.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row):hover:not(:has(:is([data-component-card],.sw-character-component-row,.sw-character-item-row):hover)) :is(h3,h4,strong,b,small,em,p,span,svg,[data-copy],[data-copy-role],[data-readable-rule],.v12-rule-description,.v12-composition-node-note,.v12-composition-node-main) { color:#271903!important; }
+}
+body[data-ui="v12"] :is(.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row):focus-within:not(:has(:is([data-component-card],.sw-character-component-row,.sw-character-item-row):focus-within)) :is(h3,h4,strong,b,small,em,p,span,svg,[data-copy],[data-copy-role],[data-readable-rule],.v12-rule-description,.v12-composition-node-note,.v12-composition-node-main) { color:#271903!important; }
+/* The row owns the highlight, not the nested button behind its title. */
+body[data-ui="v12"] .v12-composition-node-row > .v12-composition-node-main,
+body[data-ui="v12"] .sw-phone-composition-row > button:first-child,
+body[data-ui="v12"] .sw-character-component-header {
+  background:transparent!important;box-shadow:none!important;border:0!important;
+}
+body[data-ui="v12"] .v12-composition-node-row > .v12-composition-node-main { padding:3px 0!important;min-height:0; }
+body[data-ui="v12"] .v12-composition-node-main::after { display:none!important; }
+/* Compact stat values are text buttons inside an existing attribute frame. */
+body[data-ui="v12"] button.sw-vitality-value,
+body[data-ui="v12"] button.sw-vitality-value:is(:hover,:focus-visible) {
+  border:0!important;background:transparent!important;box-shadow:none!important;
+  min-height:0!important;padding:2px 4px!important;
+}
+body[data-ui="v12"] button.sw-vitality-value:focus-visible { outline:2px solid var(--v12-teal);outline-offset:1px; }
+/* One frame around a practices group, with dividers like the player drawer. */
+body[data-ui="v12"] .monster-practice-column { border:0!important;background:transparent!important;padding:0 8px!important;box-shadow:none!important; }
+body[data-ui="v12"] .monster-practice-column + .monster-practice-column { border-left:1px solid var(--border)!important; }
+body[data-ui="v12"] .monster-practice-column .monster-stat-open { border:0!important;background:transparent!important;box-shadow:none!important; }
+body[data-ui="v12"] .monster-practice-column .monster-stat-open:is(:hover,:focus-visible) { background:var(--sw-metal-gold)!important;color:var(--sw-metal-gold-ink)!important; }
+body[data-ui="v12"] .monster-metric-grid > .monster-stat-open { border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important; }
+body[data-ui="v12"] .monster-metric-grid > .monster-stat-open + .monster-stat-open { border-left:1px solid var(--border)!important; }
+body[data-ui="v12"] .monster-metric-grid > .monster-stat-open:is(:hover,:focus-visible) { background:var(--sw-metal-gold)!important;color:var(--sw-metal-gold-ink)!important; }
+body[data-ui="v12"] .monster-stat-open:is(:hover,:focus-visible) :is(span,strong) { color:inherit!important; }
+/* Every entity uses the same raised metal ring, including artwork portraits. */
+body[data-ui="v12"] .v12-entry-glyph {
+  border:1px solid transparent!important;
+  background:var(--sw-inset-fill) padding-box,var(--v12-gold-edge) border-box;
+  box-shadow:inset 0 0 0 2px var(--v12-panel-deep),0 0 0 1px color-mix(in srgb,var(--v12-brass) 25%,transparent);
+}
+body[data-ui="v12"] .v12-entry-glyph:has(> img.sw-entity-image) { padding:2px!important; }
+body[data-ui="v12"] .creature-identity .creature-back { display:inline-flex;align-items:center;min-height:36px;padding:8px 12px;font:700 10px/1.2 var(--font-system);color:var(--v12-paper);text-decoration:none; }
+body[data-ui="v12"] .v12-library-resizer { align-self:stretch;min-height:120px; }
+body[data-ui="v12"] .v12-library-resizer:focus-visible { outline:2px solid var(--v12-teal);outline-offset:-2px; }
+/* Keep the same catalogue card across breakpoints, never squeeze a table cell
+   into a narrow flex child. The badge gets its own grid column. */
+body[data-ui="v12"] .v12-entry-row { min-width:0; }
+body[data-ui="v12"] .v12-entry-copy { min-width:0; }
+body[data-ui="v12"] .v12-entry-title-line h3 { overflow-wrap:break-word;word-break:normal; }
+@media (max-width:1023px) {
+  body[data-ui="v12"] .v12-library-workbench .v12-library-inspector { display:none; }
+  body[data-ui="v12"] .v12-library-workbench > .v12-library-resizer { display:none; }
+}
+@media (max-width:767px) {
+  body[data-ui="v12"] .v12-library-browser .v12-entry-row { grid-template-columns:38px minmax(0,1fr) auto!important;gap:9px!important;padding:12px!important;min-height:110px; }
+  body[data-ui="v12"] .v12-library-browser .v12-entry-glyph { width:36px;height:36px; }
+  body[data-ui="v12"] .v12-library-browser .v12-entry-title-line h3 { font-size:18px!important;line-height:1.25; }
+  body[data-ui="v12"] .v12-library-browser .v12-entry-lineage { flex-wrap:wrap;gap:7px; }
+  body[data-ui="v12"] .v12-library-browser .v12-entry-lineage > div { max-width:100%; }
+  body[data-ui="v12"] .v12-library-browser .v12-entry-row > .v12-tag { padding:4px 6px;font-size:11px;white-space:nowrap; }
+  body[data-ui="v12"] .monster-practice-column + .monster-practice-column { border-left:0!important;border-top:1px solid var(--border)!important;padding-top:8px!important; }
+}
+@media (min-width:1024px) and (max-width:1279px) {
+  body[data-ui="v12"] .v12-library-workbench { grid-template-columns:var(--v12-library-left,270px) 9px minmax(0,1fr); }
+  body[data-ui="v12"] .v12-library-workbench.is-creations { grid-template-columns:minmax(0,1fr); }
+  body[data-ui="v12"] .v12-library-workbench .v12-library-inspector,
+  body[data-ui="v12"] .v12-library-results + .v12-library-resizer { display:none; }
+}
+body[data-ui="v12"] .v12-composition-node-row > button.v12-composition-node-main:is(:hover,:focus,:focus-visible) {
+  background:transparent!important;box-shadow:none!important;
+}
+/* One grid owns catalogue columns. Older outer-grid and masonry rules must
+   not multiply each other's column count on tablets or resized workbenches. */
+body[data-ui="v12"] .v12-library-browser .v12-creation-grid { display:block!important;columns:auto!important; }
+body[data-ui="v12"] .v12-library-browser .v12-creation-grid > .v12-entry-cluster {
+  display:grid!important;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:10px;columns:auto!important;
+}
+body[data-ui="v12"] .v12-entry-lineage { flex-wrap:wrap;gap:7px; }
+body[data-ui="v12"] .v12-entry-lineage > span { flex:0 0 100%; }
+body[data-ui="v12"] .v12-entry-lineage > div { max-width:100%; }
+body[data-ui="v12"] .v12-entry-lineage > div > div { flex-wrap:wrap; }
+body[data-ui="v12"] .sw-phone-composition-row b,
+body[data-ui="v12"] .v12-composition-node-bu small { color:var(--sw-text-gold); }

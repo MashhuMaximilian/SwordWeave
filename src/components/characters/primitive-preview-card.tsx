@@ -228,6 +228,7 @@ export function PrimitiveCardSurface({primitiveLink,inheritedFrom=null,inherited
   return (
     <div
       className="flex flex-col gap-1 rounded border border-border bg-card/40 px-2 py-1.5 text-xs transition-colors hover:bg-card/80"
+      data-component-card="true"
       data-testid="primitive-preview-card"
       data-primitive-id={p.id}
       data-primitive-name={p.name}

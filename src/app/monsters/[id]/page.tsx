@@ -9,7 +9,7 @@ export default async function Page({ params, searchParams }: {
   const { id } = await params;
   if ((await searchParams).edit === "1") return <MonsterWorkbench id={id} />;
   return <main className="mx-auto w-full max-w-[1060px] space-y-5 px-4 py-6">
-    <Link className="v12-metal-button" href="/monsters">← Bestiary</Link>
+    <Link className="sw-metal-button sw-metal-button--secondary" href="/monsters">← Bestiary</Link>
     <MonsterTemplatePreview id={id} />
   </main>;
 }

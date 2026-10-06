@@ -208,7 +208,7 @@ export function VitalityDisplayCard({
               <button
                 type="button"
                 onClick={() => setProvenanceTarget(ATTR_TARGET[attr])}
-                className="rounded px-1 transition-colors hover:bg-muted/60"
+                className="sw-vitality-value rounded px-1 transition-colors hover:bg-muted/60"
                 aria-label={`Show ${ATTR_FULL[attr]} modifier provenance`}
               >
                 <span
@@ -224,7 +224,7 @@ export function VitalityDisplayCard({
               <button
                 type="button"
                 onClick={() => setProvenanceTarget(SAVE_TARGET[attr])}
-                className="rounded px-1 transition-colors hover:bg-muted/60"
+                className="sw-vitality-value rounded px-1 transition-colors hover:bg-muted/60"
                 aria-label={`Show ${ATTR_FULL[attr]} save value provenance`}
                 title={`Save value = mod + PB (if proficient) + primitive contributions`}
               >

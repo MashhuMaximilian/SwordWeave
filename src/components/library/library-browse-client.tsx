@@ -4,7 +4,6 @@ import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { PhoneTypeChoices, PHONE_RECORD_TYPES } from "./phone-type-choices";
 import { useInfiniteLibrary } from "@/lib/hooks/use-infinite-library";
 import { InfiniteLibraryResults } from "./infinite-library-results";
-import { LibraryTable } from "./library-table";
 
 // =============================================================================
 // LibraryBrowseClient — client wrapper that owns the toolbar state and pushes
@@ -298,24 +297,43 @@ export function LibraryBrowseClient({
       event.preventDefault();
       const frame = workbenchRef.current?.getBoundingClientRect();
       if (!frame) return;
+      const opposite = side === "left" ? (window.innerWidth < 1280 ? 0 : rightCollapsed ? 44 : rightWidth) : isPrimitiveMode ? (leftCollapsed ? 44 : leftWidth) : 0;
+      const maximum = Math.max(side === "left" ? 190 : 240, frame.width - opposite - 300 - (isPrimitiveMode ? 18 : 9));
       const move = (pointer: PointerEvent) => {
         if (side === "left") {
           setLeftCollapsed(false);
-          setLeftWidth(Math.max(190, Math.min(430, pointer.clientX - frame.left)));
+          setLeftWidth(Math.max(190, Math.min(Math.min(520, maximum), pointer.clientX - frame.left)));
         } else {
           setRightCollapsed(false);
-          setRightWidth(Math.max(240, Math.min(480, frame.right - pointer.clientX)));
+          setRightWidth(Math.max(240, Math.min(Math.min(640, maximum), frame.right - pointer.clientX)));
         }
       };
       const stop = () => {
         window.removeEventListener("pointermove", move);
         window.removeEventListener("pointerup", stop);
+        window.removeEventListener("pointercancel", stop);
       };
       window.addEventListener("pointermove", move);
       window.addEventListener("pointerup", stop, { once: true });
+      window.addEventListener("pointercancel", stop, { once: true });
     },
-    [],
+    [isPrimitiveMode, leftCollapsed, leftWidth, rightCollapsed, rightWidth],
   );
+
+  const resizeWithKeyboard = (side: "left" | "right", event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const frame = workbenchRef.current?.getBoundingClientRect();
+    if (!frame) return;
+    const minimum = side === "left" ? 190 : 240;
+    const opposite = side === "left" ? (window.innerWidth < 1280 ? 0 : rightCollapsed ? 44 : rightWidth) : isPrimitiveMode ? (leftCollapsed ? 44 : leftWidth) : 0;
+    const maximum = Math.max(minimum, Math.min(side === "left" ? 520 : 640, frame.width - opposite - 300 - (isPrimitiveMode ? 18 : 9)));
+    const width = side === "left" ? leftWidth : rightWidth;
+    const delta = (event.key === "ArrowRight" ? 1 : -1) * (side === "left" ? 1 : -1) * 24;
+    const value = event.key === "Home" ? minimum : event.key === "End" ? maximum : Math.max(minimum, Math.min(maximum, width + delta));
+    if (side === "left") { setLeftCollapsed(false); setLeftWidth(value); }
+    else { setRightCollapsed(false); setRightWidth(value); }
+  };
 
   useEffect(() => {
     let frameRequest = 0;
@@ -376,7 +394,7 @@ export function LibraryBrowseClient({
             />
           </div>
         ) : null}
-        {isPrimitiveMode ? <div className="v12-library-resizer" role="separator" aria-label="Resize category column" onPointerDown={(event) => startResize("left", event)} /> : null}
+        {isPrimitiveMode ? <div className="v12-library-resizer" role="separator" aria-label="Resize category column" aria-orientation="vertical" tabIndex={0} aria-valuemin={190} aria-valuemax={520} aria-valuenow={leftWidth} onKeyDown={event => resizeWithKeyboard("left", event)} onPointerDown={(event) => startResize("left", event)} /> : null}
         <main className="v12-library-results min-h-0">
           <section className={`v12-family-panel${familyExpanded ? " is-expanded" : " is-collapsed"}`} aria-label={state.typeFilter === "MONSTER" ? "Creature catalogue" : "Selected market family"}>
           <div className="v12-market-hero">
@@ -449,7 +467,7 @@ export function LibraryBrowseClient({
             <div className="v12-origin-tabs" aria-label="Entry origin">{(["all", "system", "community"] as const).map(origin => <button type="button" key={origin} aria-pressed={(state.origin ?? "all") === origin} onClick={() => onStateChange({ ...state, origin })}>{origin === "all" ? "All origins" : origin === "system" ? "System" : "Community"}</button>)}</div>
           </div>
           <InfiniteLibraryResults key={queryString} {...discovery} render={(visibleItems) => <>
-          {visibleItems.length && phone ? <LibraryTable items={visibleItems} view="LIST" surface="atelier" compact engagement={engagement} currentUserInternalId={currentUserInternalId} onSelect={onRowSelect}/> : visibleItems.length ? (
+          {visibleItems.length ? (
             <div className={isPrimitiveMode ? "v12-cluster-list" : "v12-creation-grid"}>
               {[{ id: isPrimitiveMode ? "primitives" : "creations", entries: visibleItems }].map(({ id, entries }) => <section className={`v12-entry-cluster${isPrimitiveMode ? " is-flat" : ""}`} key={id}>{entries.map((item) => (
                 <LibraryCatalogueCard key={item.id} item={item} selected={selectedItem?.id === item.id} onSelect={onRowSelect} engagement={engagement} currentUserInternalId={currentUserInternalId}>
@@ -462,7 +480,7 @@ export function LibraryBrowseClient({
           )}
           </>} />
         </main>
-        <div className="v12-library-resizer" role="separator" aria-label="Resize preview column" onPointerDown={(event) => startResize("right", event)} />
+        <div className="v12-library-resizer" role="separator" aria-label="Resize preview column" aria-orientation="vertical" tabIndex={0} aria-valuemin={240} aria-valuemax={640} aria-valuenow={rightWidth} onKeyDown={event => resizeWithKeyboard("right", event)} onPointerDown={(event) => startResize("right", event)} />
         <aside className="v12-library-inspector">
           <button type="button" className="v12-column-toggle v12-column-toggle--right" onClick={() => setRightCollapsed((value) => !value)} aria-label={rightCollapsed ? "Expand preview column" : "Collapse preview column"}>{rightCollapsed ? "‹" : "›"}</button>
           <div className="v12-section-head">

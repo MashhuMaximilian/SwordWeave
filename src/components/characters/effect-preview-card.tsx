@@ -245,6 +245,7 @@ export function EffectPreviewCard({
           ? "border-primary ring-2 ring-primary/30"
           : "border-border hover:border-primary/50",
       )}
+      data-component-card="true"
       data-testid="effect-preview-card"
       data-effect-id={effectLink.effectId}
       data-effect-name={effectLink.name}

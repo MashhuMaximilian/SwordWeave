@@ -192,6 +192,8 @@ export interface LibraryItem {
   verboseDescription?: string | null;
   definitionKind?: "TEMPLATE" | "EXPRESSION" | undefined;
   mirrorable?: boolean;
+  /** Only included for the weakness picker; uses the existing permission-filtered query. */
+  mirrorRules?: { hardModifiers: unknown[]; mirrorVector: string | null; isMirrorable: boolean };
   mechanicTargets?: string[];
   recipients?: string[];
   conditional?: boolean;
@@ -940,7 +942,8 @@ async function fetchPrimitives(q: LibraryFetchQuery): Promise<LibraryItem[]> {
       verboseDescription: r.narrativeRule,
       definitionKind: r.definitionKind,
       ...primitiveMechanicFacets(r.hardModifiers),
-      mirrorable: r.isMirrorable && Array.isArray(r.hardModifiers) && r.hardModifiers.some((modifier: HardModifier) => (r.mirrorVector === "STRUCTURAL_FAULT" || r.mirrorVector === "COST_INSTABILITY" || isMirrorableOperation(modifier.operation)) && !readMirrorMeta(modifier)?.optedOut),
+      mirrorable: r.isMirrorable && r.mirrorVector !== "STANDARD_ONLY" && Array.isArray(r.hardModifiers) && r.hardModifiers.some((modifier: HardModifier) => (r.mirrorVector === "STRUCTURAL_FAULT" || r.mirrorVector === "COST_INSTABILITY" || isMirrorableOperation(modifier.operation)) && !readMirrorMeta(modifier)?.optedOut),
+      ...(q.mirrorableOnly ? { mirrorRules: { hardModifiers: Array.isArray(r.hardModifiers) ? r.hardModifiers : [], mirrorVector: r.mirrorVector, isMirrorable: r.isMirrorable } } : {}),
       versionNumber: r.versionNumber,
       bindings: r.bindings ?? {},
       familyKey: r.familyKey,

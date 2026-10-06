@@ -3,9 +3,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useUser, useClerk } from "@clerk/nextjs";
 import { LibraryCatalogueCard, LibraryCatalogueSurface } from "@/components/library/library-catalogue-card";
 import { useRouter } from "next/navigation";
+import { ColumnSearchBar } from "@/components/library/column-search-bar";
+import { PHONE_RECORD_TYPES } from "@/components/library/phone-type-choices";
 import type { LibraryItem } from "@/lib/publishing/library-query";
 import Link from "next/link";
-import { FolderTree, Folder, BookOpen, Bookmark, Hammer, GitFork, Plus } from "lucide-react";
+import { FolderTree, Folder, BookOpen, Bookmark, Hammer, GitFork, Plus, ArrowLeft } from "lucide-react";
 import { useModalStack } from "@/components/ui/modal-stack";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CollectionEntryPreview } from "./collection-entry-preview";
@@ -36,6 +38,14 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
     [creating, setCreating] = useState(false),
     [entryView, setEntryView] = useState<"GRID" | "LIST">("GRID"),
     [page, setPage] = useState(0),
+    [search, setSearch] = useState(""),
+    [filtersOpen, setFiltersOpen] = useState(false),
+    [collectionKind, setCollectionKind] = useState("all"),
+    [collectionVisibility, setCollectionVisibility] = useState(""),
+    [entryType, setEntryType] = useState("ALL"),
+    [entryOrigin, setEntryOrigin] = useState("all"),
+    [entrySort, setEntrySort] = useState("RECENT"),
+    [loading, setLoading] = useState(false),
     [more, setMore] = useState(false),
     [error, setError] = useState(""),
     [name, setName] = useState(""),
@@ -48,11 +58,13 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
   const alive = useRef(true);
   const controller = useRef<AbortController | null>(null);
   useEffect(() => { alive.current = true; return () => { alive.current = false; controller.current?.abort(); }; }, []);
+  const catalogueSearch = collectionId ? search : "";
   const load = useCallback(async () => {
     if (!alive.current) return;
     controller.current?.abort();
     const reading = new AbortController(); controller.current = reading;
     const currentRequest = () => alive.current && !reading.signal.aborted;
+    setLoading(true);
     try {
       const r = await fetch(
         collectionId
@@ -66,7 +78,8 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
       if (!r.ok) throw new Error(d.error);
       if (collectionId) {
         setCurrent(d.collection);
-        const catalogue = await fetch(`/api/library?collectionId=${encodeURIComponent(collectionId)}&limit=24&offset=${page * 24}&sort=RECENT`, {signal: reading.signal, cache: "no-store"});
+        const query = new URLSearchParams({ collectionId, limit: "24", offset: String(page * 24), sort: entrySort, q: catalogueSearch, targetType: entryType, origin: entryOrigin });
+        const catalogue = await fetch(`/api/library?${query}`, {signal: reading.signal, cache: "no-store"});
         const library = await catalogue.json();
         if (!currentRequest()) return;
         if (!catalogue.ok) throw new Error(library.error ?? "Unable to load collected entries");
@@ -80,8 +93,10 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
       } else setRows(d.collections);
     } catch (e) {
       if (currentRequest()) setError(e instanceof Error ? e.message : "Unable to load collections");
+    } finally {
+      if (currentRequest()) setLoading(false);
     }
-  }, [collectionId, ownerId, page]);
+  }, [collectionId, ownerId, page, entrySort, entryType, entryOrigin, catalogueSearch]);
   useEffect(() => {
     // Schedule the account/page read after the committed render.
     void Promise.resolve().then(load);
@@ -105,13 +120,17 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
   }
   const Root = embedded ? "div" : "main";
   const Heading = embedded ? "h2" : "h1";
+  const changeSearch = useCallback((value: string) => { setSearch(value); setPage(0); }, []);
+  const activeFilters = collectionId ? Boolean(entryType !== "ALL" || entryOrigin !== "all" || entrySort !== "RECENT") : Boolean(collectionKind !== "all" || collectionVisibility);
+  const clearFilters = () => { setSearch(""); setCollectionKind("all"); setCollectionVisibility(""); setEntryType("ALL"); setEntryOrigin("all"); setEntrySort("RECENT"); setPage(0); };
+  const matchedRows = rows.filter(c => c.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()) && (!collectionVisibility || c.visibility === collectionVisibility) && (collectionKind === "all" || (collectionKind === "automatic" ? Boolean(c.system_kind) : !c.system_kind)));
+  const branchIds = new Set(matchedRows.flatMap(c => [c.id, ...collectionAncestors(c, rows).map(ancestor => ancestor.id)]));
+  const indexRows = rows.filter(c => branchIds.has(c.id));
   const children = current ? rows.filter(c => c.parent_id === current.id && !c.system_kind) : [];
   return (
     <Root className={`sw-collections ${embedded ? "sw-collections--embedded" : ""}`}>
-      {!embedded && <Link href="/collections" className="sw-collections-breadcrumb">
-        Collections
-      </Link>}
-      <header className="sw-collections-heading"><span className="sw-collections-medallion" aria-hidden="true"><FolderTree size={24} /></span><div><p className="sw-collections-eyebrow">Collection index</p><Heading>
+      {collectionId && <Link href="/collections" className="sw-metal-button sw-collections-button sw-collections-back"><ArrowLeft size={14} />Back to collections</Link>}
+      <header className="sw-collections-heading"><span className="v12-entry-glyph sw-collections-medallion" aria-hidden="true"><FolderTree size={24} /></span><div><p className="sw-collections-eyebrow">Collection index</p><Heading>
         {current?.name ?? "Your collections"}
       </Heading></div></header>
       <p className="sw-collections-intro">
@@ -122,10 +141,25 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
           {error}
         </p>
       )}
+      <div className="sw-collections-search">
+        <ColumnSearchBar search={search} onSearchChange={changeSearch} onOpenFilters={() => setFiltersOpen(open => !open)} hasActiveFilters={activeFilters} placeholder={collectionId ? "Search collected entries…" : "Search collections…"} />
+        {filtersOpen && <div className="sw-collections-filters sw-discovery-filters sw-discovery-filters__basics">
+          {collectionId ? <>
+            <label className="sw-discovery-field"><span>Entry type</span><select value={entryType} onChange={event => { setEntryType(event.target.value); setPage(0); }}>{[...PHONE_RECORD_TYPES].sort((a,b) => Number(b.value === "ALL") - Number(a.value === "ALL")).map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+            <label className="sw-discovery-field"><span>Origin</span><select value={entryOrigin} onChange={event => { setEntryOrigin(event.target.value); setPage(0); }}><option value="all">All origins</option><option value="system">System</option><option value="community">Community</option></select></label>
+            <label className="sw-discovery-field"><span>Sort entries</span><select value={entrySort} onChange={event => { setEntrySort(event.target.value); setPage(0); }}><option value="RECENT">Newest</option><option value="ALPHABETICAL">Name A–Z</option><option value="ALPHABETICAL_DESC">Name Z–A</option><option value="BU">BU: low to high</option><option value="BU_DESC">BU: high to low</option><option value="LIKES">Most liked</option><option value="FORKS">Most adapted</option></select></label>
+          </> : <>
+            <label className="sw-discovery-field"><span>Collection kind</span><select value={collectionKind} onChange={event => setCollectionKind(event.target.value)}><option value="all">All collections</option><option value="automatic">Automatic collections</option><option value="branches">Collection branches</option></select></label>
+            <label className="sw-discovery-field"><span>Visibility</span><select value={collectionVisibility} onChange={event => setCollectionVisibility(event.target.value)}><option value="">All visibility</option><option value="PUBLIC">Public</option><option value="FOLLOWERS_ONLY">Followers only</option><option value="PRIVATE">Private</option></select></label>
+          </>}
+          <button type="button" className="sw-metal-button sw-collections-button" onClick={clearFilters} disabled={!activeFilters && !search}>Clear filters</button>
+        </div>}
+      </div>
       {!collectionId && (
         <>
-          {rows.some(c => c.system_kind) && <section className="sw-collections-section"><p className="sw-collections-eyebrow">Automatic collections</p><div className="sw-collections-grid v12-creation-grid">{rows.filter(c => c.system_kind).map(c => <LibraryCatalogueSurface key={c.id} title={c.name} onSelect={() => router.push(`/collections/${c.id}`)} glyph={c.system_kind?.includes("FORK") ? <GitFork size={24} /> : c.system_kind === "ORIGINAL" ? <Hammer size={24} /> : <Bookmark size={24} />} badge={<span className="v12-tag">{c.visibility.replaceAll("_", " ").toLowerCase()}</span>}><p className="v12-entry-summary">{c.system_kind?.includes("FORK") ? "Forks of existing entries" : c.system_kind === "ORIGINAL" ? "Entries you authored" : "Entries you saved"}</p></LibraryCatalogueSurface>)}</div></section>}
-          <section className="sw-collections-section"><div className="sw-collections-section-heading"><h2>Collection branches</h2>{user && <a href="#create-collection" className="sw-metal-button sw-metal-button--primary sw-collections-button" onClick={() => {setParent("");setCreating(true);}}><Plus size={14} /> Create collection</a>}</div><CollectionTree rows={rows.filter(c => !c.system_kind)} />{!rows.some(c => !c.system_kind) && <EmptyState compact icon={FolderTree} title="Start a collection branch" description="Create a root for a campaign, theme, or project. Add child collections to organize its entries." />}</section>
+          {indexRows.some(c => c.system_kind) && <section className="sw-collections-section"><p className="sw-collections-eyebrow">Automatic collections</p><div className="sw-collections-grid v12-creation-grid">{indexRows.filter(c => c.system_kind).map(c => <LibraryCatalogueSurface key={c.id} title={c.name} onSelect={() => router.push(`/collections/${c.id}`)} glyph={c.system_kind?.includes("FORK") ? <GitFork size={24} /> : c.system_kind === "ORIGINAL" ? <Hammer size={24} /> : <Bookmark size={24} />} badge={<span className="v12-tag">{c.visibility.replaceAll("_", " ").toLowerCase()}</span>}><p className="v12-entry-summary">{c.system_kind?.includes("FORK") ? "Forks of existing entries" : c.system_kind === "ORIGINAL" ? "Entries you authored" : "Entries you saved"}</p></LibraryCatalogueSurface>)}</div></section>}
+          <section className="sw-collections-section"><div className="sw-collections-section-heading"><h2>Collection branches</h2>{user && <a href="#create-collection" className="sw-metal-button sw-metal-button--primary sw-collections-button" onClick={() => {setParent("");setCreating(true);}}><Plus size={14} /> Create collection</a>}</div><CollectionTree rows={indexRows.filter(c => !c.system_kind)} />{!rows.some(c => !c.system_kind) && !search && !activeFilters && <EmptyState compact icon={FolderTree} title="Start a collection branch" description="Create a root for a campaign, theme, or project. Add child collections to organize its entries." />}</section>
+          {!indexRows.length && (search || activeFilters) && <EmptyState compact icon={FolderTree} title="No matching collections" description="Try another name or clear the collection filters." />}
           {!user && (
             <button
               onClick={() => clerk.openSignIn()}
@@ -213,16 +247,16 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
           )}
           <div className="sw-collections-section-heading"><h2>Collected entries</h2><div className="sw-collections-actions" aria-label="Entry layout">{(["GRID", "LIST"] as const).map(view => <button key={view} type="button" className="sw-metal-button sw-collections-button" aria-pressed={entryView === view} onClick={() => setEntryView(view)}>{view === "GRID" ? "Cards" : "List"}</button>)}</div></div>
           <div className={`sw-collections-catalogue ${entryView === "GRID" ? "v12-creation-grid" : "v12-cluster-list"}`}>
-            {entries.length ? <section className={`v12-entry-cluster${entryView === "LIST" ? " is-flat" : ""}`}>{entries.map(item => <LibraryCatalogueCard key={item.id} item={item} currentUserInternalId={null} onSelect={selected => {
+            {loading ? <p className="sw-collections-intro" role="status">Loading collected entries…</p> : entries.length ? <section className={`v12-entry-cluster${entryView === "LIST" ? " is-flat" : ""}`}>{entries.map(item => <LibraryCatalogueCard key={item.id} item={item} currentUserInternalId={null} onSelect={selected => {
               if (stack.canPush) stack.push({ key: `collection-entry:${selected.targetType}:${selected.targetId}`, label: selected.name, category: selected.targetType, content: <CollectionEntryPreview targetType={selected.targetType} targetId={selected.targetId} /> });
-            }} />)}</section> : <EmptyState compact icon={BookOpen} title="No collected entries yet" description="Save an entry from the Library or My Creations and choose this collection. Only entries you can access appear here." />}
+            }} />)}</section> : <EmptyState compact icon={BookOpen} title={search || activeFilters ? "No matching entries" : "No collected entries yet"} description={search || activeFilters ? "Try another search or clear the entry filters." : "Save an entry from the Library or My Creations and choose this collection. Only entries you can access appear here."} />}
           </div>
           {(page > 0 || more) && <div className="sw-collections-pagination">
-            <button className="sw-metal-button sw-collections-button" disabled={!page || pending} onClick={() => setPage((p) => p - 1)}>
+            <button className="sw-metal-button sw-collections-button" disabled={!page || pending || loading} onClick={() => setPage((p) => p - 1)}>
               Previous
             </button>
             <span>Page {page + 1}</span>
-            <button className="sw-metal-button sw-collections-button" disabled={!more || pending} onClick={() => setPage((p) => p + 1)}>
+            <button className="sw-metal-button sw-collections-button" disabled={!more || pending || loading} onClick={() => setPage((p) => p + 1)}>
               Next
             </button>
           </div>}
@@ -322,7 +356,7 @@ function CollectionTree({ rows, parentId = null, seen = [] }: { rows: Collection
   if (!children.length) return null;
   return <ul className="sw-collections-tree">{children.map(c => {
     const hasChildren = rows.some(child => child.parent_id === c.id && !seen.includes(child.id));
-    const heading = <><Link href={`/collections/${c.id}`} className="sw-collections-tree-link"><Folder size={18} aria-hidden="true" /><strong>{c.name}</strong></Link><span className="sw-collections-tree-visibility">{c.visibility.replaceAll("_", " ").toLowerCase()}{c.followed ? " · saved" : ""}</span></>;
+    const heading = <><Link href={`/collections/${c.id}`} className="sw-collections-tree-link"><span className="v12-entry-glyph sw-collections-branch-glyph" aria-hidden="true"><Folder size={18} /></span><strong>{c.name}</strong></Link><span className="sw-collections-tree-visibility">{c.visibility.replaceAll("_", " ").toLowerCase()}{c.followed ? " · saved" : ""}</span></>;
     return <li key={c.id} className="sw-collections-tree-node" data-library-surface="atelier">{hasChildren ? <details open><summary><span className="sw-collections-tree-toggle" aria-hidden="true">›</span>{heading}</summary><CollectionTree rows={rows} parentId={c.id} seen={[...seen, c.id]} /></details> : <div className="sw-collections-tree-leaf"><span className="sw-collections-tree-toggle" aria-hidden="true">·</span>{heading}</div>}</li>;
   })}</ul>;
 }

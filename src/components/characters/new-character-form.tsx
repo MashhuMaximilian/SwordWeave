@@ -3814,16 +3814,18 @@ function StartingAccessStep({
   );
 }
 
-function MirrorOptionCard({
+export function MirrorOptionCard({
   item,
   active,
   disabled,
   onSelect,
+  showCredit = true,
 }: {
   item: PrimitiveOption;
   active: boolean;
   disabled?: boolean;
   onSelect: () => void;
+  showCredit?: boolean;
 }) {
   const credit = item.mirrorBuCredit ?? item.buCost;
   const mechanicalCopy = item.mechanicalOutputText
@@ -3858,15 +3860,15 @@ function MirrorOptionCard({
         <small>{mirrorConsequence(item)}</small>
         {mechanicalCopy ? <em>Original benefit: {mechanicalCopy}</em> : null}
       </span>
-      <span className="sw-mirror-choices__credit">
+      {showCredit && <span className="sw-mirror-choices__credit">
         +{credit}
         <small>BU credit</small>
-      </span>
+      </span>}
       <b>
         {active
           ? "Remove drawback"
           : disabled
-            ? "Above debt limit"
+            ? (showCredit ? "Above debt limit" : "Unavailable")
             : "Choose drawback"}
       </b>
     </button>
