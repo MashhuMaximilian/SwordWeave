@@ -77,15 +77,42 @@ body[data-ui="v12"] .v12-entry-title-line h3 { overflow-wrap:break-word;word-bre
 body[data-ui="v12"] .v12-composition-node-row > button.v12-composition-node-main:is(:hover,:focus,:focus-visible) {
   background:transparent!important;box-shadow:none!important;
 }
-/* One grid owns catalogue columns. Older outer-grid and masonry rules must
-   not multiply each other's column count on tablets or resized workbenches. */
+/* One masonry surface owns columns; primitives keep their existing row layout. */
 body[data-ui="v12"] .v12-library-browser .v12-creation-grid { display:block!important;columns:auto!important; }
-body[data-ui="v12"] .v12-library-browser .v12-creation-grid > .v12-entry-cluster {
-  display:grid!important;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:10px;columns:auto!important;
-}
+body[data-ui="v12"] .v12-library-browser .v12-creation-grid > .v12-entry-cluster,
+body[data-ui="v12"] .v12-catalogue-collection.is-mosaic { display:block!important;columns:3 280px!important;column-gap:12px; }
+body[data-ui="v12"] :is(.v12-library-browser .v12-creation-grid > .v12-entry-cluster,.v12-catalogue-collection) > .v12-entry-row { break-inside:avoid;display:grid;min-height:0;height:auto;margin:0 0 12px; }
+body[data-ui="v12"] .v12-catalogue-collection.is-list { display:grid;gap:10px; }
+body[data-ui="v12"] .v12-catalogue-collection { min-width:0; }
+@media(max-width:767px) { body[data-ui="v12"] .v12-catalogue-collection.is-mosaic,body[data-ui="v12"] .v12-library-browser .v12-creation-grid > .v12-entry-cluster { columns:1!important; } }
 body[data-ui="v12"] .v12-entry-lineage { flex-wrap:wrap;gap:7px; }
 body[data-ui="v12"] .v12-entry-lineage > span { flex:0 0 100%; }
 body[data-ui="v12"] .v12-entry-lineage > div { max-width:100%; }
 body[data-ui="v12"] .v12-entry-lineage > div > div { flex-wrap:wrap; }
 body[data-ui="v12"] .sw-phone-composition-row b,
 body[data-ui="v12"] .v12-composition-node-bu small { color:var(--sw-text-gold); }
+
+/* Mechanical rules keep copper at rest and dark ink on gold; no beige rule slabs. */
+body[data-ui="v12"] .v12-composition-copy { color:var(--sw-text-mechanical); }
+body[data-ui="v12"] .v12-entry-row:is(:hover,:focus-visible) .v12-composition-mechanic { background:transparent!important;box-shadow:none!important;color:var(--sw-metal-gold-ink)!important; }
+body[data-ui="v12"] .v12-entry-row:is(:hover,:focus-visible) :is(.v12-composition-copy,.v12-entry-mechanical,[data-readable-rule]) { color:var(--sw-metal-gold-ink)!important; }
+body[data-ui="v12"] .sw-access-entry:is(:hover,:focus-visible) :is([data-copy="mechanical"],p) { color:var(--sw-metal-gold-ink)!important; }
+body[data-ui="v12"] [data-component-card] > div:first-child > button { background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important;min-height:0!important;color:inherit!important; }
+body[data-ui="v12"] .sw-access-entry__icon { aspect-ratio:1;flex-shrink:0;min-width:42px; }
+
+body[data-ui="v12"] .sw-drawer-attribute-cell { display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px;min-width:0; }
+body[data-ui="v12"] .sw-drawer-attribute-cell + .sw-drawer-attribute-cell { border-left:1px solid color-mix(in srgb,var(--v12-silver) 20%,transparent); }
+body[data-ui="v12"] .sw-drawer-attribute-cell > button { border:0!important;background:transparent!important;box-shadow:none!important;padding:2px 4px!important;min-height:0!important; }
+body[data-ui="v12"] .monster-core-metrics { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0; }
+body[data-ui="v12"] .monster-core-metrics > button { display:flex;align-items:center;justify-content:center;gap:10px;padding:10px; }
+body[data-ui="v12"] .monster-core-metrics strong { color:var(--sw-text-teal);font:600 24px var(--font-technical); }
+
+body[data-ui="v12"] .monster-sheet-stats .monster-metric-grid {grid-template-columns:repeat(2,minmax(0,1fr));}
+
+body[data-ui="v12"] .v12-entry-summary { color:var(--foreground);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;margin-top:10px; }
+body[data-ui="v12"] .v12-entry-row:is(:hover,:focus-visible) .v12-entry-summary { color:var(--sw-metal-gold-ink)!important; }
+/* Catalogue interaction takes precedence over the general gold-card button material. */
+body[data-ui="v12"] .v12-entry-row[data-preview-trigger="true"]:is(:hover,:focus-visible) .v12-entry-copy :is(.v12-composition-mechanic,.v12-show-mechanics) { background:transparent!important;background-color:transparent!important;box-shadow:none!important;color:var(--sw-metal-gold-ink)!important; }
+
+body[data-ui="v12"] .v12-catalogue-collection .v12-entry-mechanical { color:var(--sw-text-mechanical); }
+body[data-ui="v12"] .monster-core-metrics > button:is(:hover,:focus-visible) strong { color:var(--sw-metal-gold-ink)!important; }

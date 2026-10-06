@@ -1,0 +1,17 @@
+"use client";
+import type { ReactNode } from "react";
+export type DrawerAttribute = {key:"physical"|"mental"|"magical";label:string;modifier:number;save:number;proficient?:boolean;expert?:boolean;marker?:ReactNode};
+const signed=(value:number)=>`${value>=0?"+":""}${value}`;
+/** Shared player drawer anatomy. Formula handlers belong to the resolved subject. */
+export function DrawerAttributeDeck({attributes,onOpen,onSave}:{attributes:DrawerAttribute[];onOpen:(key:DrawerAttribute["key"])=>void;onSave?:(key:DrawerAttribute["key"])=>void}) {
+ return <div className="v12-drawer-section v12-drawer-attributes mt-2 mb-2"><p className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Mods + saves</p><div className="grid grid-cols-3 gap-1.5">{attributes.map(attr=>{
+ const name=<span className="flex items-center justify-center gap-1"><span className={`text-[8px] font-semibold uppercase ${attr.proficient?"text-teal-700 dark:text-teal-300":"text-muted-foreground"}`}>{attr.label}</span>{attr.proficient&&<span className="rounded bg-teal-500/15 px-1 py-0.5 text-[7px] font-bold uppercase text-teal-700 dark:text-teal-300">PROF</span>}{attr.expert&&<span className="rounded bg-amber-500/15 px-1 py-0.5 text-[7px] font-bold uppercase text-amber-700 dark:text-amber-300">EXPERT</span>}</span>;
+ const mod=<span className="mt-1 flex items-center justify-center gap-0.5 font-mono text-base font-bold tabular-nums leading-none">{signed(attr.modifier)}{attr.marker}</span>;
+ const save=<span className="mt-1.5 text-[9px] text-muted-foreground">save: <span className="font-mono font-semibold">{signed(attr.save)}</span></span>;
+ return onSave?<div className="sw-drawer-attribute-cell" key={attr.key}>{name}<button type="button" aria-label={`Show ${attr.label} modifier provenance`} onClick={()=>onOpen(attr.key)}>{mod}</button><button type="button" aria-label={`Show ${attr.label} save provenance`} onClick={()=>onSave(attr.key)}>{save}</button></div>:<button key={attr.key} type="button" onClick={()=>onOpen(attr.key)} className={`flex flex-col items-center justify-center rounded border-2 bg-card px-1 py-1.5 text-center transition-colors hover:bg-secondary/30 ${attr.proficient?"border-teal-500":"border-border"}`} title={`Show formula for ${attr.label} mod + save`}>{name}{mod}{save}</button>;
+ })}</div></div>;
+}
+export function DrawerVitalityDeck({current,max,onOpen,children}:{current:number;max:number;onOpen:()=>void;children?:ReactNode}) {
+ const percentage=max>0?Math.max(0,Math.min(100,Math.round(current/max*100))):0;
+ return <div className="v12-vitality-deck mt-2 rounded-md border border-border bg-card px-2 py-1.5"><button type="button" onClick={onOpen} className="block w-full text-left" title="Show provenance for max vitality"><div className="flex items-baseline justify-between"><p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Vitality</p><span className="text-[9px] text-muted-foreground tabular-nums">{percentage}%</span></div><p className="mt-0.5 font-mono text-xl font-bold leading-none">{current}<span className="text-sm font-normal text-muted-foreground"> / {max}</span></p><div className="v12-vitality-track mt-1 h-1 overflow-hidden rounded-full bg-secondary"><div className={`v12-vitality-fill h-full rounded-full transition-all ${percentage<25?"bg-destructive":percentage<50?"bg-amber-500":"bg-green-500"}`} style={{width:`${percentage}%`}}/></div></button>{children}</div>;
+}

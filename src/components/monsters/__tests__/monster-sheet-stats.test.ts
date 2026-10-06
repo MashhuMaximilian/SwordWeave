@@ -1,7 +1,9 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { monsterDefinitionSchema } from "@/lib/monsters/model";
 import { resolveMonster, type MonsterSlot } from "@/lib/monsters/resolve";
-import { monsterFormulaSteps, monsterPracticeSteps } from "../monster-sheet-stats";
+import { MonsterSheetStats, monsterFormulaSteps, monsterPracticeSteps } from "../monster-sheet-stats";
 
 const definition = monsterDefinitionSchema.parse({
   name: "Trace check", budget: 25, attributes: { physical: 3, mental: 0, magical: 0 },
@@ -41,4 +43,17 @@ describe("creature formula provenance", () => {
     const steps = monsterFormulaSteps("speed", sheet, [{ label: "Size", value: 30 }], sheet.resolved.totals["speed"]!);
     expect(steps.find(step => step.contribution)?.value).toBe(-4);
   });
+});
+
+it("renders resolved modifiers, saves and vitality without reapplying player baselines", () => {
+  const custom = { ...definition, baselineVitality: 20 };
+  const sheet = resolveMonster(custom, [source("attribute.physical", "add", 2, 1), source("proficiency_bonus", "add", 1, 2)], 7);
+  const html = renderToStaticMarkup(createElement(MonsterSheetStats, {sheet, definition: custom, proficientAttribute: "physical", showPractices: false}));
+  expect(html).toContain("35%");
+  expect(html).toContain(" / 20");
+  expect(html).toContain("Mods + saves");
+  expect(html).toContain(">PB</span><strong>+3");
+  expect(html).toContain(`>ATK</span><strong>+${sheet.resolved.totals["attack_bonus"]}`);
+  expect(html).toContain(`>Save DC</span><strong>${sheet.resolved.totals["save_dc"]}`);
+  expect(html).toContain("Show PHYS save provenance");
 });

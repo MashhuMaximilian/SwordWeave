@@ -4,7 +4,7 @@ import { resolveModifiers, type ResolvedPrimitiveSlot } from "@/lib/engine/resol
 import { computeAllPracticeModifiers } from "@/lib/engine/practices";
 import { SIZE_BASE_SPEED, SIZE_CAPACITY } from "@/lib/engine/encumbrance";
 import { monsterBaselines, clampMonsterVitality, type MonsterDefinition } from "./model";
-export type MonsterSlot = ResolvedPrimitiveSlot & { buCost: number; quantity: number; dependencyKey: string; item: boolean; supplyKeys?: string[][]; supplyNames?:Record<string,string>; dependencyVersions?: string[]; consequenceBehavior?: ConsequenceBehavior | null };
+export type MonsterSlot = ResolvedPrimitiveSlot & { mechanicalDescription?:string; buCost: number; quantity: number; dependencyKey: string; item: boolean; supplyKeys?: string[][]; supplyNames?:Record<string,string>; dependencyVersions?: string[]; consequenceBehavior?: ConsequenceBehavior | null };
 export function monsterCost(slots: readonly MonsterSlot[]) {
   const seen = new Set<string>(); let spent = 0, itemBu = 0;
   for (const s of slots) { if (seen.has(s.dependencyKey)) continue; seen.add(s.dependencyKey); const cost = s.isMirrored ? 0 : Math.max(0,s.buCost) * s.quantity; if (s.item) itemBu += cost; else spent += cost; }

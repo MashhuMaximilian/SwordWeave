@@ -1,4 +1,5 @@
 "use client";
+import { LibraryCatalogueCard } from "./library-catalogue-card";
 import { heritageKindLabel, isHeritageKind } from "@/lib/heritage/labels";
 import { libraryHeritageArt } from "@/lib/heritage/lineage-art";
 
@@ -79,7 +80,7 @@ export interface LibraryTableProps {
    */
   emptyDescription?: string;
   /** Compact instrument-row treatment used by the Atelier source column. */
-  surface?: "default" | "atelier";
+  surface?: "default" | "atelier" | "catalogue";
   /** Optional adjacent actions for embedded pickers, outside the clickable row. */
   renderActions?: (item: LibraryItem) => React.ReactNode;
   /** Short reading rows for narrow embedded pickers. */
@@ -156,6 +157,8 @@ export function LibraryTable({
       />
     );
   }
+
+  if (surface === "catalogue") return <><section className={`v12-catalogue-collection v12-creation-grid ${view === "LIST" ? "is-list" : "is-mosaic"}`}>{shownItems.map(item => <LibraryCatalogueCard key={item.id} item={item} engagement={engagement} currentUserInternalId={currentUserInternalId} selected={selectedKey === item.id} onSelect={item => onSelect?.(item)}/>)}</section>{loadingTail}{pagination}</>;
 
   if (view === "LIST") {
     return (

@@ -26,6 +26,7 @@
  * live in a separate VitalityTracker below this card.
  */
 
+import { DrawerAttributeDeck, DrawerVitalityDeck } from "./drawer-stat-deck";
 import { useState } from "react";
 import type { ResolvedModifiers } from "@/lib/engine/resolve-modifiers";
 import {
@@ -71,6 +72,8 @@ const SAVE_TARGET: Record<Attribute, string> = {
 const MAX_VITALITY_TARGET = "max_vitality";
 
 export interface VitalityDisplayCardProps {
+  layout?: "sheet" | "drawer";
+  drawerAttack?: {value:number;onOpen:()=>void};
   current: number;
   max: number;
   pb: number;
@@ -84,6 +87,7 @@ export interface VitalityDisplayCardProps {
 }
 
 export function VitalityDisplayCard({
+  layout = "sheet",
   current,
   max,
   pb,
@@ -91,6 +95,7 @@ export function VitalityDisplayCard({
   resolver,
   resolverInput,
   displayTotals,
+  drawerAttack,
 }: VitalityDisplayCardProps) {
   const [provenanceTarget, setProvenanceTarget] = useState<string | null>(null);
 
@@ -111,6 +116,7 @@ export function VitalityDisplayCard({
 
   return (
     <div>
+      {layout === "drawer" ? <><DrawerVitalityDeck current={current} max={max} onOpen={()=>setProvenanceTarget(MAX_VITALITY_TARGET)}/><DrawerAttributeDeck attributes={(["physical","mental","magical"] as const).map(attr=>({key:attr,label:ATTR_LABEL[attr],modifier:attributeValue(resolverInput,attr).total,save:saveValue(resolverInput,attr).total,proficient:proficientAttribute===attr}))} onOpen={attr=>setProvenanceTarget(ATTR_TARGET[attr])} onSave={attr=>setProvenanceTarget(SAVE_TARGET[attr])}/><div className="v12-drawer-section v12-drawer-derived monster-core-metrics"><button type="button" onClick={()=>setProvenanceTarget("proficiency_bonus")}><span>PB</span><strong>{fmt(pb)}</strong></button>{drawerAttack&&<button type="button" onClick={drawerAttack.onOpen}><span>ATK</span><strong>{fmt(drawerAttack.value)}</strong></button>}<button type="button" onClick={()=>setProvenanceTarget("save_dc")}><span>Save DC</span><strong>{primaryDc.total}</strong></button></div></> : <>
       {/* Phase 8.3g v4 (Mashu 2026-07-28): row 1 — Vitality
           label on the left, DC card on the right. The DC
           card is a REGULAR card (border-border, bg-background)
@@ -281,6 +287,7 @@ export function VitalityDisplayCard({
         </button>
       </div>
 
+      </>}
       {provenanceTarget && (
         provenanceTarget === MAX_VITALITY_TARGET ? (
           <FormulaModal

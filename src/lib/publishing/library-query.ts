@@ -1,5 +1,5 @@
 import { monsters } from "@/db/schema/monsters";
-import { monsterLibraryColumns,monsterToLibraryItem } from "./monster-library-item";
+import { monsterLibraryColumns,monsterRowsToLibraryItems } from "./monster-library-item";
 import {
   canonicalLibraryCategory,
   libraryCategoryMembers,
@@ -549,7 +549,7 @@ type CompositionSqlRow = {
 };
 
 /** Load primitive leaves with their full containment breadcrumb in one query. */
-async function loadCompositionPaths(root: CompositionRoot, ids: string[]) {
+export async function loadCompositionPaths(root: CompositionRoot, ids: string[]) {
   const result = new Map<string, LibraryCompositionPath[]>();
   if (!ids.length) return result;
   const idList = sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `);
@@ -764,7 +764,7 @@ async function fetchMonsters(q:LibraryFetchQuery):Promise<LibraryItem[]> {
  if(q.kind==="fork")conditions.push(sql`${monsters.forkedFromId} IS NOT NULL`);
  if(q.kind==="creation")conditions.push(isNull(monsters.forkedFromId));
  const rows=await readLibraryCandidates(db.select(monsterLibraryColumns).from(monsters).where(and(...conditions)),q);
- return rows.map(monsterToLibraryItem);
+ return monsterRowsToLibraryItems(rows,viewer);
 }
 
 async function fetchPrimitives(q: LibraryFetchQuery): Promise<LibraryItem[]> {

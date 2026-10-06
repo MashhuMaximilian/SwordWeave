@@ -1,4 +1,5 @@
 "use client";
+import { CompositionMechanics } from "./composition-mechanics";
 import type { ReactNode } from "react";
 import type { LibraryItem } from "@/lib/publishing/library-query";
 import type { LibraryEngagement } from "./library-table";
@@ -23,6 +24,6 @@ export function LibraryCatalogueSurface({ glyph, title, status, badge, children,
 }
 export function LibraryCatalogueCard({ item, engagement, currentUserInternalId, selected, onSelect, children }: { item: LibraryItem; engagement?: LibraryEngagement; currentUserInternalId: string | null; selected?: boolean; onSelect: (item: LibraryItem) => void; children?: ReactNode }) {
   return <LibraryCatalogueSurface rowId={item.id} selected={selected ?? false} onSelect={() => onSelect(item)} glyph={<LibraryEntityIcon item={item} />} title={item.name} status={<span className={`v12-tag ${libraryOrigin(item) === "community" ? "v12-tag--violet" : "v12-tag--teal"}`}>{libraryCatalogueStatus(item)}</span>} badge={<span className="v12-tag">{item.buCost ?? 0} BU</span>} footer={<div className="v12-entry-lineage"><span>{libraryAuthorLabel(item)}{item.versionNumber ? ` · v${item.versionNumber}` : ""}{item.descendantCount ? ` · ${item.descendantCount} descendants` : ""}</span><div onClick={event => event.stopPropagation()}><LikeForkBar targetType={item.targetType} targetId={item.targetId} initialLikes={item.likesCount} initialDislikes={item.dislikesCount} initialForks={item.forkCount} initialFlags={item.flagCount} initialUserReaction={item.viewerReaction !== undefined ? item.viewerReaction : engagement?.reactions[item.id] ?? null} initialFollowing={item.viewerFollowing ?? (item.authorId ? engagement?.following[item.authorId] : false) ?? false} authorId={item.authorId} authorUsername={libraryOrigin(item) === "system" ? null : item.authorUsername} currentUserId={currentUserInternalId} compact /></div></div>}>
-    {children ?? <>{item.mechanicalDescription ? <Markdown className="v12-entry-mechanical" data-readable-rule>{item.mechanicalDescription}</Markdown> : null}{item.description ? <Markdown className="v12-entry-summary">{item.description}</Markdown> : null}</>}
+    {children ?? <>{item.compositionPaths?.length ? <CompositionMechanics paths={item.compositionPaths} compact onPrimitive={() => onSelect(item)}/> : null}{!item.compositionPaths?.length && item.mechanicalDescription ? <Markdown className="v12-entry-mechanical" data-readable-rule>{item.mechanicalDescription}</Markdown> : null}</>}{item.description ? <Markdown className="v12-entry-summary">{item.description}</Markdown> : null}
   </LibraryCatalogueSurface>;
 }

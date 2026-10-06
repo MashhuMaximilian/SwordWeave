@@ -1012,3 +1012,9 @@ body[data-ui="v12"] .sw-quickbuild__rules > summary small {margin-left:6px;color
   body[data-ui="v12"] .sw-quickbuild__root-copy .sw-quickbuild__root-actions {margin-top:0;}
   body[data-ui="v12"] .sw-quickbuild__rules > summary {display:flex;align-items:center;gap:6px;}
 }
+
+body[data-ui="v12"] .sw-quickbuild-forge { display:grid;align-items:start; }
+body[data-ui="v12"] .sw-quickbuild-forge > .sw-character-forge__rail { position:sticky;top:16px; }
+body[data-ui="v12"] .sw-quickbuild-forge > .sw-quickbuild { width:100%;max-width:none;margin:0;min-width:0; }
+body[data-ui="v12"] .sw-quickbuild-forge [id^="quickbuild-section-"] { scroll-margin-top:20px; }
+@media(max-width:767px) { body[data-ui="v12"] .sw-quickbuild-forge { grid-template-columns:minmax(0,1fr); } body[data-ui="v12"] .sw-quickbuild-forge > .sw-character-forge__rail { position:static; } }

@@ -1,5 +1,5 @@
 import { monsters } from "@/db/schema/monsters";
-import { monsterLibraryColumns,monsterToLibraryItem } from "@/lib/publishing/monster-library-item";
+import { monsterLibraryColumns,monsterRowsToLibraryItems } from "@/lib/publishing/monster-library-item";
 import { redirect } from "next/navigation";
 import { and, asc, desc, eq, or, isNull } from "drizzle-orm";
 import Link from "next/link";
@@ -26,6 +26,7 @@ import {
   primitiveToLibraryItem,
   heritageToLibraryItem,
 } from "@/components/sandbox/sandbox-row-mapper";
+import { loadCompositionPaths } from "@/lib/publishing/library-query";
 import type { LibraryItem } from "@/lib/publishing/library-query";
 import { CreationsClient } from "./creations-client";
 import { resolveLocalAuthorIdentity } from "@/lib/auth/author-resolver";
@@ -176,8 +177,19 @@ export default async function CreationsPage({
     ...itemRows.map((r) => itemToLibraryItem(r, visFor("ITEM", r.id))),
     ...characterRows.map((r) => characterToLibraryItem(r, visFor("CHARACTER", r.id))),
     ...buildRows.map((r) => buildToLibraryItem(r, visFor("BUILD_TEMPLATE", r.id))),
-    ...monsterRows.map(monsterToLibraryItem),
+    ...await monsterRowsToLibraryItems(monsterRows,ownerClerkId),
   ];
+
+  const pathMaps = await Promise.all([
+    loadCompositionPaths("CAPABILITY", capabilityRows.map(row => row.id)),
+    loadCompositionPaths("EFFECT", effectRows.map(row => row.id)),
+    loadCompositionPaths("ITEM", itemRows.map(row => row.id)),
+    loadCompositionPaths("HERITAGE", templateRows.map(row => row.id)),
+  ]);
+  for (const item of baseItems) {
+    const index = item.targetType === "CAPABILITY" ? 0 : item.targetType === "EFFECT" ? 1 : item.targetType === "ITEM" ? 2 : item.targetType.endsWith("_TEMPLATE") && item.targetType !== "BUILD_TEMPLATE" ? 3 : -1;
+    if (index >= 0) item.compositionPaths = pathMaps.at(index)?.get(item.targetId) ?? [];
+  }
 
   // Fetch engagement state for the user AND the count aggregates in
   // parallel. Both depend on baseItems (for IDs + author IDs) but

@@ -1,4 +1,5 @@
 "use client";
+import { DrawerAttributeDeck, DrawerVitalityDeck } from "./drawer-stat-deck";
 import { useToggleState } from "@/lib/hooks/use-toggle-state";
 import { useCharacterReadOnly } from "./character-read-only";
 import { usePhoneCharacterSurface } from "@/components/characters/compact-hierarchy";
@@ -672,17 +673,6 @@ export function BottomStickyBar({
   };
 
   const effectiveCurrent = visibleCurrent;
-  const vitalityPercent =
-    maxVitality > 0
-      ? Math.max(0, Math.min(100, Math.round((effectiveCurrent / maxVitality) * 100)))
-      : 0;
-  const vitalityColor =
-    vitalityPercent < 25
-      ? "bg-destructive"
-      : vitalityPercent < 50
-        ? "bg-amber-500"
-        : "bg-green-500";
-
   // Open the combined mod + save provenance modal for an attribute.
   const openModSaveModal = useCallback(
     (attr: "physical" | "mental" | "magical") => {
@@ -893,126 +883,13 @@ export function BottomStickyBar({
               to open the max-vitality provenance modal.
               The Damage/Heal/Long-rest/Short-rest buttons
               live in their own row to avoid click conflicts. */}
-          <div className="v12-vitality-deck mt-2 rounded-md border border-border bg-card px-2 py-1.5">
-            <button
-              type="button"
-              onClick={openVitalityModal}
-              className="block w-full text-left"
-              title="Show provenance for max vitality"
-            >
-              <div className="flex items-baseline justify-between">
-                <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Vitality
-                </p>
-                <span className="text-[9px] text-muted-foreground tabular-nums">
-                  {vitalityPercent}%
-                </span>
-              </div>
-              <p className="mt-0.5 font-mono text-xl font-bold leading-none">
-                {effectiveCurrent}
-                <span className="text-sm font-normal text-muted-foreground">
-                  {" "}
-                  / {maxVitality}
-                </span>
-              </p>
-              <div className="v12-vitality-track mt-1 h-1 overflow-hidden rounded-full bg-secondary">
-                <div
-                  className={`v12-vitality-fill h-full rounded-full transition-all ${vitalityColor}`}
-                  style={{ width: `${vitalityPercent}%` }}
-                />
-              </div>
-            </button>
-
-            <div className="mt-1.5 flex flex-nowrap gap-1">
-              <VitalityTracker
-                characterId={characterId}
-                max={maxVitality}
-                current={effectiveCurrent}
-                onCurrentChange={setOptimisticVitality}
-                compact
-              />
-            </div>
-          </div>
+          <DrawerVitalityDeck current={effectiveCurrent} max={maxVitality} onOpen={openVitalityModal}><div className="mt-1.5 flex flex-nowrap gap-1"><VitalityTracker characterId={characterId} max={maxVitality} current={effectiveCurrent} onCurrentChange={setOptimisticVitality} compact/></div></DrawerVitalityDeck>
 
           {/* 2. Mods + saves + PB — 4 chips. Each is clickable for
               a formula popup. The proficient chip gets a "PROF" tag.
               PB is the 4th card (Phase 8.4 v25 — moved here from
               the bottom grid so the user sees it next to the mods). */}
-          <div className="v12-drawer-section v12-drawer-attributes mt-2 mb-2">
-            <p className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Mods + saves
-            </p>
-            {/* Phase 8.5 H7 (Mashu 2026-08-03): PB removed from
-                  this row and moved into the meta-stat row
-                  below alongside ATK and Save DC. Grid is now
-                  grid-cols-3 for the three attributes. */}
-            <div className="grid grid-cols-3 gap-1.5">
-              {(
-                [
-                  { attr: "physical", label: "PHYS", mod: physMod, save: physSave },
-                  { attr: "mental", label: "MENT", mod: mentMod, save: mentSave },
-                  { attr: "magical", label: "MAGI", mod: magiMod, save: magiSave },
-                ] as const
-              ).map(({ attr, label, mod: m, save: s }) => {
-                // Phase 8.L round 134/135 (Mashu): PROF and
-                // EXPERT tags. PROF appears when proficiency
-                // is granted via primary prof attr OR another
-                // PB-grant primitive (e.g. [proficiency]
-                // keyword, derived(pb)). EXPERT appears when
-                // an expertise contribution is present
-                // ([expertise] keyword, derived.expertise).
-                // PROF + EXPERT = PB counted twice.
-                const saveContribs = resolver?.byTarget?.[`${attr}_saving_throw`] ?? [];
-                const grantedProf = saveContribs.some(
-                  (c) => c.op === "add" && c.value === pb && !(c.tags ?? []).includes("expertise"),
-                );
-                const isProf = proficientAttribute?.toLowerCase() === attr || grantedProf;
-                const isExpert = saveContribs.some(
-                  (c) => (c.tags ?? []).includes("expertise"),
-                );
-                return (
-                  <button
-                    key={attr}
-                    type="button"
-                    onClick={() => openModSaveModal(attr)}
-                    className={`flex flex-col items-center justify-center rounded border-2 bg-card px-1 py-1.5 text-center transition-colors hover:bg-secondary/30 ${
-                      isProf ? "border-teal-500" : "border-border"
-                    }`}
-                    title={`Show formula for ${label} mod + save`}
-                  >
-                    <span className="flex items-center gap-1">
-                      <span
-                        className={`text-[8px] font-semibold uppercase ${
-                          isProf
-                            ? "text-teal-700 dark:text-teal-300"
-                            : "text-muted-foreground"
-                        }`}
-                      >
-                        {label}
-                      </span>
-                      {isProf && (
-                        <span className="rounded bg-teal-500/15 px-1 py-0.5 text-[7px] font-bold uppercase text-teal-700 dark:text-teal-300">
-                          PROF
-                        </span>
-                      )}
-                      {isExpert && (
-                        <span className="rounded bg-amber-500/15 px-1 py-0.5 text-[7px] font-bold uppercase text-amber-700 dark:text-amber-300">
-                          EXPERT
-                        </span>
-                      )}
-                    </span>
-                    <span className="mt-1 flex items-center justify-center gap-0.5 font-mono text-base font-bold tabular-nums leading-none">
-                      {fmt(m)}
-                      <AxisMarkers byTarget={byTarget} target={`attribute.${attr}`} />
-                    </span>
-                    <span className="mt-1.5 text-[9px] text-muted-foreground">
-                      save: <span className={cn("font-mono font-semibold", (byTarget[`save_dc.${attr}`] ?? []).length > 0 && "text-teal-700 dark:text-teal-300")}>{fmt(s)}</span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <DrawerAttributeDeck onOpen={openModSaveModal} attributes={([{attr:"physical",label:"PHYS",mod:physMod,save:physSave},{attr:"mental",label:"MENT",mod:mentMod,save:mentSave},{attr:"magical",label:"MAGI",mod:magiMod,save:magiSave}] as const).map(({attr,label,mod,save})=>{const contributions=resolver?.byTarget?.[`${attr}_saving_throw`]??[];return {key:attr,label,modifier:mod,save,proficient:proficientAttribute?.toLowerCase()===attr||contributions.some(c=>c.op==="add"&&c.value===pb&&!(c.tags??[]).includes("expertise")),expert:contributions.some(c=>(c.tags??[]).includes("expertise")),marker:<AxisMarkers byTarget={byTarget} target={`attribute.${attr}`}/>};})}/>
 
           {/* 3. PB (left) + Attack Bonus (mid) + DC (right)
               — three teal-accented "meta-stat" cards on a

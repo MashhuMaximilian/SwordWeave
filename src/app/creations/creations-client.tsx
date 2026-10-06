@@ -503,7 +503,7 @@ export function CreationsClient({
                 "v12-creations-view-button",
                 view === "GRID" ? "is-active" : "",
               )}
-              title="Grid view"
+              title="Mosaic view"
               aria-pressed={view === "GRID"}
             >
               <LayoutGrid className="size-3.5" />
@@ -547,11 +547,11 @@ export function CreationsClient({
           </p>
         </div>
       ) : (
-        <div className={cn("v12-creations-results", view === "GRID" ? "is-grid" : "is-list")}>
+        <div className={cn("v12-catalogue-results", view === "GRID" ? "is-grid" : "is-list")}>
           <LibraryTable
             items={filteredItems}
             view={view}
-            surface="atelier"
+            surface="catalogue"
             engagement={initialEngagement}
             currentUserInternalId={currentUserInternalId}
             onSelect={(item) => {

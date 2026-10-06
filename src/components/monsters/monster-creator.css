@@ -151,3 +151,21 @@ body[data-ui="v12"] .monster-authoring .monster-selected-rule .sw-mirror-choices
 @media(max-width:1250px) { body[data-ui="v12"] .monster-authoring .monster-shuffle-controls { grid-template-columns:repeat(2,minmax(0,1fr)); } body[data-ui="v12"] .monster-authoring .monster-shuffle-controls > button { grid-column:1/-1;margin:0;justify-self:start; } }
 @media(max-width:760px) { body[data-ui="v12"] .monster-authoring .monster-primitive-families button small { display:none; } }
 @media(max-width:600px) { body[data-ui="v12"] .monster-authoring .monster-foundation-budget,.monster-authoring .monster-shuffle-controls { grid-template-columns:minmax(0,1fr); } body[data-ui="v12"] .monster-authoring .monster-shuffle-controls fieldset { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+body[data-ui="v12"] .monster-authoring .monster-foundation-budget { grid-template-columns:minmax(140px,.4fr) minmax(0,1fr);gap:12px;padding:14px;border:1px solid var(--border);border-radius:6px;background:var(--sw-surface-fill); }
+body[data-ui="v12"] .monster-authoring .monster-foundation-budget > .monster-field input { min-height:44px;font:600 24px var(--font-technical);padding:8px 12px; }
+body[data-ui="v12"] .monster-authoring .monster-baseline-vitality { padding:0;border:0;background:transparent;gap:8px; }
+body[data-ui="v12"] .monster-authoring .monster-baseline-vitality > div { grid-template-columns:auto 1fr;gap:4px 12px; }
+body[data-ui="v12"] .monster-authoring .monster-baseline-vitality strong { font-size:30px; }
+body[data-ui="v12"] .monster-authoring .monster-baseline-vitality .monster-vitality-editor { display:flex;flex-wrap:wrap;align-items:end;gap:8px;flex:1 1 100%;padding-top:10px;border-top:1px solid var(--border); }
+body[data-ui="v12"] .monster-authoring .monster-vitality-editor .monster-field { margin:0;flex:1 1 130px;max-width:180px; }
+body[data-ui="v12"] .monster-authoring .monster-build-modes { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px; }
+body[data-ui="v12"] .monster-authoring .monster-build-modes > button { text-align:left;padding:18px;display:grid;grid-template-columns:44px minmax(0,1fr);gap:8px 12px; }
+body[data-ui="v12"] .monster-authoring .monster-build-modes :is(p,small) { grid-column:2;font-size:13px;line-height:1.5; }
+body[data-ui="v12"] .monster-authoring .monster-build-modes .sw-access-preset__icon { width:40px;height:40px;min-width:40px;aspect-ratio:1;display:grid;place-items:center;border:1px solid var(--v12-brass);border-radius:50%;grid-row:1/4; }
+body[data-ui="v12"] .monster-authoring .monster-weakness-library { display:block;border:0; }
+body[data-ui="v12"] .monster-authoring .monster-weakness-library .monster-selection-ledger { display:none; }
+body[data-ui="v12"] .monster-authoring .monster-weakness-library .sw-access-library__corpus { border:0;background:transparent; }
+body[data-ui="v12"] .monster-authoring .monster-weakness-library .sw-mirror-choices__grid { margin-top:18px;grid-template-columns:repeat(3,minmax(0,1fr)); }
+@media(max-width:760px) { body[data-ui="v12"] .monster-authoring :is(.monster-build-modes,.monster-weakness-library .sw-mirror-choices__grid) { grid-template-columns:minmax(0,1fr); } }
+@media(max-width:600px) { body[data-ui="v12"] .monster-authoring .monster-foundation-budget { grid-template-columns:minmax(0,1fr); } }

@@ -1,3 +1,4 @@
+import { mechanicalDescriptionFromModifiers } from "@/lib/primitives/mechanical-rule";
 // =============================================================================
 // Sandbox row → LibraryItem mapper
 //
@@ -231,7 +232,7 @@ export function primitiveToLibraryItem(
     targetId: String(row.id),
     name: row.name,
     description: row.narrativeRule ?? row.mechanicalOutputText ?? null,
-    mechanicalDescription: row.mechanicalOutputText ?? null,
+    mechanicalDescription: mechanicalDescriptionFromModifiers(Array.isArray(row.hardModifiers) ? row.hardModifiers as HardModifier[] : []) || row.mechanicalOutputText || row.mechanicalTemplateText || null,
     mechanicalTemplate: row.mechanicalTemplateText ?? null,
     ...(row.definitionKind ? { definitionKind: row.definitionKind } : {}),
     ...primitiveMechanicFacets(row.hardModifiers),
