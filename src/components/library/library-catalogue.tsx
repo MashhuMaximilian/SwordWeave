@@ -202,7 +202,7 @@ export async function LibraryCatalogue({ searchParams, monsterCatalogue = false 
         </div>
 
       </div>
-      {monsterCatalogue && <Link className="v12-metal-button v12-metal-button--primary" href="/monsters/new">Create monster or NPC</Link>}
+      {monsterCatalogue && <Link className="sw-metal-button sw-metal-button--primary" href="/monsters/new">Create monster or NPC</Link>}
 
       <nav className="v12-library-modes" aria-label="Library record groups">
         <Link className={targetType === "PRIMITIVE" ? "is-active" : ""} href="/library/browse?type=PRIMITIVE">
@@ -242,7 +242,7 @@ export async function LibraryCatalogue({ searchParams, monsterCatalogue = false 
 
       {monsterCatalogue && viewerClerkId && <details className="v12-instrument my-3 p-3">
         <summary className="flex cursor-pointer items-center gap-3 text-sm"><strong>Your private play sheets</strong><span className="v12-badge">{playCopies.length}</span></summary>
-        <div className="mt-3 flex flex-wrap gap-2">{playCopies.length ? playCopies.map(copy => <Link key={copy.id} className="v12-metal-button" href={`/monsters/play/${copy.id}`}><span>{copy.name}</span><small>{copy.currentVitality} Vitality · v{copy.templateVersion}</small><span aria-hidden>→</span></Link>) : <p className="text-sm text-muted-foreground">Open a creature preview and bring a private copy to your table.</p>}</div>
+        <div className="mt-3 flex flex-wrap gap-2">{playCopies.length ? playCopies.map(copy => <Link key={copy.id} className="sw-metal-button sw-metal-button--secondary" href={`/monsters/play/${copy.id}`}><span>{copy.name}</span><small>{copy.currentVitality} Vitality · v{copy.templateVersion}</small><span aria-hidden>→</span></Link>) : <p className="text-sm text-muted-foreground">Open a creature preview and bring a private copy to your table.</p>}</div>
       </details>}
       <div className="phone-library-stage mt-3 flex min-h-[calc(100dvh-13rem)] flex-col md:h-[calc(100vh-13rem)] md:min-h-0">
         <LibraryBrowseClient
