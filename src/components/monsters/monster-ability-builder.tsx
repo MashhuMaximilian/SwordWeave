@@ -5,6 +5,8 @@ import { Search, Shuffle, LockKeyhole, Plus } from "lucide-react";
 import { PrimitiveSelectCard, type PrimitiveOption } from "@/components/characters/new-character-form";
 import { PrimitiveCardSurface } from "@/components/characters/primitive-preview-card";
 import { CapabilityCardSurface } from "@/components/characters/capability-card-surface";
+import { monsterSavedPreviewContext } from "./monster-composition-view";
+import type { MonsterSlot } from "@/lib/monsters/resolve";
 import { loadMonsterComponentPreview } from "./monster-component-preview";
 import type { MonsterComponentPin } from "@/lib/monsters/composition";
 import { CompactHierarchyBranch } from "@/components/characters/compact-hierarchy";
@@ -33,10 +35,11 @@ function primitiveCard(item: LibraryItem): PrimitiveOption {
     iconColor: item.iconColor, sourceOrigin: item.authorId && !item.authorIsAdmin ? "community" : "system", ...(item.versionNumber?{version:item.versionNumber}:{}) };
 }
 const EMPTY_COMPONENT_PINS: MonsterComponentPin[] = [];
+const EMPTY_SLOTS: MonsterSlot[] = [];
 
-export function MonsterAbilityBuilder({ references, disabled, budget, name, locks, onToggleLock, onToggle, onRemove, onShuffle, pending, spent, itemBu, referenceName, componentPins = EMPTY_COMPONENT_PINS, packageOnly = false, packageTitle }: {
+export function MonsterAbilityBuilder({ references, disabled, budget, name, locks, onToggleLock, onToggle, onRemove, onShuffle, pending, spent, itemBu, referenceName, componentPins = EMPTY_COMPONENT_PINS, slots = EMPTY_SLOTS, packageOnly = false, packageTitle }: {
   packageOnly?: boolean; packageTitle?: string;
-  componentPins?: MonsterComponentPin[] | undefined;
+  componentPins?: MonsterComponentPin[] | undefined; slots?:MonsterSlot[] | undefined;
   references: MonsterReference[]; disabled: boolean; budget: number; name: string; locks: string[];
   onToggleLock: (index: number) => void; onToggle: (item: LibraryItem) => void; onRemove: (index: number) => void;
   onShuffle: (kinds: ("PRIMITIVE" | "CAPABILITY")[], limit: number) => void; pending: boolean;
@@ -51,14 +54,15 @@ export function MonsterAbilityBuilder({ references, disabled, budget, name, lock
     const selectedReferences = JSON.parse(selectedKey) as Array<Pick<MonsterReference,"kind"|"id"|"versionId">>;
     for (const reference of selectedReferences) {
       const key = `${reference.kind}:${reference.id}:${reference.versionId ?? "latest"}`;
-      void loadMonsterComponentPreview(reference, abort.signal, names).then(item => {
+      const pin = componentPins.find(pin => pin.kind === reference.kind.toLowerCase() && pin.id === reference.id && pin.versionId === reference.versionId);
+      void Promise.resolve().then(() => loadMonsterComponentPreview(reference, abort.signal, names, pin && slots.length ? monsterSavedPreviewContext(pin, componentPins, slots) : undefined)).then(item => {
         if (!abort.signal.aborted) { setSelectedPreviews(current => ({ ...current, [key]: item })); setSelectedErrors(current => ({...current,[key]:""})); }
       }).catch(error => {
         if (!abort.signal.aborted) setSelectedErrors(current => ({ ...current, [key]: error instanceof Error ? error.message : "Unable to load component." }));
       });
     }
     return () => abort.abort();
-  }, [selectedKey, names]);
+  }, [selectedKey, names, componentPins, slots]);
   const [kind, setKind] = useState<PickKind>("PRIMITIVE");
   const [family, setFamily] = useState("VERB_TIER");
   const [search, setSearch] = useState("");
@@ -81,7 +85,7 @@ export function MonsterAbilityBuilder({ references, disabled, budget, name, lock
   async function preview(type: string, id: string, nested = false) {
     const token = ++generation.current; controller.current?.abort(); const abort = new AbortController(); controller.current = abort;
     setPreviewOpen(true); setPreviewLoading(true); setPreviewError(""); if (!nested) setPath([]);
-    try { const pin = componentPins.find(pin => pin.kind === previewKind(type) && pin.id === id); const result = pin?.versionId ? await loadMonsterComponentPreview({kind:pin.kind.toUpperCase() as MonsterReference["kind"],id,versionId:pin.versionId},abort.signal,names) : await loadEntityPreview(previewKind(type), id, abort.signal); if (token === generation.current) setPath(previous => nested ? [...previous, result] : [result]); }
+    try { const pin = componentPins.find(pin => pin.kind === previewKind(type) && pin.id === id); const result = pin?.versionId ? await loadMonsterComponentPreview({kind:pin.kind.toUpperCase() as MonsterReference["kind"],id,versionId:pin.versionId},abort.signal,names,slots.length ? monsterSavedPreviewContext(pin,componentPins,slots) : undefined) : await loadEntityPreview(previewKind(type), id, abort.signal); if (token === generation.current) setPath(previous => nested ? [...previous, result] : [result]); }
     catch (error) { if (!abort.signal.aborted && token === generation.current) setPreviewError(error instanceof Error ? error.message : "Unable to open preview."); }
     finally { if (token === generation.current) setPreviewLoading(false); }
   }
