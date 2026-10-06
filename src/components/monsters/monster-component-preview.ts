@@ -4,7 +4,11 @@ import type { SandboxPreviewItem } from "@/components/library/library-item-previ
 import type { MonsterReference } from "@/lib/monsters/model";
 
 /** Package cards show the selected published version, never today's replacement. */
-export async function loadMonsterComponentPreview(reference: Pick<MonsterReference, "kind" | "id" | "versionId">, signal: AbortSignal, names: Record<string, string> = {}): Promise<SandboxPreviewItem> {
+export type MonsterPreviewContext = {
+  primitiveBuCosts: Record<number, number>;
+  effectPrimitiveLinks: Record<string, Array<{primitiveId: number; quantity: number}>>;
+};
+export async function loadMonsterComponentPreview(reference: Pick<MonsterReference, "kind" | "id" | "versionId">, signal: AbortSignal, names: Record<string, string> = {}, context?: MonsterPreviewContext): Promise<SandboxPreviewItem> {
   if (!reference.versionId) return loadEntityPreview(previewKind(reference.kind), reference.id, signal);
   let targetType: string = reference.kind;
   if (reference.kind === "HERITAGE") {
@@ -24,7 +28,7 @@ export async function loadMonsterComponentPreview(reference: Pick<MonsterReferen
       const detail = await fetch(`/api/versions/list?${query}`, { signal, cache: "no-store" });
       if (!detail.ok) throw new Error("This saved component version is unavailable.");
       const body = await detail.json() as { version: { payload: Record<string, unknown> } };
-      const item = mapPayloadToPreviewItem(targetType, reference.id, body.version.payload, names);
+      const item = mapPayloadToPreviewItem(targetType, reference.id, body.version.payload, names, context?.primitiveBuCosts, context?.effectPrimitiveLinks);
       if (!item) throw new Error("This component cannot be previewed.");
       return { ...item, row: { ...item.row, versionNumber: selected.versionNumber } } as unknown as SandboxPreviewItem;
     }

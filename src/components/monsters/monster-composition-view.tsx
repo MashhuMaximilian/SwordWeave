@@ -12,7 +12,7 @@ import type { MonsterSlot } from "@/lib/monsters/resolve";
 import { mechanicalDescriptionFromModifiers } from "@/lib/primitives/mechanical-rule";
 import { mirrorConsequence } from "@/lib/character/mirror-suggestions";
 import { mapPayloadToPreviewItem } from "@/components/library/version-preview-button";
-import { loadMonsterComponentPreview } from "./monster-component-preview";
+import { loadMonsterComponentPreview, type MonsterPreviewContext } from "./monster-component-preview";
 import "./monster-template-preview.css";
 
 type Branch = { pin: MonsterComponentPin; reference: MonsterReference; children: Branch[]; slot?: MonsterSlot; truncated?: boolean };
@@ -35,6 +35,27 @@ export function monsterCompositionBranches(definition: PinnedDefinition, slots: 
     }) };
   }
   return definition.references.flatMap(reference => { const branch = walk(reference); return branch ? [branch] : []; });
+}
+
+/** Costs come from the selected saved graph, never current Library dependencies. */
+export function monsterSavedPreviewContext(pin: MonsterComponentPin, pins: MonsterComponentPin[], slots: MonsterSlot[]): MonsterPreviewContext {
+  const roots = monsterCompositionBranches({componentPins:pins, references:[{kind:pin.kind.toUpperCase(),id:pin.id,versionId:pin.versionId,quantity:1,isMirrored:false}]} as PinnedDefinition, slots);
+  const context: MonsterPreviewContext = {primitiveBuCosts:{},effectPrimitiveLinks:{}};
+  function visit(branch: Branch): Array<{primitiveId:number;quantity:number}> {
+    if (branch.pin.kind === "primitive") {
+      const slot = slots.find(slot => slot.primitiveId === Number(branch.pin.id) && slot.dependencyVersions?.includes(branch.pin.key));
+      if (!slot) return [];
+      const id = slot.primitiveId, cost = Math.abs(slot.buCost);
+      if (context.primitiveBuCosts[id] !== undefined && context.primitiveBuCosts[id] !== cost) throw new Error("This saved component contains different versions of the same primitive. Inspect its individual saved pieces for their BU costs.");
+      context.primitiveBuCosts[id] = cost;
+      return [{primitiveId:id,quantity:branch.reference.quantity}];
+    }
+    const leaves = branch.children.flatMap(visit);
+    if (branch.pin.kind === "effect") context.effectPrimitiveLinks[branch.pin.id] = leaves.map(leaf => ({...leaf,quantity:leaf.quantity / branch.reference.quantity}));
+    return leaves;
+  }
+  roots.forEach(visit);
+  return context;
 }
 
 export function MonsterCompositionView({ definition, slots, renderActions, onActions, filterKinds, isActive }: {
@@ -71,11 +92,11 @@ export function MonsterCompositionView({ definition, slots, renderActions, onAct
       {(["capability", "effect", "primitive", "item"] as const).map(kind => <CompositionTree key={kind} title={kind === "item" ? "Equipment" : kind === "primitive" ? "Direct primitives" : kind === "effect" ? "Effects" : "Capabilities"} nodes={branches.filter(branch => branch.pin.kind === kind).map((branch, index) => node(branch, `${kind}:${index}`))} onSubLink={onSubLink}/>)}
     </> : <p>No saved components in this section.</p>}
     {definition.references.filter(reference => !filterKinds || filterKinds.some(kind => kind.toLowerCase() === reference.kind.toLowerCase())).length > branches.length && <p role="status">Some saved components are unavailable. Their current Library versions have not been substituted.</p>}
-    {preview && <PinnedCompositionDialog key={preview.key} pin={preview} pins={definition.componentPins ?? []} onClose={() => setPreview(null)} onOpen={setPreview}/>}
+    {preview && <PinnedCompositionDialog key={preview.key} pin={preview} pins={definition.componentPins ?? []} slots={slots} onClose={() => setPreview(null)} onOpen={setPreview}/>}
   </div>;
 }
 
-function PinnedCompositionDialog({pin, pins, onClose, onOpen}: {pin: MonsterComponentPin; pins: MonsterComponentPin[]; onClose: () => void; onOpen: (pin: MonsterComponentPin) => void}) {
+function PinnedCompositionDialog({pin, pins, slots, onClose, onOpen}: {pin: MonsterComponentPin; pins: MonsterComponentPin[]; slots:MonsterSlot[]; onClose: () => void; onOpen: (pin: MonsterComponentPin) => void}) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [item, setItem] = useState<SandboxPreviewItem | null>(null);
   const [error, setError] = useState("");
@@ -84,11 +105,14 @@ function PinnedCompositionDialog({pin, pins, onClose, onOpen}: {pin: MonsterComp
     const controller = new AbortController();
     // Unpublished records use the captured payload rather than an evolving Library row.
     const names = Object.fromEntries(pins.map(pin => [`${pin.kind}:${pin.id}`, pin.name]));
-    const captured = !pin.versionId && pin.fallback ? mapPayloadToPreviewItem(pin.kind.toUpperCase(), pin.id, pin.fallback, names) : null;
-    const request = !pin.versionId ? (captured ? Promise.resolve(captured) : Promise.reject(new Error("This unpublished component has no published version to preview. Its saved rules remain in the composition cards."))) : loadMonsterComponentPreview({kind: pin.kind.toUpperCase() as MonsterReference["kind"], id: pin.id, versionId: pin.versionId}, controller.signal, names);
+    const request = Promise.resolve().then(() => {
+      const context = monsterSavedPreviewContext(pin, pins, slots);
+      const captured = !pin.versionId && pin.fallback ? mapPayloadToPreviewItem(pin.kind.toUpperCase(), pin.id, pin.fallback, names, context.primitiveBuCosts, context.effectPrimitiveLinks) : null;
+      return !pin.versionId ? (captured ? captured : Promise.reject(new Error("This unpublished component has no published version to preview. Its saved rules remain in the composition cards."))) : loadMonsterComponentPreview({kind: pin.kind.toUpperCase() as MonsterReference["kind"], id: pin.id, versionId: pin.versionId}, controller.signal, names, context);
+    });
     void request.then(value => { if (!controller.signal.aborted) setItem(value); }).catch(reason => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : "Unable to open the saved component."); });
     return () => controller.abort();
-  }, [pin, pins]);
+  }, [pin, pins, slots]);
   return <dialog ref={dialog} className="sw-monster-component-dialog" onCancel={event => {event.preventDefault(); onClose();}}>
     <InstrumentDialogFrame title={pin.name} kicker="Saved component" onClose={onClose}>
       {error ? <p role="alert">{error}</p> : item ? <EntityPreview item={item} callbacks={{preferLocalSubLinks:true,onSubLinkClick:link => {

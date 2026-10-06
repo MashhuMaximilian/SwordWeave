@@ -7,4 +7,5 @@ describe("curated creature artwork",()=>{
   expect(monsterArtwork({name:"An unrelated monster",sourceOrigin:"Monster feedback examples · October 2026"})).toBeNull();
  });
  it("preserves authored artwork",()=>expect(monsterArtwork({name:"Cinderwing Courier",imageUrl:"https://example.com/my-creature.webp",sourceOrigin:"Monster feedback examples · October 2026"})).toBe("https://example.com/my-creature.webp"));
+ it("does not restore a portrait the author explicitly removed",()=>expect(monsterArtwork({name:"Cinderwing Courier",imageUrl:"",sourceOrigin:"Monster feedback examples · October 2026"})).toBeNull());
 });
