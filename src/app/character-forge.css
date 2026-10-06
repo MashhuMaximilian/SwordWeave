@@ -424,3 +424,11 @@ body[data-ui="v12"] .sw-forge-draft-recovery p { margin:0 0 8px;font-size:14px; 
 body[data-ui="v12"] .sw-forge-draft-recovery button { padding:8px 12px;border:1px solid var(--border);border-radius:5px;margin-right:8px;color:var(--primary); }
 body[data-ui="v12"] .sw-character-forge__rail { min-width:0; }
 body[data-ui="v12"] .sw-character-forge__workbench { min-width:0; }
+
+/* The selected skip control uses the shared gold material. Its own teal
+   descendant rules must follow that material's dark ink in either theme. */
+body[data-ui="v12"] .sw-player-creation .sw-mirror-skip[aria-pressed="true"] :is(span,small,svg) {
+  color:var(--sw-metal-gold-ink)!important;
+  text-shadow:none;
+  filter:none;
+}

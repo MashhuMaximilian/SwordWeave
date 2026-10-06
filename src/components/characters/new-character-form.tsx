@@ -239,8 +239,12 @@ function clamp(value: number, min: number, max: number) {
 export function NewCharacterForm() { const {user}=useUser();return <AccountNewCharacterForm key={user?.id??"loading"} accountId={user?.id??null}/>; }
 function AccountNewCharacterForm({accountId}:{accountId:string|null}) {
   const [legacyDrafts,setLegacyDrafts]=useState<("complete"|"quick")[]>([]);
-  useEffect(()=>{if(accountId)try{setLegacyDrafts(availableLegacyCreationDrafts(localStorage));}catch{}},[accountId]);
-  const legacyResume=legacyDrafts.length>0&&accountId?<aside className="sw-forge-draft-recovery"><p>An earlier draft is saved on this device. Resume it to assign it to your signed-in account.</p>{legacyDrafts.map(mode=><button key={mode} type="button" onClick={()=>{try{claimLegacyCreationDraft(localStorage,accountId,mode,crypto.randomUUID());window.location.assign("/characters/new");}catch(error){setReturnNotice(error instanceof Error?error.message:"Unable to resume earlier draft.");}}}>Resume earlier {mode==="quick"?"Quickbuild":"complete"} draft</button>)}</aside>:null;
+  useEffect(()=>{
+    if(!accountId)return;
+    const timer=window.setTimeout(()=>{try{setLegacyDrafts(availableLegacyCreationDrafts(localStorage));}catch{}},0);
+    return ()=>window.clearTimeout(timer);
+  },[accountId]);
+  const legacyResume=legacyDrafts.length>0&&accountId?<aside className="sw-forge-draft-recovery"><p>An earlier draft is saved on this device. Resume it to assign it to your signed-in account.</p>{legacyDrafts.map(mode=><button key={mode} type="button" onClick={()=>{try{claimLegacyCreationDraft(localStorage,accountId,mode,crypto.randomUUID());window.location.assign(`/characters/new?resume=${mode}`);}catch(error){setReturnNotice(error instanceof Error?error.message:"Unable to resume earlier draft.");}}}>Resume earlier {mode==="quick"?"Quickbuild":"complete"} draft</button>)}</aside>:null;
   const draftKey=accountId?creationDraftKey(accountId,"complete"):null;
   const [returnNotice,setReturnNotice]=useState("");
   const [hydratedAccount,setHydratedAccount]=useState<string|null>(null);
@@ -286,10 +290,13 @@ function AccountNewCharacterForm({accountId}:{accountId:string|null}) {
     if(!accountId||!draftKey)return;
     const timer = window.setTimeout(() => {
       try {
-        const token=new URL(window.location.href).searchParams.get("creationReturn");
+        const params=new URL(window.location.href).searchParams;
+        const token=params.get("creationReturn");
         const returned=readCreationReturn(localStorage,token,accountId);
-        const storedMode=returned?.mode??localStorage.getItem(creationModeKey(accountId));
-        if(storedMode==="complete"||storedMode==="quick")setCreationMode(storedMode);
+        // New Character always offers both paths. Explicit returns resume their
+        // mode; choosing either path still restores its account-scoped draft.
+        const resumeMode=returned?.mode??params.get("resume");
+        if(resumeMode==="complete"||resumeMode==="quick")setCreationMode(resumeMode);
         const saved = window.localStorage.getItem(returned?.mode==="complete"?`${draftKey}:${returned.draftId}`:draftKey);
         if (saved) {
           const draft = JSON.parse(saved) as {
@@ -376,6 +383,9 @@ function AccountNewCharacterForm({accountId}:{accountId:string|null}) {
     }
   }, [
     draftLoaded,
+    accountId,
+    draftKey,
+    hydratedAccount,
     creationDraftId,
     state,
     selectedPrimitiveIds,
@@ -694,8 +704,7 @@ function AccountNewCharacterForm({accountId}:{accountId:string|null}) {
       selectedPrimitiveIds.length === preset.items.length &&
       preset.items.every((item) => selectedPrimitiveIds.includes(item.id))
     )
-      setCreationDraftId(crypto.randomUUID());
-    setSelectedPrimitiveIds([]);
+      setSelectedPrimitiveIds([]);
   }
 
   function shufflePackages(requestedBudget: number) {
@@ -1478,7 +1487,7 @@ function QuickBuildForm({
         nameInput.current?.focus();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [draftKey]);
+  }, [accountId,draftKey]);
   useEffect(() => {
     if (loaded&&draftKey)
       try {
@@ -1501,6 +1510,7 @@ function QuickBuildForm({
       }
   }, [
     loaded,
+    draftKey,
     creationDraftId,
     state,
     selection,

@@ -271,66 +271,21 @@ function ComposedList({
   }>;
   onSubLink?: (link: PreviewSubLink) => void;
 }) {
-  if (items.length === 0) return null;
-  return (
-    <Section heading={title}>
-      <ul className="v12-composed-ledger">
-        {items.map((it, index) => (
-          <li
-            // The same primitive may deliberately appear more than once
-            // through separate roles or quantities. Its database id alone
-            // is therefore not a list identity.
-            key={`${it.targetType ?? "PRIMITIVE"}:${it.id}:${index}`}
-            role={onSubLink ? "button" : undefined}
-            tabIndex={onSubLink ? 0 : undefined}
-            onClick={
-              onSubLink
-                ? () =>
-                    onSubLink({
-                      targetType: it.targetType ?? "PRIMITIVE",
-                      targetId: it.id,
-                      label: it.name,
-                    })
-                : undefined
-            }
-            onKeyDown={
-              onSubLink
-                ? (e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      onSubLink!({
-                        targetType: it.targetType ?? "PRIMITIVE",
-                        targetId: it.id,
-                        label: it.name,
-                      });
-                    }
-                  }
-                : undefined
-            }
-            className={`v12-composed-ledger-row${onSubLink ? " is-actionable" : ""}`}
-            data-entity-kind={it.entityKind ?? "primitive"}
-            aria-label={onSubLink ? `Preview ${it.entityKind ?? "primitive"}: ${it.name}` : undefined}
-          >
-            <div className="v12-composed-ledger-index" aria-hidden="true">
-              <span className="font-mono text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
-                {(it.entityKind ?? "primitive").slice(0, 3)}
-              </span>
-            </div>
-            <div className="v12-composed-ledger-copy">
-              <div className="v12-composed-ledger-titleline flex min-w-0 items-center gap-1.5">
-                <span className="v12-composed-ledger-name min-w-0 flex-1">{it.name}</span>
-                <VersionChip versionNumber={it.versionNumber} />
-              </div>
-              {it.note ? <Markdown copyRole={it.noteRole ?? "narrative"} className="v12-composed-ledger-rule line-clamp-2">{it.note}</Markdown> : null}
-              {it.subText ? <div className="v12-composed-ledger-source">{it.subText}</div> : null}
-            </div>
-            <span className="v12-composed-ledger-bu"><b>{it.bu}</b><small>BU</small></span>
-            {onSubLink ? <ChevronRight className="v12-composed-ledger-arrow" /> : null}
-          </li>
-        ))}
-      </ul>
-    </Section>
-  );
+  return <CompositionTree
+    title={title.replace(/ \(\d+\)$/, "")}
+    nodes={items.map((item): CompositionNode => ({
+      id: item.id,
+      name: item.name,
+      kind: item.entityKind ?? "primitive",
+      targetType: item.targetType ?? "PRIMITIVE",
+      bu: item.bu,
+      versionNumber: item.versionNumber,
+      note: item.note,
+      noteRole: item.noteRole,
+      meta: item.meta ?? item.subText,
+    }))}
+    onSubLink={onSubLink ?? (() => {})}
+  />;
 }
 
 export type CompositionNode = {
@@ -359,6 +314,10 @@ function primitiveCardCopy(primitive: { category: string }): string | null {
   return record.mechanicalOutputText?.trim()
     || record.narrativeRule?.trim()
     || null;
+}
+
+function primitiveLinkQuantity(link: unknown): number {
+  return (link as { quantity?: number }).quantity ?? 1;
 }
 
 function primitiveCopyRole(primitive: { category: string }): "mechanical" | "narrative" {
@@ -836,13 +795,13 @@ export function EntityPreview({
       case "primitive":
         return <PrimitiveBody row={item.row} onSubLink={onSubLink} buildModifiers={buildModifiers} showIdentity={showIdentity} />;
       case "effect":
-        return <EffectBody row={item.row} onSubLink={onSubLink} />;
+        return <EffectBody row={item.row} onSubLink={onSubLink} showIdentity={showIdentity} />;
       case "capability":
-        return <CapabilityBody row={item.row} onSubLink={onSubLink} />;
+        return <CapabilityBody row={item.row} onSubLink={onSubLink} showIdentity={showIdentity} />;
       case "heritage":
-        return <TemplateBody row={item.row} onSubLink={onSubLink} />;
+        return <TemplateBody row={item.row} onSubLink={onSubLink} showIdentity={showIdentity} />;
       case "item":
-        return <ItemBody row={item.row} onSubLink={onSubLink} />;
+        return <ItemBody row={item.row} onSubLink={onSubLink} showIdentity={showIdentity} />;
     }
   })();
 
@@ -1169,9 +1128,11 @@ function PrimitiveBody({
 function EffectBody({
   row,
   onSubLink,
+  showIdentity,
 }: {
   row: SandboxEffectRow;
   onSubLink: (link: PreviewSubLink) => void;
+  showIdentity: boolean;
 }) {
   // Phase 8.1 batch 13.1 follow-up: effect previews have no nested
   // capabilities or effects — their primitives ARE the leaf set —
@@ -1182,7 +1143,7 @@ function EffectBody({
   return (
     <div className="v12-composite-preview-body space-y-5">
       <div className="v12-composite-preview-primary">
-        <Header
+        {showIdentity ? <Header
         fallback="EFF"
         iconSource={row.iconSource}
         iconKey={row.iconKey}
@@ -1196,7 +1157,7 @@ function EffectBody({
             <VisibilityPill isPublic={row.isPublic} />
           </>
         }
-        />
+        /> : null}
         {row.narrativeDescription ? (
           <Section heading="Narrative description"><Markdown>{row.narrativeDescription}</Markdown></Section>
         ) : null}
@@ -1224,9 +1185,11 @@ function EffectBody({
 function CapabilityBody({
   row,
   onSubLink,
+  showIdentity,
 }: {
   row: SandboxCapabilityRow;
   onSubLink: (link: PreviewSubLink) => void;
+  showIdentity: boolean;
 }) {
   // Phase 8.1 batch 13.1 follow-up: a capability's BU cost is the
   // sum of ALL primitives it brings in — direct + primitives
@@ -1274,7 +1237,7 @@ function CapabilityBody({
   return (
     <div className="v12-composite-preview-body space-y-4">
       <div className="v12-composite-preview-primary">
-        <Header
+        {showIdentity ? <Header
           fallback="CAP"
           iconSource={row.iconSource}
           iconKey={row.iconKey}
@@ -1288,7 +1251,7 @@ function CapabilityBody({
               <VisibilityPill isPublic={row.isPublic} />
             </>
           }
-        />
+        /> : null}
         {row.verboseDescription ? (
           <Section heading="Description">
             <Markdown>{row.verboseDescription}</Markdown>
@@ -1327,9 +1290,11 @@ function CapabilityBody({
 function TemplateBody({
   row,
   onSubLink,
+  showIdentity,
 }: {
   row: SandboxTemplateRow;
   onSubLink: (link: PreviewSubLink) => void;
+  showIdentity: boolean;
 }) {
   // Phase 8.1 batch 13.1 follow-up: a heritage's BU cost is the
   // full transitive closure — direct primitives + primitives from
@@ -1376,7 +1341,7 @@ function TemplateBody({
           name: primitiveLink.primitive.name,
           kind: "primitive",
           targetType: "PRIMITIVE",
-          bu: Math.abs(primitiveLink.primitive.buCost),
+          bu: Math.abs(primitiveLink.primitive.buCost * primitiveLinkQuantity(primitiveLink)),
           note: primitiveCardCopy(primitiveLink.primitive),
           noteRole: primitiveCopyRole(primitiveLink.primitive),
         })),
@@ -1395,14 +1360,14 @@ function TemplateBody({
           name: effectLink.effect.name,
           kind: "effect",
           targetType: "EFFECT",
-          bu: Math.abs(effectPrimitives.reduce((sum, primitiveLink) => sum + primitiveLink.primitive.buCost, 0)),
+          bu: Math.abs(effectPrimitives.reduce((sum, primitiveLink) => sum + primitiveLink.primitive.buCost * primitiveLinkQuantity(primitiveLink), 0)),
           meta: <>{effectPrimitives.length} primitives</>,
           children: effectPrimitives.map((primitiveLink): CompositionNode => ({
             id: String(primitiveLink.primitive.id),
             name: primitiveLink.primitive.name,
             kind: "primitive",
             targetType: "PRIMITIVE",
-            bu: Math.abs(primitiveLink.primitive.buCost),
+            bu: Math.abs(primitiveLink.primitive.buCost * primitiveLinkQuantity(primitiveLink)),
             note: primitiveCardCopy(primitiveLink.primitive),
           noteRole: primitiveCopyRole(primitiveLink.primitive),
           })),
@@ -1413,7 +1378,7 @@ function TemplateBody({
   return (
     <div className="v12-composite-preview-body space-y-4">
       <div className="v12-composite-preview-primary">
-        <Header
+        {showIdentity ? <Header
         portraitUrl={lineageArtUrl(row)}
         fallback="TPL"
         iconSource={row.iconSource}
@@ -1432,8 +1397,8 @@ function TemplateBody({
             <VisibilityPill isPublic={row.isPublic} />
           </>
         }
-        />
-        {lineageArtUrl(row) ? <img src={lineageArtUrl(row)!} alt={row.name} className="mb-4 w-full max-w-md rounded-md border border-border" /> : null}
+        /> : null}
+        {showIdentity && lineageArtUrl(row) ? <img src={lineageArtUrl(row)!} alt={row.name} className="mb-4 w-full max-w-md rounded-md border border-border" /> : null}
         {row.description ? (
           <Section heading="Description"><Markdown>{row.description}</Markdown></Section>
         ) : null}
@@ -1464,9 +1429,11 @@ function TemplateBody({
 function ItemBody({
   row,
   onSubLink,
+  showIdentity,
 }: {
   row: SandboxItemRow;
   onSubLink: (link: PreviewSubLink) => void;
+  showIdentity: boolean;
 }) {
   const transitive = computeTransitiveBu({
     primitiveLinks: row.primitiveLinks.map((link) => ({
@@ -1490,7 +1457,12 @@ function ItemBody({
   });
   const totalBu = row.buCost + Math.abs(transitive.transitiveBu);
   const capabilityNodes: CompositionNode[] = row.capabilityLinks.map((link) => {
-    const effects = link.capability.effectLinks ?? [];
+    const effects = (link.capability.effectLinks ?? []).map((effectLink) => ({
+      ...effectLink,
+      primitiveLinks: effectLink.primitiveLinks?.length
+        ? effectLink.primitiveLinks
+        : (effectLink.effect as typeof effectLink.effect & { primitiveLinks?: typeof effectLink.primitiveLinks }).primitiveLinks ?? [],
+    }));
     const directPrimitives = link.capability.primitiveLinks ?? [];
     return {
       id: link.capabilityId,
@@ -1506,7 +1478,7 @@ function ItemBody({
           name: primitiveLink.primitive.name,
           kind: "primitive",
           targetType: "PRIMITIVE",
-          bu: Math.abs(primitiveLink.primitive.buCost),
+          bu: Math.abs(primitiveLink.primitive.buCost * primitiveLinkQuantity(primitiveLink)),
           note: primitiveCardCopy(primitiveLink.primitive),
           noteRole: primitiveCopyRole(primitiveLink.primitive),
         })),
@@ -1515,14 +1487,14 @@ function ItemBody({
           name: effectLink.effect.name,
           kind: "effect",
           targetType: "EFFECT",
-          bu: Math.abs((effectLink.primitiveLinks ?? []).reduce((sum, primitiveLink) => sum + primitiveLink.primitive.buCost, 0)),
+          bu: Math.abs((effectLink.primitiveLinks ?? []).reduce((sum, primitiveLink) => sum + primitiveLink.primitive.buCost * primitiveLinkQuantity(primitiveLink), 0)),
           meta: <>{(effectLink.primitiveLinks ?? []).length} primitives</>,
           children: (effectLink.primitiveLinks ?? []).map((primitiveLink): CompositionNode => ({
             id: String(primitiveLink.primitive.id),
             name: primitiveLink.primitive.name,
             kind: "primitive",
             targetType: "PRIMITIVE",
-            bu: Math.abs(primitiveLink.primitive.buCost),
+            bu: Math.abs(primitiveLink.primitive.buCost * primitiveLinkQuantity(primitiveLink)),
             note: primitiveCardCopy(primitiveLink.primitive),
           noteRole: primitiveCopyRole(primitiveLink.primitive),
           })),
@@ -1552,7 +1524,7 @@ function ItemBody({
   return (
     <div className="v12-composite-preview-body space-y-4">
       <div className="v12-composite-preview-primary">
-        <Header
+        {showIdentity ? <Header
         fallback="ITM"
         iconSource={row.iconSource}
         iconKey={row.iconKey}
@@ -1598,7 +1570,7 @@ function ItemBody({
             <VisibilityPill isPublic={row.isPublic} />
           </>
         }
-        />
+        /> : null}
         {row.description ? <Section heading="Description"><Markdown>{row.description}</Markdown></Section> : null}
         {row.tags.length > 0 ? (
           <Section heading="Tags"><div className="flex flex-wrap gap-1">{row.tags.map((tag) => <span key={tag} className="rounded-full bg-secondary px-2 py-0.5 text-xs">{tag}</span>)}</div></Section>
@@ -1679,7 +1651,13 @@ function rarityClass(rarity: string): string {
 }
 
 /** Loads the same complete record used by the author and source page. */
-export function FetchedEntityPreview({ targetType, targetId, owner }: { targetType: string; targetId: string; owner?: EntityPreviewOwner }) {
+export function FetchedEntityPreview({ targetType, targetId, owner, onSubLinkClick, inspector = false }: {
+  targetType: string;
+  targetId: string;
+  owner?: EntityPreviewOwner;
+  onSubLinkClick?: PreviewCallbacks["onSubLinkClick"];
+  inspector?: boolean;
+}) {
   const [result, setResult] = useState<{ key: string; item?: SandboxPreviewItem; error?: string } | null>(null);
   const [engagement, setEngagement] = useState<NonNullable<PreviewCallbacks["engagement"]>>({
     likes: 0,
@@ -1724,9 +1702,13 @@ export function FetchedEntityPreview({ targetType, targetId, owner }: { targetTy
     {result?.key === key ? result.item ? (
       <EntityPreview
         item={result.item}
+        variant={inspector ? "build" : "read"}
+        showIdentity={!inspector}
+        showOwner={!inspector}
         {...(owner ? { owner } : {})}
         callbacks={{
           engagement,
+          ...(onSubLinkClick ? { preferLocalSubLinks: true, onSubLinkClick } : {}),
           openSourceHref: `/library/item/${key}`,
           versionHistoryHref: `/library/item/${key}/versions`,
         }}

@@ -528,11 +528,8 @@ export function LibraryBrowseClient({
                   {selectedItem.groupKey ? <div><dt>Expression</dt><dd>{selectedItem.groupKey}</dd></div> : null}
                   {selectedItem.directForkCount !== undefined ? <div><dt>Lineage</dt><dd>{selectedItem.directForkCount} direct · {selectedItem.descendantCount ?? 0} descendants</dd></div> : null}
                 </dl>
-                {selectedItem.compositionPaths?.length ? (
-                  <section className="v12-inspector-section">
-                    <h3>Complete composition</h3>
-                    <CompositionMechanics paths={selectedItem.compositionPaths} onPrimitive={(path)=>setNestedPreview({targetType:"PRIMITIVE",targetId:String(path.primitiveId),name:path.primitiveName})} onContainer={(container)=>setNestedPreview({targetType:container.targetType,targetId:container.targetId,name:container.name})} />
-                  </section>
+                {["ITEM", "CAPABILITY", "EFFECT", "LINEAGE_TEMPLATE", "UPBRINGING_TEMPLATE", "MANIFEST_TEMPLATE"].includes(selectedItem.targetType) ? (
+                  <FetchedEntityPreview inspector key={selectedItem.id} targetType={selectedItem.targetType} targetId={selectedItem.targetId} onSubLinkClick={link => setNestedPreview({ targetType: link.targetType, targetId: link.targetId, name: link.label })} />
                 ) : null}
                 {selectedItem.verboseDescription && selectedItem.verboseDescription !== selectedItem.mechanicalDescription ? (
                   <section className="v12-inspector-section"><h3>Design meaning</h3><Markdown>{selectedItem.verboseDescription}</Markdown></section>
@@ -601,7 +598,7 @@ export function LibraryBrowseClient({
         size="xl"
       >
         {selectedItem ? (
-          <div className="v12-library-modal-layout">{selectedItem.targetType==="MONSTER"?<MonsterTemplatePreview key={selectedItem.id} id={selectedItem.targetId}/>:<FetchedEntityPreview key={selectedItem.id} targetType={selectedItem.targetType} targetId={selectedItem.targetId} owner={{ authorId:selectedItem.authorId, authorUsername:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorUsername, authorDisplayName:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorDisplayName, isOwner:selectedItem.authorId === currentUserInternalId, sourceOrigin:libraryOrigin(selectedItem) === "system" ? "SRD" : selectedItem.sourceOrigin }} />}</div>
+          <div className="v12-library-modal-layout">{selectedItem.targetType==="MONSTER"?<MonsterTemplatePreview key={selectedItem.id} id={selectedItem.targetId}/>:<FetchedEntityPreview inspector key={selectedItem.id} targetType={selectedItem.targetType} targetId={selectedItem.targetId} owner={{ authorId:selectedItem.authorId, authorUsername:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorUsername, authorDisplayName:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorDisplayName, isOwner:selectedItem.authorId === currentUserInternalId, sourceOrigin:libraryOrigin(selectedItem) === "system" ? "SRD" : selectedItem.sourceOrigin }} />}</div>
         ) : null}
       </DetailModal>
       <DetailModal

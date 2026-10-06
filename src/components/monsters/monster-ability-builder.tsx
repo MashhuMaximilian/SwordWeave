@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Search, Shuffle, LockKeyhole, Eye } from "lucide-react";
 import { MirrorOptionCard, PrimitiveSelectCard, type PrimitiveOption } from "@/components/characters/new-character-form";
-import { PrimitiveCardSurface } from "@/components/characters/primitive-preview-card";
 import { CapabilityCardSurface } from "@/components/characters/capability-card-surface";
 import { monsterSavedPreviewContext } from "./monster-composition-view";
 import type { MonsterSlot } from "@/lib/monsters/resolve";
@@ -102,10 +101,11 @@ export function MonsterAbilityBuilder({ references, disabled, budget, name, lock
           {entries.map(({reference,index}) => {
             const key = `${reference.kind}:${reference.id}:${reference.versionId ?? "latest"}`, item = selectedPreviews[key];
             return <article className="monster-package-component" key={`${key}:${index}`}>
-              <div className="monster-package-component__actions"><span>×{reference.quantity}{reference.isMirrored ? " · mirrored" : ""}{reference.versionId ? " · pinned version" : ""}</span>{!packageOnly && <><button disabled={disabled} aria-pressed={locks.includes(`reference:${index}`)} onClick={() => onToggleLock(index)}><LockKeyhole size={14}/>{locks.includes(`reference:${index}`) ? "Locked" : "Lock for shuffle"}</button><button disabled={disabled} onClick={() => onRemove(index)}>Remove</button></>}</div>
+
               {/* The preview callback runs only when a nested link is clicked. */}
               {/* eslint-disable-next-line react-hooks/refs */}
               {item ? <PackageComponentCard item={item} reference={reference} onOpen={() => {setPreviewChoice(null);setPath([item]);setPreviewError("");setPreviewLoading(false);setPreviewOpen(true);}}/> : <div><strong>{referenceName(reference)}</strong><p role={selectedErrors[key] ? "alert" : "status"}>{selectedErrors[key] || "Loading complete component…"}</p><button onClick={() => {setPreviewChoice(null);void preview(reference.kind,reference.id);}}>Open component preview</button></div>}
+              <div className="monster-package-component__actions"><span>×{reference.quantity}{reference.isMirrored ? " · mirrored" : ""}{reference.versionId ? " · pinned version" : ""}</span>{!packageOnly && <><button disabled={disabled} aria-pressed={locks.includes(`reference:${index}`)} onClick={() => onToggleLock(index)}><LockKeyhole size={14}/>{locks.includes(`reference:${index}`) ? "Locked" : "Lock for shuffle"}</button><button disabled={disabled} onClick={() => onRemove(index)}>Remove</button></>}</div>
               {!packageOnly && renderReferenceOptions?.(reference,index)}
             </article>;
           })}
@@ -133,7 +133,8 @@ export function MonsterAbilityBuilder({ references, disabled, budget, name, lock
 function PackageComponentCard({item,reference,onOpen}:{item:SandboxPreviewItem;reference:MonsterReference;onOpen:()=>void}) {
   if(item.kind === "primitive") {
     const row=item.row;
-    return <PrimitiveCardSurface primitiveLink={{primitiveId:row.id,source:"MONSTER",acquiredAtLevel:1,isMirrored:reference.isMirrored,versionId:reference.versionId,primitive:{id:row.id,name:row.name,category:row.category,buCost:row.buCost,isMirrorable:row.isMirrorable,mirrorBuCredit:row.mirrorBuCredit,narrativeRule:row.narrativeRule,hardModifiers:Array.isArray(row.hardModifiers)?row.hardModifiers:[]}}} onOpen={onOpen}/>;
+    const option: PrimitiveOption = { ...row, iconSource: row.iconSource === "GAME_ICONS" || row.iconSource === "UPLOAD" ? row.iconSource : null, hardModifiers: Array.isArray(row.hardModifiers) ? row.hardModifiers : [] };
+    return <div className="monster-selected-rule">{reference.isMirrored ? <div className="sw-mirror-choices__grid"><MirrorOptionCard item={option} active showCredit={false} onSelect={onOpen}/></div> : <PrimitiveSelectCard item={option} selected onToggle={onOpen}/>}</div>;
   }
   if(item.kind === "capability") return <CapabilityCardSurface name={item.row.name} type={item.row.type} source={item.row.sourceType} description={item.row.verboseDescription} onOpen={onOpen}><details className="mt-3"><summary>Included rules</summary><EntityPreview item={item} variant="build"/></details></CapabilityCardSurface>;
   return <details><summary>{item.row.name}</summary><EntityPreview item={item} variant="build"/></details>;

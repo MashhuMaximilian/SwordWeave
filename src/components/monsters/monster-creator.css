@@ -1,6 +1,6 @@
 /* The creature picker uses the player's canonical starter cards and Library tables. */
 body[data-ui="v12"] .monster-authoring .monster-ability-builder { min-width:0; }
-body[data-ui="v12"] .monster-authoring .monster-custom-set { display:grid; grid-template-columns:150px minmax(0,1fr) 170px; }
+body[data-ui="v12"] .monster-authoring .monster-custom-set { display:grid; grid-template-columns:230px minmax(0,1fr) 180px; }
 body[data-ui="v12"] .monster-authoring .monster-primitive-families { display:grid; gap:0; }
 body[data-ui="v12"] .monster-authoring .monster-primitive-families button { padding:10px 12px 10px 22px; min-height:48px; text-align:left; display:grid; justify-content:start; background:transparent; border:0; border-radius:0; }
 body[data-ui="v12"] .monster-authoring .monster-primitive-families button[aria-pressed=true] { color:var(--monster-accent); box-shadow:inset 3px 0 var(--monster-accent); background:var(--monster-inset); }
@@ -109,7 +109,7 @@ body[data-ui="v12"] .monster-authoring .monster-selection-ledger button { displa
 body[data-ui="v12"] .monster-authoring .monster-selection-ledger small { font-size:10px; }
 body[data-ui="v12"] .monster-authoring .monster-weakness-library { grid-template-columns:minmax(0,1fr) 170px; }
 @media(max-width:1050px) {
- body[data-ui="v12"] .monster-authoring .monster-custom-set { grid-template-columns:150px minmax(0,1fr); }
+ body[data-ui="v12"] .monster-authoring .monster-custom-set { grid-template-columns:210px minmax(0,1fr); }
  body[data-ui="v12"] .monster-authoring .monster-selection-ledger { grid-column:1/-1; }
  body[data-ui="v12"] .monster-authoring .monster-selection-ledger > div { grid-template-columns:repeat(2,minmax(0,1fr)); }
  body[data-ui="v12"] .monster-authoring .monster-weakness-library { grid-template-columns:minmax(0,1fr); }
@@ -126,3 +126,28 @@ body[data-ui="v12"] .monster-authoring .monster-baseline-vitality summary.sw-met
 @media(max-width:760px) {
  body[data-ui="v12"] .monster-authoring .monster-weakness-library .sw-mirror-choices__grid { grid-template-columns:minmax(0,1fr); }
 }
+
+/* Creature-only layout: the approved player forge keeps its own geometry. */
+body[data-ui="v12"] .monster-authoring .monster-foundation-budget { grid-template-columns:minmax(160px,.35fr) minmax(0,1fr);align-items:stretch;gap:16px; }
+body[data-ui="v12"] .monster-authoring .monster-foundation-budget > .monster-field { justify-content:center;margin:0; }
+body[data-ui="v12"] .monster-authoring .monster-foundation-budget .monster-baseline-vitality { margin:0; }
+body[data-ui="v12"] .monster-authoring .monster-foundation-section .monster-budget { margin:14px 0 20px; }
+body[data-ui="v12"] .monster-authoring .monster-primitive-families button { display:block;padding:12px 14px;min-height:60px; }
+body[data-ui="v12"] .monster-authoring .monster-primitive-families button small { display:block;margin-top:5px;line-height:1.4; }
+body[data-ui="v12"] .monster-authoring .monster-shuffle-controls { display:grid;grid-template-columns:minmax(190px,1fr) minmax(200px,1fr) auto;align-items:start;gap:20px; }
+body[data-ui="v12"] .monster-authoring .monster-shuffle-controls > label { max-width:none; }
+body[data-ui="v12"] .monster-authoring .monster-shuffle-controls > button { align-self:center;margin-top:20px; }
+body[data-ui="v12"] .monster-authoring .monster-shuffle-controls fieldset { border:0;padding:0;margin:0;min-width:0; }
+body[data-ui="v12"] .monster-authoring .monster-shuffle-controls legend { padding:0;margin:0 0 12px; }
+body[data-ui="v12"] .monster-authoring :is(.monster-shuffle-controls input[type=checkbox],.monster-check input[type=checkbox],.monster-reference-controls input[type=checkbox]) { appearance:none;display:inline-grid;place-content:center;width:18px;height:18px;min-height:18px;flex:0 0 18px;border:1px solid var(--v12-silver-low);border-radius:3px;background:var(--sw-inset-fill);cursor:pointer; }
+body[data-ui="v12"] .monster-authoring :is(.monster-shuffle-controls input[type=checkbox],.monster-check input[type=checkbox],.monster-reference-controls input[type=checkbox]):checked { background:var(--sw-metal-gold);border-color:var(--v12-brass); }
+body[data-ui="v12"] .monster-authoring :is(.monster-shuffle-controls input[type=checkbox],.monster-check input[type=checkbox],.monster-reference-controls input[type=checkbox]):checked::after { content:"";width:8px;height:4px;border-left:2px solid var(--sw-metal-gold-ink);border-bottom:2px solid var(--sw-metal-gold-ink);transform:rotate(-45deg) translateY(-1px); }
+body[data-ui="v12"] .monster-authoring input[type=checkbox]:focus-visible { outline:2px solid var(--v12-teal);outline-offset:3px; }
+body[data-ui="v12"] .monster-authoring .monster-package-component { padding:0;border:0;border-radius:0;background:transparent; }
+body[data-ui="v12"] .monster-authoring .monster-package-component__actions { margin:10px 0 0; }
+body[data-ui="v12"] .monster-authoring .monster-selected-rule .sw-access-entry { border:1px solid var(--border);border-left:4px solid var(--v12-teal);border-radius:5px; }
+body[data-ui="v12"] .monster-authoring .monster-selected-rule .sw-mirror-choices__grid { display:block; }
+body[data-ui="v12"] .monster-authoring .monster-selected-rule .sw-mirror-choices__grid > button { width:100%; }
+@media(max-width:1250px) { body[data-ui="v12"] .monster-authoring .monster-shuffle-controls { grid-template-columns:repeat(2,minmax(0,1fr)); } body[data-ui="v12"] .monster-authoring .monster-shuffle-controls > button { grid-column:1/-1;margin:0;justify-self:start; } }
+@media(max-width:760px) { body[data-ui="v12"] .monster-authoring .monster-primitive-families button small { display:none; } }
+@media(max-width:600px) { body[data-ui="v12"] .monster-authoring .monster-foundation-budget,.monster-authoring .monster-shuffle-controls { grid-template-columns:minmax(0,1fr); } body[data-ui="v12"] .monster-authoring .monster-shuffle-controls fieldset { grid-template-columns:repeat(2,minmax(0,1fr)); } }

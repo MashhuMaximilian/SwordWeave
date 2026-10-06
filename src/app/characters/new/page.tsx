@@ -15,7 +15,7 @@ export default async function NewCharacterPage() {
   }
 
   return (
-    <main className="sw-forge-page">
+    <main className="sw-forge-page sw-player-creation">
       <header className="sw-forge-page__masthead">
         <Link href="/characters" className="sw-forge-page__back">
           <ArrowLeft aria-hidden /> Back to characters
