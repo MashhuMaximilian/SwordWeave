@@ -93,7 +93,7 @@ export function MonsterAbilityBuilder({ references, disabled, budget, name, lock
       {references.length ? (["PRIMITIVE", "CAPABILITY", "ITEM", "EFFECT", "HERITAGE"] as const).map(type => {
         const entries = references.map((reference, index) => ({reference, index})).filter(entry => entry.reference.kind === type);
         if (!entries.length) return null;
-        return <CompactHierarchyBranch key={type} label={type === "PRIMITIVE" ? "Primitives" : type === "CAPABILITY" ? "Capabilities" : type === "ITEM" ? "Equipment" : type === "EFFECT" ? "Existing effects" : "Existing heritage"} count={entries.length} tone={type === "PRIMITIVE" ? "teal" : "gold"}>
+        return <CompactHierarchyBranch defaultExpanded key={type} label={type === "PRIMITIVE" ? "Primitives" : type === "CAPABILITY" ? "Capabilities" : type === "ITEM" ? "Equipment" : type === "EFFECT" ? "Existing effects" : "Existing heritage"} count={entries.length} tone={type === "PRIMITIVE" ? "teal" : "gold"}>
           {entries.map(({reference,index}) => {
             const key = `${reference.kind}:${reference.id}:${reference.versionId ?? "latest"}`, item = selectedPreviews[key];
             return <article className="monster-package-component" key={`${key}:${index}`}>

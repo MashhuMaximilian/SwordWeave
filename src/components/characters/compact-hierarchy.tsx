@@ -74,15 +74,17 @@ export function CompactHierarchyBranch({
   tone = "teal",
   className,
   children,
+  defaultExpanded = false,
 }: {
   label: string;
+  defaultExpanded?: boolean;
   count: number;
   tone?: "gold" | "copper" | "teal";
   className?: string;
   children: ReactNode;
 }) {
   const phone = usePhoneCharacterSurface();
-  if (phone && tone === "teal") return <details className="v12-phone-primitive-disclosure"><summary>{label}<span>{count}</span></summary><div className="v12-canonical-branch-list" data-primitive-rail>{children}</div></details>;
+  if (phone && tone === "teal") return <details className="v12-phone-primitive-disclosure" open={defaultExpanded}><summary>{label}<span>{count}</span></summary><div className="v12-canonical-branch-list" data-primitive-rail>{children}</div></details>;
   return (
     <section className={cn("v12-canonical-branch", className)} data-hierarchy-tone={tone}>
       <header className="v12-canonical-branch-heading">
