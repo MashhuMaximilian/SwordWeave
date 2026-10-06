@@ -134,7 +134,7 @@ function PackageComponentCard({item,reference,onOpen}:{item:SandboxPreviewItem;r
   if(item.kind === "primitive") {
     const row=item.row;
     const option: PrimitiveOption = { ...row, iconSource: row.iconSource === "GAME_ICONS" || row.iconSource === "UPLOAD" ? row.iconSource : null, hardModifiers: Array.isArray(row.hardModifiers) ? row.hardModifiers : [] };
-    return <div className="monster-selected-rule">{reference.isMirrored ? <div className="sw-mirror-choices__grid"><MirrorOptionCard item={option} active showCredit={false} onSelect={onOpen}/></div> : <PrimitiveSelectCard item={option} selected onToggle={onOpen}/>}</div>;
+    return <div className="monster-selected-rule">{reference.isMirrored ? <div className="sw-mirror-choices__grid"><MirrorOptionCard item={option} active showCredit={false} onSelect={onOpen}/></div> : <PrimitiveSelectCard item={option} selected showOrigin={false} onToggle={onOpen}/>}</div>;
   }
   if(item.kind === "capability") return <CapabilityCardSurface name={item.row.name} type={item.row.type} source={item.row.sourceType} description={item.row.verboseDescription} onOpen={onOpen}><details className="mt-3"><summary>Included rules</summary><EntityPreview item={item} variant="build"/></details></CapabilityCardSurface>;
   return <details><summary>{item.row.name}</summary><EntityPreview item={item} variant="build"/></details>;

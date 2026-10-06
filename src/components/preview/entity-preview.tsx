@@ -170,6 +170,7 @@ export interface EntityPreviewProps {
   showOwner?: boolean;
   /** Hide the inner identity block when a containing source page owns it. */
   showIdentity?: boolean;
+  showMechanicalSummary?: boolean;
   /**
    * Action bar (Edit / Open source / Version history / Delete). Every
    * preview surface renders the SAME row in the SAME order so the modal
@@ -703,6 +704,7 @@ export function EntityPreview({
   owner,
   showOwner = true,
   showIdentity = true,
+  showMechanicalSummary = true,
   actions,
   actionBar,
   actionPlacement = "bottom",
@@ -909,7 +911,7 @@ export function EntityPreview({
     <div className="v12-entity-preview flex min-h-0 flex-col" data-preview-layout="responsive">
       {actionPlacement === "top" && resolvedActionBar ? <PreviewActions {...resolvedActionBar} /> : null}
       <div className="v12-entity-preview-content min-h-0 pr-1">
-        {item.kind !== "primitive" ? <MechanicalSummary row={item.row} /> : null}
+        {showMechanicalSummary && item.kind !== "primitive" ? <MechanicalSummary row={item.row} /> : null}
         {body}
         {/* OwnerBar MOVED OUT of the body area — it now lives between the
             scrollable content and the footer (just above the like bar)
@@ -1704,6 +1706,7 @@ export function FetchedEntityPreview({ targetType, targetId, owner, onSubLinkCli
         item={result.item}
         variant={inspector ? "build" : "read"}
         showIdentity={!inspector}
+        showMechanicalSummary={!inspector}
         showOwner={!inspector}
         {...(owner ? { owner } : {})}
         callbacks={{

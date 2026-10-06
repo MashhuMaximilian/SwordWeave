@@ -4185,10 +4185,12 @@ export function PrimitiveSelectCard({
   item,
   selected,
   onToggle,
+  showOrigin = true,
 }: {
   item: PrimitiveOption;
   selected: boolean;
   onToggle: () => void;
+  showOrigin?: boolean;
 }) {
   return (
     <button
@@ -4222,8 +4224,8 @@ export function PrimitiveSelectCard({
           ) : null}
         </span>
         <small>
-          {item.costTier || item.category.replaceAll("_", " ")} ·{" "}
-          {originOf(item) === "community" ? "Community" : "System"}
+          {item.costTier || item.category.replaceAll("_", " ")}
+          {showOrigin ? <> · {originOf(item) === "community" ? "Community" : "System"}</> : null}
           {item.version ? ` · v${item.version}` : ""}
         </small>
         {item.mechanicalOutputText ? (

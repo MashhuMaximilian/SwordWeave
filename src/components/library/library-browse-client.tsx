@@ -531,10 +531,10 @@ export function LibraryBrowseClient({
                 {["ITEM", "CAPABILITY", "EFFECT", "LINEAGE_TEMPLATE", "UPBRINGING_TEMPLATE", "MANIFEST_TEMPLATE"].includes(selectedItem.targetType) ? (
                   <FetchedEntityPreview inspector key={selectedItem.id} targetType={selectedItem.targetType} targetId={selectedItem.targetId} onSubLinkClick={link => setNestedPreview({ targetType: link.targetType, targetId: link.targetId, name: link.label })} />
                 ) : null}
-                {selectedItem.verboseDescription && selectedItem.verboseDescription !== selectedItem.mechanicalDescription ? (
+                {selectedItem.targetType === "PRIMITIVE" && selectedItem.verboseDescription && selectedItem.verboseDescription !== selectedItem.mechanicalDescription ? (
                   <section className="v12-inspector-section"><h3>Design meaning</h3><Markdown>{selectedItem.verboseDescription}</Markdown></section>
                 ) : null}
-                {selectedItem.tags.length ? <section className="v12-inspector-section"><h3>Tags</h3><div className="v12-inspector-tags">{selectedItem.tags.map((tag) => <span className="v12-tag" key={tag}>{tag}</span>)}</div></section> : null}
+                {selectedItem.targetType === "PRIMITIVE" && selectedItem.tags.length ? <section className="v12-inspector-section"><h3>Tags</h3><div className="v12-inspector-tags">{selectedItem.tags.map((tag) => <span className="v12-tag" key={tag}>{tag}</span>)}</div></section> : null}
                 {selectedItem.targetType!=="MONSTER"&&<LibraryProvenance targetType={selectedItem.targetType} targetId={selectedItem.targetId} name={selectedItem.name} author={libraryAuthorLabel(selectedItem)} />}
                 <div className="v12-inspector-actions pt-3">
                   <a
