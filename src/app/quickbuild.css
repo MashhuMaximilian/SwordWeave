@@ -1018,3 +1018,18 @@ body[data-ui="v12"] .sw-quickbuild-forge > .sw-character-forge__rail { position:
 body[data-ui="v12"] .sw-quickbuild-forge > .sw-quickbuild { width:100%;max-width:none;margin:0;min-width:0; }
 body[data-ui="v12"] .sw-quickbuild-forge [id^="quickbuild-section-"] { scroll-margin-top:20px; }
 @media(max-width:767px) { body[data-ui="v12"] .sw-quickbuild-forge { grid-template-columns:minmax(0,1fr); } body[data-ui="v12"] .sw-quickbuild-forge > .sw-character-forge__rail { position:static; } }
+
+/* The selected section is a tab; hidden sections keep their draft state. */
+body[data-ui="v12"] .sw-quickbuild-forge [hidden] { display:none!important; }
+body[data-ui="v12"] .sw-quickbuild-rule-heading { display:flex!important;align-items:center;gap:6px; }
+body[data-ui="v12"] .sw-quickbuild-rule-heading small { display:inline!important;flex:0 0 auto;width:auto!important;margin:0!important;white-space:nowrap; }
+@media(max-width:767px) {
+ body[data-ui="v12"] .sw-quickbuild-forge { min-height:0;border:0;background:none;gap:10px; }
+ body[data-ui="v12"] .sw-quickbuild-forge > .sw-character-forge__rail { padding:8px; }
+ body[data-ui="v12"] .sw-quickbuild-forge .sw-character-forge__rail-title, body[data-ui="v12"] .sw-quickbuild-forge .sw-character-forge__reading { display:none; }
+ body[data-ui="v12"] .sw-quickbuild-forge .sw-character-forge__rail nav { display:flex;overflow-x:auto;gap:5px;padding:0; }
+ body[data-ui="v12"] .sw-quickbuild-forge .sw-character-forge__rail nav button { flex:0 0 auto;min-height:44px;padding:8px 10px;display:flex;gap:6px; }
+ body[data-ui="v12"] .sw-quickbuild-forge .sw-character-forge__rail nav button small { display:none; }
+ body[data-ui="v12"] .sw-quickbuild-forge .sw-character-forge__step-number { width:24px;height:24px;min-width:24px; }
+ body[data-ui="v12"] .sw-quickbuild-forge .sw-quickbuild { padding:0; }
+}

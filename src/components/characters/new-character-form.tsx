@@ -912,7 +912,7 @@ function AccountNewCharacterForm({accountId}:{accountId:string|null}) {
   return (
     <div className="sw-character-forge">
       {legacyResume}
-      {phone&&<div className="sw-forge-authoring-return"><CreationAtelierAction accountId={draftLoaded&&hydratedAccount===accountId?accountId:null} draftId={creationDraftId} mode="complete" persistDraft={()=>{if(!draftKey)throw new Error("Wait for your account to load.");const data=JSON.stringify({draftId:creationDraftId,state,selectedPrimitiveIds,mirroredPrimitiveIds,savedMirrorIds,savedPackages,packageShuffleBudget,step});localStorage.setItem(draftKey,data);localStorage.setItem(`${draftKey}:${creationDraftId}`,data);}}/></div>}
+      {phone&&<div className="sw-forge-authoring-return"><CreationAtelierAction compact accountId={draftLoaded&&hydratedAccount===accountId?accountId:null} draftId={creationDraftId} mode="complete" persistDraft={()=>{if(!draftKey)throw new Error("Wait for your account to load.");const data=JSON.stringify({draftId:creationDraftId,state,selectedPrimitiveIds,mirroredPrimitiveIds,savedMirrorIds,savedPackages,packageShuffleBudget,step});localStorage.setItem(draftKey,data);localStorage.setItem(`${draftKey}:${creationDraftId}`,data);}}/></div>}
       {returnNotice&&<p role="status" className="sw-forge-return-notice text-sm text-primary">{returnNotice}</p>}
       <ForgeProgressRail label="Character creation progress">
         {phone && (
@@ -1771,8 +1771,8 @@ function QuickBuildForm({
   }
 
   return (
-    <div className="sw-character-forge sw-quickbuild-forge"><ForgeProgressRail label="Quickbuild navigation"><div className="sw-character-forge__rail-title"><span>Character instrument</span><strong>Quickbuild</strong></div><nav>{["Your character","Drawbacks","Heritages","Strengths","Abilities & equipment"].map((title,index)=><button type="button" key={title} className={quickSection===index?"is-active":""} aria-current={quickSection===index?"step":undefined} onClick={()=>{setQuickSection(index);const section=document.getElementById(`quickbuild-section-${index}`);if(section instanceof HTMLDetailsElement)section.open=true;section?.scrollIntoView({behavior:"smooth",block:"start"});}}><span className="sw-character-forge__step-number">0{index+1}</span><span><strong>{title}</strong><small>{["Name & starting budget","Optional weaknesses","Lineage, upbringing & manifest","Attributes & specialty","Starting set & carried items"][index]}</small></span></button>)}</nav><div className="sw-character-forge__reading"><span>Build Unit budget</span><strong>{budget} BU</strong><small>{cost.netCost} used · {budgetLedger.remaining} remaining</small></div></ForgeProgressRail><div className="sw-quickbuild sw-character-forge__workbench">
-      {phone&&<CreationAtelierAction accountId={loaded?accountId:null} draftId={creationDraftId} mode="quick" quick persistDraft={()=>{if(!draftKey)throw new Error("Wait for your account to load.");const data=JSON.stringify({draftId:creationDraftId,state,selection,shuffleLimits,packageIds,mirrorIds,itemIds,savedMirrorIds,savedPackages});localStorage.setItem(draftKey,data);localStorage.setItem(`${draftKey}:${creationDraftId}`,data);}}/>}
+    <div className="sw-character-forge sw-quickbuild-forge"><ForgeProgressRail label="Quickbuild navigation"><div className="sw-character-forge__rail-title"><span>Character instrument</span><strong>Quickbuild</strong></div><nav>{["Your character","Drawbacks","Heritages","Strengths","Abilities & equipment"].map((title,index)=><button type="button" key={title} className={quickSection===index?"is-active":""} aria-current={quickSection===index?"step":undefined} onClick={()=>{setQuickSection(index);window.scrollTo({top:0,behavior:"smooth"});}}><span className="sw-character-forge__step-number">0{index+1}</span><span><strong>{title}</strong><small>{["Name & starting budget","Optional weaknesses","Lineage, upbringing & manifest","Attributes & specialty","Starting set & carried items"][index]}</small></span></button>)}</nav><div className="sw-character-forge__reading"><span>Build Unit budget</span><strong>{budget} BU</strong><small>{cost.netCost} used · {budgetLedger.remaining} remaining</small></div></ForgeProgressRail><div className="sw-quickbuild sw-character-forge__workbench">
+      {phone&&<CreationAtelierAction compact accountId={loaded?accountId:null} draftId={creationDraftId} mode="quick" quick persistDraft={()=>{if(!draftKey)throw new Error("Wait for your account to load.");const data=JSON.stringify({draftId:creationDraftId,state,selection,shuffleLimits,packageIds,mirrorIds,itemIds,savedMirrorIds,savedPackages});localStorage.setItem(draftKey,data);localStorage.setItem(`${draftKey}:${creationDraftId}`,data);}}/>}
       {returnNotice&&<p role="status" className="sw-forge-return-notice text-sm text-primary">{returnNotice}</p>}
       <header className="sw-quickbuild__heading">
         <h2>Quickbuild</h2>
@@ -1781,7 +1781,7 @@ function QuickBuildForm({
         </button>
       </header>
       <CreationGuidance />
-      <QuickbuildSection id="quickbuild-section-0" number="01" title="Your character" className="sw-quickbuild__identity" reading={<>Level {effectiveLevel}<BudgetBadge amount={budget} label="budget" /></>} subtitle="Choose a name and starting budget. A portrait and a short backstory are optional.">
+      <QuickbuildSection hidden={quickSection!==0} id="quickbuild-section-0" number="01" title="Your character" className="sw-quickbuild__identity" reading={<>Level {effectiveLevel}<BudgetBadge amount={budget} label="budget" /></>} subtitle="Choose a name and starting budget. A portrait and a short backstory are optional.">
         <div className="sw-quickbuild__identity-grid">
           <div className="sw-quickbuild__identity-fields">
             <ForgeField label="Character name" required>
@@ -1825,7 +1825,7 @@ function QuickBuildForm({
           </div>
         </div>
       </QuickbuildSection>
-        <QuickbuildSection id="quickbuild-section-1" number="02" title="Consider drawbacks" reading={<BudgetBadge amount={Math.max(0, cost.mirrorCredit - heritageCost.mirrorCredit)} label="credit" tone="copper" />} subtitle="Optional: accept a weakness to gain extra Build Units before choosing your heritages.">
+        <QuickbuildSection hidden={quickSection!==1} id="quickbuild-section-1" number="02" title="Consider drawbacks" reading={<BudgetBadge amount={Math.max(0, cost.mirrorCredit - heritageCost.mirrorCredit)} label="credit" tone="copper" />} subtitle="Optional: accept a weakness to gain extra Build Units before choosing your heritages.">
           <div className="sw-forge-disclosure__body">
             {heritageCost.mirrorCredit ? (
               <p>
@@ -1866,7 +1866,7 @@ function QuickBuildForm({
             ) : null}
           </div>
       </QuickbuildSection>
-      <QuickbuildSection id="quickbuild-section-2" number="03" title="Choose your heritages" className="sw-quickbuild__heritages" reading={<><BudgetBadge amount={heritageCost.netCost} label="heritages total" />{heritageSplit.map(({ kind, cost: part }) => <BudgetBadge key={kind} amount={part} label={HERITAGE_LABELS[kind]} tone="teal" />)}</>} subtitle="Browse and preview each library, or shuffle for a combination that fits your budget.">
+      <QuickbuildSection hidden={quickSection!==2} id="quickbuild-section-2" number="03" title="Choose your heritages" className="sw-quickbuild__heritages" reading={<><BudgetBadge amount={heritageCost.netCost} label="heritages total" />{heritageSplit.map(({ kind, cost: part }) => <BudgetBadge key={kind} amount={part} label={HERITAGE_LABELS[kind]} tone="teal" />)}</>} subtitle="Browse and preview each library, or shuffle for a combination that fits your budget.">
         <header>
           <div className="sw-quickbuild__shuffle-actions">
             <button type="button" className="sw-quickbuild__limit-toggle" aria-label="Set heritage shuffle BU limits" aria-expanded={limitsOpen} onClick={() => setLimitsOpen(!limitsOpen)}><SlidersHorizontal size={17} /><span>BU limits</span></button>
@@ -1983,7 +1983,7 @@ function QuickBuildForm({
                     </div>
                     <details className="sw-quickbuild__root-description"><summary>About {selected.name}</summary><p>{selected.description || "Open the preview to explore this heritage."}</p></details>
                     <details className="sw-quickbuild__rules" open={!phone}>
-                      <summary>Rules & abilities <small>{selected.rules?.length ?? 0}</small></summary>
+                      <summary className="sw-quickbuild-rule-heading">Rules & abilities <small>{selected.rules?.length ?? 0}</small></summary>
                       {selected.rules?.length ? (
                         <ul>
                           {selected.rules.slice(0, 4).map((rule, index) => (
@@ -2064,7 +2064,7 @@ function QuickBuildForm({
           </span>
         </div>
       </QuickbuildSection>
-      <QuickbuildSection id="quickbuild-section-3" number="04" title="Choose your strengths" reading={`${state.attrPhysical} Physical · ${state.attrMental} Mental · ${state.attrMagical} Magical`}><AttributesStep
+      <QuickbuildSection hidden={quickSection!==3} id="quickbuild-section-3" number="04" title="Choose your strengths" reading={`${state.attrPhysical} Physical · ${state.attrMental} Mental · ${state.attrMagical} Magical`}><AttributesStep
         hideHeading
         state={{ ...state, size: cost.size }}
         setField={setField}
@@ -2073,7 +2073,7 @@ function QuickBuildForm({
         number="03"
       /></QuickbuildSection>
       <section
-        id="quickbuild-section-4" className="sw-quickbuild__extras"
+        hidden={quickSection!==4} id="quickbuild-section-4" className="sw-quickbuild__extras"
         aria-label="Optional starting choices"
       >
         <details open className="sw-forge-disclosure">
@@ -2278,15 +2278,15 @@ function QuickBuildForm({
         <button
           type="button"
           className={`sw-metal-button sw-metal-button--primary${budgetLedger.needsDmApproval ? " sw-budget-overflow" : ""}`}
-          onClick={submit}
-          disabled={isPending || !catalog || budgetLedger.aboveNextLevel}
+          onClick={()=>{if(quickSection<4){setQuickSection(current=>current+1);window.scrollTo({top:0,behavior:"smooth"});}else submit();}}
+          disabled={isPending || (quickSection===4&&(!catalog || budgetLedger.aboveNextLevel))}
         >
           {isPending ? (
             <Loader2 className="animate-spin" size={18} />
           ) : (
             <ArrowRight size={18} />
           )}{" "}
-          {isPending ? "Creating…" : "Create & play"}
+          {isPending ? "Creating…" : quickSection<4 ? "Continue" : "Create & play"}
         </button>
       </footer>
       {picker ? (
@@ -2348,6 +2348,7 @@ function QuickBuildForm({
           onClose={() => setPreview(null)}
         />
       ) : null}
+
       <DomainAuthoringDrawer onSaved={handleDomainSaved} />
     </div></div>
   );
@@ -3236,36 +3237,12 @@ interface StartingAccessProps {
   onShuffle: (budget: number) => void;
 }
 
-function PackageCard({
-  preset,
-  index,
-  active,
-  onChoose,
-}: {
-  preset: PackagePreset;
-  index: number;
-  active: boolean;
-  onChoose: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      className={active ? "is-active" : ""}
-      aria-pressed={active}
-      onClick={onChoose}
-    >
-      <i aria-hidden>{String(index + 1).padStart(2, "0")}</i>
-      <span>
-        <b>{preset.name}</b>
-        <small>{preset.description}</small>
-        <small className="sw-access-preset-summary">
-          {packageSummary(preset.items)}
-        </small>
-      </span>
-      <em>{preset.cost} BU</em>
-      <strong>{active ? "Chosen" : "Choose this set"}</strong>
-    </button>
-  );
+function PackageCard({preset,index,active,onChoose}:{preset:PackagePreset;index:number;active:boolean;onChoose:()=>void}) {
+ return <SetOptionCard name={preset.name} description={preset.description} summary={packageSummary(preset.items)} cost={preset.cost} index={index} active={active} onChoose={onChoose}/>;
+}
+/** Shared package choice for character and creature creation. */
+export function SetOptionCard({name,description,summary,cost,index,active,onChoose}:{name:string;description:string;summary:string;cost:number;index:number;active:boolean;onChoose:()=>void}) {
+ return <button type="button" className={active?"is-active":""} aria-pressed={active} onClick={onChoose}><i aria-hidden>{String(index+1).padStart(2,"0")}</i><span><b>{name}</b><small>{description}</small><small className="sw-access-preset-summary">{summary}</small></span><em>{cost} BU</em><strong>{active?"Chosen":"Choose this set"}</strong></button>;
 }
 
 function StartingAccessStep({

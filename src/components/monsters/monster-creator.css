@@ -169,3 +169,8 @@ body[data-ui="v12"] .monster-authoring .monster-weakness-library .sw-access-libr
 body[data-ui="v12"] .monster-authoring .monster-weakness-library .sw-mirror-choices__grid { margin-top:18px;grid-template-columns:repeat(3,minmax(0,1fr)); }
 @media(max-width:760px) { body[data-ui="v12"] .monster-authoring :is(.monster-build-modes,.monster-weakness-library .sw-mirror-choices__grid) { grid-template-columns:minmax(0,1fr); } }
 @media(max-width:600px) { body[data-ui="v12"] .monster-authoring .monster-foundation-budget { grid-template-columns:minmax(0,1fr); } }
+
+body[data-ui="v12"] .monster-package-options { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px; }
+body[data-ui="v12"] .monster-weakness-library { display:block; }
+body[data-ui="v12"] .monster-weakness-library > .sw-access-library__corpus > header[hidden] { display:none; }
+@media(max-width:1000px) {body[data-ui="v12"] .monster-package-options {grid-template-columns:minmax(0,1fr);}}

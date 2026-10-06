@@ -13,12 +13,14 @@ export function CreationAtelierAction({
   mode,
   persistDraft,
   quick = false,
+  compact = false,
 }: {
   accountId: string | null;
   draftId: string | null;
   mode: CreationMode;
   persistDraft: () => void;
   quick?: boolean;
+  compact?: boolean;
 }) {
   const [choice, setChoice] = useState("primitive"),
     [error, setError] = useState("");
@@ -53,7 +55,7 @@ export function CreationAtelierAction({
       );
     }
   }
-  return (
+  const content = (
     <section className="my-3 rounded-lg border border-border p-3">
       <div className="flex flex-wrap items-center gap-2">
         <select
@@ -92,4 +94,5 @@ export function CreationAtelierAction({
       )}
     </section>
   );
+  return compact ? <details className="sw-forge-disclosure sw-creation-atelier-disclosure"><summary>Create in Atelier ↗</summary>{content}</details> : content;
 }

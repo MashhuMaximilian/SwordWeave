@@ -427,8 +427,11 @@ body[data-ui="v12"] .sw-character-forge__workbench { min-width:0; }
 
 /* The selected skip control uses the shared gold material. Its own teal
    descendant rules must follow that material's dark ink in either theme. */
-body[data-ui="v12"] .sw-player-creation .sw-mirror-skip[aria-pressed="true"] :is(span,small,svg) {
+body[data-ui="v12"] .sw-mirror-skip[aria-pressed="true"] :is(span,small,svg) {
   color:var(--sw-metal-gold-ink)!important;
   text-shadow:none;
   filter:none;
 }
+
+/* Preserve the approved player forge width independently of monster layouts. */
+body[data-ui="v12"] .sw-player-creation :is(.sw-forge-page__masthead,.sw-character-forge) {max-width:1440px;}

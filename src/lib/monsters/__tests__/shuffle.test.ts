@@ -30,6 +30,18 @@ describe("creature set proposals", () => {
     expect(result.definition.references).not.toContainEqual(draft.references[1]);
     expect(result.definition.references.at(-1)).toMatchObject({ kind: "CAPABILITY", id: "new" });
   });
+  it("keeps chosen weaknesses when reshuffling strengths without reference locks", async () => {
+    const weakness = {...ref("PRIMITIVE", "weakness"),isMirrored:true};
+    const result = await shuffleMonster({...draft,references:[weakness]}, "owner", [], {shuffleKinds:["PRIMITIVE"]});
+    expect(result.definition.references).toContainEqual(weakness);
+    expect(result.definition.references).toContainEqual(expect.objectContaining({id:"new",isMirrored:false}));
+  });
+  it("does not impose a five-component limit on a set that fits its budget", async () => {
+    mocks.query.mockResolvedValue({items:Array.from({length:6},(_,index)=>({targetId:`part-${index}`,buCost:4}))});
+    const result=await shuffleMonster({...draft,references:[]},"owner",[],{shuffleKinds:["PRIMITIVE"],shuffleBudget:25});
+    expect(result.definition.references).toHaveLength(6);
+    expect(result.sheet.spent).toBe(24);
+  });
   it("checks actual resolved cost and never returns an over-budget proposal", async () => {
     await expect(shuffleMonster(draft, "owner", [], { shuffleKinds: ["CAPABILITY"], shuffleBudget: 8 })).rejects.toThrow("No published components fit");
   });

@@ -116,3 +116,7 @@ body[data-ui="v12"] .v12-entry-row[data-preview-trigger="true"]:is(:hover,:focus
 
 body[data-ui="v12"] .v12-catalogue-collection .v12-entry-mechanical { color:var(--sw-text-mechanical); }
 body[data-ui="v12"] .monster-core-metrics > button:is(:hover,:focus-visible) strong { color:var(--sw-metal-gold-ink)!important; }
+
+/* A nested rule has its own affordance within a gold catalogue card. */
+body[data-ui="v12"] .v12-entry-row[data-preview-trigger="true"] .v12-composition-mechanic:is(:hover,:focus-visible) .v12-composition-copy { font-weight:700;text-decoration:underline;text-underline-offset:3px; }
+body[data-ui="v12"] .v12-entry-row[data-preview-trigger="true"] .v12-composition-mechanic:focus-visible { outline:2px solid currentColor;outline-offset:2px; }
