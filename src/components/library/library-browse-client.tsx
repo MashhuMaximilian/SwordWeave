@@ -126,6 +126,8 @@ function primitiveStatus(item: LibraryItem) {
 }
 
 interface Props {
+  basePath?: string;
+  fixedType?: LibraryItem["targetType"];
   initialItems: LibraryItem[];
   total: number;
   page: number;
@@ -158,6 +160,8 @@ function atelierBuildForTarget(targetType: LibraryItem["targetType"]): string {
 }
 
 export function LibraryBrowseClient({
+  basePath = "/library/browse",
+  fixedType,
   initialItems,
   total,
   page,
@@ -253,17 +257,18 @@ export function LibraryBrowseClient({
       for (const key of ["minBu", "maxBu", "minForks", "fromDate", "toDate", "definitionKind", "mechanicTarget", "recipient", "conditionMode", "minMagnitude", "maxMagnitude"] as const) if (next[key]) params.set(key, String(next[key]));
       if (next.mirrorableOnly) params.set("mirrorableOnly", "1");
       const qs = params.toString();
-      window.history.replaceState(null, "", qs ? `/library/browse?${qs}` : "/library/browse");
+      window.history.replaceState(null, "", qs ? `${basePath}?${qs}` : basePath);
     },
-    [phone],
+    [phone, basePath],
   );
 
   const onStateChange = useCallback(
     (next: LibraryToolbarState) => {
-      setState(next);
-      pushUrl(next, 0);
+      const bounded = fixedType ? { ...next, typeFilter: fixedType } : next;
+      setState(bounded);
+      pushUrl(bounded, 0);
     },
-    [pushUrl],
+    [pushUrl, fixedType],
   );
 
   // When the user clicks a row, open the iframe detail modal.
@@ -284,6 +289,7 @@ export function LibraryBrowseClient({
       <div className="space-y-3">
         <LibraryToolbar
           state={state}
+          {...(fixedType ? { availableTypes: [{ key: fixedType, label: "Monsters & NPCs" }] } : {})}
           onStateChange={onStateChange}
           primitiveCategories={primitiveCategories}
           // Tag chips for items — only shown by the toolbar when the
@@ -301,7 +307,7 @@ export function LibraryBrowseClient({
         />
       </div>
     ),
-    [phone, state, onStateChange, primitiveCategories, itemTags, activeTags],
+    [phone, state, onStateChange, primitiveCategories, itemTags, activeTags, fixedType],
   );
   useFilterSlot(filterPanelContent);
 
@@ -445,7 +451,7 @@ export function LibraryBrowseClient({
           ) : null}
           </section>
           <div className="v12-results-heading">
-            {phone ? <PhoneTypeChoices label="Record type" value={state.typeFilter} options={PHONE_RECORD_TYPES} onChange={value=>onStateChange({...state,typeFilter:value as LibraryToolbarState["typeFilter"],category:"",tier:""})}/> : <div>
+            {phone ? <PhoneTypeChoices label="Record type" value={state.typeFilter} options={fixedType ? PHONE_RECORD_TYPES.filter(option => option.value === fixedType) : PHONE_RECORD_TYPES} onChange={value=>onStateChange({...state,typeFilter:value as LibraryToolbarState["typeFilter"],category:"",tier:""})}/> : <div>
               <p className="v12-kicker">Exact entries</p>
               <h3>{state.typeFilter === "MONSTER" ? "Creatures of the weave" : "Canonical references and community expressions"}</h3>
             </div>}

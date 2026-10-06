@@ -52,7 +52,6 @@ import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import type { SlotSource } from "@/db/schema/characters";
 import { SlotSourceBadge } from "@/components/characters/slot-source-badge";
-import { OriginBadge } from "@/components/characters/origin-badge";
 import {
   CHIP_MIME,
   decodeChipPayload,
@@ -60,6 +59,7 @@ import {
 } from "@/components/characters/workspace/dnd-primitives";
 import { makeKey as makeVersionKey, type VersionKey } from "@/lib/versions/version-key";
 import { useEntityPreview } from "@/components/characters/preview-modal";
+import { CapabilityCardSurface } from "./capability-card-surface";
 import { Markdown } from "@/components/ui/markdown";
 
 interface ToggleResponse {
@@ -158,8 +158,14 @@ export function CapabilityActionButtons({
   triggerDisabled = false,
   onToggle,
   onTrigger,
+  showToggle = true,
+  showTrigger = true,
+  triggerLabel = "Trigger",
 }: {
   active: boolean;
+  showToggle?: boolean;
+  showTrigger?: boolean;
+  triggerLabel?: string;
   togglePending?: boolean;
   triggerPending?: boolean;
   triggered?: boolean;
@@ -170,7 +176,7 @@ export function CapabilityActionButtons({
   const readOnly = useCharacterReadOnly();
   return (
     <div className="v12-capability-actions-only" onClick={(event) => event.stopPropagation()}>
-      <button
+      {showToggle && <button
         type="button"
         onClick={onToggle}
         disabled={readOnly || togglePending || triggerPending}
@@ -180,17 +186,17 @@ export function CapabilityActionButtons({
       >
         <Power className="size-3" />
         {active ? "Active" : "Inactive"}
-      </button>
-      <button
+      </button>}
+      {showTrigger && <button
         type="button"
         onClick={onTrigger}
         disabled={readOnly || triggerPending || togglePending || triggerDisabled}
         data-testid="capability-trigger"
-        title="Fire this capability once and log it"
+        title={triggerLabel === "Use" ? "Apply this ability’s consequences" : "Fire this capability once and log it"}
       >
         {triggered ? <CheckCircle2 className="size-3" /> : triggerPending ? <Loader2 className="size-3 animate-spin" /> : <Zap className="size-3" />}
-        {triggered ? "Triggered" : triggerPending ? "…" : "Trigger"}
-      </button>
+        {triggered ? "Triggered" : triggerPending ? "…" : triggerLabel}
+      </button>}
     </div>
   );
 }
@@ -714,63 +720,16 @@ export function CapabilityCard({
   }
 
   return (
-      <div
-        className={cn(
-          "relative rounded-md border bg-card p-4 transition-all cursor-pointer",
-          showActive
-            ? "border-primary ring-2 ring-primary/30"
-            : "border-border hover:border-primary/50",
-          isDropOver && "ring-2 ring-amber-400/60 border-amber-400/60",
-        )}
-        onClick={handleCardClick}
-        onDragOver={handleCardDragOver}
-        onDragLeave={handleCardDragLeave}
-        onDrop={handleCardDrop}
+      <CapabilityCardSurface
+        name={capability.name} type={capability.type} source={capability.sourceType}
+        acquiredAtLevel={capability.acquiredAtLevel} originChain={capability.originChain}
+        description={capability.verboseDescription} active={showActive} dropOver={isDropOver}
+        onOpen={()=>void openCapabilityPreview()} onClick={handleCardClick}
+        onDragOver={handleCardDragOver} onDragLeave={handleCardDragLeave} onDrop={handleCardDrop}
+        versionBadge={<SlotSourceBadge slotSource={capability.slotSource} versionId={capability.versionId} latestVersionId={capability.latestVersionId} targetType="CAPABILITY" targetId={capability.id} characterId={characterId} slotKind="capability" slotEntityId={capability.id}/>}
       >
         {blockedReason&&<p role="status" className="mb-3 rounded border border-amber-500/40 bg-amber-500/10 p-2 text-sm">{blockedReason}</p>}
         {consequencePreview && <div onClick={e=>e.stopPropagation()}><ConsequencePackageAction characterId={characterId} entityKey={`capability:${capability.id}`} initialPreview={consequencePreview} onClose={()=>setConsequencePreview(null)} /></div>}
-        {/* Phase 8.L (Mashu): compact card layout. The TYPE
-            label + Pinned/version chip live in the top-right
-            column. The active/inactive state lives in the
-            bottom-left near the buttons. Source/Acquired
-            metadata stays on the left under the title. */}
-        <div className="flex items-start justify-between gap-2">
-          <button type="button" onClick={(e) => { e.stopPropagation(); void openCapabilityPreview(); }} className="text-left font-semibold hover:underline focus:outline-none focus:ring-2 focus:ring-primary rounded-sm">{capability.name}</button>
-          <div className="flex shrink-0 flex-col items-end gap-1">
-            <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">
-              {capability.type}
-            </span>
-            <SlotSourceBadge
-              slotSource={capability.slotSource}
-              versionId={capability.versionId}
-              latestVersionId={capability.latestVersionId}
-              targetType="CAPABILITY"
-              targetId={capability.id}
-              // PLAN Eilxina Part D+ follow-up (Mashu 2026-09-09):
-              // self-bump on stale. characterId already lives on
-              // the card; capability.id is the slot entity id the
-              // bump endpoint expects.
-              characterId={characterId}
-              slotKind="capability"
-              slotEntityId={capability.id}
-            />
-          </div>
-        </div>
-        <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-          <span>{capability.sourceType}</span>
-          <span>·</span>
-          <span>Acquired L{capability.acquiredAtLevel}</span>
-        </div>
-
-        {capability.originChain && capability.originChain.length > 0 ? (
-          <div className="mt-1">
-            <OriginBadge chain={capability.originChain} />
-          </div>
-        ) : null}
-
-        {capability.verboseDescription && (
-          <Markdown className="mt-2 text-xs leading-relaxed text-muted-foreground line-clamp-3">{capability.verboseDescription}</Markdown>
-        )}
         {/* Phase 8.4 v5 (Mashu 2026-07-28): nested effects list
             (matches the character-creation modal's structure).
             Only renders when the capability has at least one
@@ -910,6 +869,6 @@ export function CapabilityCard({
             Capability fired (logged). Effect resolves per its description.
           </p>
         )}
-      </div>
+      </CapabilityCardSurface>
     );
   }

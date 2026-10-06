@@ -1,9 +1,10 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useUser, useClerk } from "@clerk/nextjs";
-import { BookmarkButton } from "./bookmark-button";
+import { LibraryTable } from "@/components/library/library-table";
+import type { LibraryItem } from "@/lib/publishing/library-query";
 import Link from "next/link";
-import { FolderTree, Folder, ChevronRight, BookOpen } from "lucide-react";
+import { FolderTree, Folder, BookOpen, Bookmark, Hammer, GitFork, Plus } from "lucide-react";
 import { useModalStack } from "@/components/ui/modal-stack";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CollectionEntryPreview } from "./collection-entry-preview";
@@ -17,7 +18,6 @@ type Collection = {
   system_kind: string | null;
   followed?: boolean;
 };
-type Entry = { targetType: string; targetId: string; name: string };
 type CollectionPageProps = { collectionId?: string; ownerId?: string; embedded?: boolean };
 export function CollectionsClient(props: CollectionPageProps) {
   const { user, isLoaded } = useUser();
@@ -30,7 +30,9 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
   const stack = useModalStack();
   const [rows, setRows] = useState<Collection[]>([]),
     [current, setCurrent] = useState<Collection | null>(null),
-    [entries, setEntries] = useState<Entry[]>([]),
+    [entries, setEntries] = useState<LibraryItem[]>([]),
+    [creating, setCreating] = useState(false),
+    [entryView, setEntryView] = useState<"GRID" | "LIST">("GRID"),
     [page, setPage] = useState(0),
     [more, setMore] = useState(false),
     [error, setError] = useState(""),
@@ -62,8 +64,12 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
       if (!r.ok) throw new Error(d.error);
       if (collectionId) {
         setCurrent(d.collection);
-        setEntries(d.entries);
-        setMore(d.hasMore);
+        const catalogue = await fetch(`/api/library?collectionId=${encodeURIComponent(collectionId)}&limit=24&offset=${page * 24}&sort=RECENT`, {signal: reading.signal, cache: "no-store"});
+        const library = await catalogue.json();
+        if (!currentRequest()) return;
+        if (!catalogue.ok) throw new Error(library.error ?? "Unable to load collected entries");
+        setEntries(library.items ?? []);
+        setMore((page + 1) * 24 < library.total);
         const own = await fetch(
           `/api/collections?owner=${encodeURIComponent(d.collection.owner_id)}`,
           {signal: reading.signal, cache: "no-store"},
@@ -115,12 +121,12 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
       )}
       {!collectionId && (
         <>
-          {rows.some(c => c.system_kind) && <section className="sw-collections-section"><p className="sw-collections-eyebrow">Automatic collections</p><div className="sw-collections-grid">{rows.filter(c => c.system_kind).map(c => <Link key={c.id} href={`/collections/${c.id}`} className="sw-collections-card"><span className="sw-collections-card-seal" aria-hidden="true"><BookOpen size={19} /></span><strong>{c.name}</strong><span className="sw-collections-meta">{c.visibility.replaceAll("_", " ").toLowerCase()}</span></Link>)}</div></section>}
-          <section className="sw-collections-section"><div className="sw-collections-section-heading"><h2>Collection branches</h2>{user && <a href="#create-collection" className="sw-collections-breadcrumb" onClick={() => setParent("")}>＋ Create a root</a>}</div><CollectionTree rows={rows.filter(c => !c.system_kind)} />{!rows.some(c => !c.system_kind) && <EmptyState compact icon={FolderTree} title="Start a collection branch" description="Create a root for a campaign, theme, or project. Add child collections to organize its entries." />}</section>
+          {rows.some(c => c.system_kind) && <section className="sw-collections-section"><p className="sw-collections-eyebrow">Automatic collections</p><div className="sw-collections-grid">{rows.filter(c => c.system_kind).map(c => <Link key={c.id} href={`/collections/${c.id}`} className="sw-collections-card" data-library-surface="atelier"><span className="sw-entity-medallion sw-collections-card-seal" aria-hidden="true">{c.system_kind?.includes("FORK") ? <GitFork size={19} /> : c.system_kind === "ORIGINAL" ? <Hammer size={19} /> : <Bookmark size={19} />}</span><strong>{c.name}</strong><span className="sw-collections-meta">{c.system_kind?.includes("FORK") ? "Forks of existing entries" : c.system_kind === "ORIGINAL" ? "Entries you authored" : "Entries you saved"} · {c.visibility.replaceAll("_", " ").toLowerCase()}</span></Link>)}</div></section>}
+          <section className="sw-collections-section"><div className="sw-collections-section-heading"><h2>Collection branches</h2>{user && <a href="#create-collection" className="sw-metal-button sw-metal-button--primary sw-collections-button" onClick={() => {setParent("");setCreating(true);}}><Plus size={14} /> Create collection</a>}</div><CollectionTree rows={rows.filter(c => !c.system_kind)} />{!rows.some(c => !c.system_kind) && <EmptyState compact icon={FolderTree} title="Start a collection branch" description="Create a root for a campaign, theme, or project. Add child collections to organize its entries." />}</section>
           {!user && (
             <button
               onClick={() => clerk.openSignIn()}
-              className="sw-collections-button"
+              className="sw-metal-button sw-collections-button"
             >
               Sign in to create collections
             </button>
@@ -131,16 +137,16 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
         <>
           <div className="sw-collections-actions"><Link
             href={`/library/browse?type=ALL&collectionId=${current.id}`}
-            className="sw-collections-button sw-collections-button--primary sw-collections-library"
+            className="sw-metal-button sw-collections-button sw-metal-button--primary sw-collections-library"
           >
             Browse in Library
           </Link>
-          {user && current.owner_id === user.id && <a className="sw-collections-button" href="#create-collection" onClick={() => setParent(current.system_kind ? "" : current.id)}>＋ {current.system_kind ? "Create collection" : "Add child collection"}</a>}</div>
+          {user && current.owner_id === user.id && <a className="sw-metal-button sw-collections-button" href="#create-collection" onClick={() => {setParent(current.system_kind ? "" : current.id);setCreating(true);}}>＋ {current.system_kind ? "Create collection" : "Add child collection"}</a>}</div>
           <nav aria-label="Collection path" className="sw-collections-path"><Link href="/collections">Collections</Link>{collectionAncestors(current, rows).map(c => <span key={c.id}><span aria-hidden="true"> / </span><Link href={`/collections/${c.id}`}>{c.name}</Link></span>)}<span aria-hidden="true"> / </span><strong>{current.name}</strong></nav>
           {!current.system_kind && <section className="sw-collections-section sw-collections-branch-panel"><div className="sw-collections-section-heading"><h2>{current.system_kind ? "Automatic collection" : "Inside this collection"}</h2><span className="sw-collections-meta">{current.visibility.replaceAll("_", " ").toLowerCase()}</span></div>{!current.system_kind && <div className="sw-collections-current"><Folder size={18} aria-hidden="true" /><strong>{current.name}</strong><CollectionTree rows={rows.filter(c => !c.system_kind)} parentId={current.id} /></div>}{!current.system_kind && !rows.some(c => c.parent_id === current.id) && <p className="sw-collections-branch-empty">No child collections yet. Add a child to begin a branch.</p>}</section>}
           {user && current.owner_id !== user.id && (
             <button
-              className="sw-collections-button"
+              className="sw-metal-button sw-collections-button"
               onClick={() =>
                 void mutate(`/api/collections/${current.id}`, "PATCH", {
                   follow: !current.followed,
@@ -180,59 +186,45 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
                   })
                 }
               />
-              <button className="sw-collections-button" disabled={pending} onClick={() => setRenameDraft(current.name)}>Rename</button>
-              <button className="sw-collections-button" disabled={pending} onClick={() => setDeleteReview(true)}>Delete collection</button>
+              <button className="sw-metal-button sw-collections-button" disabled={pending} onClick={() => setRenameDraft(current.name)}>Rename</button>
+              <button className="sw-metal-button sw-collections-button" disabled={pending} onClick={() => setDeleteReview(true)}>Delete collection</button>
               {renameDraft !== null && <form className="sw-collections-review" onSubmit={async event => {
                 event.preventDefault();
                 if (await mutate(`/api/collections/${current.id}`, "PATCH", {name: renameDraft})) setRenameDraft(null);
               }}>
                 <label className="block">Collection name<input required maxLength={100} className="sw-collections-input" value={renameDraft} onChange={event => setRenameDraft(event.target.value)} /></label>
-                <button disabled={pending} className="sw-collections-button">Save name</button><button type="button" disabled={pending} className="sw-collections-button" onClick={() => setRenameDraft(null)}>Cancel rename</button>
+                <button disabled={pending} className="sw-metal-button sw-collections-button">Save name</button><button type="button" disabled={pending} className="sw-metal-button sw-collections-button" onClick={() => setRenameDraft(null)}>Cancel rename</button>
               </form>}
               {deleteReview && <fieldset className="sw-collections-review sw-collections-review--danger">
                 <legend>Delete {current.name}?</legend><p>Entries remain intact. Choose what happens to child collections.</p>
                 <label className="block">Child collections<select className="sw-collections-input" value={deleteChildren} onChange={event => setDeleteChildren(event.target.value as "move" | "delete")}>
                   <option value="move">Move to this collection’s parent</option><option value="delete">Delete child collections too</option>
                 </select></label>
-                <button disabled={pending} className="sw-collections-button sw-collections-button--danger" onClick={async () => {
+                <button disabled={pending} className="sw-metal-button sw-collections-button sw-collections-button--danger" onClick={async () => {
                   if (await mutate(`/api/collections/${current.id}`, "DELETE", {children: deleteChildren})) window.location.href = "/collections";
                 }}>Confirm delete collection</button>
-                <button disabled={pending} className="sw-collections-button" onClick={() => setDeleteReview(false)}>Cancel deletion</button>
+                <button disabled={pending} className="sw-metal-button sw-collections-button" onClick={() => setDeleteReview(false)}>Cancel deletion</button>
               </fieldset>}
             </div>
           )}
-          <h2>Collected entries</h2>
-          <ul className="sw-collections-entries">
-            {entries.map((e) => (
-              <li
-                key={`${e.targetType}:${e.targetId}`}
-                className="sw-collections-entry"
-              >
-                <button type="button" className="sw-collections-entry-link" onClick={() => {
-                  if (stack.canPush) stack.push({ key: `collection-entry:${e.targetType}:${e.targetId}`, label: e.name, category: e.targetType.replaceAll("_TEMPLATE", ""), content: <CollectionEntryPreview targetType={e.targetType} targetId={e.targetId} /> });
-                }}><span className="sw-collections-entry-icon" aria-hidden="true"><BookOpen size={18} /></span><span>{e.name}<span className="sw-collections-entry-kind">{e.targetType.replaceAll("_TEMPLATE", "").toLowerCase()} · Preview details</span></span><ChevronRight size={16} aria-hidden="true" /></button>
-                <BookmarkButton
-                  targetType={e.targetType}
-                  targetId={e.targetId}
-                />
-              </li>
-            ))}
-          </ul>
-          {entries.length === 0 && (
-            <EmptyState compact icon={BookOpen} title="No entries to display" description="Save an entry from the Library or My Creations and choose this collection. Only entries you can access appear here." primaryAction={{ label: "Browse Library", href: "/library/browse" }} />
-          )}
+          <div className="sw-collections-section-heading"><h2>Collected entries</h2><div className="sw-collections-actions" aria-label="Entry layout">{(["GRID", "LIST"] as const).map(view => <button key={view} type="button" className="sw-metal-button sw-collections-button" aria-pressed={entryView === view} onClick={() => setEntryView(view)}>{view === "GRID" ? "Cards" : "List"}</button>)}</div></div>
+          <div className="sw-collections-catalogue">
+            <LibraryTable items={entries} view={entryView} surface="atelier" engagement={{ reactions: Object.fromEntries(entries.map(item => [item.id, item.viewerReaction ?? null])), following: Object.fromEntries(entries.map(item => [item.id, item.viewerFollowing ?? false])) }} currentUserInternalId={null} showClearFilters={false} pagination={null} emptyTitle="No entries to display" emptyDescription="Save an entry from the Library or My Creations and choose this collection. Only entries you can access appear here." onSelect={item => {
+              if (stack.canPush) stack.push({ key: `collection-entry:${item.targetType}:${item.targetId}`, label: item.name, category: item.targetType, content: <CollectionEntryPreview targetType={item.targetType} targetId={item.targetId} /> });
+            }} />
+          </div>
           {(page > 0 || more) && <div className="sw-collections-pagination">
-            <button className="sw-collections-button" disabled={!page || pending} onClick={() => setPage((p) => p - 1)}>
+            <button className="sw-metal-button sw-collections-button" disabled={!page || pending} onClick={() => setPage((p) => p - 1)}>
               Previous
             </button>
             <span>Page {page + 1}</span>
-            <button className="sw-collections-button" disabled={!more || pending} onClick={() => setPage((p) => p + 1)}>
+            <button className="sw-metal-button sw-collections-button" disabled={!more || pending} onClick={() => setPage((p) => p + 1)}>
               Next
             </button>
           </div>}
         </>
       )}
-          {user && (!collectionId || (current && current.owner_id === user.id)) && (
+          {user && creating && (!collectionId || (current && current.owner_id === user.id)) && (
             <form
               id="create-collection" className="sw-collections-create sw-collections-panel"
               onSubmit={async (e) => {
@@ -243,8 +235,10 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
                     parentId: current?.system_kind && parent === current.id ? null : parent || null,
                     visibility,
                   })
-                )
+                ) {
                   setName("");
+                  setCreating(false);
+                }
               }}
             >
               <p className="sw-collections-eyebrow">Collection setup</p><h2>{current && !current.system_kind ? "Create a child collection" : "Create collection"}</h2>
@@ -273,9 +267,10 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
                   ))}
               </select>
               <Visibility value={visibility} onChange={setVisibility} />
-              <button disabled={pending} className="sw-collections-button sw-collections-button--primary">
+              <button disabled={pending} className="sw-metal-button sw-collections-button sw-metal-button--primary">
                 {pending ? "Creating…" : "Create collection"}
               </button>
+              <button type="button" className="sw-metal-button sw-collections-button" disabled={pending} onClick={() => setCreating(false)}>Cancel</button>
             </form>
           )}
     </Root>
@@ -324,6 +319,6 @@ function CollectionTree({ rows, parentId = null, seen = [] }: { rows: Collection
   return <ul className="sw-collections-tree">{children.map(c => {
     const hasChildren = rows.some(child => child.parent_id === c.id && !seen.includes(child.id));
     const heading = <><Link href={`/collections/${c.id}`} className="sw-collections-tree-link"><Folder size={18} aria-hidden="true" /><strong>{c.name}</strong></Link><span className="sw-collections-tree-visibility">{c.visibility.replaceAll("_", " ").toLowerCase()}{c.followed ? " · saved" : ""}</span></>;
-    return <li key={c.id} className="sw-collections-tree-node">{hasChildren ? <details open><summary><span className="sw-collections-tree-toggle" aria-hidden="true">›</span>{heading}</summary><CollectionTree rows={rows} parentId={c.id} seen={[...seen, c.id]} /></details> : <div className="sw-collections-tree-leaf"><span className="sw-collections-tree-toggle" aria-hidden="true">·</span>{heading}</div>}</li>;
+    return <li key={c.id} className="sw-collections-tree-node" data-library-surface="atelier">{hasChildren ? <details open><summary><span className="sw-collections-tree-toggle" aria-hidden="true">›</span>{heading}</summary><CollectionTree rows={rows} parentId={c.id} seen={[...seen, c.id]} /></details> : <div className="sw-collections-tree-leaf"><span className="sw-collections-tree-toggle" aria-hidden="true">·</span>{heading}</div>}</li>;
   })}</ul>;
 }

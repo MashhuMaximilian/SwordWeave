@@ -3,7 +3,7 @@
 .monster-character-sheet .creature-identity {position:sticky;top:0;z-index:30;background:var(--background);border-bottom:1px solid var(--border);padding:8px 0}
 .creature-back {font-size:10px;color:var(--muted-foreground)}
 .creature-identity-row {display:flex;align-items:center;gap:10px}
-.creature-identity-glyph {display:grid;place-items:center;flex-shrink:0;width:40px;height:40px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--primary)}
+.creature-identity-glyph {overflow:hidden;display:grid;place-items:center;flex-shrink:0;width:40px;height:40px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--primary)}
 .creature-identity h1 {font-size:20px;line-height:1.2;font-family:var(--font-subtitle,var(--font-body,sans-serif))}
 .creature-eyebrow {font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-foreground)}
 .creature-identity-meta {font-size:10px;color:var(--muted-foreground);text-transform:capitalize}
@@ -84,3 +84,5 @@ body[data-ui="v12"] .monster-character-sheet .creature-stat-body > :is(.v12-draw
 @media(max-width:767px) {
  body[data-ui="v12"] .monster-character-sheet .creature-stat-body.v12-bottom-drawer-body {grid-template-columns:minmax(0,1fr)!important;gap:12px!important;padding:12px;}
 }
+
+.monster-abilities-panel > :is(section,article,div) + :is(section,article,div) {margin-top:12px}

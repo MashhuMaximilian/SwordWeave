@@ -61,8 +61,8 @@ export interface PrimitivePreviewCardProps {
   // an onUpdate callback. Optional: previews rendered elsewhere
   // (e.g. atelier) leave them undefined and the badge stays
   // read-only when stale.
-  readonly characterId?: string;
-  readonly slotInstanceId?: string;
+  readonly characterId?: string | undefined;
+  readonly slotInstanceId?: string | undefined;
   /** The primitive link data the sheet already has. We use this
    * to render immediately (no fetch needed) and as a fallback
    * if the detail fetch fails. */
@@ -109,8 +109,6 @@ export function PrimitivePreviewCard({
   slotInstanceId,
 }: PrimitivePreviewCardProps) {
   const p = primitiveLink.primitive;
-  const isMirrored = primitiveLink.isMirrored;
-  const mirrorBuCredit = p.mirrorBuCredit;
   const { showToast } = useToasts();
   const { openPreview } = useEntityPreview();
 
@@ -209,6 +207,14 @@ export function PrimitivePreviewCard({
     [handleClick],
   );
 
+  return <PrimitiveCardSurface primitiveLink={primitiveLink} inheritedFrom={inheritedFrom} inheritedKind={inheritedKind} provenancePath={provenancePath} characterId={characterId} slotInstanceId={slotInstanceId} fetching={fetching} onOpen={handleClick} onKeyDown={handleKeyDown}/>;
+}
+
+/** Shared player card presentation; the caller owns its subject and pinned preview. */
+export function PrimitiveCardSurface({primitiveLink,inheritedFrom=null,inheritedKind=null,provenancePath=null,characterId,slotInstanceId,fetching=false,onOpen,onKeyDown}:PrimitivePreviewCardProps & {fetching?:boolean;onOpen:React.MouseEventHandler<HTMLButtonElement>;onKeyDown?:React.KeyboardEventHandler<HTMLButtonElement>}) {
+  const p=primitiveLink.primitive;
+  const isMirrored=primitiveLink.isMirrored;
+  const mirrorBuCredit=p.mirrorBuCredit;
   const modifiers = p.hardModifiers;
   const hasConditions =
     Array.isArray(modifiers) && modifiers.length > 0;
@@ -233,8 +239,8 @@ export function PrimitivePreviewCard({
               don't trigger the preview. */}
           <button
             type="button"
-            onClick={handleClick}
-            onKeyDown={handleKeyDown}
+            onClick={onOpen}
+            onKeyDown={onKeyDown}
             className="font-medium text-left hover:underline focus:outline-none focus:ring-2 focus:ring-ring rounded"
           >
             {p.name}

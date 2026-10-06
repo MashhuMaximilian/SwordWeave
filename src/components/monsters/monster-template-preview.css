@@ -12,3 +12,4 @@
 .sw-creature-preview .v12-metal-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:10px 18px;border:1px solid var(--border);border-radius:5px;background:var(--sw-surface-fill,var(--card));color:var(--foreground);font:600 12px/1.4 var(--font-system);text-decoration:none;cursor:pointer}
 .sw-creature-preview .v12-metal-button--primary,.sw-creature-preview .v12-metal-button:hover{background:var(--sw-metal-gold);color:var(--sw-metal-gold-ink);border-color:var(--sw-text-gold)}
 .sw-creature-preview .v12-metal-button:disabled{opacity:.5;cursor:default}
+.sw-creature-emblem{overflow:hidden;position:relative}.sw-creature-emblem>img{width:100%;height:100%;object-fit:cover}

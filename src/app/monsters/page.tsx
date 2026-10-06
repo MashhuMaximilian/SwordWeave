@@ -1,2 +1,3 @@
-import { MonsterWorkbench } from "@/components/monsters/monster-workbench";
-export default function Page(){return <MonsterWorkbench browse/>;}
+import { LibraryCatalogue, type LibraryCatalogueProps } from "@/components/library/library-catalogue";
+export const dynamic = "force-dynamic";
+export default function MonsterCataloguePage(props: LibraryCatalogueProps) { return <LibraryCatalogue {...props} monsterCatalogue/>; }

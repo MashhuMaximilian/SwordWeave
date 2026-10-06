@@ -64,3 +64,11 @@ body[data-ui="v12"] .monster-authoring .monster-shuffle-controls fieldset label 
  body[data-ui="v12"] .monster-authoring .monster-custom-set .sw-access-library__families > button i { grid-row:auto;width:18px;height:18px; }
  body[data-ui="v12"] .monster-authoring .monster-shuffle-controls fieldset { grid-template-columns:repeat(2,minmax(0,1fr));gap:8px; }
 }
+body[data-ui="v12"] .monster-authoring .monster-resulting-package { margin-top:24px; }
+body[data-ui="v12"] .monster-authoring .monster-package-component { padding:14px; margin:12px 0; border:1px solid var(--monster-border); border-radius:12px; background:var(--monster-inset); min-width:0; }
+body[data-ui="v12"] .monster-authoring .monster-package-component__actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:12px; }
+body[data-ui="v12"] .monster-authoring .monster-package-component__actions > span { margin-right:auto; }
+body[data-ui="v12"] .monster-authoring .monster-package-component__actions button { display:inline-flex; align-items:center; gap:6px; min-height:36px; }
+body[data-ui="v12"] .monster-authoring .sw-forge-attribute-presets { grid-template-columns:repeat(3,minmax(0,1fr)); margin:20px 0; }
+body[data-ui="v12"] .monster-authoring .monster-story-reading fieldset { border:0; min-width:0; padding:0; margin-bottom:20px; }
+@media(max-width:600px) { body[data-ui="v12"] .monster-authoring .sw-forge-attribute-presets { grid-template-columns:1fr; } }

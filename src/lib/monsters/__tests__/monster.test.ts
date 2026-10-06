@@ -5,6 +5,17 @@ import { resolveModifiers } from "@/lib/engine/resolve-modifiers";
 const definition=monsterDefinitionSchema.parse({name:"Wolf",budget:25,attributes:{physical:3,mental:0,magical:0}});
 const slot=(mods:MonsterSlot["hardModifiers"]):MonsterSlot=>({primitiveId:1,name:"Tough",category:"METRIC",hardModifiers:mods,isMirrored:false,isMirrorable:true,mirrorVector:null,originHeritageId:null,originCapabilityId:null,originEffectId:null,buCost:4,quantity:1,dependencyKey:"1",item:false});
 describe("budget-driven monsters",()=>{
+ it("preserves legacy snapshots and stores only validated portrait references",()=>{
+ const legacy=monsterDefinitionSchema.parse(definition);
+ expect(Object.hasOwn(legacy,"imageUrl")).toBe(false);
+ expect(Object.hasOwn(legacy,"portraitFrame")).toBe(false);
+ const portrait=monsterDefinitionSchema.parse({...definition,imageUrl:"https://example.com/wolf.webp",portraitFrame:{x:30,y:60,zoom:1.4}});
+ const copy=pinMonsterSnapshot({version:2,definition:portrait,slots:[]});
+ expect(copy.definition.imageUrl).toBe(portrait.imageUrl);
+ expect(copy.definition.portraitFrame).toEqual(portrait.portraitFrame);
+ for(const imageUrl of ["data:image/png;base64,abc","javascript:alert(1)","//example.com/image"])
+ expect(monsterDefinitionSchema.safeParse({...definition,imageUrl}).success).toBe(false);
+ });
  it("derives exact baselines without level ceilings",()=>{expect(monsterBaselines(1)).toEqual({rank:.2,attributePoints:1,pb:2,vitality:1});expect(monsterBaselines(100)).toEqual({rank:2,attributePoints:6,pb:3,vitality:50});expect(monsterBaselines(250000)).toEqual({rank:100,attributePoints:300,pb:101,vitality:125000});expect(()=>monsterBaselines(0)).toThrow();});
  it("allows all attribute points in one attribute and respects shuffle locks",()=>{expect(monsterDefinitionSchema.safeParse({...definition,budget:100,practiceSlices:{},attributes:{physical:6,mental:0,magical:0}}).success).toBe(true);expect(shuffleMonsterAttributes(25,definition.attributes,["physical"],()=>.4)).toEqual(definition.attributes);});
  it("keeps injury on maximum increases and clamps decreases",()=>{expect(clampMonsterVitality(7,50)).toBe(7);expect(clampMonsterVitality(7,5)).toBe(5);});

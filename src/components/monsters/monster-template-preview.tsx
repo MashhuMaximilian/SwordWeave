@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Heart, Swords, BookOpen, Layers, ArrowRight } from "lucide-react";
 import { BookmarkButton } from "@/components/collections/bookmark-button";
 import { Markdown } from "@/components/ui/markdown";
+import { portraitFrameStyle } from "@/lib/character/portrait-frame";
 import { IconDisplay } from "@/components/icons/icon-display";
 import type { PinnedDefinition } from "@/lib/monsters/service";
 import type { MonsterSlot, resolveMonster } from "@/lib/monsters/resolve";
@@ -81,7 +82,7 @@ function AccountPreview({ id, compact, ready }: { id: string; compact: boolean; 
   const groups = ["physical", "mental", "magical"] as const;
   return <section className={`sw-creature-preview ${compact ? "is-compact" : ""}`} aria-label={`${monster.name} mini sheet`}>
     <header className="sw-creature-identity">
-      <span className="sw-creature-emblem"><IconDisplay iconSource="GAME_ICONS" iconKey="lorc/monster-grasp" iconColor="#64c7c1" size={44} /></span>
+      <span className="sw-creature-emblem">{definition.imageUrl ? <img src={definition.imageUrl} alt={`${monster.name} portrait`} style={portraitFrameStyle(definition.portraitFrame)} /> : <IconDisplay iconSource="GAME_ICONS" iconKey="lorc/monster-grasp" iconColor="#64c7c1" size={44} />}</span>
       <div><p className="v12-kicker">Creature record · {definition.size.toLowerCase()}</p><h2>{monster.name}</h2><p>{definition.budget} BU · Rank {sheet.rank.toFixed(2)} · {sheet.itemBu} item BU</p></div>
       <BookmarkButton targetType="MONSTER" targetId={id} />
     </header>

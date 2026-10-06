@@ -1,8 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, Shuffle, LockKeyhole, Plus } from "lucide-react";
 import { PrimitiveSelectCard, type PrimitiveOption } from "@/components/characters/new-character-form";
+import { PrimitiveCardSurface } from "@/components/characters/primitive-preview-card";
+import { CapabilityCardSurface } from "@/components/characters/capability-card-surface";
+import { loadMonsterComponentPreview } from "./monster-component-preview";
+import type { MonsterComponentPin } from "@/lib/monsters/composition";
+import { CompactHierarchyBranch } from "@/components/characters/compact-hierarchy";
 import { LibraryTable } from "@/components/library/library-table";
 import { EntityPreview } from "@/components/preview/entity-preview";
 import { DetailModal } from "@/components/ui/detail-modal";
@@ -27,12 +32,32 @@ function primitiveCard(item: LibraryItem): PrimitiveOption {
     ...(item.costTier?{costTier:item.costTier}:{}), iconSource: item.iconSource, iconKey: item.iconKey, iconUrl: item.iconUrl,
     iconColor: item.iconColor, sourceOrigin: item.authorId && !item.authorIsAdmin ? "community" : "system", ...(item.versionNumber?{version:item.versionNumber}:{}) };
 }
-export function MonsterAbilityBuilder({ references, disabled, budget, name, locks, onToggleLock, onToggle, onRemove, onShuffle, pending, spent, itemBu, referenceName }: {
+const EMPTY_COMPONENT_PINS: MonsterComponentPin[] = [];
+
+export function MonsterAbilityBuilder({ references, disabled, budget, name, locks, onToggleLock, onToggle, onRemove, onShuffle, pending, spent, itemBu, referenceName, componentPins = EMPTY_COMPONENT_PINS }: {
+  componentPins?: MonsterComponentPin[] | undefined;
   references: MonsterReference[]; disabled: boolean; budget: number; name: string; locks: string[];
   onToggleLock: (index: number) => void; onToggle: (item: LibraryItem) => void; onRemove: (index: number) => void;
   onShuffle: (kinds: ("PRIMITIVE" | "CAPABILITY")[], limit: number) => void; pending: boolean;
   spent?: number; itemBu?: number; referenceName: (ref: MonsterReference) => string;
 }) {
+  const [selectedPreviews, setSelectedPreviews] = useState<Record<string, SandboxPreviewItem>>({});
+  const [selectedErrors, setSelectedErrors] = useState<Record<string, string>>({});
+  const selectedKey = JSON.stringify(references.map(({kind,id,versionId}) => ({kind,id,versionId})));
+  const names = useMemo(() => Object.fromEntries(componentPins.map(pin => [`${pin.kind}:${pin.id}`, pin.name])), [componentPins]);
+  useEffect(() => {
+    const abort = new AbortController();
+    const selectedReferences = JSON.parse(selectedKey) as Array<Pick<MonsterReference,"kind"|"id"|"versionId">>;
+    for (const reference of selectedReferences) {
+      const key = `${reference.kind}:${reference.id}:${reference.versionId ?? "latest"}`;
+      void loadMonsterComponentPreview(reference, abort.signal, names).then(item => {
+        if (!abort.signal.aborted) { setSelectedPreviews(current => ({ ...current, [key]: item })); setSelectedErrors(current => ({...current,[key]:""})); }
+      }).catch(error => {
+        if (!abort.signal.aborted) setSelectedErrors(current => ({ ...current, [key]: error instanceof Error ? error.message : "Unable to load component." }));
+      });
+    }
+    return () => abort.abort();
+  }, [selectedKey, names]);
   const [kind, setKind] = useState<PickKind>("PRIMITIVE");
   const [family, setFamily] = useState("VERB_TIER");
   const [search, setSearch] = useState("");
@@ -55,17 +80,32 @@ export function MonsterAbilityBuilder({ references, disabled, budget, name, lock
   async function preview(type: string, id: string, nested = false) {
     const token = ++generation.current; controller.current?.abort(); const abort = new AbortController(); controller.current = abort;
     setPreviewOpen(true); setPreviewLoading(true); setPreviewError(""); if (!nested) setPath([]);
-    try { const result = await loadEntityPreview(previewKind(type), id, abort.signal); if (token === generation.current) setPath(previous => nested ? [...previous, result] : [result]); }
+    try { const pin = componentPins.find(pin => pin.kind === previewKind(type) && pin.id === id); const result = pin?.versionId ? await loadMonsterComponentPreview({kind:pin.kind.toUpperCase() as MonsterReference["kind"],id,versionId:pin.versionId},abort.signal,names) : await loadEntityPreview(previewKind(type), id, abort.signal); if (token === generation.current) setPath(previous => nested ? [...previous, result] : [result]); }
     catch (error) { if (!abort.signal.aborted && token === generation.current) setPreviewError(error instanceof Error ? error.message : "Unable to open preview."); }
     finally { if (token === generation.current) setPreviewLoading(false); }
   }
   const limit = shuffleLimit.trim() ? Number(shuffleLimit) : budget;
   const validLimit = Number.isSafeInteger(limit) && limit > 0 && limit <= budget;
   return <div className="monster-ability-builder sw-forge-stack">
-    <section className="sw-forge-current-set" aria-live="polite">
-      <div className="sw-forge-current-set__head"><div><span>YOUR CREATURE’S SET</span><h3>{name || "Your creature"}</h3><p>Primitives give them a vocabulary of actions. Capabilities combine rules into abilities; equipment carries its own item budget.</p></div><div><b>{spent === undefined ? `${budget} BU` : `${spent} / ${budget} BU`}</b><small>{spent === undefined ? "Resolve to see total spending" : `${budget - spent} BU remaining`}</small><strong>{references.length} selected parts{itemBu !== undefined ? ` · ${itemBu} item BU` : ""}</strong></div></div>
-    </section>
     <section className="sw-access-presets monster-set-tools"><header><div><span>Find a combination</span><h3>Shuffle a creature’s set</h3><p>Keep the parts you like with their locks. Review the proposed set before applying it.</p></div></header><div className="monster-shuffle-controls"><fieldset><legend>Include in shuffle</legend>{(["PRIMITIVE", "CAPABILITY"] as const).map(type => <label key={type}><input type="checkbox" checked={shuffleKinds.includes(type)} disabled={disabled || pending} onChange={event => setShuffleKinds(current => event.target.checked ? [...current, type] : current.filter(value => value !== type))}/>{type === "PRIMITIVE" ? "Primitives" : "Capabilities"}</label>)}</fieldset><label>Set budget limit<input type="number" min={1} max={budget} value={shuffleLimit} placeholder={String(budget)} disabled={disabled || pending} onChange={event => setShuffleLimit(event.target.value)}/><small>Total ability BU, including locked parts</small></label><button type="button" className="sw-metal-button sw-metal-button--secondary" disabled={disabled || pending || !shuffleKinds.length || !validLimit} onClick={() => onShuffle(shuffleKinds, limit)}><Shuffle size={17}/>{pending ? "Finding a set…" : "Shuffle set"}</button>{!validLimit && <p role="status">Choose a whole number from 1 to {budget} BU.</p>}</div></section>
+    <section className="sw-forge-current-set monster-resulting-package" aria-label="Resulting creature package">
+      <div className="sw-forge-current-set__head"><div><span>YOUR RESULTING PACKAGE</span><h3>{name || "Your creature"}’s set</h3><p>Explore the complete components and their nested rules, then lock the parts you want to keep.</p></div><div><b>{spent === undefined ? `${budget} BU budget` : `${spent} / ${budget} BU`}</b><strong>{references.length} selected parts</strong></div></div>
+      {references.length ? (["PRIMITIVE", "CAPABILITY", "ITEM", "EFFECT", "HERITAGE"] as const).map(type => {
+        const entries = references.map((reference, index) => ({reference, index})).filter(entry => entry.reference.kind === type);
+        if (!entries.length) return null;
+        return <CompactHierarchyBranch key={type} label={type === "PRIMITIVE" ? "Primitives" : type === "CAPABILITY" ? "Capabilities" : type === "ITEM" ? "Equipment" : type === "EFFECT" ? "Existing effects" : "Existing heritage"} count={entries.length} tone={type === "PRIMITIVE" ? "teal" : "gold"}>
+          {entries.map(({reference,index}) => {
+            const key = `${reference.kind}:${reference.id}:${reference.versionId ?? "latest"}`, item = selectedPreviews[key];
+            return <article className="monster-package-component" key={`${key}:${index}`}>
+              <div className="monster-package-component__actions"><span>×{reference.quantity}{reference.isMirrored ? " · mirrored" : ""}{reference.versionId ? " · pinned version" : ""}</span><button disabled={disabled} aria-pressed={locks.includes(`reference:${index}`)} onClick={() => onToggleLock(index)}><LockKeyhole size={14}/>{locks.includes(`reference:${index}`) ? "Locked" : "Lock for shuffle"}</button><button disabled={disabled} onClick={() => onRemove(index)}>Remove</button></div>
+              {/* The preview callback runs only when a nested link is clicked. */}
+              {/* eslint-disable-next-line react-hooks/refs */}
+              {item ? <PackageComponentCard item={item} reference={reference} onOpen={() => {setPreviewChoice(null);setPath([item]);setPreviewError("");setPreviewLoading(false);setPreviewOpen(true);}}/> : <div><strong>{referenceName(reference)}</strong><p role={selectedErrors[key] ? "alert" : "status"}>{selectedErrors[key] || "Loading complete component…"}</p><button onClick={() => {setPreviewChoice(null);void preview(reference.kind,reference.id);}}>Open component preview</button></div>}
+            </article>;
+          })}
+        </CompactHierarchyBranch>;
+      }) : <p>Choose components from the Library below to build your set here.</p>}
+    </section>
     <section className="sw-access-library monster-custom-set">
       <nav className="sw-access-library__families" aria-label="Creature set libraries">
         <button className={kind === "PRIMITIVE" ? "is-active" : ""} onClick={() => { setKind("PRIMITIVE"); setSearch(""); }}><i aria-hidden>◇</i><span>Primitives</span><small>Build actions from parts</small><em>01</em></button>
@@ -77,8 +117,16 @@ export function MonsterAbilityBuilder({ references, disabled, budget, name, lock
       {results.error && <p role="alert">{results.error} <button onClick={results.retry}>Retry</button></p>}{results.loading && !results.items.length && <p role="status">Opening the Library…</p>}
       {kind === "PRIMITIVE" ? <div className="sw-access-library__entries">{visible.map(item => <div className="monster-primitive-pick" key={item.id}><div inert={disabled}><PrimitiveSelectCard item={primitiveCard(item)} selected={selected(item)} onToggle={() => { if (!disabled) onToggle(item); }}/></div><button className="monster-inspect-part" onClick={() => {setPreviewChoice(item);void preview(item.targetType,item.targetId);}}>Preview complete rule</button></div>)}</div> : <LibraryTable items={visible} view="GRID" engagement={{reactions:{},following:{}}} currentUserInternalId={null} onSelect={item => {setPreviewChoice(item);void preview(item.targetType,item.targetId);}} showClearFilters={false} pagination={null} renderActions={item => <button className="sw-metal-button sw-metal-button--secondary" disabled={disabled} aria-pressed={selected(item)} onClick={() => onToggle(item)}>{selected(item) ? "Remove from set" : <><Plus size={14}/>Add to set</>}</button>}/>}
       {!results.loading && !visible.length && <p className="sw-access-library__empty">No matching entries. Try another family or search.</p>}{results.hasMore && <button className="sw-metal-button sw-metal-button--secondary" disabled={results.loading} onClick={results.loadMore}>{results.loading ? "Loading…" : "More entries"}</button>}</div>
-      <aside className="sw-access-ledger"><header><span>Selected parts</span><strong>{references.length}</strong></header>{references.length ? <div>{references.map((ref,index) => <article key={`${ref.kind}:${ref.id}:${index}`}><button className="monster-ledger-preview" onClick={() => {setPreviewChoice(null);void preview(ref.kind,ref.id);}}><span>{referenceName(ref)}</span><small>{ref.kind.toLowerCase()} · ×{ref.quantity}{ref.isMirrored ? " · mirrored" : ""}</small></button><div className="monster-ledger-actions"><button disabled={disabled} aria-pressed={locks.includes(`reference:${index}`)} aria-label={`${locks.includes(`reference:${index}`) ? "Unlock" : "Lock"} ${referenceName(ref)} for shuffle`} onClick={() => onToggleLock(index)}><LockKeyhole size={14}/>{locks.includes(`reference:${index}`) ? "Locked" : "Lock"}</button><button disabled={disabled} onClick={() => onRemove(index)}>Remove</button></div></article>)}</div> : <p>Choose parts from the Library. Preview the rule, then add it to this creature’s set.</p>}</aside>
     </section>
     <DetailModal isOpen={previewOpen} onClose={() => { setPreviewOpen(false); controller.current?.abort(); generation.current++; }} title={path.at(-1)?.row.name ?? "Component preview"} size="xl">{path.length > 1 && <button className="sw-metal-button sw-metal-button--secondary" onClick={() => setPath(previous => previous.slice(0,-1))}>← Back to {path.at(-2)!.row.name}</button>}{previewLoading && <p role="status">Loading complete preview…</p>}{previewError && <p role="alert">{previewError}</p>}{path.at(-1) && <EntityPreview item={path.at(-1)!} callbacks={{preferLocalSubLinks:true,onSubLinkClick:link => void preview(link.targetType,String(link.targetId),true)}}/>}{previewChoice&&path.length===1&&<div className="monster-preview-choice"><button className="sw-metal-button sw-metal-button--primary" disabled={disabled||previewLoading} onClick={()=>{onToggle(previewChoice);setPreviewOpen(false);}}>{selected(previewChoice)?"Remove from creature’s set":"Add to creature’s set"} · {previewChoice.buCost??0} BU</button></div>}</DetailModal>
   </div>;
+}
+
+function PackageComponentCard({item,reference,onOpen}:{item:SandboxPreviewItem;reference:MonsterReference;onOpen:()=>void}) {
+  if(item.kind === "primitive") {
+    const row=item.row;
+    return <PrimitiveCardSurface primitiveLink={{primitiveId:row.id,source:"MONSTER",acquiredAtLevel:1,isMirrored:reference.isMirrored,versionId:reference.versionId,primitive:{id:row.id,name:row.name,category:row.category,buCost:row.buCost,isMirrorable:row.isMirrorable,mirrorBuCredit:row.mirrorBuCredit,narrativeRule:row.narrativeRule,hardModifiers:Array.isArray(row.hardModifiers)?row.hardModifiers:[]}}} onOpen={onOpen}/>;
+  }
+  if(item.kind === "capability") return <CapabilityCardSurface name={item.row.name} type={item.row.type} source={item.row.sourceType} description={item.row.verboseDescription} onOpen={onOpen}><details className="mt-3"><summary>Included rules</summary><EntityPreview item={item} variant="build"/></details></CapabilityCardSurface>;
+  return <details><summary>{item.row.name}</summary><EntityPreview item={item} variant="build"/></details>;
 }
