@@ -1,5 +1,5 @@
 "use client";
-import {createContext,useContext,useEffect,useRef,useState} from "react";
+import {useEffect,useRef,useState} from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {getEffectivePlayState,queuePlayChanges} from "@/lib/play-state/client-sync";
@@ -14,13 +14,14 @@ import type {HardModifier} from "@/types/swordweave";
 import type {MonsterSlot} from "@/lib/monsters/resolve";
 import {Markdown} from "@/components/ui/markdown";
 import {IdentityCell} from "@/components/characters/identity-cell";
-import {CompactCompositeCard,CompactHierarchyBranch} from "@/components/characters/compact-hierarchy";
-import {PrimitiveCardSurface} from "@/components/characters/primitive-preview-card";
+import {MonsterCompositionView} from "./monster-composition-view";
+import {monsterArtwork} from "@/lib/monsters/art";
+
 import {CapabilityActionButtons} from "@/components/characters/capability-card";
 import {portraitFrameStyle} from "@/lib/character/portrait-frame";
-import {CapabilityCardSurface} from "@/components/characters/capability-card-surface";
-import {SlotSourceBadge} from "@/components/characters/slot-source-badge";
-import {DetailModal} from "@/components/ui/detail-modal";
+
+
+
 import type {MonsterComponentPin} from "@/lib/monsters/composition";
 import {MonsterSheetStats} from "./monster-sheet-stats";
 import {Swords, Package, BookOpen, Activity, Heart, ChevronDown} from "lucide-react";
@@ -28,10 +29,6 @@ import "./monster-ui.css";
 import "./monster-sheet.css";
 export function MonsterPlaySheet({id}:{id:string}){
  const [identityOpen,setIdentityOpen]=useState(false);
- const [previewSource,setPreviewSource]=useState<{id:string;kind:string}|null>(null);
- const [previewPin,setPreviewPin]=useState<MonsterComponentPin|null>(null);
- const previewSourceType=previewPin?.kind!=="heritage"?previewPin?.kind.toUpperCase():previewSource?.id===previewPin.id?previewSource.kind:null;
- useEffect(()=>{if(previewPin?.kind!=="heritage")return;const controller=new AbortController();void fetch(`/api/heritage/${previewPin.id}`,{signal:controller.signal}).then(async response=>response.ok?response.json():null).then(body=>{if(body?.template?.kind&&!controller.signal.aborted)setPreviewSource({id:previewPin.id,kind:`${body.template.kind}_TEMPLATE`});}).catch(()=>undefined);return()=>controller.abort();},[previewPin]);
  const [tab,setTab]=useState<"capabilities"|"items"|"story"|"consequences"|"session">("capabilities");
  const [statsOpen,setStatsOpen]=useState(false);
  const [vitalityAmount,setVitalityAmount]=useState(1);
@@ -52,10 +49,11 @@ export function MonsterPlaySheet({id}:{id:string}){
  function applyPackage(p:typeof packages[number]){const applicationId=crypto.randomUUID();const changes=p.pieces.map(piece=>{const occurrence:ConsequenceOccurrence={...customMonsterConsequence(piece.title,piece.description),id:crypto.randomUUID(),applicationId,sourceEntityId:String(piece.id),sourceEntityType:"primitive",sourceVersionId:piece.versionId,modifiers:piece.modifiers,restrictions:piece.behavior.restrictions,recovery:piece.behavior.recovery,applicationSnapshot:{vitalityDelta:piece.behavior.vitalityDelta,modifiers:piece.modifiers,restrictions:piece.behavior.restrictions}};return {field:`consequence:${occurrence.id}`,value:occurrence as unknown};});changes.push({field:"currentVitality",value:Math.max(0,Math.min(sheet.maximum,sheet.currentVitality+p.vitalityDelta))});queuePlayChanges("MONSTER_PLAY_COPY",id,changes);}
  function compositionActions(pin:MonsterComponentPin){const key=`${pin.kind}:${pin.id}`,field=key.replace("capability:","cap:").replace("effect:","eff:");const p=packages.find(p=>p.key===key);const active=overrides[field]!==true;return <CapabilityActionButtons active={active} showToggle={toggles.includes(key)} showTrigger={!!p} triggerLabel="Use" triggerDisabled={!active} onToggle={()=>change(field,active?true:null)} onTrigger={()=>{if(p)applyPackage(p);}}/>;}
 
- return <NarrativeRequestScope key={`${accountId}:${id}`}><main className="sw-monster-page monster-character-sheet" data-character-surface>
+ const artwork=monsterArtwork({...copy.definition,name:copy.definition.name});
+ return <main className="sw-monster-page monster-character-sheet" data-character-surface>
  <header className="creature-identity v12-sheet-identity v12-instrument sticky">
   <Link href="/monsters" className="creature-back">← Monsters &amp; NPCs</Link>
-  <div className="creature-identity-row v12-sheet-identity-summary"><div className="creature-identity-glyph">{copy.definition.imageUrl?<Image unoptimized width={40} height={40} src={copy.definition.imageUrl} alt={copy.name} style={portraitFrameStyle(copy.definition.portraitFrame)} className="h-full w-full object-cover"/>:<Swords aria-hidden="true"/>}</div><div><p className="creature-eyebrow">Private play copy · Version {copy.templateVersion}</p><h1>{copy.name}</h1><p className="creature-identity-meta">{copy.definition.size.toLowerCase()} · Rank {Number(sheet.rank.toFixed(2))} · {copy.definition.budget} BU</p></div><button className="creature-sheet-button inline-flex items-center justify-center gap-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium hover:bg-secondary ml-auto" onClick={()=>setIdentityOpen(!identityOpen)} aria-expanded={identityOpen} aria-controls="creature-identity-deck"><span className="font-mono">{sheet.spent}/{copy.definition.budget} BU</span><ChevronDown size={14}/></button></div>
+  <div className="creature-identity-row v12-sheet-identity-summary"><div className="creature-identity-glyph">{artwork?<Image unoptimized width={40} height={40} src={artwork} alt={copy.name} style={portraitFrameStyle(copy.definition.portraitFrame)} className="h-full w-full object-cover"/>:<Swords aria-hidden="true"/>}</div><div><p className="creature-eyebrow">Private play copy · Version {copy.templateVersion}</p><h1>{copy.name}</h1><p className="creature-identity-meta">{copy.definition.size.toLowerCase()} · Rank {Number(sheet.rank.toFixed(2))} · {copy.definition.budget} BU</p></div><button className="creature-sheet-button inline-flex items-center justify-center gap-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium hover:bg-secondary ml-auto" onClick={()=>setIdentityOpen(!identityOpen)} aria-expanded={identityOpen} aria-controls="creature-identity-deck"><span className="font-mono">{sheet.spent}/{copy.definition.budget} BU</span><ChevronDown size={14}/></button></div>
  {identityOpen&&<div className="v12-sheet-identity-deck creature-identity-deck" id="creature-identity-deck"><div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-border border border-border rounded overflow-hidden"><IdentityCell label="Budget" value={`${sheet.spent} / ${copy.definition.budget} BU`}/><IdentityCell label="Remaining" value={`${Math.max(0,copy.definition.budget-sheet.spent)} BU`}/><IdentityCell label="Item BU" value={`${sheet.itemBu} BU`} note="Separate item pool"/><IdentityCell label="Rank" value={Number(sheet.rank.toFixed(2)).toString()} note={`Proficient in ${copy.definition.proficientAttribute}`}/></div><div className="v12-identity-meter mt-3"><div className="flex justify-between text-[10px] uppercase tracking-wider"><span>Budget usage</span><span>{sheet.spent} / {copy.definition.budget} BU</span></div><div className="h-1.5 mt-2 rounded-full bg-secondary overflow-hidden"><div className="h-full bg-primary" style={{width:`${Math.min(100,sheet.spent/copy.definition.budget*100)}%`}}/></div></div><div className="v12-identity-actions mt-3 flex gap-2"><Link className="creature-sheet-button inline-flex items-center justify-center gap-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium hover:bg-secondary" href={`/monsters/${copy.templateId}`}>Open template / Edit</Link><Link className="creature-sheet-button inline-flex items-center justify-center gap-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium hover:bg-secondary" href={`/library/item/MONSTER:${copy.templateId}`}>View source</Link></div><p className="mt-2 text-xs text-muted-foreground">This private copy keeps version {copy.templateVersion}. Template edits are used by new copies.</p> <section className="creature-session"><h2>Saved session</h2><p className="creature-section-intro">Manage synchronization, conflicts, offline changes, and backups for this private copy.</p><PlaySessionPanel subjectKind="MONSTER_PLAY_COPY" subjectId={id} endpoint={syncEndpoint} method="PATCH"/>
  {deleteConfirmOpen&&deleteConfirmAccount===accountId?<section className="monster-panel monster-delete-confirm" aria-labelledby="monster-delete-heading"><h2 id="monster-delete-heading">Delete {copy.name}?</h2><p>This permanently deletes this private play copy and its saved session.</p><div className="monster-actions"><button type="button" disabled={deletePending} onClick={()=>setDeleteConfirmOpen(false)}>Keep this copy</button><button className="monster-delete-copy" type="button" disabled={deletePending} onClick={()=>void deleteCopy()}>{deletePending?"Deleting…":"Delete finished copy"}</button></div>{deletePending&&<p role="status">Deleting private play copy…</p>}</section>:<button className="monster-delete-copy" type="button" onClick={()=>{setDeleteConfirmAccount(accountId);setDeleteConfirmOpen(true);}}>Delete finished copy</button>}</section></div>}
  </header>
@@ -66,10 +64,9 @@ export function MonsterPlaySheet({id}:{id:string}){
  <section className="creature-vitality-controls"><h2>Track Vitality</h2><div className="creature-damage-row"><label>Amount<input type="number" min="1" value={vitalityAmount} onChange={e=>setVitalityAmount(Number(e.target.value))}/></label><button disabled={!Number.isSafeInteger(vitalityAmount)||vitalityAmount<1} onClick={()=>change("currentVitality",Math.max(0,sheet.currentVitality-vitalityAmount))}>Damage</button><button disabled={!Number.isSafeInteger(vitalityAmount)||vitalityAmount<1} onClick={()=>change("currentVitality",Math.min(sheet.maximum,sheet.currentVitality+vitalityAmount))}>Heal</button></div><label className="monster-field">Current Vitality<input type="number" min="0" max={sheet.maximum} value={sheet.currentVitality} onChange={e=>{const n=Number(e.target.value);if(Number.isSafeInteger(n)&&n>=0&&n<=sheet.maximum)change("currentVitality",n);}}/></label><details className="creature-baseline"><summary>Baseline Vitality override</summary><p>Changes the maximum. Current Vitality is only reduced when it exceeds the new maximum.</p><label className="monster-field">Manual baseline<input type="number" min="1" value={typeof overrides["baselineVitality"]==="number"?overrides["baselineVitality"]:copy.definition.baselineVitality??""} onChange={e=>{const n=Number(e.target.value);if(!e.target.value)change("baselineVitality",null);else if(Number.isSafeInteger(n)&&n>0)change("baselineVitality",n);}}/></label></details></section>
  </div></aside><div className="creature-content">
  {roll&&<output className="creature-roll-result" aria-live="polite">{roll}</output>}
- {tab==="story"&&<section className="creature-story"><p className="creature-eyebrow">Creature &amp; character</p><h2>{copy.name}</h2>{copy.definition.concept?<Markdown>{copy.definition.concept}</Markdown>:<p className="creature-empty">No story has been added to this template.</p>}{copy.definition.sourceOrigin&&<p className="creature-source">Origin: {copy.definition.sourceOrigin}</p>}<p className="creature-snapshot-note">This copy uses the saved template at version {copy.templateVersion}. Its play state is independent of the template and other copies.</p></section>}
- {tab==="items"&&<section className="v12-sheet-items"><h2>Items</h2>{!(copy.definition.componentPins??[]).some(p=>p.kind==="item")&&<p className="creature-empty">This creature carries no items.</p>}{(copy.definition.componentPins??[]).filter(p=>p.kind==="item").map(pin=><article className="v12-loadout-item rounded border border-border bg-card p-3 mb-3" key={pin.key}><button className="font-semibold text-sm" onClick={()=>setPreviewPin(pin)}>{pin.name}</button><p className="text-xs text-muted-foreground mt-1">×{copy.definition.references.find(r=>r.kind==="ITEM"&&r.id===pin.id)?.quantity??1} · Pinned item</p><MonsterComposition pin={pin} pins={copy.definition.componentPins??[]} slots={slots} onOpen={setPreviewPin} renderActions={compositionActions} isActive={pin=>overrides[`${pin.kind}:${pin.id}`.replace("capability:","cap:").replace("effect:","eff:")]!==true}/></article>)}</section>}
-
- <section className="monster-panel monster-abilities-panel" hidden={tab!=="capabilities"}><h2 className="text-xl">Capabilities &amp; effects</h2><p className="creature-section-intro">Use an ability to apply its consequences. Disable a capability or effect to remove its contribution from this copy.</p>{(["HERITAGE","CAPABILITY","EFFECT","PRIMITIVE"] as const).map(kind=>{const refs=copy.definition.references.filter(r=>r.kind===kind);return refs.length>0?<CompactHierarchyBranch key={kind} label={kind==="HERITAGE"?"Heritages":kind==="CAPABILITY"?"Direct capabilities":kind==="EFFECT"?"Direct effects":"Direct primitives"} tone={kind==="PRIMITIVE"?"teal":kind==="EFFECT"?"copper":"gold"} count={refs.length}>{refs.map(ref=>{const pin=(copy.definition.componentPins??[]).find(p=>p.kind===ref.kind.toLowerCase()&&p.id===ref.id&&(ref.versionId===null||p.versionId===ref.versionId));return pin?<MonsterComposition key={`${ref.kind}:${ref.id}`} pin={pin} pins={copy.definition.componentPins??[]} slots={slots} onOpen={setPreviewPin} renderActions={compositionActions} isActive={pin=>overrides[`${pin.kind}:${pin.id}`.replace("capability:","cap:").replace("effect:","eff:")]!==true}/>:null;})}</CompactHierarchyBranch>:null;})}</section>
+ {tab==="story"&&<section className="creature-story"><p className="creature-eyebrow">Creature &amp; character</p><h2>{copy.name}</h2>{artwork&&<figure className="sw-creature-story-portrait"><img src={artwork} alt={copy.name}/></figure>}{copy.definition.concept?<Markdown>{copy.definition.concept}</Markdown>:<p className="creature-empty">No story has been added to this template.</p>}{copy.definition.sourceOrigin&&<p className="creature-source">Origin: {copy.definition.sourceOrigin}</p>}<p className="creature-snapshot-note">This copy uses the saved template at version {copy.templateVersion}. Its play state is independent of the template and other copies.</p></section>}
+ {tab==="items"&&<section className="v12-sheet-items"><div className="creature-section-heading"><p className="v12-kicker">Carried &amp; readied</p><h2>Items</h2></div><MonsterCompositionView definition={copy.definition} slots={slots} filterKinds={["ITEM"]} renderActions={compositionActions} isActive={pin=>overrides[`${pin.kind}:${pin.id}`.replace("capability:","cap:").replace("effect:","eff:")]!==true}/></section>}
+ {tab==="capabilities"&&<section className="monster-abilities-panel"><div className="creature-section-heading"><p className="v12-kicker">The creature&apos;s build</p><h2>Capabilities &amp; primitives</h2><p className="creature-section-intro">Inspect a piece to read its saved rules. Use an ability to apply its consequences.</p></div><MonsterCompositionView definition={copy.definition} slots={slots} filterKinds={["HERITAGE","CAPABILITY","EFFECT","PRIMITIVE"]} renderActions={compositionActions} isActive={pin=>overrides[`${pin.kind}:${pin.id}`.replace("capability:","cap:").replace("effect:","eff:")]!==true}/></section>}
  <section className="monster-panel monster-consequences-panel" hidden={tab!=="consequences"}>
   <h2>Consequences</h2>
   {occurrences.length===0&&<p className="creature-empty">No consequences yet. Applied abilities and custom consequences appear here.</p>}
@@ -88,68 +85,5 @@ export function MonsterPlaySheet({id}:{id:string}){
   <label className="monster-field">Optional modifier<div className="monster-modifier-row"><select aria-label="Modifier target" value={consequenceTarget} onChange={e=>setConsequenceTarget(e.target.value)}>{["attack_bonus","save_dc","max_vitality","speed","physical_saving_throw","mental_saving_throw","magical_saving_throw","attribute.physical","attribute.mental","attribute.magical",...sheet.practices.map(p=>`skill_practice_check.${p.practice}`)].map(k=><option key={k}>{k}</option>)}</select><input aria-label="Modifier amount" type="number" value={consequenceAmount} onChange={e=>setConsequenceAmount(Number(e.target.value))}/></div></label>
   <button disabled={!title.trim()} onClick={()=>{const c=customMonsterConsequence(title.trim(),description);if(Number.isSafeInteger(consequenceAmount)&&consequenceAmount!==0)c.modifiers=[{kind:"modify",target:consequenceTarget,operation:"add",value:consequenceAmount,stacking:"stack"}];change(`consequence:${c.id}`,c);setTitle("");setDescription("");}}>Add consequence</button>
  </section>
- <DetailModal isOpen={!!previewPin} onClose={()=>setPreviewPin(null)} title={previewPin?.name??"Composition"} subtitle="Pinned play composition">{previewPin&&<><MonsterComposition pin={previewPin} pins={copy.definition.componentPins??[]} slots={slots}/>{previewSourceType&&<div className="mt-4 flex gap-2"><Link className="creature-sheet-button inline-flex items-center justify-center gap-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium hover:bg-secondary" href={`/library/item/${previewSourceType}:${previewPin.id}`}>View source</Link><Link className="creature-sheet-button inline-flex items-center justify-center gap-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium hover:bg-secondary" href={`/library/item/${previewSourceType}:${previewPin.id}/versions`}>Version history</Link></div>}</>}</DetailModal></div></div></main></NarrativeRequestScope>;
-}
-
-/** The same composition pieces used by player item/capability cards, fed from this copy's pins. */
-function MonsterComposition({pin,pins,slots,onOpen,renderActions,isActive,ancestors=[]}:{pin:MonsterComponentPin;pins:MonsterComponentPin[];slots:MonsterSlot[];onOpen?:((pin:MonsterComponentPin)=>void)|undefined;renderActions?:((pin:MonsterComponentPin)=>React.ReactNode)|undefined;isActive?:((pin:MonsterComponentPin)=>boolean)|undefined;ancestors?:string[]}) {
- const requests=useContext(NarrativeRequests);
- const [payload,setPayload]=useState<Record<string,unknown>|null>(null);
- useEffect(()=>{
-  if(!pin.versionId||!requests)return;
-  let active=true;
-  const key=`${pin.kind}:${pin.id}:${pin.versionId}`;
-  let pending=requests.get(key);
-  if(!pending){pending=loadPinnedNarrative({kind:pin.kind,id:pin.id,versionId:pin.versionId}).catch(()=>null);requests.set(key,pending);}
-  void pending.then(value=>{if(active)setPayload(value);});
-  // A consumer leaving the tree must not cancel another card's shared lookup.
-  return()=>{active=false;};
- },[pin.id,pin.kind,pin.versionId,requests]);
- const row=payload??pin.fallback??{};
- const prose=[row["verboseDescription"],row["description"],row["narrativeRule"],row["narrativeDescription"]].find(value=>typeof value==="string"&&value.trim()) as string|undefined;
- if(ancestors.includes(pin.key))return null;
- if(pin.kind==="primitive"){
-  const slot=slots.find(s=>s.primitiveId===Number(pin.id)&&s.dependencyVersions?.includes(pin.key)&&s.supplyKeys?.some(path=>ancestors.every(key=>path.includes(key.split(":").slice(0,2).join(":")))))??slots.find(s=>s.primitiveId===Number(pin.id));
-  const provenancePath=ancestors.map(key=>pins.find(p=>p.key===key)?.name).filter(Boolean).join(" → ");
-  return <PrimitiveCardSurface primitiveLink={{primitiveId:Number(pin.id),source:"MONSTER",acquiredAtLevel:1,isMirrored:slot?.isMirrored??false,versionId:pin.versionId,primitive:{id:Number(pin.id),name:pin.name,category:slot?.category??String(row["category"]??""),buCost:slot?.buCost??Number(row["buCost"]??0),isMirrorable:slot?.isMirrorable??row["isMirrorable"]!==false,mirrorBuCredit:Number(row["mirrorBuCredit"]??slot?.buCost??0),narrativeRule:prose??"",hardModifiers:slot?.hardModifiers??[]}}} provenancePath={provenancePath||null} onOpen={()=>onOpen?.(pin)}/>;
-
- }
- const childPins=pin.links.map(link=>{const version="versionId" in link?link.versionId:link.data["versionId"];return pins.find(p=>p.kind===link.kind&&p.id===String(link.id)&&(!version||p.versionId===version));}).filter((p):p is MonsterComponentPin=>!!p);
- const contents=<>{(["capability","effect","primitive"] as const).map(kind=>{const children=childPins.filter(p=>p.kind===kind);return children.length>0?<CompactHierarchyBranch key={kind} label={kind==="primitive"?"Primitives":kind==="effect"?"Effects":"Capabilities"} tone={kind==="primitive"?"teal":kind==="effect"?"copper":"gold"} count={children.length}>{children.map(child=><MonsterComposition key={child.key} pin={child} pins={pins} slots={slots} onOpen={onOpen} renderActions={renderActions} isActive={isActive} ancestors={[...ancestors,pin.key]}/>)}</CompactHierarchyBranch>:null;})}</>;
- if(pin.kind==="heritage")return <CompactHierarchyBranch label={pin.name} tone="gold" count={childPins.length}>{onOpen&&<button className="creature-sheet-button inline-flex items-center justify-center gap-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium hover:bg-secondary text-xs" onClick={()=>onOpen(pin)}>Preview heritage</button>}{prose&&<Markdown className="v12-expression-description" copyRole="narrative">{prose}</Markdown>}{contents}</CompactHierarchyBranch>;
- if(pin.kind==="item")return <div className="mt-3">{prose&&<Markdown className="v12-expression-description" copyRole="narrative">{prose}</Markdown>}{contents}</div>;
- const cost=slots.filter(slot=>slot.dependencyVersions?.includes(pin.key)).reduce((total,slot)=>total+Math.abs(slot.buCost*slot.quantity),0);
- if(pin.kind==="capability")return <CapabilityCardSurface name={pin.name} active={isActive?.(pin)??true} type={String(row["type"]??"Capability")} source={ancestors.length?"Inherited":"Direct"} originChain={ancestors.flatMap(key=>{const origin=pins.find(p=>p.key===key);return origin&&(origin.kind==="heritage"||origin.kind==="capability"||origin.kind==="effect")?[{kind:origin.kind,name:origin.name}]:[];})} description={prose} onOpen={()=>onOpen?.(pin)} onClick={e=>{if(!(e.target as HTMLElement).closest("button,a,input,summary"))onOpen?.(pin);}} versionBadge={<SlotSourceBadge slotSource={null} versionId={pin.versionId} latestVersionId={pin.versionId} targetType="CAPABILITY" targetId={pin.id}/>}><p className="mt-2 font-mono text-xs">{cost} BU</p>{contents}{renderActions?.(pin)}</CapabilityCardSurface>;
- return <CompactCompositeCard kind={pin.kind==="effect"?"effect":"capability"} name={pin.name} version={null} cost={cost} description={prose} onOpen={onOpen?()=>onOpen(pin):undefined} actions={renderActions?.(pin)} collapsible defaultExpanded>{contents}</CompactCompositeCard>;
-}
-
-
-type NarrativePayload=Record<string,unknown>|null;
-const NarrativeRequests=createContext<Map<string,Promise<NarrativePayload>>|null>(null);
-/** A new mounted scope for each account and copy; no narrative data crosses those boundaries. */
-function NarrativeRequestScope({children}:{children:React.ReactNode}){
- const [requests]=useState(()=>new Map<string,Promise<NarrativePayload>>());
- return <NarrativeRequests.Provider value={requests}>{children}</NarrativeRequests.Provider>;
-}
-async function loadPinnedNarrative(pin:Pick<MonsterComponentPin,"kind"|"id"|"versionId">):Promise<NarrativePayload>{
- let targetType=pin.kind.toUpperCase();
- if(pin.kind==="heritage"){
-  const source=await fetch(`/api/heritage/${pin.id}`);if(!source.ok)return null;
-  const body=await source.json();if(!body?.template?.kind)return null;
-  targetType=`${body.template.kind}_TEMPLATE`;
- }
- let before:number|undefined;
- for(let page=0;page<10;page++){
-  const query=new URLSearchParams({targetType,targetId:pin.id,...(before?{before:String(before)}:{})});
-  const response=await fetch(`/api/versions/list?${query}`);if(!response.ok)return null;
-  const result=await response.json() as {versions:{id:string;versionNumber:number}[];nextBefore:number|null};
-  const selected=result.versions.find(v=>v.id===pin.versionId);
-  if(selected){
-   query.delete("before");query.set("version",String(selected.versionNumber));
-   const detail=await fetch(`/api/versions/list?${query}`);if(!detail.ok)return null;
-   const body=await detail.json();return body.version.payload as Record<string,unknown>;
-  }
-  if(!result.nextBefore)return null;before=result.nextBefore;
- }
- return null;
+</div></div></main>;
 }

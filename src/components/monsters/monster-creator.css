@@ -1,13 +1,6 @@
 /* The creature picker uses the player's canonical starter cards and Library tables. */
 body[data-ui="v12"] .monster-authoring .monster-ability-builder { min-width:0; }
-body[data-ui="v12"] .monster-authoring .monster-custom-set { display:grid; grid-template-columns:150px minmax(0,1fr); }
-body[data-ui="v12"] .monster-authoring .monster-custom-set .sw-access-ledger { grid-column:1/-1; }
-body[data-ui="v12"] .monster-authoring .monster-custom-set .sw-access-ledger > div { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
-body[data-ui="v12"] .monster-authoring .monster-custom-set .sw-access-ledger article { border-bottom:1px solid var(--border); padding:8px; min-width:0; }
-body[data-ui="v12"] .monster-authoring .monster-custom-set .sw-access-ledger button { width:auto; min-height:36px; }
-body[data-ui="v12"] .monster-authoring .monster-custom-set .monster-ledger-preview { display:grid; width:100%; justify-content:start; text-align:left; }
-body[data-ui="v12"] .monster-authoring .monster-ledger-actions { display:flex; gap:6px; margin-top:5px; }
-body[data-ui="v12"] .monster-authoring .monster-ledger-actions [aria-pressed=true] { color:var(--monster-accent); }
+body[data-ui="v12"] .monster-authoring .monster-custom-set { display:grid; grid-template-columns:180px minmax(0,1fr); }
 body[data-ui="v12"] .monster-authoring .monster-primitive-families { display:grid; gap:0; }
 body[data-ui="v12"] .monster-authoring .monster-primitive-families button { padding:10px 12px 10px 22px; min-height:48px; text-align:left; display:grid; justify-content:start; background:transparent; border:0; border-radius:0; }
 body[data-ui="v12"] .monster-authoring .monster-primitive-families button[aria-pressed=true] { color:var(--monster-accent); box-shadow:inset 3px 0 var(--monster-accent); background:var(--monster-inset); }
@@ -16,7 +9,7 @@ body[data-ui="v12"] .monster-authoring .monster-custom-set .sw-access-library__e
 body[data-ui="v12"] .monster-authoring .monster-custom-set .sw-access-entry { display:grid; grid-template-columns:48px minmax(0,1fr) 58px; gap:12px; width:100%; text-align:left; justify-content:start; align-items:start; }
 body[data-ui="v12"] .monster-authoring .monster-primitive-pick { min-width:0; }
 body[data-ui="v12"] .monster-authoring .monster-primitive-pick .monster-inspect-part { display:block; margin:4px 0 12px auto; padding:4px 8px; min-height:32px; border:0; background:transparent; color:var(--monster-muted); font-size:11px; }
-body[data-ui="v12"] .monster-authoring .monster-shuffle-controls { display:flex!important; flex-wrap:wrap; align-items:end; gap:16px!important; padding:18px!important; }
+body[data-ui="v12"] .monster-authoring .monster-shuffle-controls { display:flex; flex-wrap:wrap; align-items:end; gap:16px; padding:18px; }
 body[data-ui="v12"] .monster-authoring .monster-shuffle-controls fieldset { display:grid; gap:10px; min-width:170px; }
 body[data-ui="v12"] .monster-authoring .monster-shuffle-controls fieldset label { display:flex; align-items:center; gap:9px; }
 body[data-ui="v12"] .monster-authoring .monster-shuffle-controls > label { display:grid; gap:7px; max-width:220px; }
@@ -38,7 +31,6 @@ body[data-ui="v12"] .monster-authoring .monster-ability-builder .sw-forge-curren
  body[data-ui="v12"] .monster-authoring .monster-primitive-families button { flex:1 0 110px; padding:10px 12px; }
  body[data-ui="v12"] .monster-authoring .monster-primitive-families small { display:none; }
  body[data-ui="v12"] .monster-authoring .monster-custom-set .sw-access-library__corpus { min-width:0; padding:14px 0; }
- body[data-ui="v12"] .monster-authoring .monster-custom-set .sw-access-ledger > div { grid-template-columns:minmax(0,1fr); }
  body[data-ui="v12"] .monster-authoring .monster-custom-set .sw-access-entry { grid-template-columns:48px minmax(0,1fr) 42px; gap:8px; padding:12px 8px; }
  body[data-ui="v12"] .monster-authoring .monster-shuffle-controls > button { flex:1 1 100%; }
  body[data-ui="v12"] .monster-authoring .monster-library-filters { gap:8px; }
@@ -46,12 +38,9 @@ body[data-ui="v12"] .monster-authoring .monster-ability-builder .sw-forge-curren
 
 body[data-ui="v12"] .monster-authoring .monster-set-tools > .monster-shuffle-controls > button { min-height:44px; padding:10px 16px; display:inline-flex; gap:8px; }
 body[data-ui="v12"] .monster-authoring .monster-custom-set .sw-access-entry__icon { width:42px; height:42px; flex-shrink:0; }
-body[data-ui="v12"] .monster-authoring .monster-primitive-families button { grid-template-columns:minmax(0,1fr); }
 body[data-ui="v12"] .monster-authoring .monster-primitive-families button small { grid-column:1; color:var(--foreground); opacity:.8; }
-body[data-ui="v12"] .monster-authoring .monster-primitive-families button[aria-pressed=true] { background:var(--monster-inset); color:var(--monster-accent); }
 body[data-ui="v12"] .monster-authoring .monster-custom-set .sw-access-library__families > button.is-active small { color:var(--foreground); }
 body[data-ui="v12"] .monster-authoring .monster-custom-set .sw-access-entry__copy > span:first-child { flex-wrap:wrap; }
-body[data-ui="v12"] .monster-authoring .monster-custom-set { grid-template-columns:180px minmax(0,1fr); }
 body[data-ui="v12"] .monster-authoring .monster-custom-set .sw-access-library__families > button { display:grid;grid-template-columns:24px minmax(0,1fr);gap:3px 7px;align-items:center;padding:12px 8px;text-align:left; }
 body[data-ui="v12"] .monster-authoring .monster-custom-set .sw-access-library__families > button i { grid-row:1 / 3;width:22px;height:22px;font-size:13px; }
 body[data-ui="v12"] .monster-authoring .monster-custom-set .sw-access-library__families > button small { grid-column:2;line-height:1.4; }
@@ -64,7 +53,7 @@ body[data-ui="v12"] .monster-authoring .monster-shuffle-controls fieldset label 
  body[data-ui="v12"] .monster-authoring .monster-custom-set .sw-access-library__families > button i { grid-row:auto;width:18px;height:18px; }
  body[data-ui="v12"] .monster-authoring .monster-shuffle-controls fieldset { grid-template-columns:repeat(2,minmax(0,1fr));gap:8px; }
 }
-body[data-ui="v12"] .monster-authoring .monster-resulting-package { margin-top:24px; }
+body[data-ui="v12"] .monster-authoring .monster-resulting-package { margin-top:0; }
 body[data-ui="v12"] .monster-authoring .monster-package-component { padding:14px; margin:12px 0; border:1px solid var(--monster-border); border-radius:12px; background:var(--monster-inset); min-width:0; }
 body[data-ui="v12"] .monster-authoring .monster-package-component__actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:12px; }
 body[data-ui="v12"] .monster-authoring .monster-package-component__actions > span { margin-right:auto; }
@@ -72,3 +61,19 @@ body[data-ui="v12"] .monster-authoring .monster-package-component__actions butto
 body[data-ui="v12"] .monster-authoring .sw-forge-attribute-presets { grid-template-columns:repeat(3,minmax(0,1fr)); margin:20px 0; }
 body[data-ui="v12"] .monster-authoring .monster-story-reading fieldset { border:0; min-width:0; padding:0; margin-bottom:20px; }
 @media(max-width:600px) { body[data-ui="v12"] .monster-authoring .sw-forge-attribute-presets { grid-template-columns:1fr; } }
+
+/* Keep the same brass section surface and compact component hierarchy as player creation. */
+body[data-ui="v12"] .monster-authoring .sw-quickbuild__section { margin:0; }
+body[data-ui="v12"] .monster-authoring .monster-shuffle-columns { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; margin:24px 0; }
+body[data-ui="v12"] .monster-authoring .monster-shuffle-columns .sw-forge-current-set__head { display:block; }
+body[data-ui="v12"] .monster-authoring .monster-shuffle-columns .sw-forge-current-set__head > div + div { margin-top:12px; }
+body[data-ui="v12"] .monster-authoring .monster-ability-builder { display:flex; flex-direction:column; gap:24px; }
+body[data-ui="v12"] .monster-authoring .monster-shuffle-review > .monster-actions { justify-content:flex-end; }
+@media(max-width:900px) {
+ body[data-ui="v12"] .monster-authoring .monster-shuffle-columns { grid-template-columns:minmax(0,1fr); }
+}
+
+body[data-ui="v12"] .monster-authoring .monster-foundation-budget { display:grid;grid-template-columns:160px minmax(0,1fr);gap:20px;align-items:end; }
+body[data-ui="v12"] .monster-authoring .monster-foundation-budget .monster-budget { margin:0;min-height:54px;align-items:center; }
+body[data-ui="v12"] .monster-authoring .monster-summary .monster-sheet-stats { margin-top:18px; }
+@media(max-width:600px) { body[data-ui="v12"] .monster-authoring .monster-foundation-budget { grid-template-columns:minmax(0,1fr);gap:10px; } }

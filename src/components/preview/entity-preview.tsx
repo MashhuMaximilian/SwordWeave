@@ -333,7 +333,7 @@ function ComposedList({
   );
 }
 
-type CompositionNode = {
+export type CompositionNode = {
   id: string;
   name: string;
   kind: "primitive" | "effect" | "capability" | "item";
@@ -344,6 +344,7 @@ type CompositionNode = {
   note?: string | null | undefined;
   noteRole?: "mechanical" | "narrative" | undefined;
   children?: CompositionNode[] | undefined;
+  actions?: ReactNode;
 };
 
 /** Nested primitive cards are reading surfaces, not database inspectors.
@@ -364,7 +365,7 @@ function primitiveCopyRole(primitive: { category: string }): "mechanical" | "nar
   return (primitive as { mechanicalOutputText?: string | null }).mechanicalOutputText?.trim() ? "mechanical" : "narrative";
 }
 
-function CompositionTree({
+export function CompositionTree({
   title,
   nodes,
   onSubLink,
@@ -395,6 +396,8 @@ function CompositionTree({
             <small>{node.kind}</small>
             {node.note ? <Markdown copyRole={node.noteRole ?? "narrative"} className="sw-phone-composition-note">{node.note}</Markdown> : null}
           </button>
+          {node.actions}
+          {node.meta ? <span className="v12-composition-node-meta">{node.meta}</span> : null}
           {node.children?.length ? <button className="sw-phone-composition-pieces" type="button" onClick={() => setTrail([...liveTrail,node])}>Pieces · {node.children.length} <ChevronRight size={14}/></button> : null}
         </div>)}
       </div>
@@ -465,6 +468,7 @@ function CompositionTreeNode({
           <ChevronRight aria-hidden="true" />
         </button>
       </div>
+      {node.actions ? <div className="v12-composition-node-actions">{node.actions}</div> : null}
       {hasChildren && expanded ? (
         <div className="v12-composition-node-children" role="list">
           {node.children!.map((child, index) => (

@@ -46,3 +46,26 @@
 .sw-collections-loading { padding:24px;color:var(--muted-foreground); }
 .sw-collections :is(button,a,input,select):focus-visible { outline:2px solid var(--primary);outline-offset:3px; }
 @media(max-width:600px) { .sw-collections { padding:18px 14px; }.sw-collections--embedded { padding:0; }.sw-collections-grid,.sw-collections-create { grid-template-columns:1fr; }.sw-collections-button,.sw-collections-input { min-height:44px; }.sw-collections-tree details > .sw-collections-tree { margin-left:10px;padding-left:6px; }.sw-collections-tree-visibility { max-width:70px; }.sw-collections-section-heading { flex-wrap:wrap; } }
+/* Collections share the Library catalogue; this frame only arranges its workspace. */
+.sw-collections { border:1px solid transparent;border-radius:8px;background:linear-gradient(var(--card),var(--v12-inset,var(--card))) padding-box,var(--v12-instrument-edge,linear-gradient(var(--border),var(--border))) border-box;box-shadow:inset 0 1px rgb(255 255 255 / 10%),0 12px 28px rgb(0 0 0 / 12%);gap:14px; }
+.sw-collections--embedded { padding:18px; }
+.sw-collections-heading { margin:0; }
+.sw-collections-grid.v12-creation-grid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-count:auto; }
+.sw-collections-grid.v12-creation-grid > .v12-entry-row { margin:0; }
+.sw-collections-catalogue.v12-creation-grid { column-count:2; }
+.sw-collections-catalogue .v12-entry-copy { min-width:0; }
+.sw-collections-catalogue .v12-entry-lineage { flex-wrap:wrap;align-items:center; }
+.sw-collections-management { border-top:1px solid var(--border);padding-top:8px; }
+.sw-collections-management > summary,.sw-collections-branch-panel > summary { cursor:pointer;color:var(--muted-foreground);font:500 12px/1.5 var(--font-system); }
+.sw-collections-management[open] > summary,.sw-collections-branch-panel[open] > summary { margin-bottom:10px; }
+.sw-collections-manage { padding:0; }
+.sw-collections-path { padding:8px 10px;border:1px solid var(--border);background:var(--v12-inset,var(--muted));border-radius:4px; }
+.sw-collections-tree summary,.sw-collections-tree-leaf { min-height:36px;padding:6px 9px;background:linear-gradient(var(--card),var(--v12-inset,var(--card))) padding-box,var(--v12-brass-edge,linear-gradient(var(--border),var(--border))) border-box; }
+.sw-collections-tree-link { font-size:14px; }
+.sw-collections-branch-panel { padding:10px 12px; }
+.sw-collections :is(.sw-collections-button).sw-metal-button { color:var(--v12-gold-hi,var(--foreground));border:1px solid transparent;background:linear-gradient(var(--v12-raised,var(--card)),var(--v12-inset,var(--muted))) padding-box,var(--v12-gold-edge,linear-gradient(var(--border),var(--border))) border-box;box-shadow:inset 0 1px rgb(255 255 255 / 12%),0 2px 4px rgb(0 0 0 / 15%); }
+.sw-collections .sw-collections-button[aria-pressed="true"] { box-shadow:inset 0 0 0 1px var(--v12-gold-hi,var(--primary)); }
+@media(max-width:900px) { .sw-collections-grid.v12-creation-grid { grid-template-columns:1fr; }.sw-collections-catalogue.v12-creation-grid { column-count:1; } }
+@media(max-width:600px) { .sw-collections--embedded { padding:12px; }.sw-collections .v12-entry-row { grid-template-columns:30px minmax(0,1fr) auto; }.sw-collections-grid .v12-entry-row > .v12-tag { grid-column:2;justify-self:start; }.sw-collections-grid .v12-entry-glyph { grid-row:span 2; } }
+.sw-collections .sw-collections-button.sw-metal-button--primary { background:var(--sw-metal-gold);color:var(--sw-metal-gold-ink);border-color:var(--sw-text-gold); }
+.sw-collections .sw-collections-button:hover:not(:disabled) { background:var(--sw-metal-gold);color:var(--sw-metal-gold-ink);border-color:var(--sw-text-gold); }

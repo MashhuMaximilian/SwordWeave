@@ -1,4 +1,5 @@
 "use client";
+import { ForgeProgressRail, ForgeWorkbench, QuickbuildSection } from "./forge-section";
 import { useUser } from "@clerk/nextjs";
 import { CreationAtelierAction } from "./creation-atelier-action";
 import { availableLegacyCreationDrafts,claimLegacyCreationDraft,creationDraftKey,creationModeKey,readCreationReturn,writeCreationDraft } from "@/lib/character/creation-return/model";
@@ -904,10 +905,7 @@ function AccountNewCharacterForm({accountId}:{accountId:string|null}) {
       {legacyResume}
       {phone&&<div className="sw-forge-authoring-return"><CreationAtelierAction accountId={draftLoaded&&hydratedAccount===accountId?accountId:null} draftId={creationDraftId} mode="complete" persistDraft={()=>{if(!draftKey)throw new Error("Wait for your account to load.");const data=JSON.stringify({draftId:creationDraftId,state,selectedPrimitiveIds,mirroredPrimitiveIds,savedMirrorIds,savedPackages,packageShuffleBudget,step});localStorage.setItem(draftKey,data);localStorage.setItem(`${draftKey}:${creationDraftId}`,data);}}/></div>}
       {returnNotice&&<p role="status" className="sw-forge-return-notice text-sm text-primary">{returnNotice}</p>}
-      <aside
-        className="sw-character-forge__rail"
-        aria-label="Character creation progress"
-      >
+      <ForgeProgressRail label="Character creation progress">
         {phone && (
           <button
             className="sw-phone-step-picker"
@@ -1012,9 +1010,9 @@ function AccountNewCharacterForm({accountId}:{accountId:string|null}) {
             Start over
           </button>
         </div>
-      </aside>
+      </ForgeProgressRail>
 
-      <div className="sw-character-forge__workbench">
+      <ForgeWorkbench header={<>
         {phone ? (
           <button
             type="button"
@@ -1042,7 +1040,82 @@ function AccountNewCharacterForm({accountId}:{accountId:string|null}) {
           </div>
         </header>
 
-        <div className="sw-character-forge__content">
+ </>} footer={        <footer className="sw-character-forge__footer">
+          <CreationBudgetDisclosure remaining={budgetLedger.remaining} warning={budgetLedger.needsDmApproval}>
+          <div
+            className="sw-character-forge__footer-reading"
+          >
+            <span>{state.name.trim() || "Your character"}</span>
+            {step === "identity" ? (
+              <>
+                <strong>Start with their story</strong>
+                <small>Rules come next</small>
+              </>
+            ) : step === "foundation" || step === "mirroring" ? (
+              <>
+                <strong>{budget + mirrorCredit} BU for choices</strong>
+                <small>
+                  {mirrorCredit
+                    ? `${mirrorCredit} BU from weakness`
+                    : `${budget} BU at level ${effectiveLevel}`}
+                </small>
+              </>
+            ) : (
+              <>
+                <strong>{budgetLedger.remaining} BU left</strong>
+                <small>
+                  {budgetLedger.baseUsed}/{budget} normal BU · {budgetLedger.debtUsed}/{mirrorCredit} drawback BU · {budgetLedger.overflow} overflow BU
+                </small>
+              </>
+            )}
+          </div>
+          {budgetLedger.needsDmApproval ? <small className="sw-budget-warning">{budgetLedger.aboveNextLevel ? `Above next level’s ${budgetLedger.nextLevelBudget} BU ceiling.` : "Over agreed budget — check with your DM before creating."}</small> : null}
+          </CreationBudgetDisclosure>
+          <div className="sw-character-forge__footer-actions">
+            {currentIndex > 0 ? (
+              <button
+                type="button"
+                className="sw-metal-button sw-metal-button--secondary"
+                onClick={() => {
+                  setStep(STEPS[currentIndex - 1]!.id);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+              >
+                <ArrowLeft aria-hidden /> Back
+              </button>
+            ) : null}
+            {currentIndex < STEPS.length - 1 ? (
+              <button
+                type="button"
+                className="sw-metal-button sw-metal-button--primary"
+                onClick={goNext}
+              >
+                {step === "identity"
+                  ? "Foundation"
+                  : step === "foundation"
+                    ? "Drawbacks"
+                    : step === "mirroring"
+                      ? "Starting access"
+                      : "Review"}{" "}
+                <ArrowRight aria-hidden />
+              </button>
+            ) : (
+              <button
+                type="button"
+                className={`sw-metal-button sw-metal-button--primary${budgetLedger.needsDmApproval ? " sw-budget-overflow" : ""}`}
+                onClick={submit}
+                disabled={isPending || budgetLedger.aboveNextLevel}
+              >
+                {isPending ? (
+                  <Loader2 className="animate-spin" aria-hidden />
+                ) : (
+                  <Check aria-hidden />
+                )}
+                {isPending ? "Creating…" : "Create character"}
+              </button>
+            )}
+          </div>
+        </footer>}>
           <details className="sw-forge-step-help" open={!phone}>
             <summary>Help with this step</summary>
             <div className="sw-forge-guidance">
@@ -1140,85 +1213,7 @@ function AccountNewCharacterForm({accountId}:{accountId:string|null}) {
               }}
             />
           ) : null}
-        </div>
-
-        <footer className="sw-character-forge__footer">
-          <CreationBudgetDisclosure remaining={budgetLedger.remaining} warning={budgetLedger.needsDmApproval}>
-          <div
-            className="sw-character-forge__footer-reading"
-          >
-            <span>{state.name.trim() || "Your character"}</span>
-            {step === "identity" ? (
-              <>
-                <strong>Start with their story</strong>
-                <small>Rules come next</small>
-              </>
-            ) : step === "foundation" || step === "mirroring" ? (
-              <>
-                <strong>{budget + mirrorCredit} BU for choices</strong>
-                <small>
-                  {mirrorCredit
-                    ? `${mirrorCredit} BU from weakness`
-                    : `${budget} BU at level ${effectiveLevel}`}
-                </small>
-              </>
-            ) : (
-              <>
-                <strong>{budgetLedger.remaining} BU left</strong>
-                <small>
-                  {budgetLedger.baseUsed}/{budget} normal BU · {budgetLedger.debtUsed}/{mirrorCredit} drawback BU · {budgetLedger.overflow} overflow BU
-                </small>
-              </>
-            )}
-          </div>
-          {budgetLedger.needsDmApproval ? <small className="sw-budget-warning">{budgetLedger.aboveNextLevel ? `Above next level’s ${budgetLedger.nextLevelBudget} BU ceiling.` : "Over agreed budget — check with your DM before creating."}</small> : null}
-          </CreationBudgetDisclosure>
-          <div className="sw-character-forge__footer-actions">
-            {currentIndex > 0 ? (
-              <button
-                type="button"
-                className="sw-metal-button sw-metal-button--secondary"
-                onClick={() => {
-                  setStep(STEPS[currentIndex - 1]!.id);
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-              >
-                <ArrowLeft aria-hidden /> Back
-              </button>
-            ) : null}
-            {currentIndex < STEPS.length - 1 ? (
-              <button
-                type="button"
-                className="sw-metal-button sw-metal-button--primary"
-                onClick={goNext}
-              >
-                {step === "identity"
-                  ? "Foundation"
-                  : step === "foundation"
-                    ? "Drawbacks"
-                    : step === "mirroring"
-                      ? "Starting access"
-                      : "Review"}{" "}
-                <ArrowRight aria-hidden />
-              </button>
-            ) : (
-              <button
-                type="button"
-                className={`sw-metal-button sw-metal-button--primary${budgetLedger.needsDmApproval ? " sw-budget-overflow" : ""}`}
-                onClick={submit}
-                disabled={isPending || budgetLedger.aboveNextLevel}
-              >
-                {isPending ? (
-                  <Loader2 className="animate-spin" aria-hidden />
-                ) : (
-                  <Check aria-hidden />
-                )}
-                {isPending ? "Creating…" : "Create character"}
-              </button>
-            )}
-          </div>
-        </footer>
-      </div>
+      </ForgeWorkbench>
       <DomainAuthoringDrawer onSaved={handleDomainSaved} />
     </div>
   );
@@ -1277,12 +1272,6 @@ function CreationGuidance() {
   </details>;
 }
 
-function QuickbuildSection({ title, number, reading, subtitle, className = "", children }: { title: string; number: string; reading: ReactNode; subtitle?: string; className?: string; children: ReactNode }) {
-  return <details open className={`sw-forge-panel sw-forge-panel--brass sw-quickbuild__section ${className}`}>
-    <summary><span><b>{number} · {title}</b><small>{reading}</small></span><ChevronDown aria-hidden /></summary>
-    <div className="sw-quickbuild__section-body">{subtitle ? <p className="sw-quickbuild__section-intro">{subtitle}</p> : null}{children}</div>
-  </details>;
-}
 
 function QuickBuildForm({
   accountId,

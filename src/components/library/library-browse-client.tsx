@@ -1,5 +1,5 @@
 "use client";
-import { libraryHeritageArt } from "@/lib/heritage/lineage-art";
+import { LibraryCatalogueCard, LibraryEntityIcon, libraryCatalogueStatus as primitiveStatus } from "./library-catalogue-card";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { PhoneTypeChoices, PHONE_RECORD_TYPES } from "./phone-type-choices";
 import { useInfiniteLibrary } from "@/lib/hooks/use-infinite-library";
@@ -45,33 +45,9 @@ import { LibraryProvenance } from "./library-provenance";
 import { ForkMapButton } from "@/components/engagement/fork-map-button";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
 import { PreviewFlagSummary } from "@/components/engagement/flags-section";
-import { IconDisplay } from "@/components/icons/icon-display";
 import { buildSandboxUrl } from "@/lib/publishing/fork-target";
 import { Markdown } from "@/components/ui/markdown";
 import { ExternalLink, History } from "lucide-react";
-
-const ENTITY_ICONS: Record<string, string> = {
-  PRIMITIVE: "delapouite/cube",
-  EFFECT: "lorc/cubes",
-  CAPABILITY: "lorc/cubeforce",
-  LINEAGE_TEMPLATE: "lorc/dna2",
-  UPBRINGING_TEMPLATE: "delapouite/plant-roots",
-  MANIFEST_TEMPLATE: "caro-asercion/tarot-11-justice",
-  ITEM: "lorc/battle-gear",
-  MONSTER: "lorc/monster-grasp",
-};
-
-function LibraryEntityIcon({ item, size = 24 }: { item: LibraryItem; size?: number }) {
-  return <IconDisplay
-              portraitUrl={libraryHeritageArt(item)}
-    iconSource={item.iconSource ?? "GAME_ICONS"}
-    iconKey={item.iconSource ? item.iconKey : ENTITY_ICONS[item.targetType] ?? "delapouite/cube"}
-    iconUrl={item.iconUrl}
-    iconColor={item.iconSource ? item.iconColor : "#64c7c1"}
-    size={size}
-    alt=""
-  />;
-}
 
 function CompositionMechanics({
   paths,
@@ -120,10 +96,7 @@ function CompositionMechanics({
   );
 }
 
-function primitiveStatus(item: LibraryItem) {
-  if (item.definitionKind === "TEMPLATE") return "Template";
-  return libraryOrigin(item) === "system" ? "Canonical" : "Community";
-}
+
 
 interface Props {
   basePath?: string;
@@ -479,58 +452,9 @@ export function LibraryBrowseClient({
           {visibleItems.length && phone ? <LibraryTable items={visibleItems} view="LIST" surface="atelier" compact engagement={engagement} currentUserInternalId={currentUserInternalId} onSelect={onRowSelect}/> : visibleItems.length ? (
             <div className={isPrimitiveMode ? "v12-cluster-list" : "v12-creation-grid"}>
               {[{ id: isPrimitiveMode ? "primitives" : "creations", entries: visibleItems }].map(({ id, entries }) => <section className={`v12-entry-cluster${isPrimitiveMode ? " is-flat" : ""}`} key={id}>{entries.map((item) => (
-                <article
-                  key={item.id}
-                  data-library-row-id={item.id}
-                  data-preview-trigger="true"
-                  className={`v12-entry-row${selectedItem?.id === item.id ? " is-selected" : ""}`}
-                  onClick={() => onRowSelect(item)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(event) => {
-                    if (event.target !== event.currentTarget) return;
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      onRowSelect(item);
-                    }
-                  }}
-                >
-                  <span className="v12-entry-glyph" aria-hidden="true"><LibraryEntityIcon item={item} /></span>
-                  <div className="v12-entry-copy">
-                    <div className="v12-entry-title-line">
-                      <h3>{item.name}</h3>
-                      <span className={`v12-tag ${libraryOrigin(item) === "community" ? "v12-tag--violet" : "v12-tag--teal"}`}>
-                        {primitiveStatus(item)}
-                      </span>
-                    </div>
-                    {item.compositionPaths?.length ? (
-                      <CompositionMechanics paths={item.compositionPaths} compact onPrimitive={(path)=>setNestedPreview({targetType:"PRIMITIVE",targetId:String(path.primitiveId),name:path.primitiveName})} />
-                    ) : <>
-                      {item.mechanicalDescription ? <Markdown className="v12-entry-mechanical" data-readable-rule>{item.mechanicalDescription}</Markdown> : null}
-                      {item.description ? <Markdown className="v12-entry-summary">{item.description}</Markdown> : null}
-                    </>}
-                    <div className="v12-entry-lineage">
-                      <span>{libraryAuthorLabel(item)}{item.versionNumber ? ` · v${item.versionNumber}` : ""}{item.descendantCount ? ` · ${item.descendantCount} descendants` : ""}</span>
-                      <div onClick={(event) => event.stopPropagation()}>
-                        <LikeForkBar
-                          targetType={item.targetType}
-                          targetId={item.targetId}
-                          initialLikes={item.likesCount}
-                          initialDislikes={item.dislikesCount}
-                          initialForks={item.forkCount}
-                          initialFlags={item.flagCount}
-                          initialUserReaction={item.viewerReaction !== undefined ? item.viewerReaction : engagement.reactions[item.id] ?? null}
-                          initialFollowing={item.viewerFollowing ?? (item.authorId ? engagement.following[item.authorId] : false) ?? false}
-                          authorId={item.authorId}
-                          authorUsername={libraryOrigin(item) === "system" ? null : item.authorUsername}
-                          currentUserId={currentUserInternalId}
-                          compact
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <span className="v12-tag">{item.buCost ?? 0} BU</span>
-                </article>
+                <LibraryCatalogueCard key={item.id} item={item} selected={selectedItem?.id === item.id} onSelect={onRowSelect} engagement={engagement} currentUserInternalId={currentUserInternalId}>
+                  {item.compositionPaths?.length ? <CompositionMechanics paths={item.compositionPaths} compact onPrimitive={(path)=>setNestedPreview({targetType:"PRIMITIVE",targetId:String(path.primitiveId),name:path.primitiveName})} /> : undefined}
+                </LibraryCatalogueCard>
               ))}</section>)}
             </div>
           ) : (
