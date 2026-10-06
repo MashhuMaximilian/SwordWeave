@@ -4,11 +4,11 @@ import { resolveModifiers, type ResolvedPrimitiveSlot } from "@/lib/engine/resol
 import { computeAllPracticeModifiers } from "@/lib/engine/practices";
 import { SIZE_BASE_SPEED, SIZE_CAPACITY } from "@/lib/engine/encumbrance";
 import { monsterBaselines, clampMonsterVitality, type MonsterDefinition } from "./model";
-export type MonsterSlot = ResolvedPrimitiveSlot & { mechanicalDescription?:string; buCost: number; quantity: number; dependencyKey: string; item: boolean; supplyKeys?: string[][]; supplyNames?:Record<string,string>; dependencyVersions?: string[]; consequenceBehavior?: ConsequenceBehavior | null };
+export type MonsterSlot = ResolvedPrimitiveSlot & { mechanicalDescription?:string; buCost: number; mirrorBuCredit?: number; quantity: number; dependencyKey: string; item: boolean; supplyKeys?: string[][]; supplyNames?:Record<string,string>; dependencyVersions?: string[]; consequenceBehavior?: ConsequenceBehavior | null };
 export function monsterCost(slots: readonly MonsterSlot[]) {
-  const seen = new Set<string>(); let spent = 0, itemBu = 0;
-  for (const s of slots) { if (seen.has(s.dependencyKey)) continue; seen.add(s.dependencyKey); const cost = s.isMirrored ? 0 : Math.max(0,s.buCost) * s.quantity; if (s.item) itemBu += cost; else spent += cost; }
-  return { spent, itemBu };
+  const seen = new Set<string>(); let spent = 0, itemBu = 0, mirrorCredit = 0;
+  for (const s of slots) { if (seen.has(s.dependencyKey)) continue; seen.add(s.dependencyKey); const cost = s.isMirrored ? 0 : Math.max(0,s.buCost) * s.quantity; if (s.isMirrored && !s.item) mirrorCredit += Math.max(0,s.mirrorBuCredit ?? s.buCost) * s.quantity; if (s.item) itemBu += cost; else spent += cost; }
+  return { spent, itemBu, mirrorCredit };
 }
 export function resolveMonster(definition: MonsterDefinition, slots: readonly MonsterSlot[], currentVitality?: number, conditionContext?: ConditionContext) {
   const base = monsterBaselines(definition.budget);
@@ -22,5 +22,6 @@ export function resolveMonster(definition: MonsterDefinition, slots: readonly Mo
   const attributes = { physical: (resolved.totals["attribute.physical"] ?? definition.attributes.physical), mental: (resolved.totals["attribute.mental"] ?? definition.attributes.mental), magical: (resolved.totals["attribute.magical"] ?? definition.attributes.magical) };
   const finalPractices = computeAllPracticeModifiers(attributes, definition.practiceSlices, definition.proficientAttribute.toUpperCase() as "PHYSICAL" | "MENTAL" | "MAGICAL", base.rank, new Map(), resolved.totals["proficiency_bonus"]);
   const practices = finalPractices.map((p,i)=>({...p,total:p.total + (resolved.totals[`skill_practice_check.${p.practice}`] ?? baselinePractices[i]!.total) - baselinePractices[i]!.total}));
-  return { ...base, ...monsterCost(slots), maximum, currentVitality: clampMonsterVitality(currentVitality ?? maximum, maximum), attributes, practices, resolved };
+  const cost = monsterCost(slots);
+  return { ...base, ...cost, availableBudget: definition.budget + cost.mirrorCredit, baseUsed: Math.min(cost.spent, definition.budget), debtUsed: Math.max(0,cost.spent-definition.budget), maximum, currentVitality: clampMonsterVitality(currentVitality ?? maximum, maximum), attributes, practices, resolved };
 }

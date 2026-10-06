@@ -86,3 +86,22 @@ body[data-ui="v12"] .monster-character-sheet .creature-stat-body > :is(.v12-draw
 }
 
 .monster-abilities-panel > :is(section,article,div) + :is(section,article,div) {margin-top:12px}
+
+@media(max-width:767px) {
+ body[data-ui="v12"] .sw-phone-tool-shell > main:has(.monster-character-sheet) {overflow-y:auto;overscroll-behavior-y:contain;}
+ body[data-ui="v12"] .monster-character-sheet {width:100%;min-width:0;padding:8px 8px 150px!important;}
+ body[data-ui="v12"] .monster-character-sheet .creature-content {min-width:0;overflow-wrap:anywhere;}
+ body[data-ui="v12"] .monster-character-sheet .creature-tabs {padding-bottom:max(6px,env(safe-area-inset-bottom));}
+ body[data-ui="v12"] .monster-character-sheet .creature-tabs button {min-height:44px;min-width:0;flex:1;padding:4px;font:500 11px var(--font-system);}
+ body[data-ui="v12"] .monster-character-sheet .creature-stat-column {bottom:calc(58px + env(safe-area-inset-bottom))!important;}
+ body[data-ui="v12"] .monster-character-sheet .creature-stat-body.v12-bottom-drawer-body {display:block!important;max-height:58dvh!important;padding:8px!important;}
+ body[data-ui="v12"] .monster-character-sheet .creature-stat-body[hidden] {display:none!important;}
+ body[data-ui="v12"] .monster-character-sheet .creature-stat-body > [hidden] {display:none!important;}
+ body[data-ui="v12"] .monster-character-sheet .v12-phone-instrument-tabs {display:flex;position:sticky;top:0;gap:6px;background:var(--background);padding-bottom:8px;z-index:2;}
+ body[data-ui="v12"] .monster-character-sheet .v12-phone-instrument-tabs button {min-height:38px;flex:1;border:1px solid var(--border);border-radius:5px;font:500 12px var(--font-system);}
+ body[data-ui="v12"] .monster-character-sheet .v12-phone-instrument-tabs button[aria-pressed="true"] {background:var(--sw-metal-gold);color:var(--sw-metal-gold-ink);}
+ body[data-ui="v12"] .monster-character-sheet .sw-phone-composition-row {padding:8px;border-left:3px solid var(--sw-text-teal);background:var(--sw-surface-fill);margin-bottom:6px;}
+ body[data-ui="v12"] .monster-character-sheet .creature-phone-rolls .monster-roll-actions {padding:8px 0;}
+}
+
+@media(min-width:768px) {body[data-ui="v12"] .monster-character-sheet .creature-resource-panel {display:contents;}}

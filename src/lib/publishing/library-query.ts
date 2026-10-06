@@ -193,7 +193,7 @@ export interface LibraryItem {
   definitionKind?: "TEMPLATE" | "EXPRESSION" | undefined;
   mirrorable?: boolean;
   /** Only included for the weakness picker; uses the existing permission-filtered query. */
-  mirrorRules?: { hardModifiers: unknown[]; mirrorVector: string | null; isMirrorable: boolean };
+  mirrorRules?: { mirrorBuCredit:number; hardModifiers: unknown[]; mirrorVector: string | null; isMirrorable: boolean };
   mechanicTargets?: string[];
   recipients?: string[];
   conditional?: boolean;
@@ -434,7 +434,7 @@ async function queryLibraryResult(q: LibraryQuery, complete: boolean): Promise<L
     if (q.maxBu !== undefined && (it.buCost === null || it.buCost > q.maxBu)) return false;
     if (q.minForks !== undefined && it.forkCount < q.minForks) return false;
     if (q.definitionKind && it.definitionKind !== q.definitionKind) return false;
-    if (q.mirrorableOnly && !it.mirrorable) return false;
+    if (q.mirrorableOnly && (!it.mirrorable || (it.mirrorRules?.mirrorBuCredit ?? 0) <= 0)) return false;
     if (q.recipient && !it.recipients?.includes(q.recipient.toUpperCase())) return false;
     if (q.conditionMode && it.conditional !== (q.conditionMode === "conditional")) return false;
     if (q.mechanicTarget && !it.mechanicTargets?.some(target => target.toLowerCase().includes(q.mechanicTarget!.toLowerCase()))) return false;
@@ -845,6 +845,7 @@ async function fetchPrimitives(q: LibraryFetchQuery): Promise<LibraryItem[]> {
       buCost: primitives.buCost,
       costTier: primitives.costTier,
       hardModifiers: primitives.hardModifiers,
+      mirrorBuCredit: primitives.mirrorBuCredit,
       isMirrorable: primitives.isMirrorable,
       mirrorVector: primitives.mirrorVector,
       mechanicalOutputText: primitives.mechanicalOutputText,
@@ -943,7 +944,7 @@ async function fetchPrimitives(q: LibraryFetchQuery): Promise<LibraryItem[]> {
       definitionKind: r.definitionKind,
       ...primitiveMechanicFacets(r.hardModifiers),
       mirrorable: r.isMirrorable && r.mirrorVector !== "STANDARD_ONLY" && Array.isArray(r.hardModifiers) && r.hardModifiers.some((modifier: HardModifier) => (r.mirrorVector === "STRUCTURAL_FAULT" || r.mirrorVector === "COST_INSTABILITY" || isMirrorableOperation(modifier.operation)) && !readMirrorMeta(modifier)?.optedOut),
-      ...(q.mirrorableOnly ? { mirrorRules: { hardModifiers: Array.isArray(r.hardModifiers) ? r.hardModifiers : [], mirrorVector: r.mirrorVector, isMirrorable: r.isMirrorable } } : {}),
+      ...(q.mirrorableOnly ? { mirrorRules: { mirrorBuCredit:r.mirrorBuCredit, hardModifiers: Array.isArray(r.hardModifiers) ? r.hardModifiers : [], mirrorVector: r.mirrorVector, isMirrorable: r.isMirrorable } } : {}),
       versionNumber: r.versionNumber,
       bindings: r.bindings ?? {},
       familyKey: r.familyKey,

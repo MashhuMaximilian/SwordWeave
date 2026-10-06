@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, useId, type FormEvent } from "react";
 import { useAuth, useClerk } from "@clerk/nextjs";
 import Link from "next/link";
 import { Swords, BookOpen, Layers, ArrowRight } from "lucide-react";
@@ -34,7 +34,6 @@ function AccountPreview({ id, compact, ready }: { id: string; compact: boolean; 
   const { redirectToSignIn } = useClerk();
   const [data, setData] = useState<PreviewData | null>(null);
   const [error, setError] = useState("");
-  const [tab, setTab] = useState<"practices" | "abilities" | "story">("practices");
   const [copyOpen, setCopyOpen] = useState(false);
   const [copyName, setCopyName] = useState("");
   const [pending, setPending] = useState(false);
@@ -82,22 +81,14 @@ function AccountPreview({ id, compact, ready }: { id: string; compact: boolean; 
   const definition = monster.definition;
   const slots = data.slots ?? definition.resolvedSlots ?? [];
   const artwork = monsterArtwork({ name: monster.name, imageUrl: definition.imageUrl, sourceOrigin: definition.sourceOrigin });
-  const groups = ["physical", "mental", "magical"] as const;
   return <section className={`sw-creature-preview ${compact ? "is-compact" : ""}`} aria-label={`${monster.name} mini sheet`}>
     <header className="sw-creature-identity">
       <span className="sw-creature-emblem">{artwork ? <img src={artwork} alt={`${monster.name} portrait`} style={portraitFrameStyle(definition.portraitFrame)} /> : <IconDisplay iconSource="GAME_ICONS" iconKey="lorc/monster-grasp" iconColor="#64c7c1" size={44} />}</span>
-      <div><p className="v12-kicker">Creature record · {definition.size.toLowerCase()}</p><h2>{monster.name}</h2><p>{definition.budget} BU · Rank {sheet.rank.toFixed(2)} · {sheet.itemBu} item BU</p></div>
+      <div><p className="v12-kicker">Creature record · {definition.size.toLowerCase()}</p><h2>{monster.name}</h2><p>{sheet.availableBudget} BU · {sheet.mirrorCredit} weakness credit · Rank {sheet.rank.toFixed(2)} · {sheet.itemBu} item BU</p></div>
       <BookmarkButton targetType="MONSTER" targetId={id} />
     </header>
-    <MonsterSheetStats showPractices={false} sheet={sheet} definition={definition} proficientAttribute={definition.proficientAttribute} baselineVitality={definition.baselineVitality ?? sheet.vitality}/>
-    <div className="sw-creature-tabs" role="tablist" aria-label="Creature sheet sections">
-      {([{ key: "practices", label: "Practices", icon: Swords }, { key: "abilities", label: "Abilities & items", icon: Layers }, { key: "story", label: "Story", icon: BookOpen }] as const).map(item => <button type="button" role="tab" aria-selected={tab === item.key} aria-controls={`creature-${id}-${item.key}`} id={`creature-${id}-tab-${item.key}`} key={item.key} onClick={() => setTab(item.key)}><item.icon size={17}/>{item.label}</button>)}
-    </div>
-    <div className="sw-creature-content" role="tabpanel" id={`creature-${id}-${tab}`} aria-labelledby={`creature-${id}-tab-${tab}`}>
-      {tab === "practices" && <MonsterPracticeGrid sheet={sheet} definition={definition}/>}
-      {tab === "abilities" && <MonsterCompositionView definition={definition} slots={slots}/>}
-      {tab === "story" && <div className="sw-creature-story">{artwork && <figure className="sw-creature-story-portrait"><img src={artwork} alt={`${monster.name} portrait`} style={portraitFrameStyle(definition.portraitFrame)}/></figure>}<Markdown>{definition.concept || "This creature's story is still unwritten."}</Markdown>{definition.sourceOrigin && <p className="text-muted-foreground">Source: {definition.sourceOrigin}</p>}</div>}
-    </div>
+    <MonsterSheetPreview definition={definition} sheet={sheet} slots={slots} compact={compact}/>
+
     {error && <p role="alert">{error}</p>}
     <footer className="sw-creature-preview-actions">
       <button type="button" className="v12-metal-button v12-metal-button--primary" onClick={() => isSignedIn ? setCopyOpen(value => !value) : void redirectToSignIn({ redirectUrl: `/monsters/${id}` })}>Bring to the table <ArrowRight size={16}/></button>
@@ -106,4 +97,23 @@ function AccountPreview({ id, compact, ready }: { id: string; compact: boolean; 
     </footer>
     {copyOpen && <form className="sw-creature-copy-form" onSubmit={event => void createCopy(event)}><label>Name for this play copy<input maxLength={200} value={copyName} onChange={event => setCopyName(event.target.value)} /></label><p>Its session is private and independent of this template.</p><button className="v12-metal-button v12-metal-button--primary" disabled={pending || !copyName.trim()}>{pending ? "Creating…" : "Create play copy"}</button></form>}
   </section>;
+}
+
+/** Shared read-only sheet sections for Library and the creation review. */
+export function MonsterSheetPreview({definition,sheet,slots,compact=false}:{definition:PinnedDefinition;sheet:ReturnType<typeof resolveMonster>;slots:MonsterSlot[];compact?:boolean}) {
+ const [tab,setTab]=useState<"practices"|"abilities"|"story">("practices");
+ const previewId=useId();
+ const artwork=monsterArtwork({name:definition.name,imageUrl:definition.imageUrl,sourceOrigin:definition.sourceOrigin});
+ const monster={name:definition.name};
+ return <section className={`sw-creature-preview ${compact?"is-compact":""}`} aria-label="Creature review sheet">
+    <MonsterSheetStats showPractices={false} sheet={sheet} definition={definition} proficientAttribute={definition.proficientAttribute} baselineVitality={definition.baselineVitality ?? sheet.vitality}/>
+    <div className="sw-creature-tabs" role="tablist" aria-label="Creature sheet sections">
+      {([{ key: "practices", label: "Practices", icon: Swords }, { key: "abilities", label: "Abilities & items", icon: Layers }, { key: "story", label: "Story", icon: BookOpen }] as const).map(item => <button type="button" role="tab" aria-selected={tab === item.key} aria-controls={`creature-${previewId}-${item.key}`} id={`creature-${previewId}-tab-${item.key}`} key={item.key} onClick={() => setTab(item.key)}><item.icon size={17}/>{item.label}</button>)}
+    </div>
+    <div className="sw-creature-content" role="tabpanel" id={`creature-${previewId}-${tab}`} aria-labelledby={`creature-${previewId}-tab-${tab}`}>
+      {tab === "practices" && <MonsterPracticeGrid sheet={sheet} definition={definition}/>}
+      {tab === "abilities" && <MonsterCompositionView definition={definition} slots={slots}/>}
+      {tab === "story" && <div className="sw-creature-story">{artwork && <figure className="sw-creature-story-portrait"><img src={artwork} alt={`${monster.name} portrait`} style={portraitFrameStyle(definition.portraitFrame)}/></figure>}<Markdown>{definition.concept || "This creature's story is still unwritten."}</Markdown>{definition.sourceOrigin && <p className="text-muted-foreground">Source: {definition.sourceOrigin}</p>}</div>}
+    </div>
+ </section>;
 }

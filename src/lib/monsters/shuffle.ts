@@ -8,10 +8,10 @@ export async function shuffleMonster(value: unknown, userId: string, locks: read
   const original = monsterDefinitionSchema.parse(monsterPreviewInput(value));
   const kinds = options.shuffleKinds ?? ["PRIMITIVE", "CAPABILITY"];
   if (!Array.isArray(kinds) || !kinds.length || kinds.length > 2 || kinds.some(k => k !== "PRIMITIVE" && k !== "CAPABILITY")) throw new Error("Choose primitives, capabilities, or both to shuffle.");
-  const budget = options.shuffleBudget ?? original.budget;
-  if (!Number.isSafeInteger(budget) || budget < 1 || budget > original.budget) throw new Error("Shuffle budget must be a whole number from 1 to the creature budget.");
   const references: MonsterReference[] = original.references.filter((ref, index) => ref.isMirrored || !kinds.includes(ref.kind as "PRIMITIVE" | "CAPABILITY") || locks.includes(`reference:${index}`));
   let prepared = await prepareMonster({ ...original, references }, userId);
+  const budget = options.shuffleBudget ?? prepared.sheet.availableBudget;
+  if (!Number.isSafeInteger(budget) || budget < 1 || budget > prepared.sheet.availableBudget) throw new Error("Shuffle budget must be a whole number from 1 to the creature budget including weakness credit.");
   if (prepared.sheet.spent > budget) throw new Error("Kept components already exceed this shuffle budget. Increase it or unlock some choices.");
   const libraries = await Promise.all([...new Set(kinds)].map(targetType => queryLibrary({ targetType, viewerClerkId: userId, minBu: 1, maxBu: budget, limit: 100, sort: "ALPHABETICAL" })));
   const pool = libraries.flatMap((library, index) => library.items.filter(item => item.buCost !== null && item.buCost > 0).map(item => ({ item, kind: [...new Set(kinds)][index]! })));

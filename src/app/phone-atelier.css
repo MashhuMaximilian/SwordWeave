@@ -245,3 +245,23 @@
 }
 
 @media (max-width:767px) { body[data-ui="v12"] .capability-desktop-identity {display:none!important;} }
+
+/* Public catalogue uses document scrolling; desktop panels retain their own scrolling. */
+@media(max-width:767px) {
+ body[data-ui="v12"] .v12-library-page {display:block;overflow:visible;flex:none;min-height:100%;padding:8px!important;}
+ body[data-ui="v12"] .v12-library-page > .v12-library-heading {display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
+ body[data-ui="v12"] .v12-library-heading .v12-library-title {display:none;}
+ body[data-ui="v12"] .v12-library-heading > .sw-metal-button {display:inline-flex;min-height:40px;font-size:12px;}
+ body[data-ui="v12"] .v12-library-heading .v12-library-modes {display:flex;overflow-x:auto;flex-wrap:nowrap;width:100%;gap:6px;padding-bottom:6px;}
+ body[data-ui="v12"] .v12-library-modes > a {flex:none;white-space:nowrap;font-size:12px;padding:7px 9px;}
+ body[data-ui="v12"] .v12-library-page > .v12-library-submodes {display:flex;overflow-x:auto;flex-wrap:nowrap;gap:5px;margin:4px 0;}
+ body[data-ui="v12"] .v12-library-submodes > a {flex:none;white-space:nowrap;font-size:12px;}
+ body[data-ui="v12"] .v12-library-page :is(.phone-library-stage,.v12-library-browser,.v12-library-workbench,.v12-library-results) {display:block!important;flex:none!important;height:auto!important;min-height:0!important;overflow:visible!important;max-height:none!important;}
+ body[data-ui="v12"] .v12-library-page .v12-library-results > .v12-results-heading {position:static;}
+ body[data-ui="v12"] .v12-library-page .v12-entry-row[data-preview-trigger="true"] :is(.v12-composition-copy,.v12-entry-mechanical,[data-readable-rule],.v12-composition-mechanic,.v12-show-mechanics) {color:var(--sw-text-mechanical)!important;}
+ body[data-ui="v12"] .v12-library-page .v12-entry-row[data-preview-trigger="true"] :is(.v12-entry-summary,.v12-entry-description) {color:var(--foreground)!important;}
+}
+
+@media(max-width:767px) {
+ body[data-ui="v12"] .sw-phone-tool-shell > main:has(.v12-library-page) {overflow-y:auto;overscroll-behavior-y:contain;}
+}

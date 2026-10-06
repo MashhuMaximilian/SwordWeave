@@ -10,7 +10,7 @@ const draft = { name: "", budget: 25, attributes: { physical: 3, mental: 0, magi
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.query.mockResolvedValue({ items: [{ targetId: "new", buCost: 4 }] });
-  mocks.prepare.mockImplementation(async definition => ({ definition, sheet: { spent: definition.references.filter((r: { kind: string }) => r.kind !== "ITEM").length * 4 }, slots: [] }));
+  mocks.prepare.mockImplementation(async definition => ({ definition, sheet: { availableBudget: definition.budget + definition.references.filter((r: {isMirrored:boolean})=>r.isMirrored).length * 4, spent: definition.references.filter((r: { kind: string }) => r.kind !== "ITEM").length * 4 }, slots: [] }));
 });
 describe("creature set proposals", () => {
   it("allows unnamed previews while publication still requires a name", () => {
@@ -36,6 +36,7 @@ describe("creature set proposals", () => {
     expect(result.definition.references).toContainEqual(weakness);
     expect(result.definition.references).toContainEqual(expect.objectContaining({id:"new",isMirrored:false}));
   });
+  it("can spend weakness credit above the base budget",async()=>{mocks.query.mockResolvedValue({items:Array.from({length:7},(_,index)=>({targetId:`strength-${index}`,buCost:4}))});const weakness={...ref("PRIMITIVE","weakness"),isMirrored:true};const result=await shuffleMonster({...draft,references:[weakness]},"owner",[],{shuffleKinds:["PRIMITIVE"],shuffleBudget:29});expect(result.sheet.spent).toBeGreaterThan(25);expect(result.sheet.spent).toBeLessThanOrEqual(29);expect(result.definition.budget).toBe(25);});
   it("does not impose a five-component limit on a set that fits its budget", async () => {
     mocks.query.mockResolvedValue({items:Array.from({length:6},(_,index)=>({targetId:`part-${index}`,buCost:4}))});
     const result=await shuffleMonster({...draft,references:[]},"owner",[],{shuffleKinds:["PRIMITIVE"],shuffleBudget:25});

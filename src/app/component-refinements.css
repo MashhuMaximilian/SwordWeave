@@ -118,5 +118,12 @@ body[data-ui="v12"] .v12-catalogue-collection .v12-entry-mechanical { color:var(
 body[data-ui="v12"] .monster-core-metrics > button:is(:hover,:focus-visible) strong { color:var(--sw-metal-gold-ink)!important; }
 
 /* A nested rule has its own affordance within a gold catalogue card. */
-body[data-ui="v12"] .v12-entry-row[data-preview-trigger="true"] .v12-composition-mechanic:is(:hover,:focus-visible) .v12-composition-copy { font-weight:700;text-decoration:underline;text-underline-offset:3px; }
+body[data-ui="v12"] .v12-entry-row[data-preview-trigger="true"] .v12-composition-mechanic:is(:hover,:focus-visible) .v12-composition-copy { font-weight:700;text-decoration:none; }
 body[data-ui="v12"] .v12-entry-row[data-preview-trigger="true"] .v12-composition-mechanic:focus-visible { outline:2px solid currentColor;outline-offset:2px; }
+
+/* Touch focus must retain readable ink when the outer card keeps its dark material. */
+@media (hover:none), (pointer:coarse) {
+ body[data-ui="v12"] .v12-entry-row[data-preview-trigger="true"] :is(.v12-composition-copy,.v12-entry-mechanical,[data-readable-rule]) {color:var(--sw-text-mechanical)!important;}
+ body[data-ui="v12"] .v12-entry-row[data-preview-trigger="true"] :is(.v12-entry-summary,.v12-entry-description) {color:var(--foreground)!important;}
+ body[data-ui="v12"] .v12-entry-row[data-preview-trigger="true"] :is(.v12-composition-mechanic,.v12-show-mechanics) {color:var(--sw-text-mechanical)!important;}
+}
