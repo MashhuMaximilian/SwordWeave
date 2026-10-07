@@ -86,6 +86,7 @@ html:root body[data-ui="v12"] .v12-preview-destination-action[data-preview-actio
 
 @media(max-width:767px) {
  body[data-ui="v12"] .phone-atelier-library .v12-source-browser-picker {display:block!important;}
+ body[data-ui="v12"] .phone-atelier-library .phone-type-choices {display:none!important;}
  body[data-ui="v12"] .phone-atelier-library .v12-source-browser-choices {display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:4px;}
  body[data-ui="v12"] .phone-atelier-library .v12-source-browser-choices button {padding:8px 4px;min-height:40px;}
  body[data-ui="v12"] .phone-library-record {grid-template-columns:32px minmax(0,1fr) 28px;}

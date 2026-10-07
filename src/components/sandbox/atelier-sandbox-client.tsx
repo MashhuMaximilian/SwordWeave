@@ -1790,12 +1790,13 @@ function SecondaryBuildWorkspace({
   const [initialEntry, setInitialEntry] = useState<EditingState>(null);
   const [kind, setKind] = useState<"primitive" | "effect" | "capability" | "heritage" | "item" | "monster" | null>(null);
   const [secondaryMonsterId,setSecondaryMonsterId]=useState<string|undefined>();
+  const [secondaryMonsterName,setSecondaryMonsterName]=useState("");
   const [pendingReplacement,setPendingReplacement]=useState<(() => void)|null>(null);
   const [secondaryMonsterReady,setSecondaryMonsterReady]=useState(false);
   const onMonsterReady=useCallback(()=>setSecondaryMonsterReady(true),[]);
   const [phone, setPhone] = useState(false);
   const [modalPreview, setModalPreview] = useState<ReactNode>(null);
-  const onMonsterState=useCallback<NonNullable<ComponentProps<typeof MonsterWorkbench>["onPreview"]>>(value=>setModalPreview(value?<MonsterSheetPreview {...value} compact/>:null),[]);
+  const onMonsterState=useCallback<NonNullable<ComponentProps<typeof MonsterWorkbench>["onPreview"]>>(value=>{setModalPreview(value?<MonsterSheetPreview {...value} compact/>:null);if(value)setSecondaryMonsterName(value.definition.name);},[]);
   useEffect(() => {
     const media = window.matchMedia("(max-width: 767px)");
     const update = () => setPhone(media.matches);
@@ -1852,7 +1853,7 @@ function SecondaryBuildWorkspace({
   const requestReset = () => {
     if(kind)setPendingReplacement(()=>reset);else reset();
   };
-  const reset = () => {setSecondaryMonsterReady(false); setSecondaryMonsterId(undefined);setInitialEntry(null); setModalPreview(null); setKind(null); setHeritageKind("MANIFEST"); setSaved(null); setPendingSlot(null); setRevision((value) => value + 1); };
+  const reset = () => {setSecondaryMonsterName("");setSecondaryMonsterReady(false); setSecondaryMonsterId(undefined);setInitialEntry(null); setModalPreview(null); setKind(null); setHeritageKind("MANIFEST"); setSaved(null); setPendingSlot(null); setRevision((value) => value + 1); };
   const commonSaved = (next: { id: string; name: string }, nextKind: NonNullable<typeof kind>, heritageKind?: "LINEAGE" | "UPBRINGING" | "MANIFEST") => {
     setSaved({ kind: nextKind, id: String(next.id), name: next.name, ...(heritageKind ? { heritageKind } : {}) });
     window.dispatchEvent(new CustomEvent("sw:library-changed"));
@@ -1862,7 +1863,7 @@ function SecondaryBuildWorkspace({
   const content = (
     <div className="v12-secondary-build" key={revision}>
       <button type="button" data-drawer-reset hidden onClick={requestReset}>Reset modal build</button>
-      <header><div><p className="v12-kicker">Persistent build modal</p><h2>{initialEntry ? initialEntry.row.name : kind ? `New ${kind}` : "Choose a long-running build"}</h2></div>{kind ? <button type="button" className="v12-metal-button" onClick={requestReset}>Change build</button> : null}</header>
+      <header><div><p className="v12-kicker">Persistent build modal</p><h2>{initialEntry ? initialEntry.row.name : kind==="monster" ? secondaryMonsterName||"New monster" : kind ? `New ${kind}` : "Choose a long-running build"}</h2></div>{kind ? <button type="button" className="v12-metal-button" onClick={requestReset}>Change build</button> : null}</header>
       {!kind ? (
         <NewEntityChoices
           className="space-y-4"
