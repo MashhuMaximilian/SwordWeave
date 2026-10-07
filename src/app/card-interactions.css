@@ -79,3 +79,17 @@ body[data-ui="v12"] .monster-atelier-embedded .v12-author-tabs > button {flex:1 
 body[data-ui="v12"] .monster-atelier-embedded .v12-author-chapter {padding:12px;}
 body[data-ui="v12"] .monster-atelier-embedded .sw-quickbuild__section {padding:12px;}
 body[data-ui="v12"] .monster-atelier-embedded .monster-review {display:grid;gap:14px;}
+
+/* The primary preview destination uses the same gold in both themes. */
+html:root body[data-ui="v12"] .v12-preview-destination-action[data-preview-action="workspace"] {background:var(--sw-metal-gold)!important;color:var(--sw-metal-gold-ink)!important;}
+html:root body[data-ui="v12"] .v12-preview-destination-action[data-preview-action="workspace"] span {color:inherit!important;}
+
+@media(max-width:767px) {
+ body[data-ui="v12"] .phone-atelier-library .v12-source-browser-picker {display:block!important;}
+ body[data-ui="v12"] .phone-atelier-library .v12-source-browser-choices {display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:4px;}
+ body[data-ui="v12"] .phone-atelier-library .v12-source-browser-choices button {padding:8px 4px;min-height:40px;}
+ body[data-ui="v12"] .phone-library-record {grid-template-columns:32px minmax(0,1fr) 28px;}
+ body[data-ui="v12"] .phone-library-record > .sheet-library-entry-icon {grid-column:1;grid-row:1;}
+ body[data-ui="v12"] .phone-library-record > .sheet-library-entry-copy {grid-column:2;grid-row:1;}
+ body[data-ui="v12"] .phone-library-record > button[aria-label="Save to collections"] {grid-column:3;grid-row:1;}
+}
