@@ -1,28 +1,9 @@
 "use client";
 
-// =============================================================================
-// FabSpeedDial — expandable floating action button menu.
-//
-// The primary FAB sits at the bottom-right of the screen on ALL viewports
-// (mobile + desktop). The FAB replaces the desktop left sidebar entirely
-// (see app-shell.tsx — sidebar removed).
-//
-// Tapping the FAB reveals a stack of:
-//   1. Section: "Navigate" — Home + page links (Library, My Creations, Grammar, Templates, Builds)
-//   2. Section: "Quick toggles" — small icon-only grid of state toggles
-//                                (Split / Fullscreen / Dark mode)
-//   3. Section: "Actions" — Build & Preview, Character (Mona Lisa placeholder for 8.1)
-//   4. Section: "Account"  — Profile row that opens the user menu modal
-//                            (avatar + view profile / edit / sign out)
-//
-// The primary button is a hamburger icon (Menu/X), not a +.
-//
-// On the library page, all entries are shown as full text buttons in a
-// compact list (not icon-only) so users can see what they're tapping. The
-// toggle grid is below the nav list.
-// =============================================================================
+// Shared quick-access navigation, contextual workspaces and account utilities.
 
 import {
+  Plus,
   Columns2,
   Maximize2,
   Menu,
@@ -32,21 +13,25 @@ import {
   UserRound,
   Wrench,
   X,
+  BookOpen,
+  ChevronRight,
+  ArrowUpRight,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { fabCreationMode } from "@/lib/fab-visibility";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { IconDisplay } from "@/components/icons/icon-display";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
-import { useIsDark } from "@/lib/hooks/use-is-dark";
 
 
 
 // A silhouette mask keeps navigation icons white in dark mode and ink in light.
 // Shared CSS gives the same silhouette a gold finish on hover or keyboard focus.
 export function FabIcon({ iconKey, alt }: { iconKey: string; alt: string }) {
-  const mask = `url("/api/icons/game/${iconKey}?color=%23ffffff&finish=metallic-v2-diagonal")`;
+  const bundled = ["lorc/cultist", "delapouite/spiked-dragon-head", "lorc/gluttonous-smile"].includes(iconKey);
+  const mask = bundled ? `url("/icons/entity-types/${iconKey}.svg")` : `url("/api/icons/game/${iconKey}?color=%23ffffff&finish=metallic-v2-diagonal")`;
   return <span className="sw-fab-glyph" aria-hidden="true" title={alt}
     style={{ maskImage: mask, WebkitMaskImage: mask }} />;
 }
@@ -145,273 +130,88 @@ export function FabSpeedDial({
     [buildStashCount, actionBadgeCounts],
   );
   const [open, setOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const creationMode = fabCreationMode(usePathname());
   const isMobile = useIsMobile();
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const isDark = useIsDark();
-  // FAB game-icons: white on dark, near-black (#011614) on light so they
-  // stay visible against the light surface.
-  const fabIconColor = isDark ? "#ffffff" : "#011614";
-  const accountLabel = currentUser?.displayName
-    ? `Account · ${currentUser.displayName}`
-    : "Account";
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const accountLabel = currentUser?.displayName ? `Account · ${currentUser.displayName}` : "Account";
+  const action = (key: string) => items.find((item): item is FabAction => item.kind === "action" && item.key === key);
+  const workspaces = [action("build"), action("character")].filter((item): item is FabAction => !!item);
 
-  // Close on outside click / Escape.
   useEffect(() => {
-    if (!open) return undefined;
-    const onDocPointer = (event: PointerEvent) => {
-      if (!containerRef.current) return;
-      if (!containerRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
+    if (!open) return;
+    const onPointer = (event: PointerEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) { setOpen(false); }
     };
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key !== "Escape") return;
+      setOpen(false); triggerRef.current?.focus();
     };
-    document.addEventListener("pointerdown", onDocPointer);
+    document.addEventListener("pointerdown", onPointer);
     document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("pointerdown", onDocPointer);
-      document.removeEventListener("keydown", onKey);
-    };
+    return () => { document.removeEventListener("pointerdown", onPointer); document.removeEventListener("keydown", onKey); };
   }, [open]);
 
+  function navigate(href: string) {
+    const event = new CustomEvent("sw-navigate-away", { detail: href, cancelable: true });
+    window.dispatchEvent(event);
+    if (!event.defaultPrevented) { window.location.assign(href); setOpen(false); }
+  }
+  function destination(key: string, description?: string, feature = false) {
+    const item = items.find(item => item.key === key);
+    if (!item || item.kind === "divider" || item.kind === "userMenu") return null;
+    const label = key === "builds" ? "Characters" : item.label;
+    const content = <><span className="sw-fab__destination-icon">{referenceIcon(key) ?? item.icon}</span><span className="sw-fab__copy"><strong>{label}</strong>{description && <small>{description}</small>}</span>{!feature && <ChevronRight className="sw-fab__chevron" size={17}/>}</>;
+    const className = cn("sw-fab__destination", feature && "sw-fab__feature", key === "atelier" && "sw-fab__atelier");
+    return item.kind === "link" ? <Link key={key} data-fab-link={key} aria-label={label} className={className} href={item.href} onClick={event => { event.preventDefault(); navigate(item.href); }}>{content}</Link>
+      : <button key={key} type="button" data-fab-action={key} className={className} disabled={item.disabled} onClick={() => { item.onClick(); setOpen(false); }}>{content}</button>;
+  }
+
   if (!visible) return null;
-
-  return (
-    <div
-      ref={containerRef}
-      className="sw-fab fixed right-3 z-40 flex flex-col items-end gap-2 sm:right-4"
-      data-fab-root
-      style={{
-        bottom: `calc(${bottomOffset}px + env(safe-area-inset-bottom, 0px))`,
-      }}
-    >
-      {open ? (
-        <div
-          className="sw-fab__menu v12-instrument flex max-h-[80vh] w-[min(280px,calc(100vw-1.5rem))] flex-col items-stretch gap-0.5 overflow-y-auto rounded-xl border border-border bg-background/95 p-1.5 shadow-2xl backdrop-blur-md"
-          data-fab-menu
-          style={{ maxHeight: `calc(var(--sw-visible-height, 100dvh) - ${bottomOffset + 82}px - env(safe-area-inset-bottom, 0px))` }}
-          // Stop the close-on-outside-pointer from racing the click when the
-          // user taps inside the dial. pointerdown bubbles up; without this
-          // guard the dial closes before the click handler can fire (which
-          // is why the user-menu "Account" row never opened).
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          <div className="sw-fab__heading"><span>SwordWeave</span><span>Quick access</span></div>
-          <div className="sw-fab__navigation">
-          {items.map((item, index) => {
-            // The "Functions" section in the dial is replaced by a
-            // compact icon-grid card (rendered below). Hide the inline
-            // divider and the per-action entries that the card duplicates.
-            if (item.kind === "divider" && item.key === "div-functions") {
-              return null;
-            }
-            if (
-            item.kind === "action" &&
-            (item.key === "split" ||
-              item.key === "fullscreen" ||
-              item.key === "dark" ||
-              item.key === "build" ||
-              item.key === "character")
-          ) {
-            return null;
-          }
-            // The Account row is also rendered in the icon grid below.
-            if (item.kind === "divider" && item.key === "div-account") {
-              return null;
-            }
-            if (item.kind === "userMenu") {
-              return null;
-            }
-            if (item.kind === "divider") {
-              return (
-                <div
-                  key={item.key}
-                  className="sw-fab__section mt-1.5 border-t border-border/60 px-1.5 pb-0.5 pt-1.5 first:mt-0 first:border-t-0 first:pt-0"
-                >
-                  <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-                    {item.label}
-                  </span>
-                </div>
-              );
-            }
-            if (item.kind === "link") {
-              return (
-                <Link
-                  key={item.key}
-                  data-fab-link={item.key}
-                  href={item.href}
-                  onClick={(e) => {
-                    // Navigate with a hard navigation. Relying on <Link>'s
-                    // built-in client-nav alone fails here: setOpen(false)
-                    // unmounts the menu during the same click, which aborts
-                    // Next's router.push before it commits — so the page
-                    // never changes (the FAB just closes). router.push from
-                    // useRouter() here also proved unreliable in this
-                    // context, so we navigate directly via the location
-                    // API, which always works. (When the build is dirty the
-                    // document-level nav guard intercepts first and opens
-                    // the in-app discard modal, whose confirm also uses a
-                    // hard navigation — same reliable path.)
-                    e.preventDefault();
-                    const navEvent = new CustomEvent("sw-navigate-away", {
-                      detail: item.href,
-                      cancelable: true,
-                    });
-                    window.dispatchEvent(navEvent);
-                    if (!navEvent.defaultPrevented) {
-                      window.location.assign(item.href);
-                      setOpen(false);
-                    }
-                  }}
-                  style={{
-                    animation: `sw-fab-item-in 180ms ease-out both`,
-                    animationDelay: `${index * 20}ms`,
-                  }}
-                  className="group flex w-full items-center gap-2 rounded-lg border border-transparent px-2.5 py-2 text-xs font-medium text-foreground transition-all hover:bg-accent"
-                >
-                  <span className="flex size-6 items-center justify-center text-muted-foreground group-hover:text-primary">
-                    {item.icon}
-                  </span>
-                  <span className="truncate">{item.label}</span>
-                </Link>
-              );
-            }
-            // FabAction — action button (with optional active state).
-            // Used for Build and Preview in the action row.
-            return (
-              <button
-                key={item.key}
-                type="button"
-                data-fab-action={item.key}
-                onClick={() => {
-                  item.onClick();
-                  if (item.active === undefined) setOpen(false);
-                }}
-                disabled={item.disabled}
-                aria-pressed={item.active}
-                aria-label={item.label}
-                title={item.label}
-                style={{
-                  animation: `sw-fab-item-in 180ms ease-out both`,
-                  animationDelay: `${index * 20}ms`,
-                }}
-                className={cn(
-                  "group flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-xs font-medium transition-all",
-                  item.active
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-transparent text-foreground hover:bg-accent",
-                  item.disabled && "opacity-40 pointer-events-none",
-                )}
-              >
-                <span
-                  className={cn(
-                    "flex size-6 items-center justify-center",
-                    item.active
-                      ? "text-primary"
-                      : "text-muted-foreground group-hover:text-primary",
-                  )}
-                >
-                  {item.icon}
-                </span>
-                <span className="truncate">{item.label}</span>
-                {item.active ? (
-                  <span className="ml-auto size-1.5 rounded-full bg-primary" />
-                ) : null}
-              </button>
-            );
-          })}
-          </div>
-
-          {/* Utilities/profile stay together; Build and Character own a
-              dedicated second row. Split is supplied only on mobile. */}
-          <div
-            className="sw-fab__action-grid mt-1 rounded-lg border border-border/60 bg-card/40 p-1"
-            data-fab-action-grid
-            style={{
-              animation: `sw-fab-item-in 180ms ease-out both`,
-              animationDelay: `${items.length * 20}ms`,
-            }}
-          >
-            <div className="sw-fab__utility-grid">
-              {(
-              [
-                ...items.filter(
-                  (i): i is FabAction =>
-                    i.kind === "action" &&
-                    (i.key === "split" ||
-                      i.key === "fullscreen" ||
-                      i.key === "dark"),
-                ),
-                {
-                  kind: "action" as const,
-                  key: "account",
-                  label: accountLabel,
-                  icon: currentUser ? (
-                    <FabAccountAvatar user={currentUser} />
-                  ) : (
-                    <UserRound className="size-4" aria-hidden="true" />
-                  ),
-                  // Push the user-menu modal FIRST, then close the FAB. The
-                  // old `setTimeout(0)` deferred the push to the next tick,
-                  // which raced against React's flush and sometimes dropped
-                  // the push entirely — the user reported "the Account
-                  // button just closes the FAB." Synchronous push + same-
-                  // tick close is React-batched into a single render, so
-                  // the FAB unmounts only after the modal is queued.
-                  onClick: () => {
-                    onUserMenu?.();
-                    setOpen(false);
-                  },
-                },
-              ] as FabAction[]
-              ).map((action) => (
-                <FabGridAction key={action.key} action={action} badgeCount={badgeCounts[action.key] ?? 0} onInvoke={() => { if (action.key === "build" || action.key === "character" || (isMobile && action.key === "split")) setOpen(false); }} />
-              ))}
-            </div>
-            <div className="sw-fab__workspace-grid">
-              {items.filter(
-                (i): i is FabAction => i.kind === "action" && (i.key === "build" || i.key === "character"),
-              ).map((action) => (
-                <FabGridAction key={action.key} action={action} badgeCount={badgeCounts[action.key] ?? 0} onInvoke={() => { if (action.key === "build" || action.key === "character" || (isMobile && action.key === "split")) setOpen(false); }} />
-              ))}
-            </div>
+  return <div ref={containerRef} className="sw-fab fixed right-3 z-40 flex flex-col items-end gap-3 sm:right-4" data-fab-root style={{ bottom: `calc(${bottomOffset}px + env(safe-area-inset-bottom, 0px))` }}>
+    {open && <div className="sw-fab__menu" data-fab-menu id="sw-quick-access" role="region" aria-label="Quick access" style={{ maxHeight: `calc(var(--sw-visible-height, 100dvh) - ${bottomOffset + 82}px - env(safe-area-inset-bottom, 0px))` }}>
+      <svg className="sw-fab__metal-defs" aria-hidden="true"><defs><linearGradient id="sw-fab-gold" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="32" y2="32"><stop stopColor="var(--fab-gold-low, #b68b3f)"/><stop offset=".19" stopColor="var(--fab-gold-mid, #e8c47a)"/><stop offset=".36" stopColor="#fffbe1"/><stop offset=".46" stopColor="var(--fab-gold-low, #a87929)"/><stop offset=".65" stopColor="var(--fab-gold-mid, #e7c780)"/><stop offset=".84" stopColor="var(--fab-gold-low, #ad813c)"/><stop offset="1" stopColor="var(--fab-gold-mid, #f2d994)"/></linearGradient><linearGradient id="sw-fab-silver" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="24" y2="24"><stop stopColor="var(--fab-silver-low, #6e8589)"/><stop offset=".22" stopColor="var(--fab-silver-mid, #d8e3e3)"/><stop offset=".3" stopColor="#fff"/><stop offset=".38" stopColor="var(--fab-silver-low, #82999e)"/><stop offset=".6" stopColor="var(--fab-silver-mid, #edf5f4)"/><stop offset=".65" stopColor="#fff"/><stop offset=".72" stopColor="var(--fab-silver-low, #7e969b)"/><stop offset="1" stopColor="var(--fab-silver-mid, #d8e3e3)"/></linearGradient></defs></svg>
+      <header className="sw-fab__heading"><Link href="/" className="sw-fab__brand" aria-label="SwordWeave home" onClick={event => {event.preventDefault();navigate("/");}}><span className="sw-public-nav__brandmark" aria-hidden="true"/><span className="sw-public-nav__wordmark"><span>Sword</span><span>·</span><span>Weave</span></span></Link><span>Quick access</span></header>
+      <div className="sw-fab__navigation">
+        <section className="sw-fab__section"><h3>Browse & make</h3><div className="sw-fab__pair">{destination("library", "Public entries", true)}{destination("atelier", "Build & edit", true)}</div></section>
+        <section className="sw-fab__section"><h3>Play sheets</h3><div className="sw-fab__pair">{destination("builds")}{destination("monsters")}</div></section>
+        <section className="sw-fab__archive"><h3>My archive</h3>{destination("creations", "Authored records")}{destination("collections", "Discover public collections")}</section>
+      </div>
+      {workspaces.length > 0 && <div className="sw-fab__workspace-grid">
+        {workspaces.map(item => <FabGridAction key={item.key} action={item} badgeCount={badgeCounts[item.key] ?? 0} onInvoke={() => setOpen(false)}/>)}
+        {creationMode === "menu" && <div className="sw-fab__create-wrap"><button type="button" className="sw-fab__create-plus" data-fab-action="create" aria-label="Create a character or monster" aria-expanded={createOpen} aria-controls="sw-fab-create-menu" onClick={() => setCreateOpen(value => !value)}><Plus size={20}/></button>{createOpen && <div id="sw-fab-create-menu" className="sw-fab__create-menu" role="group" aria-label="Create"><button type="button" onClick={() => navigate("/characters/new")}><FabIcon iconKey="lorc/cultist" alt=""/><span>Create character</span></button><button type="button" onClick={() => navigate("/monsters/new")}><FabIcon iconKey="delapouite/spiked-dragon-head" alt=""/><span>Create monster</span></button></div>}</div>}
+      </div>}
+      {creationMode === "buttons" && <div className="sw-fab__pair sw-fab__creators"><button type="button" data-fab-action="create-character" onClick={() => navigate("/characters/new")}><FabIcon iconKey="lorc/cultist" alt=""/><span>Create character</span></button><button type="button" data-fab-action="create-monster" onClick={() => navigate("/monsters/new")}><FabIcon iconKey="delapouite/spiked-dragon-head" alt=""/><span>Create monster</span></button></div>}
+      <footer className="sw-fab__utilities">
+        <div className="sw-fab__utility-strip">
+          {destination("home")}{destination("rules")}
+          <div className="sw-fab__utility-grid">
+            {[action("dark"), action("fullscreen"), action("split")].filter((item): item is FabAction => !!item).map(item => <FabGridAction key={item.key} action={item} badgeCount={0} onInvoke={() => {if (isMobile && item.key === "split") setOpen(false);}}/>)}
+            <FabGridAction action={{ kind: "action", key: "account", label: accountLabel, icon: currentUser ? <span className="sw-fab__account-rim"><FabAccountAvatar user={currentUser}/></span> : <UserRound size={22}/>, onClick: () => {onUserMenu?.(); setOpen(false);} }} badgeCount={0}/>
           </div>
         </div>
-      ) : null}
+        {items.filter((item): item is FabLink => item.kind === "link" && item.key === "buymeacoffee").map(item => <a key={item.key} href={item.href} target="_blank" rel="noopener noreferrer" className="sw-fab__support" data-fab-link={item.key}>{item.icon}<span>{item.label}</span><ArrowUpRight size={16}/></a>)}
+      </footer>
+    </div>}
+    <button ref={triggerRef} type="button" data-fab-trigger onClick={() => {setOpen(value => !value);setCreateOpen(false);}} aria-label={open ? "Close menu" : primaryLabel} aria-expanded={open} aria-controls="sw-quick-access" className="sw-fab__trigger">{open ? <X size={24}/> : <Menu size={24}/>}</button>
+  </div>;
+}
 
-      {/* Primary FAB — hamburger icon (Menu ↔ X) */}
-      <button
-        type="button"
-        data-fab-trigger
-        onClick={() => setOpen((v) => !v)}
-        aria-label={open ? "Close menu" : primaryLabel}
-        aria-expanded={open}
-        className={cn(
-          "relative flex size-12 items-center justify-center rounded-full border border-border bg-background/90 text-foreground shadow-xl ring-1 ring-border/30 backdrop-blur-md transition-all duration-200 hover:scale-105 active:scale-95",
-          open && "bg-foreground text-background ring-foreground/30",
-        )}
-      >
-        {open ? <X className="size-5" /> : <Menu className="size-5" />}
-        {!open ? (
-          <span className="pointer-events-none absolute inset-0 animate-ping rounded-full bg-primary/20 [animation-duration:3s]" />
-        ) : null}
-      </button>
-
-      <style jsx>{`
-        @keyframes sw-fab-item-in {
-          from {
-            opacity: 0;
-            transform: translateY(6px) scale(0.95);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-      `}</style>
-    </div>
-  );
+// The same fine outline glyphs used in the approved reference.
+function referenceIcon(key: string) {
+  if (key === "monsters") return <FabIcon iconKey="lorc/gluttonous-smile" alt="Monsters"/>;
+  if (key === "home") return <span className="sw-fab__home-logo" aria-hidden="true"/>;
+  if (key === "rules") return <BookOpen size={19} strokeWidth={1.4}/>;
+  const paths: Record<string, string> = {
+    library: "M3 4h5v25H3z M12 4h5v25h-5z M21 5l4-1 5 23-4 1z",
+    atelier: "M4 21l12-12 7 7-12 12z M16 9l4-4 7 7-4 4 M5 8l3-3 18 18-3 3z",
+    builds: "M11 4a5 5 0 1 1 0 10 5 5 0 0 1 0-10 M3 28v-5c0-8 16-8 16 0v5 M23 6a4 4 0 0 1 0 8 M23 18c6 0 6 5 6 10",
+    monsters: "M3 3l7 4 6-5 6 5 7-4-3 11 3 8-13 8L3 22l3-8z M9 13l5 3 M23 13l-5 3 M11 22h10",
+    creations: "M16 2l11 6v16l-11 6L5 24V8z M5 8l11 7 11-7 M16 15v15",
+    collections: "M2 8h10l3 4h15v17H2z",
+  };
+  return paths[key] ? <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[key]}/></svg> : null;
 }
 
 function FabGridAction({ action, badgeCount, onInvoke }: { action: FabAction; badgeCount: number; onInvoke?: () => void }) {
@@ -425,7 +225,7 @@ function FabGridAction({ action, badgeCount, onInvoke }: { action: FabAction; ba
       aria-label={action.label}
       title={action.label}
       className={cn(
-        "relative flex h-9 w-full items-center justify-center rounded-md border text-xs font-medium transition-all active:scale-95",
+        "relative flex w-full items-center justify-center rounded-md border text-xs font-medium",
         action.active
           ? "border-primary bg-primary text-primary-foreground"
           : "border-border bg-background text-muted-foreground hover:border-primary hover:text-foreground",
@@ -524,7 +324,7 @@ export const NAV_LINKS: FabItem[] = [
   {
     kind: "link",
     key: "creations",
-    label: "My Creations",
+    label: "My creations",
     icon: (
       <FabIcon iconKey="delapouite/cosmic-egg" alt="My Creations" />
     ),
@@ -542,14 +342,14 @@ export const NAV_LINKS: FabItem[] = [
   {
     kind: "link",
     key: "builds",
-    label: "Builds",
+    label: "Characters",
     icon: (
       <FabIcon iconKey="seregacthtuf/armor-blueprint" alt="Builds" />
     ),
     href: "/characters",
   },
-  { kind: "link", key: "collections", label: "Collections", icon: <FabIcon iconKey="delapouite/bookshelf" alt="Collections" />, href: "/collections" },
-  { kind: "link", key: "monsters", label: "Monsters", icon: <FabIcon iconKey="lorc/dragon-head" alt="Monsters" />, href: "/monsters" },
+  { kind: "link", key: "collections", label: "Collections", icon: <FabIcon iconKey="delapouite/bookshelf" alt="Collections" />, href: "/library/collections" },
+  { kind: "link", key: "monsters", label: "Monsters", icon: <FabIcon iconKey="lorc/gluttonous-smile" alt="Monsters" />, href: "/monsters" },
   { kind: "link", key: "rules", label: "Play guide", icon: <FabIcon iconKey="delapouite/rule-book" alt="Play guide" />, href: "/rules" },
 ];
 
@@ -568,6 +368,7 @@ export const ACCOUNT_LINKS: FabItem[] = [
 
 // Re-export icons for convenience.
 export const FabIcons = {
+  Plus,
   Columns2,
   Maximize2,
   Menu,

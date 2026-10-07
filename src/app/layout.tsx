@@ -23,7 +23,6 @@ import "./library-landing.css";
 import "./character-guide.css";
 import "./mobile-shell.css";
 import "./secondary-pages-mobile.css";
-import "./fab-metal.css";
 import "./mechanical-summary.css";
 import "./phone-shell.css";
 import "./phone-character.css";
@@ -43,6 +42,8 @@ import "./character-modal-redesign.css";
 import "./arcane-materials.css";
 import "./component-refinements.css";
 import "./card-interactions.css";
+import "./fab-metal.css";
+import "./workspace-material-refinements.css";
 
 // Retain the previous typefaces behind the data-ui switch so setting
 // NEXT_PUBLIC_SW_UI_VERSION=legacy is a complete visual rollback.

@@ -1,4 +1,6 @@
 "use client";
+import { EntityTypeIcon } from "@/components/icons/entity-type-icon";
+
 import { useUser } from "@clerk/nextjs";
 import { readCreationReturn,setCreationReturnResult } from "@/lib/character/creation-return/model";
 
@@ -601,7 +603,7 @@ export function AtelierSandboxClient({
     function onStartNewEntity(event: Event) {
       if (!(event instanceof CustomEvent)) return;
       const kind = event.detail;
-      if(kind === "monster"){guardedStartNewEntity({tab:"monster",label:"Monster",hint:"Creature template",icon:"lorc/monster-grasp"});return;}
+      if(kind === "monster"){guardedStartNewEntity({tab:"monster",label:"Monster",hint:"Creature template",icon:"lorc/gluttonous-smile"});return;}
       if (kind !== "primitive" && kind !== "effect" && kind !== "capability") return;
       guardedStartNewEntity({
         tab: "mechanics",
@@ -1586,7 +1588,7 @@ export function AtelierSandboxClient({
               aria-pressed={build === value}
               onClick={() => guardedSwitchBuild(value)}
             >
-              <b>{label}</b>
+              <EntityTypeIcon type={value}/><b>{label}</b>
             </button>
           ))}
         </div>
@@ -2008,7 +2010,6 @@ function NewEntityChoices({
   onPick: (choice: NewEntityChoice) => void;
   className?: string;
 }) {
-  const isDark = useIsDark();
   return (
     <div className={cn("v12-new-entity-choice-groups", className)}>
       {NEW_ENTITY_GROUPS.map((group) => (
@@ -2031,13 +2032,7 @@ function NewEntityChoices({
                     disabled && "cursor-not-allowed opacity-45",
                   )}
                 >
-                  <IconDisplay
-                    iconSource="GAME_ICONS"
-                    iconKey={choice.icon}
-                    iconColor={isDark ? "#94a3b8" : "#64748b"}
-                    size={20}
-                    alt={choice.label}
-                  />
+                  <EntityTypeIcon iconKey={choice.icon} size={24}/>
                   <span className="min-w-0">
                     <span className="block text-sm font-medium text-foreground">
                       {choice.label}

@@ -35,7 +35,7 @@ export function monsterToLibraryItem(row:MonsterLibraryRow):LibraryItem {
  authorId:row.userId,authorUsername:null,authorDisplayName:null,authorAvatarUrl:null,authorIsAdmin:false,
  publishedAt:row.visibility==="PRIVATE"?null:row.createdAt,visibility:row.visibility,versionNumber:row.version,
  likesCount:0,dislikesCount:0,forkCount:0,tags:[],sourceOrigin:row.forkedFromId?`fork:${row.forkedFromId}`:null,
- imageUrl,iconSource:imageUrl?"UPLOAD":"GAME_ICONS",iconKey:imageUrl?null:"lorc/monster-grasp",iconUrl:imageUrl,iconColor:"#ffffff"};
+ imageUrl,iconSource:imageUrl?"UPLOAD":"GAME_ICONS",iconKey:imageUrl?null:"lorc/gluttonous-smile",iconUrl:imageUrl,iconColor:"#ffffff"};
 }
 
 /** Older templates are resolved through the same pinned graph as their preview.

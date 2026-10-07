@@ -85,7 +85,7 @@ function AccountPreview({ id, compact, ready, actions, actionPlacement }: { id: 
   return <section className={`sw-creature-preview ${compact ? "is-compact" : ""}`} aria-label={`${monster.name} mini sheet`}>
     {actions && actionPlacement === "top" && <PreviewActions {...actions}/>}
     <header className="sw-creature-identity">
-      <span className="sw-creature-emblem">{artwork ? <img src={artwork} alt={`${monster.name} portrait`} style={portraitFrameStyle(definition.portraitFrame)} /> : <IconDisplay iconSource="GAME_ICONS" iconKey="lorc/monster-grasp" iconColor="#64c7c1" size={44} />}</span>
+      <span className="sw-creature-emblem">{artwork ? <img src={artwork} alt={`${monster.name} portrait`} style={portraitFrameStyle(definition.portraitFrame)} /> : <IconDisplay iconSource="GAME_ICONS" iconKey="lorc/gluttonous-smile" iconColor="#64c7c1" size={44} />}</span>
       <div><p className="v12-kicker">Creature record · {definition.size.toLowerCase()}</p><h2>{monster.name}</h2><p>{sheet.availableBudget} BU · {sheet.mirrorCredit} weakness credit · Rank {sheet.rank.toFixed(2)} · {sheet.itemBu} item BU</p></div>
       <BookmarkButton targetType="MONSTER" targetId={id} />
     </header>

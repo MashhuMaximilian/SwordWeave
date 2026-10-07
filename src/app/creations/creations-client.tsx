@@ -1,4 +1,6 @@
 "use client";
+import { EntityTypeIcon } from "@/components/icons/entity-type-icon";
+
 
 // =============================================================================
 // CreationsClient — filterable table of the signed-in user's authored entries.
@@ -18,10 +20,10 @@
 // PUBLIC or FOLLOWERS_ONLY.
 // =============================================================================
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Dna, FolderOpen, LayoutGrid, List, ScrollText, UsersRound } from "lucide-react";
+import { Dna, FolderOpen, LayoutGrid, List, ScrollText, UsersRound, Swords } from "lucide-react";
 import { useModalStack } from "@/components/ui/modal-stack";
 import { CollectionsClient } from "@/components/collections/collections-client";
 import "./creations-tabs.css";
@@ -47,11 +49,12 @@ type TypeFilter =
   | "character"
   | "build"
   | "monster";
-type CreationTab = "mechanics" | "heritages" | "characters" | "collections";
+type CreationTab = "mechanics" | "heritages" | "characters" | "monsters" | "collections";
 const TAB_TYPES: Record<CreationTab, TypeFilter[]> = {
   mechanics: ["primitive", "effect", "capability", "item"],
   heritages: ["template"],
-  characters: ["character", "build","monster"],
+  characters: ["character", "build"],
+  monsters: ["monster"],
   collections: [],
 };
 
@@ -113,8 +116,16 @@ export function CreationsClient({
     (TYPE_CHIPS.find((c) => c.key === initialType)?.key ?? "all") as TypeFilter,
   );
   const [tab, setTab] = useState<CreationTab>(
-    initialType === "template" ? "heritages" : ["character", "build","monster"].includes(initialType) ? "characters" : "mechanics",
+    initialType === "template" ? "heritages" : initialType === "monster" ? "monsters" : ["character", "build"].includes(initialType) ? "characters" : "mechanics",
   );
+  const tabListRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const list = tabListRef.current;
+    const selected = list?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (!list || !selected || list.scrollWidth <= list.clientWidth) return;
+    const left = list.scrollLeft + selected.getBoundingClientRect().left - list.getBoundingClientRect().left;
+    list.scrollTo({ left: Math.max(0, left - (list.clientWidth - selected.offsetWidth) / 2) });
+  }, [tab]);
   const [status, setStatus] = useState<StatusFilter>(
     initialStatus === "draft" ? "draft" : "all",
   );
@@ -402,10 +413,14 @@ export function CreationsClient({
       ).length,
     },
     characters: {
-      description: "Character sheets, reusable builds, and Monster / NPC templates",
+      description: "Character sheets and reusable builds",
       count: items.filter((item) =>
         TAB_TYPES.characters.includes(TARGET_TYPE_MAP[item.targetType] ?? "primitive"),
       ).length,
+    },
+    monsters: {
+      description: "Your monster and NPC templates",
+      count: counts.monster,
     },
     collections: {
       description: "Organize your creations into collections",
@@ -417,6 +432,7 @@ export function CreationsClient({
     mechanics: ScrollText,
     heritages: Dna,
     characters: UsersRound,
+    monsters: Swords,
     collections: FolderOpen,
   } satisfies Record<CreationTab, typeof ScrollText>;
 
@@ -434,14 +450,14 @@ export function CreationsClient({
 
   return (
     <div className="v12-creations-browser">
-      <div role="tablist" aria-label="My creations" className="v12-creations-tabs v12-creations-tabs--with-collections">
-        {([['mechanics', 'Mechanics'], ['heritages', 'Heritages'], ['characters', 'Characters'], ['collections', 'Collections']] as const).map(([key, label]) => {
+      <div ref={tabListRef} role="tablist" aria-label="My creations" className="v12-creations-tabs v12-creations-tabs--with-collections">
+        {([['mechanics', 'Mechanics'], ['heritages', 'Heritages'], ['characters', 'Characters'], ['monsters', 'Monsters'], ['collections', 'Collections']] as const).map(([key, label]) => {
           const TabIcon = tabIcon[key];
           return (
             <button key={key} type="button" role="tab" aria-selected={tab === key}
               onClick={() => { setTab(key); setType('all'); }}
               className={cn('v12-creations-tab', tab === key ? 'is-active' : '')}>
-              <TabIcon aria-hidden="true" />
+              {key === "monsters" ? <EntityTypeIcon type="MONSTER"/> : <TabIcon aria-hidden="true" />}
               <span>{label}</span>
               <b>{tabMeta[key].count}</b>
             </button>

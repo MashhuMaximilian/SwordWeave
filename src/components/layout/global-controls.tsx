@@ -50,6 +50,7 @@ import { useModalStack } from "@/components/ui/modal-stack";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { FabThemeIcon } from "./fab-theme-icon";
+import { fabWorkspaceVisibility } from "@/lib/fab-visibility";
 
 type DrawerTab = "build" | "preview" | null;
 
@@ -402,7 +403,8 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
     return () => { cancelled = true; window.removeEventListener("sw-character-view-permission", update); };
   }, []);
   const readOnlySheet = sheetAccess?.readOnly && pathname === `/characters/${sheetAccess.characterId}`;
-  const isCharacterSheetRoute = pathname?.startsWith("/characters/") === true;
+  const workspaceVisibility = fabWorkspaceVisibility(pathname, isMobile, Boolean(readOnlySheet));
+  const isCharacterSheetRoute = workspaceVisibility.characterSheet;
 
   // Filters only appear on routes that actually open the filter panel
   // via setFilterPanelOpen: the library browse view and the sandbox
@@ -429,7 +431,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         label: "Functions",
       },
     ];
-    if (isMobile && isSplitableSandboxRoute) {
+    if (workspaceVisibility.split) {
       list.push({
         kind: "action",
         key: "split",
@@ -479,7 +481,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
       // Phase 8.1 batch 1: wire the Character FAB to the persistent
       // character modal. toggle() opens if closed, closes if open.
       // (Replaces the previous no-op that rev 10 left as a placeholder.)
-      ...(!isCharacterSheetRoute ? [{
+      ...(workspaceVisibility.character ? [{
       kind: "action" as const,
       key: "character",
       label: "Character",
@@ -526,8 +528,12 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         icon: <FabIcon iconKey="lorc/campfire" alt="Keep the fire going" />,
       },
     );
-    return readOnlySheet ? list.filter(item => item.key !== "build") : list;
+    return workspaceVisibility.build ? list : list.filter(item => item.key !== "build");
   }, [
+    workspaceVisibility.build,
+    workspaceVisibility.character,
+    workspaceVisibility.split,
+    characterModal,
     isSandboxRoute,
     isMobile,
     isSplitableSandboxRoute,

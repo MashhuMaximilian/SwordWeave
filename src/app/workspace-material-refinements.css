@@ -1,0 +1,53 @@
+/* Arcane glass: lifted teal panels, reflected edges, quiet geometric detail. */
+body[data-ui="v12"] {
+  --sw-workspace-edge:linear-gradient(130deg,#f0cf80,#b9d4cf 48%,#72898d 68%,#d0ac62);
+  --sw-workspace-button:linear-gradient(125deg,#59492c,#192b30 62%,#14242b);
+  --sw-preview-glass:radial-gradient(ellipse at 0 0,#65a69a19,transparent 65%),linear-gradient(145deg,#1b3439,#10272d 58%,#12222b);
+  --sw-preview-inset:linear-gradient(145deg,#163037,#102229);
+  --sw-icon-silver:linear-gradient(125deg,#70878d,#d7e5e4 23%,#fff 36%,#819a9e 48%,#f4fcfa 68%,#819a9e);
+}
+html:not(.dark) body[data-ui="v12"] {
+  --sw-workspace-button:linear-gradient(125deg,#f0e3c2,#dae5de 65%,#c9dcd5);
+  --sw-preview-glass:radial-gradient(ellipse at 0 0,#fbf3d499,transparent 65%),linear-gradient(145deg,#f4f4e9,#e1ede5 58%,#d4e3dd);
+  --sw-preview-inset:linear-gradient(145deg,#edf2e7,#d7e7df);
+  --sw-icon-silver:linear-gradient(125deg,#526c72,#a9bdbe 23%,#fff 36%,#637f86 48%,#c5d4d4 68%,#526c72);
+}
+body[data-ui="v12"] .sw-entity-type-icon {display:inline-block;flex:none;vertical-align:middle;background:var(--sw-icon-silver);mask-size:contain;mask-position:center;mask-repeat:no-repeat;-webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat}
+body[data-ui="v12"] :is(button,a):is(:hover,:focus-visible,[aria-pressed="true"])>.sw-entity-type-icon {background:var(--sw-metal-gold)}
+body[data-ui="v12"] :is(.v12-modal-surface,.v12-entity-preview,.v12-fetched-preview,.v12-preview-actions) {background:var(--sw-preview-glass)!important}
+body[data-ui="v12"] .v12-modal-surface {box-shadow:inset 0 1px #c3e9dd24,0 24px 80px #05141a66!important}
+body[data-ui="v12"] .v12-modal-backdrop {background:linear-gradient(125deg,#071a20bb,#0a2224cc)!important;backdrop-filter:blur(8px)}
+html:not(.dark) body[data-ui="v12"] .v12-modal-backdrop {background:linear-gradient(125deg,#1c474a70,#244e4766)!important}
+body[data-ui="v12"] :is(.v12-entity-preview,.v12-fetched-preview) :is(.bg-background,.bg-card) {background:var(--sw-preview-inset)!important}
+body[data-ui="v12"] :is(.v12-source-tabs,.v12-source-browser-choices,.sheet-library-types) button:has(.sw-entity-type-icon) {display:inline-flex;align-items:center;justify-content:center;gap:7px}
+body[data-ui="v12"] .v12-new-entity-choices {grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
+body[data-ui="v12"] .v12-new-entity-choices button {
+  min-height:64px!important;padding:12px!important;border:1px solid transparent!important;border-radius:11px!important;
+  background:var(--sw-workspace-button) padding-box,var(--sw-workspace-edge) border-box!important;box-shadow:inset 0 1px #ffffff10!important;
+}
+body[data-ui="v12"] .v12-new-entity-choices button span.text-foreground {font-size:14px!important;line-height:1.3!important;color:var(--v12-gold)!important}
+body[data-ui="v12"] .v12-new-entity-choices button span.text-muted-foreground {font-size:12px!important;line-height:1.4!important}
+body[data-ui="v12"] .v12-new-entity-choices button:is(:hover,:focus-visible) {background:var(--sw-metal-gold) padding-box,var(--sw-workspace-edge) border-box!important}
+body[data-ui="v12"] .v12-new-entity-choices button:is(:hover,:focus-visible) span {color:#302611!important}
+body[data-ui="v12"] .v12-new-entity-choices button:is(:hover,:focus-visible) .sw-entity-type-icon {background:var(--sw-icon-silver)!important}
+/* A container follows the actual panel width rather than the browser width. */
+body[data-ui="v12"] .v12-preview-actions {container:preview-actions / inline-size;padding:12px 8px!important}
+body[data-ui="v12"] .v12-preview-actions .v12-preview-destination-grid {display:grid!important;grid-template-columns:1fr!important;gap:8px!important}
+body[data-ui="v12"] .v12-preview-actions .v12-preview-destination-action {min-height:52px!important;padding:8px 10px!important;gap:4px!important;border-radius:9px!important}
+body[data-ui="v12"] .v12-preview-actions .v12-preview-destination-title {display:flex;align-items:center;gap:7px!important}
+body[data-ui="v12"] .v12-preview-actions .v12-preview-destination-title>span {font-size:13px!important;line-height:1.3!important}
+body[data-ui="v12"] .v12-preview-actions .v12-preview-destination-action>span:not(.v12-preview-destination-title) {font-size:12px!important;line-height:1.35!important}
+body[data-ui="v12"] .v12-preview-actions .v12-preview-destination-title .sw-fab__theme-icon {width:20px!important;height:20px!important;flex:none}
+@container preview-actions (min-width:460px) {body[data-ui="v12"] .v12-preview-actions .v12-preview-destination-grid {grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@container preview-actions (min-width:760px) {body[data-ui="v12"] .v12-preview-actions .v12-preview-destination-grid {grid-template-columns:repeat(3,minmax(0,1fr))!important}}
+@container preview-actions (min-width:1040px) {body[data-ui="v12"] .v12-preview-actions .v12-preview-destination-grid {grid-template-columns:repeat(4,minmax(0,1fr))!important}}
+@media(max-width:540px) {body[data-ui="v12"] .v12-new-entity-choices {grid-template-columns:1fr!important}body[data-ui="v12"] .v12-new-entity-choices button {min-height:60px!important}}
+body[data-ui="v12"] .sw-discovery-type-select {display:flex;align-items:center;gap:8px;min-width:0}
+body[data-ui="v12"] .sw-discovery-type-select select {flex:1;min-width:0}
+body[data-ui="v12"] .sheet-library-types button {gap:7px}
+body[data-ui="v12"] :is(.v12-instrument-dialog,.sw-creature-preview,.v12-preview-reading) {background:var(--sw-preview-glass)!important}
+body[data-ui="v12"] :is(.v12-entity-preview,.v12-instrument-dialog,.v12-studio-body) :is(.v12-mechanical-rule,.v12-behavior-card,.v12-behavior-empty) {
+  background:radial-gradient(circle at 100% 0,#d0ad6410,transparent 45%),var(--sw-preview-inset) padding-box,var(--v12-copper-edge) border-box!important;
+}
+body[data-ui="v12"] :is(.v12-modal-surface,.v12-instrument-dialog) {--background:#102229;--card:#183239;--popover:#1b373d;--v12-inset:#102229}
+html:not(.dark) body[data-ui="v12"] :is(.v12-modal-surface,.v12-instrument-dialog) {--background:#e4eee5;--card:#f0f4e9;--popover:#f5f7ed;--v12-inset:#dce9e0}

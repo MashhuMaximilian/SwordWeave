@@ -1653,12 +1653,13 @@ function rarityClass(rarity: string): string {
 }
 
 /** Loads the same complete record used by the author and source page. */
-export function FetchedEntityPreview({ targetType, targetId, owner, onSubLinkClick, inspector = false }: {
+export function FetchedEntityPreview({ targetType, targetId, owner, onSubLinkClick, inspector = false, actionBar }: {
   targetType: string;
   targetId: string;
   owner?: EntityPreviewOwner;
   onSubLinkClick?: PreviewCallbacks["onSubLinkClick"];
   inspector?: boolean;
+  actionBar?: PreviewActionProps | undefined;
 }) {
   const [result, setResult] = useState<{ key: string; item?: SandboxPreviewItem; error?: string } | null>(null);
   const [engagement, setEngagement] = useState<NonNullable<PreviewCallbacks["engagement"]>>({
@@ -1716,6 +1717,7 @@ export function FetchedEntityPreview({ targetType, targetId, owner, onSubLinkCli
           versionHistoryHref: `/library/item/${key}/versions`,
         }}
         actionBar={{
+          ...actionBar,
           openSourceHref: `/library/item/${key}`,
           forkMap: (
             <ForkMapButton

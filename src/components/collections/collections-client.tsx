@@ -21,13 +21,13 @@ type Collection = {
   system_kind: string | null;
   followed?: boolean;
 };
-type CollectionPageProps = { collectionId?: string; ownerId?: string; embedded?: boolean };
+type CollectionPageProps = { collectionId?: string; ownerId?: string; embedded?: boolean; startCreating?: boolean };
 export function CollectionsClient(props: CollectionPageProps) {
   const { user, isLoaded } = useUser();
   if (!isLoaded) return props.embedded ? <div className="sw-collections-loading" role="status">Loading account…</div> : <main className="sw-collections-loading" role="status">Loading account…</main>;
-  return <AccountCollectionsClient key={`${user?.id ?? "anonymous"}:${props.collectionId ?? ""}:${props.ownerId ?? ""}:${props.embedded?"embedded":"page"}`} {...props} />;
+  return <AccountCollectionsClient key={`${user?.id ?? "anonymous"}:${props.collectionId ?? ""}:${props.ownerId ?? ""}:${props.embedded?"embedded":"page"}:${Boolean(props.startCreating)}`} {...props} />;
 }
-function AccountCollectionsClient({collectionId, ownerId, embedded=false}: CollectionPageProps) {
+function AccountCollectionsClient({collectionId, ownerId, embedded=false, startCreating=false}: CollectionPageProps) {
   const { user } = useUser();
   const clerk = useClerk();
   const router = useRouter();
@@ -35,7 +35,7 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
   const [rows, setRows] = useState<Collection[]>([]),
     [current, setCurrent] = useState<Collection | null>(null),
     [entries, setEntries] = useState<LibraryItem[]>([]),
-    [creating, setCreating] = useState(false),
+    [creating, setCreating] = useState(startCreating),
     [entryView, setEntryView] = useState<"GRID" | "LIST">("GRID"),
     [page, setPage] = useState(0),
     [search, setSearch] = useState(""),
@@ -136,6 +136,7 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
       <p className="sw-collections-intro">
         Your authored, forked, and saved entries. Organize them into collection branches.
       </p>
+      {!collectionId && <Link href="/library/collections" className="sw-metal-button sw-collections-button sw-collections-back"><BookOpen size={14} />Discover public collections</Link>}
       {error && (
         <p role="alert" className="sw-collections-error">
           {error}
@@ -282,6 +283,7 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false}: Colle
               <p className="sw-collections-eyebrow">Collection setup</p><h2>{current && !current.system_kind ? "Create a child collection" : "Create collection"}</h2>
               <input
                 aria-label="Collection name"
+                autoFocus
                 required
                 maxLength={100}
                 className="sw-collections-input"

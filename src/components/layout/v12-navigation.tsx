@@ -9,6 +9,7 @@ export function V12Navigation({ page }: { page: "Library" | "Atelier" }) {
       <summary aria-label="Open navigation">Menu</summary>
       <nav aria-label="Phone navigation">
         <Link href="/library/browse">Library</Link>
+        <Link href="/library/collections">Public collections</Link>
         <Link href="/atelier">Atelier</Link>
         <Link href="/characters">Characters</Link>
         <Link href="/monsters">Monsters</Link>
@@ -21,6 +22,7 @@ export function V12Navigation({ page }: { page: "Library" | "Atelier" }) {
     </details>
     <nav className="sw-desktop-navigation" aria-label="Workbench navigation">
       <Link aria-current={page === "Library" ? "page" : undefined} href="/library/browse">Library</Link>
+      <Link href="/library/collections">Public collections</Link>
       <Link aria-current={page === "Atelier" ? "page" : undefined} href="/atelier">Atelier</Link>
       <Link href="/characters">Character</Link>
       <Link href="/monsters">Monsters</Link>

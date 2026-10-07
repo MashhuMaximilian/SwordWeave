@@ -82,7 +82,7 @@ export interface LibraryTableProps {
   /** Compact instrument-row treatment used by the Atelier source column. */
   surface?: "default" | "atelier" | "catalogue";
   /** Optional adjacent actions for embedded pickers, outside the clickable row. */
-  renderActions?: (item: LibraryItem) => React.ReactNode;
+  renderActions?: ((item: LibraryItem) => React.ReactNode) | undefined;
   /** Short reading rows for narrow embedded pickers. */
   compact?: boolean;
 }
@@ -352,9 +352,19 @@ function ListItem({
 
   if (onSelect) {
     return (
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => onSelect(item)}
+        onKeyDown={(event) => {
+          // The bookmark remains a native button inside this selectable row.
+          // Its own keyboard activation must not also open the preview.
+          if (event.target !== event.currentTarget) return;
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onSelect(item);
+          }
+        }}
         // Phase 8.1 batch 13.4 follow-up: data attribute so the saved-
         // highlight handler in heritage-library can scroll/focus this
         // row after a save. Mashu 2026-07-22: "I have to refresh the
@@ -363,10 +373,10 @@ function ListItem({
         data-preview-trigger="true"
         data-library-kind={item.targetType}
         data-library-surface={surface}
-        className={cn(baseClass, "w-full text-left")}
+        className={cn(baseClass, "w-full cursor-pointer text-left")}
       >
         {inner}
-      </button>
+      </div>
     );
   }
   return (

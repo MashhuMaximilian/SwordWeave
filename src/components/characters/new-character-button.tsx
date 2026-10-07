@@ -7,7 +7,7 @@
  */
 
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { EntityTypeIcon } from "@/components/icons/entity-type-icon";
 
 export interface NewCharacterButtonProps {
   /** Visual variant — "primary" for the top of a page,
@@ -18,7 +18,7 @@ export interface NewCharacterButtonProps {
 
 export function NewCharacterButton({
   variant = "primary",
-  label = "New Character",
+  label = "Create Character",
 }: NewCharacterButtonProps) {
   const base =
     variant === "primary"
@@ -26,7 +26,7 @@ export function NewCharacterButton({
       : "v12-metal-button";
   return (
     <Link href="/characters/new" className={base}>
-      <Plus className="size-4" />
+      <EntityTypeIcon type="CREATE_CHARACTER"/>
       {label}
     </Link>
   );

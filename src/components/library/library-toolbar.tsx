@@ -1,4 +1,5 @@
 "use client";
+import { EntityTypeIcon } from "@/components/icons/entity-type-icon";
 
 // =============================================================================
 // LibraryToolbar — controlled filter + sort + view toolbar.
@@ -210,7 +211,7 @@ export function LibraryToolbar({
     <div id={filterId} className={cn("sw-discovery-body",forceExpandFilters||mobileFiltersOpen?"block":"hidden md:block")}>
       <div className="sw-discovery-grid sw-discovery-primary">
         {collectionRows.length>0&&<FilterField label="Collection"><select value={state.collectionId??""} onChange={event=>update("collectionId",event.target.value)}><option value="">All entries</option>{collectionRows.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></FilterField>}
-        <FilterField label="Browse"><select value={state.typeFilter} onChange={event=>onStateChange({...state,typeFilter:event.target.value as LibraryToolbarState["typeFilter"],category:"",tier:""})}>{!availableTypes.some(type=>type.key===state.typeFilter)?<option value={state.typeFilter}>Current selection</option>:null}{availableTypes.map(type=><option key={type.key} value={type.key}>{type.label}</option>)}</select></FilterField>
+        <FilterField label="Browse"><div className="sw-discovery-type-select"><EntityTypeIcon type={state.typeFilter}/><select value={state.typeFilter} onChange={event=>onStateChange({...state,typeFilter:event.target.value as LibraryToolbarState["typeFilter"],category:"",tier:""})}>{!availableTypes.some(type=>type.key===state.typeFilter)?<option value={state.typeFilter}>Current selection</option>:null}{availableTypes.map(type=><option key={type.key} value={type.key}>{type.label}</option>)}</select></div></FilterField>
         <FilterField label="Sort by"><select value={state.sort} onChange={event=>update("sort",event.target.value as LibrarySort)}>{SORT_OPTIONS.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></FilterField>
       </div>
       <div className="sw-discovery-grid">

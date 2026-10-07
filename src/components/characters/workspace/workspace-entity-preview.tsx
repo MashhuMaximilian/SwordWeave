@@ -1,6 +1,7 @@
 "use client";
 import { readJsonResponse } from "@/lib/http/read-json-response";
 import { compositionRow } from "@/lib/character/workspace/composition-row";
+import type { PreviewActionProps } from "@/components/preview/preview-shared";
 import { EntityPreview } from "@/components/preview/entity-preview";
 import type { SandboxPreviewItem } from "@/components/library/library-item-preview";
 import type {
@@ -41,7 +42,9 @@ export function WorkspaceEntityPreview({
   node,
   graph,
   onOpen,
+  actionBar,
 }: {
+  actionBar?: PreviewActionProps | undefined;
   node: WorkspaceNode;
   graph: WorkspaceGraph;
   onOpen: (key: EntityKey) => void;
@@ -50,6 +53,7 @@ export function WorkspaceEntityPreview({
     <div className="v12-fetched-preview">
     <EntityPreview
       item={{ kind: node.kind, row: compositionRow(graph,node) } as SandboxPreviewItem}
+      actionBar={actionBar}
       callbacks={{
         preferLocalSubLinks: true,
         onSubLinkClick: (link) =>

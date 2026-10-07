@@ -1,3 +1,4 @@
+import { EntityTypeIcon } from "@/components/icons/entity-type-icon";
 // =============================================================================
 // /library/browse — unified library browser with sort + filter + search.
 // Server component loads data, renders page chrome, then hands the result
@@ -202,7 +203,7 @@ export async function LibraryCatalogue({ searchParams, monsterCatalogue = false 
         </div>
 
       </div>
-      {monsterCatalogue && <Link className="sw-metal-button sw-metal-button--primary" href="/monsters/new">Create monster or NPC</Link>}
+      {monsterCatalogue && <Link className="sw-metal-button sw-metal-button--primary" href="/monsters/new"><EntityTypeIcon type="CREATE_MONSTER"/>Create monster or NPC</Link>}
 
       <nav className="v12-library-modes" aria-label="Library record groups">
         <Link className={targetType === "PRIMITIVE" ? "is-active" : ""} href="/library/browse?type=PRIMITIVE">
@@ -215,6 +216,7 @@ export async function LibraryCatalogue({ searchParams, monsterCatalogue = false 
           Monsters &amp; NPCs
         </Link>
         <Link href="/creations">My collection</Link>
+        <Link href="/library/collections">Public collections</Link>
         <Link href="/library">Library hub ↗</Link>
       </nav>
       </header>

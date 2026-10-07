@@ -20,7 +20,9 @@ body[data-ui="v12"] .monster-authoring .monster-library-filters select { min-wid
 body[data-ui="v12"] .monster-authoring .monster-reference-options { margin-top:22px; border-top:1px solid var(--border); }
 body[data-ui="v12"] .monster-authoring .monster-reference-options > summary { font-size:12px; color:var(--monster-muted); }
 body[data-ui="v12"] .monster-authoring .monster-ability-builder .sw-forge-current-set__head > div:first-child { min-width:0; }
-@media(max-width:760px) {
+/* Use the horizontal picker before the editor becomes too narrow for a
+   sidebar. Tablet pages also reserve space for the creation step rail. */
+@media(max-width:1050px) {
  body[data-ui="v12"] .monster-authoring .monster-custom-set { display:flex; flex-direction:column; }
  body[data-ui="v12"] .monster-authoring .monster-custom-set .sw-access-library__families { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); }
  body[data-ui="v12"] .monster-authoring .monster-custom-set .sw-access-library__families > button { min-width:0; padding:10px 7px; }
@@ -45,7 +47,7 @@ body[data-ui="v12"] .monster-authoring .monster-custom-set .sw-access-library__f
 body[data-ui="v12"] .monster-authoring .monster-custom-set .sw-access-library__families > button em { display:none; }
 body[data-ui="v12"] .monster-authoring .monster-shuffle-controls input[type=checkbox] { width:20px;height:20px;min-height:20px;padding:0;box-shadow:none; }
 body[data-ui="v12"] .monster-authoring .monster-shuffle-controls fieldset label { min-height:32px; }
-@media(max-width:760px) {
+@media(max-width:1050px) {
  body[data-ui="v12"] .monster-authoring .monster-custom-set { display:flex; }
  body[data-ui="v12"] .monster-authoring .monster-custom-set .sw-access-library__families > button { grid-template-columns:18px minmax(0,1fr);padding:10px 5px;gap:4px;font-size:11px; }
  body[data-ui="v12"] .monster-authoring .monster-custom-set .sw-access-library__families > button i { grid-row:auto;width:18px;height:18px; }

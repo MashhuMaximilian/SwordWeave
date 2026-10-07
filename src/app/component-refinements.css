@@ -51,10 +51,18 @@ body[data-ui="v12"] .v12-entry-title-line h3 { overflow-wrap:break-word;word-bre
   body[data-ui="v12"] .monster-practice-column + .monster-practice-column { border-left:0!important;border-top:1px solid var(--border)!important;padding-top:8px!important; }
 }
 @media (min-width:1024px) and (max-width:1279px) {
-  body[data-ui="v12"] .v12-library-workbench { grid-template-columns:var(--v12-library-left,270px) 9px minmax(0,1fr); }
+  /* Separators are hidden at this width. A separator track would put the
+     next visible child (results) into a nine-pixel column. */
+  body[data-ui="v12"] .v12-library-workbench { grid-template-columns:min(var(--v12-library-left,270px),28%) minmax(0,1fr); }
   body[data-ui="v12"] .v12-library-workbench.is-creations { grid-template-columns:minmax(0,1fr); }
   body[data-ui="v12"] .v12-library-workbench .v12-library-inspector,
   body[data-ui="v12"] .v12-library-results + .v12-library-resizer { display:none; }
+}
+@media (min-width:1280px) {
+  /* Keep resized side panels from consuming the results when the window
+     becomes smaller. The user's sizes still apply within these bounds. */
+  body[data-ui="v12"] .v12-library-workbench { grid-template-columns:min(var(--v12-library-left,270px),28%) 9px minmax(0,1fr) 9px min(var(--v12-library-right,330px),32%); }
+  body[data-ui="v12"] .v12-library-workbench.is-creations { grid-template-columns:minmax(0,1fr) 9px min(var(--v12-library-right,330px),32%); }
 }
 body[data-ui="v12"] .v12-composition-node-row > button.v12-composition-node-main:is(:hover,:focus,:focus-visible) {
   background:transparent!important;box-shadow:none!important;

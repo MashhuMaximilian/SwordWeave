@@ -9,7 +9,7 @@ import { IconDisplay } from "@/components/icons/icon-display";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
 import { Markdown } from "@/components/ui/markdown";
 
-const ENTITY_ICONS: Record<string, string> = { PRIMITIVE: "delapouite/cube", EFFECT: "lorc/cubes", CAPABILITY: "lorc/cubeforce", LINEAGE_TEMPLATE: "lorc/dna2", UPBRINGING_TEMPLATE: "delapouite/plant-roots", MANIFEST_TEMPLATE: "caro-asercion/tarot-11-justice", ITEM: "lorc/battle-gear", MONSTER: "lorc/monster-grasp" };
+const ENTITY_ICONS: Record<string, string> = { PRIMITIVE: "delapouite/cube", EFFECT: "lorc/cubes", CAPABILITY: "lorc/cubeforce", LINEAGE_TEMPLATE: "lorc/dna2", UPBRINGING_TEMPLATE: "delapouite/plant-roots", MANIFEST_TEMPLATE: "caro-asercion/tarot-11-justice", ITEM: "lorc/battle-gear", MONSTER: "lorc/gluttonous-smile" };
 export function LibraryEntityIcon({ item, size = 24 }: { item: LibraryItem; size?: number }) {
   return <IconDisplay portraitUrl={libraryHeritageArt(item)} iconSource={item.iconSource ?? "GAME_ICONS"} iconKey={item.iconSource ? item.iconKey : ENTITY_ICONS[item.targetType] ?? "delapouite/cube"} iconUrl={item.iconUrl} iconColor={item.iconSource ? item.iconColor : "#64c7c1"} size={size} alt="" />;
 }

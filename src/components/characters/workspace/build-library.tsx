@@ -1,4 +1,6 @@
 "use client";
+import { EntityTypeIcon } from "@/components/icons/entity-type-icon";
+
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { useInfiniteLibrary } from "@/lib/hooks/use-infinite-library";
 import { InfiniteLibraryResults } from "@/components/library/infinite-library-results";
@@ -22,7 +24,7 @@ const EMPTY_ENGAGEMENT = { reactions: {}, following: {} };
 const TIERS = ["", "0", "1", "2", "3", "4", "5"];
 const ROMAN_TIERS = ["0", "I", "II", "III", "IV", "V"];
 
-export function BuildLibrary({ kinds, destination, heritageCategory, onAdd, onAddFocused, onPreview, disabled = false }: {
+export function BuildLibrary({ kinds, destination, heritageCategory, onAdd, onAddFocused, onPreview, previewOnly = false, disabled = false }: {
   kinds: EntityKind[];
   destination: string;
   heritageCategory?: DiscoveryHeritageCategory;
@@ -31,6 +33,7 @@ export function BuildLibrary({ kinds, destination, heritageCategory, onAdd, onAd
   onAddFocused?: (key: EntityKey, name: string) => void;
   onPreview: (item: LibraryItem) => void;
   disabled?: boolean;
+  previewOnly?: boolean;
 }) {
   const phone = useIsMobile();
   const { dark } = useGlobalControls();
@@ -64,7 +67,7 @@ export function BuildLibrary({ kinds, destination, heritageCategory, onAdd, onAd
     <div className="v12-source-search">
       <ColumnSearchBar search={query} onSearchChange={setQuery} onOpenFilters={() => setFiltersOpen((open) => !open)} hasActiveFilters={activeFilters} placeholder="Search names, descriptions, rules…" />
       <div className="v12-source-tabs sheet-library-types" aria-label="Library entry types">
-        {choices.map(([value, label]) => <button type="button" key={value} aria-pressed={effectiveType === value} onClick={() => { setType(value); setTier(""); }}>{label}</button>)}
+        {choices.map(([value, label]) => <button type="button" key={value} aria-pressed={effectiveType === value} onClick={() => { setType(value); setTier(""); }}><EntityTypeIcon type={value}/><span>{label}</span></button>)}
       </div>
     </div>
     {heritageCategory && kinds.includes("heritage") && <p className="sheet-library-status">Choose another root above to explore its heritage bundles.</p>}
@@ -83,7 +86,7 @@ export function BuildLibrary({ kinds, destination, heritageCategory, onAdd, onAd
       {(!phone || filtersOpen) && <div className="v12-tier-tabs" aria-label="Source tiers">{TIERS.map((value) => <button type="button" key={value} aria-pressed={tier === value} onClick={() => setTier(value)}>{value ? `Tier ${ROMAN_TIERS[Number(value)]}` : "All tiers"}</button>)}</div>}
       {(!phone || filtersOpen) && <div className="v12-origin-tabs" aria-label="Source origin">{["all", "system", "community"].map((value) => <button type="button" key={value} aria-pressed={origin === value} onClick={() => setOrigin(value)}>{value === "all" ? "All origins" : value === "system" ? "System" : "Community"}</button>)}</div>}
       <div className="v12-source-results-head"><p className="v12-kicker">Exact entries</p><span>{pending && !rows.length ? "…" : result.total}</span></div>
-      <InfiniteLibraryResults key={filterKey} items={rows} hasMore={result.hasMore} loading={pending} error={error} loadMore={result.loadMore} retry={result.retry} render={(batch) => <LibraryTable compact surface="atelier" items={batch} view="LIST" engagement={EMPTY_ENGAGEMENT} currentUserInternalId={null} selectedKey={selectedKey} onSelect={(item) => { setSelectedKey(item.id); onPreview(item); }} renderActions={(item) => <>
+      <InfiniteLibraryResults key={filterKey} items={rows} hasMore={result.hasMore} loading={pending} error={error} loadMore={result.loadMore} retry={result.retry} render={(batch) => <LibraryTable compact surface="atelier" items={batch} view="LIST" engagement={EMPTY_ENGAGEMENT} currentUserInternalId={null} selectedKey={selectedKey} onSelect={(item) => { setSelectedKey(item.id); onPreview(item); }} renderActions={previewOnly ? undefined : (item) => <>
           <button type="button" className="v12-metal-button" disabled={disabled} onClick={() => onAdd(`${previewKind(item.targetType)}:${item.targetId}`, item.name)} title={`Add to ${destination}`} aria-label={`Add ${item.name} to ${destination}`}><Plus size={14}/> Add</button>
           {onAddFocused && <button type="button" className="v12-metal-button" disabled={disabled} onClick={() => onAddFocused(`${previewKind(item.targetType)}:${item.targetId}`, item.name)} title="Add and open Build & Preview" aria-label={`Add ${item.name} in Build & Preview`}><FabThemeIcon iconKey="lorc/anvil-impact" dark={dark}/> Add in Build & Preview</button>}
         </>} />}/>

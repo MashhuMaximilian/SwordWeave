@@ -1,4 +1,6 @@
 "use client";
+import { EntityTypeIcon } from "@/components/icons/entity-type-icon";
+
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { PhoneTypeChoices } from "@/components/library/phone-type-choices";
 
@@ -706,7 +708,7 @@ export function HeritageLibrary({
                       : "border-border bg-card text-foreground hover:border-primary hover:text-primary",
                   )}
                 >
-                  {chip.label}
+                  <EntityTypeIcon type={chip.key}/><span>{chip.label}</span>
                 </button>
               );
             })}

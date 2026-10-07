@@ -1,3 +1,4 @@
+import { EntityTypeIcon } from "@/components/icons/entity-type-icon";
 import { monsters } from "@/db/schema/monsters";
 import { monsterLibraryColumns,monsterRowsToLibraryItems } from "@/lib/publishing/monster-library-item";
 import { redirect } from "next/navigation";
@@ -239,7 +240,7 @@ export default async function CreationsPage({
             <span>Private collection</span>
           </div>
           <p className="v12-creations-deck">
-            Your grammar, lineages, equipment, and character records. Inspect
+            Your rules, heritages, equipment, characters, and monsters. Inspect
             a design, return it to the Atelier, or control who may discover it.
           </p>
         </div>
@@ -257,12 +258,15 @@ export default async function CreationsPage({
             <Plus className="size-4" /> New Heritage
           </Link>
           <NewCharacterButton variant="outline" />
+          <Link href="/monsters/new" className="v12-metal-button"><EntityTypeIcon type="CREATE_MONSTER"/> Create Monster</Link>
+          <Link href="/collections?create=1#create-collection" className="v12-metal-button"><Plus className="size-4" /> New Collection</Link>
         </div>
       </header>
       <div className="v12-archive-telemetry" aria-label="Creation summary">
         <span><b>{mechanicsCount}</b> mechanics</span>
         <span><b>{counts.template}</b> heritages</span>
         <span><b>{characterCount}</b> characters &amp; builds</span>
+        <span><b>{counts.monster}</b> monsters &amp; NPCs</span>
       </div>
 
       <CreationsClient

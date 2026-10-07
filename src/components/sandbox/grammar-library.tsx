@@ -1,4 +1,6 @@
 "use client";
+import { EntityTypeIcon } from "@/components/icons/entity-type-icon";
+
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { PhoneTypeChoices } from "@/components/library/phone-type-choices";
 
@@ -679,7 +681,7 @@ export function GrammarLibrary({
                       : "border-transparent text-muted-foreground hover:border-primary hover:text-foreground",
                   )}
                 >
-                  {chip.label}
+                  <EntityTypeIcon type={chip.key}/><span>{chip.label}</span>
                 </button>
               );
             })}
