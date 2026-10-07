@@ -346,6 +346,7 @@ export function AtelierSandboxClient({
   const [monsterId, setMonsterId] = useState<string | undefined>(initialBuild === "monster" ? initialSourceId ?? undefined : undefined);
   const [monsterPreview, setMonsterPreview] = useState<Parameters<NonNullable<ComponentProps<typeof MonsterWorkbench>["onPreview"]>>[0]>(null);
   const handleMonsterPreview = useCallback((value:Parameters<NonNullable<ComponentProps<typeof MonsterWorkbench>["onPreview"]>>[0])=>setMonsterPreview(value),[]);
+  const handleMonsterSaved = useCallback((id:string)=>{setMonsterId(id);setFormIsDirty(false);},[]);
   // Intent (fork | load) shown as a chip on the build form. We keep it in
   // React state (not just the URL) because router.push/replace to the SAME
   // pathname does NOT reliably update Next's useSearchParams / address bar
@@ -887,7 +888,7 @@ export function AtelierSandboxClient({
   );
 
   const builderNode = useMemo(() => {
-    if(monsterDraft)return <MonsterWorkbench key={monsterId??"new-monster"} {...(monsterId?{id:monsterId}:{})} embedded onPreview={handleMonsterPreview} onDirty={setFormIsDirty}/>;
+    if(monsterDraft)return <MonsterWorkbench key={monsterId??"new-monster"} {...(monsterId?{id:monsterId}:{})} embedded onPreview={handleMonsterPreview} onDirty={setFormIsDirty} onSaved={handleMonsterSaved}/>;
     const urlIntent = (currentSearchParams?.get("intent") ?? null) as
       | "fork"
       | "load"
@@ -1152,7 +1153,7 @@ export function AtelierSandboxClient({
     }
     return <p className="p-4 text-sm text-muted-foreground">Choose an entity to start building.</p>;
   }, [
-    monsterDraft, monsterId, handleMonsterPreview,
+    monsterDraft, monsterId, handleMonsterPreview, handleMonsterSaved,
     editing,
     buildStarted,
     mechanicsDraftKind,
@@ -1687,6 +1688,7 @@ export function AtelierSandboxClient({
     mechanicsDraftKind ??
     (heritageKind ? "heritage" : itemDraftStarted ? "item" : null);
   const activeEditorName =
+    (monsterDraft ? monsterPreview?.definition.name : undefined) ||
     (formSnapshot?.form?.["name"] as string | undefined)?.trim() ||
     (editing?.row as { name?: string } | undefined)?.name ||
     (activeEditorKind

@@ -344,3 +344,7 @@ body[data-ui="v12"] .v12-monster-source-library .monster-field {display:grid;gap
 body[data-ui="v12"] .v12-monster-source-library .monster-field input {width:100%;padding:10px;min-height:42px;}
 body[data-ui="v12"] .v12-monster-source-results > div > button {display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 14px;border:1px solid var(--border);border-radius:5px;background:var(--sw-surface-fill,var(--card));color:var(--foreground);font:600 12px/1.4 var(--font-system);}
 body[data-ui="v12"] .v12-monster-source-results > div > button:hover {background:var(--sw-metal-gold);color:var(--sw-metal-gold-ink);}
+@container monster-editor (max-width:780px){
+ body[data-ui="v12"] .monster-authoring.monster-atelier-embedded :is(.monster-foundation-budget,.monster-package-options,.sw-forge-attribute-presets,.monster-custom-set,.monster-component-grid) {grid-template-columns:minmax(0,1fr)!important;}
+ body[data-ui="v12"] .monster-authoring.monster-atelier-embedded .monster-custom-set .sw-access-library__families {display:flex!important;flex-wrap:wrap!important;}
+}
