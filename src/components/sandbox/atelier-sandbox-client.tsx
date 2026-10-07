@@ -1790,6 +1790,7 @@ function SecondaryBuildWorkspace({
   const [initialEntry, setInitialEntry] = useState<EditingState>(null);
   const [kind, setKind] = useState<"primitive" | "effect" | "capability" | "heritage" | "item" | "monster" | null>(null);
   const [secondaryMonsterId,setSecondaryMonsterId]=useState<string|undefined>();
+  const [pendingReplacement,setPendingReplacement]=useState<(() => void)|null>(null);
   const onMonsterState=useCallback<NonNullable<ComponentProps<typeof MonsterWorkbench>["onPreview"]>>(value=>setModalPreview(value?<MonsterSheetPreview {...value} compact/>:null),[]);
   const [phone, setPhone] = useState(false);
   const [modalPreview, setModalPreview] = useState<ReactNode>(null);
@@ -1831,24 +1832,22 @@ function SecondaryBuildWorkspace({
       if (!phone) return;
       const entry = (event as CustomEvent<EditingState>).detail;
       if (!entry || !["primitive", "effect", "capability", "heritage", "item"].includes(entry.kind)) return;
-      if (kind && !window.confirm("Replace the current modal build? Your primary build will stay unchanged.")) return;
-      setInitialEntry(entry);
-      setKind(entry.kind);
-      if (entry.kind === "heritage") setHeritageKind(entry.row.kind);
-      setSaved(null); setPendingSlot(null); setModalPreview(null);
-      setRevision(value => value + 1);
-      window.dispatchEvent(new CustomEvent("sw-sandbox-close-preview"));
-      openDrawer("build");
+      const apply=()=>{
+        setSecondaryMonsterId(undefined);setInitialEntry(entry);setKind(entry.kind);
+        if (entry.kind === "heritage") setHeritageKind(entry.row.kind);
+        setSaved(null);setPendingSlot(null);setModalPreview(null);setRevision(value=>value+1);
+        window.dispatchEvent(new CustomEvent("sw-sandbox-close-preview"));openDrawer("build");
+      };
+      if(kind)setPendingReplacement(()=>apply);else apply();
     };
     window.addEventListener("sw-replace-secondary-build", replace);
     return () => window.removeEventListener("sw-replace-secondary-build", replace);
   }, [phone, kind, openDrawer]);
 
-  useEffect(()=>{const replace=(event:Event)=>{const detail=(event as CustomEvent<{id:string;name:string}>).detail;if(!detail?.id)return;if(kind&&!window.confirm("Replace the current modal build? Your primary build will stay unchanged."))return;setSecondaryMonsterId(detail.id);setKind("monster");setInitialEntry(null);setSaved(null);setModalPreview(null);setRevision(value=>value+1);openDrawer("build");};window.addEventListener("sw-replace-secondary-monster",replace);return()=>window.removeEventListener("sw-replace-secondary-monster",replace);},[kind,openDrawer]);
+  useEffect(()=>{const replace=(event:Event)=>{const detail=(event as CustomEvent<{id:string;name:string}>).detail;if(!detail?.id)return;const apply=()=>{setSecondaryMonsterId(detail.id);setKind("monster");setInitialEntry(null);setSaved(null);setPendingSlot(null);setModalPreview(null);setRevision(value=>value+1);openDrawer("build");};if(kind)setPendingReplacement(()=>apply);else apply();};window.addEventListener("sw-replace-secondary-monster",replace);return()=>window.removeEventListener("sw-replace-secondary-monster",replace);},[kind,openDrawer]);
 
   const requestReset = () => {
-    if (phone && kind && !window.confirm("Discard this modal build and choose another entity? Your primary editor will stay unchanged.")) return;
-    reset();
+    if(kind)setPendingReplacement(()=>reset);else reset();
   };
   const reset = () => { setSecondaryMonsterId(undefined);setInitialEntry(null); setModalPreview(null); setKind(null); setHeritageKind("MANIFEST"); setSaved(null); setPendingSlot(null); setRevision((value) => value + 1); };
   const commonSaved = (next: { id: string; name: string }, nextKind: NonNullable<typeof kind>, heritageKind?: "LINEAGE" | "UPBRINGING" | "MANIFEST") => {
@@ -1907,7 +1906,7 @@ function SecondaryBuildWorkspace({
     </div>
   );
   useDrawerSlot(useMemo(() => ({ build: content, preview: phone || kind==="monster" ? modalPreview ?? <p className="p-4">Choose a build and add its rules to see the preview.</p> : null }), [content, phone, modalPreview, kind]));
-  return null;
+  return <UnsavedChangesModal isOpen={pendingReplacement!==null} title="Replace the modal build?" description="This replaces the draft in Build & Preview. Your primary editor stays unchanged." onCancel={()=>setPendingReplacement(null)} onConfirm={()=>{pendingReplacement?.();setPendingReplacement(null);}}/>;
 }
 
 function SecondarySlotDelivery({
