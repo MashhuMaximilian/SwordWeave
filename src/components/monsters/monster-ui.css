@@ -332,7 +332,7 @@ body[data-ui="v12"] .monster-authoring .sw-character-forge__header h2:focus { ou
 
 /* Atelier has a narrow middle column even on a wide screen. */
 body[data-ui="v12"] .monster-authoring.monster-atelier-embedded .monster-forge {display:block!important;grid-template-columns:minmax(0,1fr)!important;}
-body[data-ui="v12"] .monster-authoring.monster-atelier-embedded .sw-character-forge__rail {position:static!important;width:100%!important;padding:8px!important;}
+body[data-ui="v12"] .monster-authoring.monster-atelier-embedded .sw-character-forge__rail {position:static!important;width:100%!important;min-height:0!important;height:auto!important;padding:8px!important;}
 body[data-ui="v12"] .monster-authoring.monster-atelier-embedded .sw-character-forge__rail nav {display:flex!important;flex-wrap:wrap!important;gap:6px!important;}
 body[data-ui="v12"] .monster-authoring.monster-atelier-embedded .sw-character-forge__rail nav button {flex:1 1 120px;padding:8px!important;min-height:44px;}
 body[data-ui="v12"] .monster-authoring.monster-atelier-embedded .sw-character-forge__header {padding:12px!important;}
