@@ -395,7 +395,7 @@ export function LibraryBrowseClient({
           ) : null}
           </section>
           <div className="v12-results-heading">
-            {phone ? <PhoneTypeChoices label="Record type" value={state.typeFilter} options={fixedType ? PHONE_RECORD_TYPES.filter(option => option.value === fixedType) : PHONE_RECORD_TYPES} onChange={value=>onStateChange({...state,typeFilter:value as LibraryToolbarState["typeFilter"],category:"",tier:""})}/> : <div>
+            {phone ? <PhoneTypeChoices label="Record type" value={state.typeFilter} options={fixedType ? PHONE_RECORD_TYPES.filter(option => option.value === fixedType) : PHONE_RECORD_TYPES.filter(option => option.value !== "MONSTER")} onChange={value=>onStateChange({...state,typeFilter:value as LibraryToolbarState["typeFilter"],category:"",tier:""})}/> : <div>
               <p className="v12-kicker">Exact entries</p>
               <h3>{state.typeFilter === "MONSTER" ? "Creatures of the weave" : "Canonical references and community expressions"}</h3>
             </div>}
@@ -551,7 +551,7 @@ export function LibraryBrowseClient({
         size="xl"
       >
         {selectedItem ? (
-          <div className="v12-library-modal-layout">{selectedItem.targetType==="MONSTER"?<MonsterTemplatePreview key={selectedItem.id} id={selectedItem.targetId}/>:<FetchedEntityPreview inspector key={selectedItem.id} targetType={selectedItem.targetType} targetId={selectedItem.targetId} owner={{ authorId:selectedItem.authorId, authorUsername:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorUsername, authorDisplayName:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorDisplayName, isOwner:selectedItem.authorId === currentUserInternalId, sourceOrigin:libraryOrigin(selectedItem) === "system" ? "SRD" : selectedItem.sourceOrigin }} />}</div>
+          <div className="v12-library-modal-layout">{selectedItem.targetType==="MONSTER"?<MonsterTemplatePreview key={selectedItem.id} id={selectedItem.targetId}/>:<FetchedEntityPreview key={selectedItem.id} targetType={selectedItem.targetType} targetId={selectedItem.targetId} owner={{ authorId:selectedItem.authorId, authorUsername:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorUsername, authorDisplayName:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorDisplayName, isOwner:selectedItem.authorId === currentUserInternalId, sourceOrigin:libraryOrigin(selectedItem) === "system" ? "SRD" : selectedItem.sourceOrigin }} />}</div>
         ) : null}
       </DetailModal>
       <DetailModal

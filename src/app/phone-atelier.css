@@ -265,3 +265,12 @@
 @media(max-width:767px) {
  body[data-ui="v12"] .sw-phone-tool-shell > main:has(.v12-library-page) {overflow-y:auto;overscroll-behavior-y:contain;}
 }
+
+/* Public catalogue: one category selector, with the detailed filters in the drawer. */
+@media(max-width:767px){
+ body[data-ui="v12"] .v12-library-page:not(.monster-catalogue) > .v12-library-heading,
+ body[data-ui="v12"] .v12-library-page > .v12-library-submodes {display:none!important;}
+ body[data-ui="v12"] .v12-library-page .phone-library-quick-filter,
+ body[data-ui="v12"] .v12-library-page .v12-browse-controls {display:none!important;}
+ body[data-ui="v12"] .v12-library-page .v12-library-modes a[href*="type=MONSTER"] {display:none;}
+}

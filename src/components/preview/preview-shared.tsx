@@ -69,7 +69,7 @@ export function Section({
 }) {
   const phone = useIsMobile();
   if (phone && /^(tags|narrative|suggested traits)/i.test(heading)) {
-    return <details className="sw-phone-preview-section"><summary>{heading}</summary><div>{children}</div></details>;
+    return <details open className="sw-phone-preview-section"><summary>{heading}</summary><div>{children}</div></details>;
   }
   return (
     <section data-preview-section={heading.toLowerCase().replaceAll(" ", "-")}>
@@ -682,5 +682,5 @@ export function PreviewActions(props: PreviewActionProps) {
 function PhoneActionTray({ label, children }: { label: string; children: ReactNode }) {
   const phone = useIsMobile();
   if (!phone) return <>{children}</>;
-  return <details className="sw-phone-action-tray"><summary>{label}<span aria-hidden="true">⌃</span></summary><div className="sw-phone-action-tray-body">{children}</div></details>;
+  return <details open className="sw-phone-action-tray"><summary>{label}<span aria-hidden="true">⌃</span></summary><div className="sw-phone-action-tray-body">{children}</div></details>;
 }

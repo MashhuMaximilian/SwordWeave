@@ -9,7 +9,7 @@ import { readCreationReturn,setCreationReturnResult } from "@/lib/character/crea
 //   Mechanics:  primitive | effect | capability
 //   Heritage:   template (race / background / archetype)
 //   Items:      item
-//   Monsters:   monster (placeholder — no form/schema yet)
+//   Monsters:   creature template, abilities and sheet preview
 //
 // This merges the previous grammar-sandbox-client (primitive/effect/
 // capability) and blueprint-sandbox-client (template/item/monster) into a
@@ -34,6 +34,9 @@ import { CapabilityForm } from "./capability-form";
 import { CapabilityFormPreview } from "./capability-form-preview";
 import { HeritageForm } from "./heritage-form";
 import { HeritageFormPreview } from "./heritage-form-preview";
+import { MonsterWorkbench } from "@/components/monsters/monster-workbench";
+import { MonsterSheetPreview } from "@/components/monsters/monster-template-preview";
+import { AtelierMonsterLibrary } from "./atelier-monster-library";
 import { ItemForm } from "./item-form";
 import { ItemFormPreview } from "./item-form-preview";
 import { DataQualityPanel } from "@/components/atelier/data-quality-panel";
@@ -339,6 +342,10 @@ export function AtelierSandboxClient({
   const [buildStarted, setBuildStarted] = useState(
     initialEditing !== null || initialNew,
   );
+  const [monsterDraft, setMonsterDraft] = useState(initialBuild === "monster");
+  const [monsterId, setMonsterId] = useState<string | undefined>(initialBuild === "monster" ? initialSourceId ?? undefined : undefined);
+  const [monsterPreview, setMonsterPreview] = useState<Parameters<NonNullable<ComponentProps<typeof MonsterWorkbench>["onPreview"]>>[0]>(null);
+  const handleMonsterPreview = useCallback((value:Parameters<NonNullable<ComponentProps<typeof MonsterWorkbench>["onPreview"]>>[0])=>setMonsterPreview(value),[]);
   // Intent (fork | load) shown as a chip on the build form. We keep it in
   // React state (not just the URL) because router.push/replace to the SAME
   // pathname does NOT reliably update Next's useSearchParams / address bar
@@ -592,6 +599,7 @@ export function AtelierSandboxClient({
     function onStartNewEntity(event: Event) {
       if (!(event instanceof CustomEvent)) return;
       const kind = event.detail;
+      if(kind === "monster"){guardedStartNewEntity({tab:"monster",label:"Monster",hint:"Creature template",icon:"lorc/monster-grasp"});return;}
       if (kind !== "primitive" && kind !== "effect" && kind !== "capability") return;
       guardedStartNewEntity({
         tab: "mechanics",
@@ -674,6 +682,8 @@ export function AtelierSandboxClient({
         if (!row) return;
         setEditing({ kind: "item", row });
       }
+      setMonsterDraft(false);
+      setMonsterPreview(null);
       // Reset the live form snapshot. The preview is built as
       // `formSnapshot?.form ?? row`; if we DON'T clear it here, a stale
       // snapshot from the previously-loaded entity (e.g. a template, which
@@ -734,6 +744,9 @@ export function AtelierSandboxClient({
   // the right editor (Point 3 / Point 5).
   function startNewEntity(choice?: NewEntityChoice) {
     setShowNewModal(false);
+    setMonsterDraft(choice?.tab === "monster");
+    setMonsterId(undefined);
+    setMonsterPreview(null);
     if (choice?.heritageSubKind) {
       setHeritageKind(choice.heritageSubKind);
       // Phase 8 rev 7: clear stale mechanicsDraftKind so formKind doesn't
@@ -756,6 +769,7 @@ export function AtelierSandboxClient({
       // Phase 8 rev 9: clear itemDraftStarted too.
       setItemDraftStarted(false);
     }
+    if (choice?.tab === "monster") {setHeritageKind(undefined);setMechanicsDraftKind(null);setItemDraftStarted(false);}
     if (choice?.tab === "item") {
       // Phase 8 rev 9: Item doesn't have a sub-kind (items use itemType,
       // not a heritage-style sub-kind), but it needs a sentinel so
@@ -873,6 +887,7 @@ export function AtelierSandboxClient({
   );
 
   const builderNode = useMemo(() => {
+    if(monsterDraft)return <MonsterWorkbench key={monsterId??"new-monster"} {...(monsterId?{id:monsterId}:{})} embedded onPreview={handleMonsterPreview} onDirty={setFormIsDirty}/>;
     const urlIntent = (currentSearchParams?.get("intent") ?? null) as
       | "fork"
       | "load"
@@ -1135,23 +1150,9 @@ export function AtelierSandboxClient({
         />
       );
     }
-    // monster — placeholder until the monster form is built.
-    return (
-      <div className="rounded-md border border-dashed border-border bg-card p-6 text-center">
-        <h2 className="font-display text-2xl font-semibold uppercase">
-          Monster Builder
-        </h2>
-        <p className="mt-3 text-sm text-muted-foreground">
-          Monster authoring is queued. The schema is in place — the composer
-          will be migrated from{" "}
-          <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
-            /atelier?build=monster
-          </code>{" "}
-          once the data model stabilizes.
-        </p>
-      </div>
-    );
+    return <p className="p-4 text-sm text-muted-foreground">Choose an entity to start building.</p>;
   }, [
+    monsterDraft, monsterId, handleMonsterPreview,
     editing,
     buildStarted,
     mechanicsDraftKind,
@@ -1171,6 +1172,7 @@ export function AtelierSandboxClient({
   ]);
 
   const previewNode = useMemo(() => {
+    if(monsterDraft)return monsterPreview ? <MonsterSheetPreview {...monsterPreview}/> : emptyPreview("Creature preview", "Resolve the creature to inspect its sheet.");
     // Form preview is driven by what's loaded (or the blank draft kind),
     // NOT the active library tab. Same decoupling as builderNode.
     //
@@ -1536,8 +1538,8 @@ export function AtelierSandboxClient({
       if (!formWithDefaults) return null;
       return <ItemFormPreview form={formWithDefaults} primitiveSlots={primitiveSlots.map(slot=>({...slot,primitive:{...primitives.find(p=>p.id===slot.primitiveId),...slot.primitive}}))} capabilitySlots={capabilitySlots} effectSlots={effectSlots} />;
     }
-    return emptyPreview("Monster preview not yet implemented.", "The monster composer is queued.");
-  }, [build, editing, formSnapshot, primitives, capabilities, effects]);
+    return monsterPreview ? <MonsterSheetPreview {...monsterPreview}/> : emptyPreview("Creature preview", "Choose a creature in the Library or start a new monster build.");
+  }, [build, editing, formSnapshot, primitives, capabilities, effects, monsterDraft, monsterPreview]);
 
   // Library column — one persistent browser with a source-type filter.
   const libraryNode = useMemo(() => {
@@ -1577,7 +1579,6 @@ export function AtelierSandboxClient({
               key={value}
               type="button"
               aria-pressed={build === value}
-              disabled={value === "monster"}
               onClick={() => guardedSwitchBuild(value)}
             >
               <b>{label}</b>
@@ -1586,11 +1587,12 @@ export function AtelierSandboxClient({
         </div>
       </nav>
     );
+    if(build === "monster")return <div className="v12-unified-source-browser">{sourcePicker}<AtelierMonsterLibrary currentUserInternalId={currentUserInternalId} onLoad={id=>{if(formIsDirty&&!window.confirm("Replace the current build with this creature?"))return;setEditing(null);setMechanicsDraftKind(null);setHeritageKind(undefined);setItemDraftStarted(false);setMonsterDraft(true);setMonsterId(id);setMonsterPreview(null);focusMiddleWorkspace();}}/></div>;
     if (isMechanics) {
       return (
         <div className="v12-unified-source-browser">{sourcePicker}
         <GrammarLibrary
-          phoneSourceControl={<PhoneTypeChoices label="Browse collection" value={build} options={[{value:"mechanics",label:"Mechanics"},{value:"heritage",label:"Heritages"},{value:"item",label:"Items"}]} onChange={value=>guardedSwitchBuild(value as AtelierTab)}/>}
+          phoneSourceControl={<PhoneTypeChoices label="Browse collection" value={build} options={[{value:"mechanics",label:"Mechanics"},{value:"heritage",label:"Heritages"},{value:"item",label:"Items"},{value:"monster",label:"Monsters"}]} onChange={value=>guardedSwitchBuild(value as AtelierTab)}/>}
           build={build as "mechanics"}
           buildFormKind={buildFormKind}
           libraryItems={libraryItems}
@@ -1625,7 +1627,7 @@ export function AtelierSandboxClient({
     return (
       <div className="v12-unified-source-browser">{sourcePicker}
       <HeritageLibrary
-        phoneSourceControl={<PhoneTypeChoices label="Browse collection" value={build} options={[{value:"mechanics",label:"Mechanics"},{value:"heritage",label:"Heritages"},{value:"item",label:"Items"}]} onChange={value=>guardedSwitchBuild(value as AtelierTab)}/>}
+        phoneSourceControl={<PhoneTypeChoices label="Browse collection" value={build} options={[{value:"mechanics",label:"Mechanics"},{value:"heritage",label:"Heritages"},{value:"item",label:"Items"},{value:"monster",label:"Monsters"}]} onChange={value=>guardedSwitchBuild(value as AtelierTab)}/>}
         build={build as "heritage" | "item" | "monster"}
         buildFormKind={buildFormKind}
         libraryItems={libraryItems}
@@ -1677,11 +1679,11 @@ export function AtelierSandboxClient({
     mechanicsDraftKind,
     heritageKind,
     itemDraftStarted,
-    guardedLibrarySelect,
+    guardedLibrarySelect, formIsDirty, focusMiddleWorkspace,
   ]);
 
   const activeEditorKind =
-    editing?.kind ??
+    monsterDraft ? "monster" : editing?.kind ??
     mechanicsDraftKind ??
     (heritageKind ? "heritage" : itemDraftStarted ? "item" : null);
   const activeEditorName =
@@ -1697,6 +1699,7 @@ export function AtelierSandboxClient({
         ? "Primitives"
         : activeEditorKind === "heritage"
           ? "Primitives and capabilities"
+          : activeEditorKind === "monster" ? "Creature templates"
           : activeEditorKind === "item"
             ? "Primitives, effects and capabilities"
             : "Library corpus";
@@ -1852,7 +1855,7 @@ function SecondaryBuildWorkspace({
         <NewEntityChoices
           className="space-y-4"
           onPick={(choice) => {
-            if (choice.tab === "monster") return;
+            if (choice.tab === "monster") {window.dispatchEvent(new CustomEvent("sw-close-build-drawer"));window.dispatchEvent(new CustomEvent("sw-start-new-entity", {detail:"monster"}));return;}
             if (choice.mechanicsSubKind === "primitive") {
               if (phone) { setKind("primitive"); return; }
               // Primitive authoring belongs to the middle workspace. Close
@@ -1973,7 +1976,7 @@ const NEW_ENTITY_GROUPS: { heading: string; choices: NewEntityChoice[] }[] = [
   {
     heading: "Monsters",
     choices: [
-      { tab: "monster", label: "Monster", hint: "Coming soon", icon: "lorc/gluttonous-smile" },
+      { tab: "monster", label: "Monster", hint: "Creature template, abilities & story", icon: "lorc/gluttonous-smile" },
     ],
   },
 ];
@@ -1982,7 +1985,7 @@ const NEW_ENTITY_GROUPS: { heading: string; choices: NewEntityChoice[] }[] = [
  * The same entity chooser is used by the inline Atelier editor and the
  * persistent FAB build modal. Keeping the groups and button markup here is
  * deliberate: the two entry points should offer the same choices and the
- * same disabled treatment for Monsters.
+ * shared treatment for every entity kind.
  */
 function NewEntityChoices({
   onPick,
@@ -2001,7 +2004,7 @@ function NewEntityChoices({
           </p>
           <div className="v12-new-entity-choices grid grid-cols-1 gap-1.5">
             {group.choices.map((choice) => {
-              const disabled = choice.tab === "monster";
+              const disabled = false;
               return (
                 <button
                   key={choice.label + (choice.heritageSubKind ?? "")}

@@ -186,7 +186,7 @@ export async function LibraryCatalogue({ searchParams, monsterCatalogue = false 
   };
 
   return (
-    <><div className="v12-library-page mx-auto w-full max-w-[1680px] px-5 py-6">
+    <><div className={`v12-library-page${monsterCatalogue?" monster-catalogue":""} mx-auto w-full max-w-[1680px] px-5 py-6`}>
       <header className="v12-library-heading">
       <div className="v12-library-title">
         <div className="min-w-0">
