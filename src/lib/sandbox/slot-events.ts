@@ -18,7 +18,7 @@
 //   - Capabilities slot into heritage.
 // =============================================================================
 
-export type SlotKind = "primitive" | "effect" | "capability";
+export type SlotKind = "primitive" | "effect" | "capability" | "item";
 
 export interface SlotEvent {
   kind: SlotKind;

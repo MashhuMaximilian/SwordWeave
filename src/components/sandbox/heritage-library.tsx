@@ -72,7 +72,7 @@ interface HeritageLibraryProps {
    * grammar-library.tsx for the rules — this library reuses the same
    * helper. Pass `null` when the build column is empty.
    */
-  buildFormKind: "primitive" | "effect" | "capability" | "heritage" | "item" | null;
+  buildFormKind: "primitive" | "effect" | "capability" | "heritage" | "item" | "monster" | null;
   libraryItems: LibraryItem[];
   heritage: SandboxTemplateRow[];
   items: SandboxItemRow[];
@@ -770,7 +770,7 @@ function BlueprintPreviewBody({
    * effect — left wired so future "slot into item" features have a
    * hook to extend cleanly.
    */
-  buildFormKind: "primitive" | "effect" | "capability" | "heritage" | "item" | null;
+  buildFormKind: "primitive" | "effect" | "capability" | "heritage" | "item" | "monster" | null;
   onLoadIntoBuild: () => void;
   onSubLinkClick: (link: PreviewSubLink) => void;
   onFork: ((targetType: string, targetId: string) => void) | undefined;
@@ -792,7 +792,7 @@ function BlueprintPreviewBody({
   // SandboxPreviewBody but is intentionally unused. If the user later
   // wants "slot an item into another item" or "nest heritage", this is
   // where the rule would go.
-  const canSlot = false;
+  const canSlot = buildFormKind === "monster" && ["primitive", "effect", "capability", "item"].includes(item.kind);
 
   const stack = useModalStack();
   const { engagement } = useSandboxEngagement(libraryItem);
@@ -808,7 +808,7 @@ function BlueprintPreviewBody({
   };
 
   function slotIntoBuild() {
-    if (item.kind !== "primitive" && item.kind !== "effect" && item.kind !== "capability") return;
+    if (item.kind !== "primitive" && item.kind !== "effect" && item.kind !== "capability" && item.kind !== "item") return;
     const event: SlotEvent = {
       kind: item.kind,
       id: item.row.id,
@@ -1055,6 +1055,7 @@ function BlueprintPreviewBody({
   const isSeedingEdit = characterModal.isSeedingEdit;
 
   const actionBar: PreviewActionProps = {
+    ...(item.kind==="item" && buildFormKind==="monster" ? {buildModal:{label:"Add to persistent build",description:"Add this equipment to the independent Build & Preview draft.",onClick:()=>{window.dispatchEvent(new CustomEvent("sw-slot-secondary-build",{detail:{kind:"item",id:item.row.id,label:item.row.name}}));window.dispatchEvent(new CustomEvent("sw-sandbox-close-preview"));}}} : {}),
     ...(phone ? { primary: {
       label: "Replace modal build",
       description: "Load this entry into the independent Build & Preview modal.",

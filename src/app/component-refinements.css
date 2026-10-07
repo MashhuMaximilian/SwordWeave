@@ -1,21 +1,3 @@
-/* Shared cards keep their complete material when a name or action is hovered.
-   Nested cards highlight independently; a parent never recolors a hovered child. */
-body[data-ui="v12"] :is(.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row):focus-within:not(:has(:is([data-component-card],.sw-character-component-row,.sw-character-item-row):focus-within)) {
-  background:var(--sw-metal-gold)!important;color:var(--sw-metal-gold-ink)!important;
-  --foreground:#271903;--muted-foreground:#49351b;--character-ink:#271903;
-  --v12-paper:#271903;--v12-soft:#49351b;--v12-faint:#49351b;--v12-copper-hi:#53300f;
-  --sw-text-mechanical:#53300f;--sw-text-narrative:#49351b;
-}
-@media (hover:hover) {
-  body[data-ui="v12"] :is(.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row):hover:not(:has(:is([data-component-card],.sw-character-component-row,.sw-character-item-row):hover)) {
-    background:var(--sw-metal-gold)!important;color:var(--sw-metal-gold-ink)!important;
-    --foreground:#271903;--muted-foreground:#49351b;--character-ink:#271903;
-    --v12-paper:#271903;--v12-soft:#49351b;--v12-faint:#49351b;--v12-copper-hi:#53300f;
-    --sw-text-mechanical:#53300f;--sw-text-narrative:#49351b;
-  }
-  body[data-ui="v12"] :is(.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row):hover:not(:has(:is([data-component-card],.sw-character-component-row,.sw-character-item-row):hover)) :is(h3,h4,strong,b,small,em,p,span,svg,[data-copy],[data-copy-role],[data-readable-rule],.v12-rule-description,.v12-composition-node-note,.v12-composition-node-main) { color:#271903!important; }
-}
-body[data-ui="v12"] :is(.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row):focus-within:not(:has(:is([data-component-card],.sw-character-component-row,.sw-character-item-row):focus-within)) :is(h3,h4,strong,b,small,em,p,span,svg,[data-copy],[data-copy-role],[data-readable-rule],.v12-rule-description,.v12-composition-node-note,.v12-composition-node-main) { color:#271903!important; }
 /* The row owns the highlight, not the nested button behind its title. */
 body[data-ui="v12"] .v12-composition-node-row > .v12-composition-node-main,
 body[data-ui="v12"] .sw-phone-composition-row > button:first-child,
@@ -92,11 +74,8 @@ body[data-ui="v12"] .v12-entry-lineage > div > div { flex-wrap:wrap; }
 body[data-ui="v12"] .sw-phone-composition-row b,
 body[data-ui="v12"] .v12-composition-node-bu small { color:var(--sw-text-gold); }
 
-/* Mechanical rules keep copper at rest and dark ink on gold; no beige rule slabs. */
-body[data-ui="v12"] .v12-composition-copy { color:var(--sw-text-mechanical); }
-body[data-ui="v12"] .v12-entry-row:is(:hover,:focus-visible) .v12-composition-mechanic { background:transparent!important;box-shadow:none!important;color:var(--sw-metal-gold-ink)!important; }
-body[data-ui="v12"] .v12-entry-row:is(:hover,:focus-visible) :is(.v12-composition-copy,.v12-entry-mechanical,[data-readable-rule]) { color:var(--sw-metal-gold-ink)!important; }
-body[data-ui="v12"] .sw-access-entry:is(:hover,:focus-visible) :is([data-copy="mechanical"],p) { color:var(--sw-metal-gold-ink)!important; }
+/* Rules use their semantic ink at rest. */
+body[data-ui="v12"] .v12-composition-copy {color:var(--sw-text-mechanical);}
 body[data-ui="v12"] [data-component-card] > div:first-child > button { background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important;min-height:0!important;color:inherit!important; }
 body[data-ui="v12"] .sw-access-entry__icon { aspect-ratio:1;flex-shrink:0;min-width:42px; }
 
@@ -110,24 +89,6 @@ body[data-ui="v12"] .monster-core-metrics strong { color:var(--sw-text-teal);fon
 body[data-ui="v12"] .monster-sheet-stats .monster-metric-grid {grid-template-columns:repeat(2,minmax(0,1fr));}
 
 body[data-ui="v12"] .v12-entry-summary { color:var(--foreground);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;margin-top:10px; }
-body[data-ui="v12"] .v12-entry-row:is(:hover,:focus-visible) .v12-entry-summary { color:var(--sw-metal-gold-ink)!important; }
-/* Catalogue interaction takes precedence over the general gold-card button material. */
-body[data-ui="v12"] .v12-entry-row[data-preview-trigger="true"]:is(:hover,:focus-visible) .v12-entry-copy :is(.v12-composition-mechanic,.v12-show-mechanics) { background:transparent!important;background-color:transparent!important;box-shadow:none!important;color:var(--sw-metal-gold-ink)!important; }
-
-body[data-ui="v12"] .v12-catalogue-collection .v12-entry-mechanical { color:var(--sw-text-mechanical); }
-body[data-ui="v12"] .monster-core-metrics > button:is(:hover,:focus-visible) strong { color:var(--sw-metal-gold-ink)!important; }
-
-/* A nested rule has its own affordance within a gold catalogue card. */
-body[data-ui="v12"] .v12-entry-row[data-preview-trigger="true"] .v12-composition-mechanic:is(:hover,:focus-visible) .v12-composition-copy { font-weight:700;text-decoration:none; }
-body[data-ui="v12"] .v12-entry-row[data-preview-trigger="true"] .v12-composition-mechanic:focus-visible { outline:2px solid currentColor;outline-offset:2px; }
-
-/* Touch focus must retain readable ink when the outer card keeps its dark material. */
-@media (hover:none), (pointer:coarse) {
- body[data-ui="v12"] .v12-entry-row[data-preview-trigger="true"] :is(.v12-composition-copy,.v12-entry-mechanical,[data-readable-rule]) {color:var(--sw-text-mechanical)!important;}
- body[data-ui="v12"] .v12-entry-row[data-preview-trigger="true"] :is(.v12-entry-summary,.v12-entry-description) {color:var(--foreground)!important;}
- body[data-ui="v12"] .v12-entry-row[data-preview-trigger="true"] :is(.v12-composition-mechanic,.v12-show-mechanics) {color:var(--sw-text-mechanical)!important;}
-}
-
 /* Native selects reserve room for a consistent inset chevron on every surface. */
 body[data-ui="v12"] select:not([multiple]):not([size]) {
  appearance:none!important;-webkit-appearance:none!important;padding-right:2.5rem!important;

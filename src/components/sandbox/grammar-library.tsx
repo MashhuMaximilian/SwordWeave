@@ -84,10 +84,11 @@ type PreviewKind = "primitive" | "effect" | "capability" | "heritage" | "item";
 // the same helper can be called from BlueprintPreviewBody if it ever
 // needs to (today it does not — it has its own much simpler logic).
 export function canSlotFromBuild(
-  buildKind: "primitive" | "effect" | "capability" | "heritage" | "item" | null,
+  buildKind: "primitive" | "effect" | "capability" | "heritage" | "item" | "monster" | null,
   previewKind: PreviewKind,
 ): boolean {
   if (buildKind === null) return false;
+  if (buildKind === "monster") return ["primitive", "effect", "capability", "item"].includes(previewKind);
   if (buildKind === "primitive") return false;
   if (buildKind === "effect") return previewKind === "primitive";
   if (buildKind === "capability") return previewKind === "primitive" || previewKind === "effect";
@@ -106,7 +107,7 @@ interface GrammarLibraryProps {
    * says this preview can slot into what's loaded. Pass `null` when the
    * build column is empty.
    */
-  buildFormKind: "primitive" | "effect" | "capability" | "heritage" | "item" | null;
+  buildFormKind: "primitive" | "effect" | "capability" | "heritage" | "item" | "monster" | null;
   libraryItems: LibraryItem[];
   /**
    * Full typed rows used to render the modal preview. Kept here so the
@@ -786,7 +787,7 @@ function SandboxPreviewBody({
    * to derive canSlot via canSlotFromBuild — replaces the old logic that
    * derived slottableKinds from the URL `build` tab.
    */
-  buildFormKind: "primitive" | "effect" | "capability" | "heritage" | "item" | null;
+  buildFormKind: "primitive" | "effect" | "capability" | "heritage" | "item" | "monster" | null;
   onLoadIntoBuild: () => void;
   onSubLinkClick: (link: PreviewSubLink) => void;
   onFork: ((targetType: string, targetId: string) => void) | undefined;

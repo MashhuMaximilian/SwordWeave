@@ -164,7 +164,7 @@ export function LibraryTable({
     return (
       <div className="space-y-2">
         {shownItems.map((item) => (
-          <div key={item.id} className={renderActions ? "v12-library-action-row" : "v12-library-result-row"} style={{ contentVisibility: "auto", containIntrinsicSize: view === "LIST" ? "auto 110px" : "auto 180px" }}>
+          <div key={item.id} className={renderActions ? "v12-library-action-row" : "v12-library-result-row"} style={{ contentVisibility: surface === "atelier" ? "visible" : "auto", containIntrinsicSize: view === "LIST" ? "auto 110px" : "auto 180px" }}>
           <ListItem
             item={item}
             engagement={engagement}
@@ -211,7 +211,7 @@ export function LibraryTable({
           }}
         >
           {shownItems.map((item) => (
-            <div key={item.id} className={renderActions ? "v12-library-action-row" : "v12-library-result-row"} style={{ contentVisibility: "auto", containIntrinsicSize: "auto 180px" }}>
+            <div key={item.id} className={renderActions ? "v12-library-action-row" : "v12-library-result-row"} style={{ contentVisibility: surface === "atelier" ? "visible" : "auto", containIntrinsicSize: "auto 180px" }}>
             <GridCard
               item={item}
               engagement={engagement}

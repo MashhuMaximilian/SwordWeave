@@ -1,0 +1,73 @@
+/* One interaction contract for source cards, catalogue cards and nested rules.
+   Desktop pointer hover and keyboard focus use gold + dark ink. Touch press is
+   transient; releasing it restores the original material instead of sticky focus.
+   Nested full previews reset their inks so a dark panel inside gold remains readable. */
+body[data-ui="v12"] {
+ --sw-card-rest-ink:var(--foreground);--sw-card-rest-muted:var(--muted-foreground);
+ --sw-card-rest-mechanical:var(--sw-text-mechanical);--sw-card-rest-gold:var(--sw-text-gold);--sw-card-rest-teal:var(--sw-text-teal);
+}
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button,button[aria-label^="Preview "]) {
+ color:var(--sw-card-rest-ink)!important;
+ --foreground:var(--sw-card-rest-ink);--muted-foreground:var(--sw-card-rest-muted);--character-ink:var(--sw-card-rest-ink);
+ --v12-paper:var(--sw-card-rest-ink);--v12-soft:var(--sw-card-rest-muted);--v12-faint:var(--sw-card-rest-muted);
+ --sw-text-mechanical:var(--sw-card-rest-mechanical);--sw-text-narrative:var(--sw-card-rest-ink);
+ --sw-text-gold:var(--sw-card-rest-gold);--sw-text-teal:var(--sw-card-rest-teal);
+}
+html:root body[data-ui="v12"] :is(.v12-entity-preview,.v12-composite-preview-secondary,.sw-creature-preview) {
+ color:var(--sw-card-rest-ink)!important;
+ --foreground:var(--sw-card-rest-ink);--muted-foreground:var(--sw-card-rest-muted);--character-ink:var(--sw-card-rest-ink);
+ --v12-paper:var(--sw-card-rest-ink);--v12-soft:var(--sw-card-rest-muted);--v12-faint:var(--sw-card-rest-muted);
+ --sw-text-mechanical:var(--sw-card-rest-mechanical);--sw-text-narrative:var(--sw-card-rest-ink);
+ --sw-text-gold:var(--sw-card-rest-gold);--sw-text-teal:var(--sw-card-rest-teal);
+}
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button,button[aria-label^="Preview "]):focus-visible {
+ background:var(--sw-metal-gold)!important;background-color:transparent!important;color:var(--sw-metal-gold-ink)!important;
+ --foreground:var(--sw-metal-gold-ink);--muted-foreground:#49351b;--character-ink:var(--sw-metal-gold-ink);
+ --v12-paper:var(--sw-metal-gold-ink);--v12-soft:#49351b;--v12-faint:#49351b;--v12-copper-hi:#53300f;
+ --sw-text-mechanical:#53300f;--sw-text-narrative:var(--sw-metal-gold-ink);--sw-text-gold:#53300f;--sw-text-teal:#24473d;
+ box-shadow:inset 0 1px #fff4ce,0 3px 12px #0002!important;
+}
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button,button[aria-label^="Preview "]):focus-visible :is(h3,h4,strong,b,small,em,p,span,svg,.text-muted-foreground,[data-copy],[data-copy-role],[data-readable-rule],.v12-entry-mechanical,.v12-entry-summary,.v12-entry-lineage,.v12-composition-node-note,.sheet-library-entry-description) {color:inherit!important;}
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button,button[aria-label^="Preview "]):focus-visible :is(.v12-composition-mechanic,.v12-show-mechanics,.v12-composition-node-main,.sw-character-component-header) {background:transparent!important;box-shadow:none!important;color:inherit!important;}
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button,button[aria-label^="Preview "]):focus-visible :is(.v12-tag,.sw-entity-medallion,.v12-entry-glyph,[aria-label="Engagement"] button) {background:transparent!important;color:var(--sw-metal-gold-ink)!important;border-color:#806029!important;}
+@media (hover:hover) and (pointer:fine) {
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button,button[aria-label^="Preview "]):hover {
+ background:var(--sw-metal-gold)!important;background-color:transparent!important;color:var(--sw-metal-gold-ink)!important;
+ --foreground:var(--sw-metal-gold-ink);--muted-foreground:#49351b;--character-ink:var(--sw-metal-gold-ink);
+ --v12-paper:var(--sw-metal-gold-ink);--v12-soft:#49351b;--v12-faint:#49351b;--v12-copper-hi:#53300f;
+ --sw-text-mechanical:#53300f;--sw-text-narrative:var(--sw-metal-gold-ink);--sw-text-gold:#53300f;--sw-text-teal:#24473d;
+ box-shadow:inset 0 1px #fff4ce,0 3px 12px #0002!important;
+}
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button,button[aria-label^="Preview "]):hover :is(h3,h4,strong,b,small,em,p,span,svg,.text-muted-foreground,[data-copy],[data-copy-role],[data-readable-rule],.v12-entry-mechanical,.v12-entry-summary,.v12-entry-lineage,.v12-composition-node-note,.sheet-library-entry-description) {color:inherit!important;}
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button,button[aria-label^="Preview "]):hover :is(.v12-composition-mechanic,.v12-show-mechanics,.v12-composition-node-main,.sw-character-component-header) {background:transparent!important;box-shadow:none!important;color:inherit!important;}
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button,button[aria-label^="Preview "]):hover :is(.v12-tag,.sw-entity-medallion,.v12-entry-glyph,[aria-label="Engagement"] button) {background:transparent!important;color:var(--sw-metal-gold-ink)!important;border-color:#806029!important;}
+}
+@media (hover:none), (pointer:coarse) {
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button,button[aria-label^="Preview "]):active {
+ background:var(--sw-metal-gold)!important;background-color:transparent!important;color:var(--sw-metal-gold-ink)!important;
+ --foreground:var(--sw-metal-gold-ink);--muted-foreground:#49351b;--character-ink:var(--sw-metal-gold-ink);
+ --v12-paper:var(--sw-metal-gold-ink);--v12-soft:#49351b;--v12-faint:#49351b;--v12-copper-hi:#53300f;
+ --sw-text-mechanical:#53300f;--sw-text-narrative:var(--sw-metal-gold-ink);--sw-text-gold:#53300f;--sw-text-teal:#24473d;
+ box-shadow:inset 0 1px #fff4ce,0 3px 12px #0002!important;
+}
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button,button[aria-label^="Preview "]):active :is(h3,h4,strong,b,small,em,p,span,svg,.text-muted-foreground,[data-copy],[data-copy-role],[data-readable-rule],.v12-entry-mechanical,.v12-entry-summary,.v12-entry-lineage,.v12-composition-node-note,.sheet-library-entry-description) {color:inherit!important;}
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button,button[aria-label^="Preview "]):active :is(.v12-composition-mechanic,.v12-show-mechanics,.v12-composition-node-main,.sw-character-component-header) {background:transparent!important;box-shadow:none!important;color:inherit!important;}
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button,button[aria-label^="Preview "]):active :is(.v12-tag,.sw-entity-medallion,.v12-entry-glyph,[aria-label="Engagement"] button) {background:transparent!important;color:var(--sw-metal-gold-ink)!important;border-color:#806029!important;}
+}
+/* The second interaction inside a gold card uses weight, never underlines. */
+html:root body[data-ui="v12"] :is(.v12-composition-mechanic,.v12-composition-node-main,.sw-character-component-header,.v12-show-mechanics):focus-visible {font-weight:700;text-decoration:none!important;outline:2px solid currentColor;outline-offset:2px;}
+@media(hover:hover) and (pointer:fine) {
+ html:root body[data-ui="v12"] :is(.v12-composition-mechanic,.v12-composition-node-main,.sw-character-component-header,.v12-show-mechanics):hover,
+ html:root body[data-ui="v12"] :is(.v12-composition-mechanic,.v12-composition-node-main,.sw-character-component-header):hover :is(p,span,strong) {font-weight:700!important;text-decoration:none!important;}
+}
+@media(hover:none), (pointer:coarse) {
+ html:root body[data-ui="v12"] :is(.v12-composition-mechanic,.v12-composition-node-main):active :is(p,span) {font-weight:700!important;text-decoration:none!important;}
+}
+/* The scroll boundaries belong to the three columns, not the page underneath. */
+body[data-ui="v12"] [data-sandbox-layout] {overflow:clip;max-height:100dvh;}
+body[data-ui="v12"] [data-sandbox-layout] :is(.v12-studio,.v12-studio-panel,.v12-studio-body,.v12-source-browser,.v12-source-split,.v12-source-entries) {min-height:0;min-width:0;}
+body[data-ui="v12"] [data-sandbox-layout] .v12-studio-panel {overflow:hidden;}
+body[data-ui="v12"] [data-sandbox-layout] .v12-studio-body {overflow:auto;overscroll-behavior:contain;}
+body[data-ui="v12"] .v12-monster-source-library {padding:0;gap:0;overflow:hidden;}
+body[data-ui="v12"] .v12-monster-source-library .v12-source-search {padding:12px;}
+body[data-ui="v12"] .v12-monster-source-results {display:block;min-height:0;overflow:auto;padding:0 12px 12px;}

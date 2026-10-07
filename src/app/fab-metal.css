@@ -57,3 +57,5 @@ html:not(.dark) .sw-fab__heading > :last-child,html:not(.dark) .sw-fab__section 
 html:not(.dark) body[data-ui="v12"] .sw-fab [data-fab-link] { background:linear-gradient(135deg,#fffdf2,#d0dfd8)!important;color:#18363b!important;border-color:#7f9c9980!important; }
 html:not(.dark) body[data-ui="v12"] .sw-fab [data-fab-action] { background:linear-gradient(135deg,#faf6e6,#cad9d4) padding-box,var(--fab-steel) border-box!important;color:#23494e!important; }
 html:not(.dark) body[data-ui="v12"] .sw-fab .sw-fab__workspace-grid [data-fab-action],html:not(.dark) body[data-ui="v12"] .sw-fab [data-fab-action][aria-pressed="true"] { background:linear-gradient(125deg,#f4d991,#fff1c1 45%,#bdaa6c) padding-box,var(--fab-edge) border-box!important;color:#302a15!important; }
+
+body[data-ui="v12"] .sw-fab [data-fab-link="buymeacoffee"] {grid-column:1/-1;justify-content:center;min-height:48px;}

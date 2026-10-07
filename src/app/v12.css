@@ -2327,7 +2327,6 @@ body[data-ui="v12"] .v12-unified-source-browser > :not(.v12-source-browser) butt
   gap:9px!important;
 }
 body[data-ui="v12"] .v12-unified-source-browser > :not(.v12-source-browser) button[data-library-row-id] > div:first-child { width:40px; }
-body[data-ui="v12"] .v12-unified-source-browser > :not(.v12-source-browser) [data-library-row-id]:hover { background:linear-gradient(90deg,color-mix(in srgb,var(--v12-brass) 10%,var(--v12-inset)),var(--v12-inset)) padding-box,var(--v12-brass-edge) border-box!important; }
 body[data-ui="v12"] .v12-unified-source-browser > :not(.v12-source-browser) [data-library-row-id] :is(h3,.font-semibold) { font-family:var(--font-subtitle); }
 
 body[data-ui="v12"] .v12-author-chapter:not([hidden]) { gap:9px; padding:10px 0; }

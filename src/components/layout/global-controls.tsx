@@ -521,9 +521,9 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
       {
         kind: "link",
         key: "buymeacoffee",
-        label: "Buy me dice",
+        label: "Keep the project going",
         href: "https://buymeacoffee.com/mashhul",
-        icon: <FabIcon iconKey="delapouite/rolling-dices" alt="Dice" />,
+        icon: <FabIcon iconKey="lorc/campfire" alt="Keep the fire going" />,
       },
     );
     return readOnlySheet ? list.filter(item => item.key !== "build") : list;

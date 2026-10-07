@@ -190,15 +190,6 @@ body[data-ui="v12"] :is([data-preview-trigger="true"],button[aria-label^="Previe
   mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0);mask-composite:exclude;
   transition:opacity 180ms ease;
 }
-@media (hover:hover) {
-  body[data-ui="v12"] :is([data-preview-trigger="true"],button[aria-label^="Preview "],.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button):hover {
-    transform:translateY(-2px) scale(1.008);background:var(--sw-metal-gold)!important;color:var(--sw-metal-gold-ink)!important;box-shadow:0 6px 20px var(--sw-preview-shadow),inset 0 1px #fff4ce;z-index:1;
-  }
-  body[data-ui="v12"] :is([data-preview-trigger="true"],button[aria-label^="Preview "],.sheet-library-entry,.v12-live-effect-open):hover::after {opacity:1;}
-}
-body[data-ui="v12"] :is([data-preview-trigger="true"],button[aria-label^="Preview "],.sheet-library-entry,.v12-live-effect-open):focus-visible {box-shadow:0 0 18px var(--sw-preview-shadow);}
-body[data-ui="v12"] [data-preview-trigger="true"]:focus-visible::after {opacity:1;}
-
 /* FAB glyphs share a real metallic hover, including Rules and the dice link. */
 body[data-ui="v12"] .sw-fab-glyph {display:inline-block;width:22px;height:22px;flex:none;background:var(--foreground);mask-size:contain;mask-position:center;mask-repeat:no-repeat;-webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat;}
 body[data-ui="v12"] .sw-fab :is([data-fab-link],[data-fab-action]):is(:hover,:focus-visible) .sw-fab-glyph {background:var(--sw-metal-gold);}
@@ -377,67 +368,7 @@ body[data-ui="v12"] .sw-access-entry__copy > small {color:var(--muted-foreground
 body[data-ui="v12"] .sw-access-entry__copy [data-copy="mechanical"] {color:var(--sw-text-mechanical);}
 body[data-ui="v12"] .sw-access-entry__copy em {color:var(--sw-text-teal);}
 body[data-ui="v12"] .sw-access-entry__cost {background:var(--sw-inset-fill);color:var(--sw-text-gold);}
-body[data-ui="v12"] :is([data-preview-trigger="true"],button[aria-label^="Preview "],.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button):focus-visible {
-  background:var(--sw-metal-gold)!important;color:var(--sw-metal-gold-ink)!important;
-}
-body[data-ui="v12"] :is([data-preview-trigger="true"],button[aria-label^="Preview "],.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button):focus-visible :is(h3,strong,small,em,p,span,svg,.text-muted-foreground,[data-copy],.v12-entry-mechanical,.v12-entry-summary,.v12-entry-lineage,.sheet-library-entry-description) {color:inherit!important;}
-@media(hover:hover) {
-  body[data-ui="v12"] :is([data-preview-trigger="true"],button[aria-label^="Preview "],.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button):hover :is(h3,strong,small,em,p,span,svg,.text-muted-foreground,[data-copy],.v12-entry-mechanical,.v12-entry-summary,.v12-entry-lineage,.sheet-library-entry-description) {color:inherit!important;}
-  body[data-ui="v12"] .sw-access-entry:hover {background:var(--sw-metal-gold)!important;color:var(--sw-metal-gold-ink)!important;}
-  body[data-ui="v12"] .sw-access-entry:hover .sw-access-entry__copy :is(strong,small,em,span) {color:inherit!important;}
-}
-
-/* Gold preview states carry their own readable inks and inset materials.
-   A badge or reaction remains a distinct surface inside the highlighted row. */
-body[data-ui="v12"] :is([data-preview-trigger="true"],button[aria-label^="Preview "],.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button):focus-visible {
-  --foreground:#271903;--muted-foreground:#49351b;
-  --v12-paper:#271903;--v12-soft:#49351b;--v12-faint:#49351b;
-  --sw-text-mechanical:#53300f;--sw-text-narrative:#49351b;
-}
-@media(hover:hover) {
-  body[data-ui="v12"] :is([data-preview-trigger="true"],button[aria-label^="Preview "],.sheet-library-entry,.v12-live-effect-open,.v12-expression-piece>button,.v12-expression-rule>button):hover {
-    --foreground:#271903;--muted-foreground:#49351b;
-    --v12-paper:#271903;--v12-soft:#49351b;--v12-faint:#49351b;
-    --sw-text-mechanical:#53300f;--sw-text-narrative:#49351b;
-  }
-}
-/* Inset badges and controls use a light fill on the gold row in both themes. */
-body[data-ui="v12"] :is([data-preview-trigger="true"],.sheet-library-entry):focus-visible :is(.v12-tag,.rounded-full,.sw-entity-medallion,.v12-entry-glyph),
-body[data-ui="v12"] :is([data-preview-trigger="true"],.sheet-library-entry):focus-visible :is(button,a[class*="border"]) {
-  background:#fff3c6!important;color:#271903!important;border-color:#806029!important;
-}
-@media(hover:hover) {
-  body[data-ui="v12"] :is([data-preview-trigger="true"],.sheet-library-entry):hover :is(.v12-tag,.rounded-full,.sw-entity-medallion,.v12-entry-glyph),
-  body[data-ui="v12"] :is([data-preview-trigger="true"],.sheet-library-entry):hover :is(button,a[class*="border"]) {
-    background:#fff3c6!important;color:#271903!important;border-color:#806029!important;
-  }
-}
 /* Selected gold controls can contain small counters or explanatory labels. */
 body[data-ui="v12"] :is(.v12-author-tabs,.v12-atelier-tabs,.v12-build-preview-modal) :is(button,a):is([aria-selected="true"],.is-active) :is(strong,small,span,svg) {
   color:inherit!important;
-}
-
-body[data-ui="v12"] [data-preview-trigger="true"]:focus-visible [aria-label="Engagement"] button[aria-pressed="true"] {
-  background:#f6d6bf!important;color:#702822!important;border-color:#702822!important;
-}
-@media(hover:hover) {
-  body[data-ui="v12"] [data-preview-trigger="true"]:hover [aria-label="Engagement"] button[aria-pressed="true"] {
-    background:#f6d6bf!important;color:#702822!important;border-color:#702822!important;
-  }
-}
-
-/* Archive card materials have stronger base rules than generic preview rows. */
-body[data-ui="v12"] .v12-creations-results.is-grid [data-library-row-id][data-preview-trigger="true"]:focus-visible {
-  background:var(--sw-metal-gold)!important;color:var(--sw-metal-gold-ink)!important;
-}
-body[data-ui="v12"] .v12-creations-results [data-library-row-id][data-preview-trigger="true"]:focus-visible [data-library-meta] {
-  background:#fff3c6!important;color:#271903!important;border-color:#806029!important;
-}
-@media(hover:hover) {
-  body[data-ui="v12"] .v12-creations-results.is-grid [data-library-row-id][data-preview-trigger="true"]:hover {
-    background:var(--sw-metal-gold)!important;color:var(--sw-metal-gold-ink)!important;
-  }
-  body[data-ui="v12"] .v12-creations-results [data-library-row-id][data-preview-trigger="true"]:hover [data-library-meta] {
-    background:#fff3c6!important;color:#271903!important;border-color:#806029!important;
-  }
 }

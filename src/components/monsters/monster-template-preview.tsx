@@ -14,6 +14,7 @@ import { MonsterCompositionView } from "./monster-composition-view";
 import { MonsterSheetStats, MonsterPracticeGrid } from "./monster-sheet-stats";
 import { monsterArtwork } from "@/lib/monsters/art";
 import "./monster-template-preview.css";
+import { PreviewActions, type PreviewActionProps } from "@/components/preview/preview-shared";
 
 type PreviewData = {
   monster: { name: string; definition: PinnedDefinition; currentVersion: number; visibility: string };
@@ -24,12 +25,12 @@ type PreviewData = {
 const signed = (value: number) => value >= 0 ? `+${value}` : String(value);
 
 /** A template is read-only here. Playing creates an independent, pinned copy. */
-export function MonsterTemplatePreview({ id, compact = false }: { id: string; compact?: boolean }) {
+export function MonsterTemplatePreview({ id, compact = false, actions }: { id: string; compact?: boolean; actions?: PreviewActionProps }) {
   const { userId, isLoaded } = useAuth();
-  return <AccountPreview key={`${userId ?? "anonymous"}:${id}`} id={id} compact={compact} ready={isLoaded} />;
+  return <AccountPreview key={`${userId ?? "anonymous"}:${id}`} id={id} compact={compact} {...(actions?{actions}:{})} ready={isLoaded} />;
 }
 
-function AccountPreview({ id, compact, ready }: { id: string; compact: boolean; ready: boolean }) {
+function AccountPreview({ id, compact, ready, actions }: { id: string; compact: boolean; ready: boolean; actions?: PreviewActionProps }) {
   const { isSignedIn } = useAuth();
   const { redirectToSignIn } = useClerk();
   const [data, setData] = useState<PreviewData | null>(null);
@@ -90,11 +91,11 @@ function AccountPreview({ id, compact, ready }: { id: string; compact: boolean; 
     <MonsterSheetPreview definition={definition} sheet={sheet} slots={slots} compact={compact}/>
 
     {error && <p role="alert">{error}</p>}
-    <footer className="sw-creature-preview-actions">
+    {actions ? <PreviewActions {...actions}/> : <footer className="sw-creature-preview-actions">
       <button type="button" className="v12-metal-button v12-metal-button--primary" onClick={() => isSignedIn ? setCopyOpen(value => !value) : void redirectToSignIn({ redirectUrl: `/monsters/${id}` })}>Bring to the table <ArrowRight size={16}/></button>
       <Link className="v12-metal-button" href={`/monsters/${id}${data.canEdit ? "?edit=1" : ""}`}>{data.canEdit ? "Edit creature" : "Open source"}</Link>
       <button type="button" className="v12-metal-button" disabled={pending} onClick={() => void forkCreature()}>Fork creature</button>
-    </footer>
+    </footer>}
     {copyOpen && <form className="sw-creature-copy-form" onSubmit={event => void createCopy(event)}><label>Name for this play copy<input maxLength={200} value={copyName} onChange={event => setCopyName(event.target.value)} /></label><p>Its session is private and independent of this template.</p><button className="v12-metal-button v12-metal-button--primary" disabled={pending || !copyName.trim()}>{pending ? "Creating…" : "Create play copy"}</button></form>}
   </section>;
 }

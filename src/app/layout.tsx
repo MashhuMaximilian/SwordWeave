@@ -42,6 +42,7 @@ import "./play-guide.css";
 import "./character-modal-redesign.css";
 import "./arcane-materials.css";
 import "./component-refinements.css";
+import "./card-interactions.css";
 
 // Retain the previous typefaces behind the data-ui switch so setting
 // NEXT_PUBLIC_SW_UI_VERSION=legacy is a complete visual rollback.
