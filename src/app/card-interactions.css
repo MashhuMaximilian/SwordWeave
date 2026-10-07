@@ -68,9 +68,9 @@ body[data-ui="v12"] [data-sandbox-layout] {overflow:clip;max-height:100dvh;}
 body[data-ui="v12"] [data-sandbox-layout] :is(.v12-studio,.v12-studio-panel,.v12-studio-body,.v12-source-browser,.v12-source-split,.v12-source-entries) {min-height:0;min-width:0;}
 body[data-ui="v12"] [data-sandbox-layout] .v12-studio-panel {overflow:hidden;}
 body[data-ui="v12"] [data-sandbox-layout] .v12-studio-body {overflow:auto;overscroll-behavior:contain;}
-body[data-ui="v12"] .v12-monster-source-library {padding:0;gap:0;overflow:hidden;}
+body[data-ui="v12"] .v12-monster-source-library {display:flex!important;flex-direction:column;padding:0;gap:0;overflow:hidden;}
 body[data-ui="v12"] .v12-monster-source-library .v12-source-search {padding:12px;}
-body[data-ui="v12"] .v12-monster-source-results {display:block;min-height:0;overflow:auto;padding:0 12px 12px;}
+body[data-ui="v12"] .v12-monster-source-results {display:block;flex:1;min-height:0;overflow:auto;padding:0 12px 12px;}
 
 /* Creature authoring is a chapter editor inside either Atelier workspace. */
 body[data-ui="v12"] .monster-atelier-embedded .v12-monster-editor {min-width:0;}
