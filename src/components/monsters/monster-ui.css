@@ -329,3 +329,18 @@ body[data-ui="v12"] .monster-authoring .monster-specialty-choice[aria-pressed=tr
 body[data-ui="v12"] .monster-authoring .monster-size-grid input[type=radio] { min-height:16px; width:16px; padding:0; margin:4px 0 0; box-shadow:none; }
 body[data-ui="v12"] .monster-authoring .monster-point-control input { margin-top:0; }
 body[data-ui="v12"] .monster-authoring .sw-character-forge__header h2:focus { outline:none; }
+
+/* Atelier has a narrow middle column even on a wide screen. */
+body[data-ui="v12"] .monster-authoring.monster-atelier-embedded .monster-forge {display:block!important;grid-template-columns:minmax(0,1fr)!important;}
+body[data-ui="v12"] .monster-authoring.monster-atelier-embedded .sw-character-forge__rail {position:static!important;width:100%!important;padding:8px!important;}
+body[data-ui="v12"] .monster-authoring.monster-atelier-embedded .sw-character-forge__rail nav {display:flex!important;flex-wrap:wrap!important;gap:6px!important;}
+body[data-ui="v12"] .monster-authoring.monster-atelier-embedded .sw-character-forge__rail nav button {flex:1 1 120px;padding:8px!important;min-height:44px;}
+body[data-ui="v12"] .monster-authoring.monster-atelier-embedded .sw-character-forge__header {padding:12px!important;}
+body[data-ui="v12"] .monster-authoring.monster-atelier-embedded .monster-story-grid {grid-template-columns:minmax(0,1fr)!important;}
+body[data-ui="v12"] .monster-authoring.monster-atelier-embedded .monster-story-fields {min-width:0;}
+body[data-ui="v12"] .monster-authoring.monster-atelier-embedded .sw-character-forge__content {padding:12px!important;}
+body[data-ui="v12"] .monster-authoring.monster-atelier-embedded .sw-character-forge__footer {position:static!important;margin:0!important;flex-wrap:wrap;}
+body[data-ui="v12"] .v12-monster-source-library .monster-field {display:grid;gap:8px;}
+body[data-ui="v12"] .v12-monster-source-library .monster-field input {width:100%;padding:10px;min-height:42px;}
+body[data-ui="v12"] .v12-monster-source-results > div > button {display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 14px;border:1px solid var(--border);border-radius:5px;background:var(--sw-surface-fill,var(--card));color:var(--foreground);font:600 12px/1.4 var(--font-system);}
+body[data-ui="v12"] .v12-monster-source-results > div > button:hover {background:var(--sw-metal-gold);color:var(--sw-metal-gold-ink);}

@@ -1172,7 +1172,7 @@ export function AtelierSandboxClient({
   ]);
 
   const previewNode = useMemo(() => {
-    if(monsterDraft)return monsterPreview ? <MonsterSheetPreview {...monsterPreview}/> : emptyPreview("Creature preview", "Resolve the creature to inspect its sheet.");
+    if(monsterDraft)return monsterPreview ? <MonsterSheetPreview {...monsterPreview} compact/> : emptyPreview("Creature preview", "Resolve the creature to inspect its sheet.");
     // Form preview is driven by what's loaded (or the blank draft kind),
     // NOT the active library tab. Same decoupling as builderNode.
     //
@@ -1538,7 +1538,7 @@ export function AtelierSandboxClient({
       if (!formWithDefaults) return null;
       return <ItemFormPreview form={formWithDefaults} primitiveSlots={primitiveSlots.map(slot=>({...slot,primitive:{...primitives.find(p=>p.id===slot.primitiveId),...slot.primitive}}))} capabilitySlots={capabilitySlots} effectSlots={effectSlots} />;
     }
-    return monsterPreview ? <MonsterSheetPreview {...monsterPreview}/> : emptyPreview("Creature preview", "Choose a creature in the Library or start a new monster build.");
+    return monsterPreview ? <MonsterSheetPreview {...monsterPreview} compact/> : emptyPreview("Creature preview", "Choose a creature in the Library or start a new monster build.");
   }, [build, editing, formSnapshot, primitives, capabilities, effects, monsterDraft, monsterPreview]);
 
   // Library column — one persistent browser with a source-type filter.
