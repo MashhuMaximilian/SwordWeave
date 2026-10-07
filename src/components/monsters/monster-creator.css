@@ -178,6 +178,8 @@ body[data-ui="v12"] .monster-weakness-library > .sw-access-library__corpus > hea
 /* Selected rules reuse the preview hierarchy, with actions within each root card. */
 .monster-resulting-package .v12-composition-tree {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:10px;align-items:start;}
 .monster-resulting-package .v12-composition-node-actions {padding:0 10px 8px;}
+body[data-ui="v12"] .monster-atelier-embedded .monster-shuffle-controls {grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));}
+body[data-ui="v12"] .monster-atelier-embedded .monster-shuffle-controls > button {grid-column:1/-1;justify-self:start;margin-top:0;white-space:nowrap;}
 .monster-resulting-package .monster-package-component__actions {display:flex;gap:8px;margin:0;flex-wrap:wrap;}
 .monster-resulting-package .monster-package-component__actions button {display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:4px 7px;border:1px solid var(--border);border-radius:4px;font:500 12px var(--font-system);color:var(--foreground);}
 .monster-resulting-package .monster-package-component__actions button[aria-pressed="true"] {color:var(--sw-text-teal);border-color:var(--sw-text-teal);}
