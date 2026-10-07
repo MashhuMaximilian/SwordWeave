@@ -71,3 +71,11 @@ body[data-ui="v12"] [data-sandbox-layout] .v12-studio-body {overflow:auto;oversc
 body[data-ui="v12"] .v12-monster-source-library {padding:0;gap:0;overflow:hidden;}
 body[data-ui="v12"] .v12-monster-source-library .v12-source-search {padding:12px;}
 body[data-ui="v12"] .v12-monster-source-results {display:block;min-height:0;overflow:auto;padding:0 12px 12px;}
+
+/* Creature authoring is a chapter editor inside either Atelier workspace. */
+body[data-ui="v12"] .monster-atelier-embedded .v12-monster-editor {min-width:0;}
+body[data-ui="v12"] .monster-atelier-embedded .v12-author-tabs {display:flex;flex-wrap:wrap;gap:5px;padding:10px;}
+body[data-ui="v12"] .monster-atelier-embedded .v12-author-tabs > button {flex:1 1 90px;min-height:38px;}
+body[data-ui="v12"] .monster-atelier-embedded .v12-author-chapter {padding:12px;}
+body[data-ui="v12"] .monster-atelier-embedded .sw-quickbuild__section {padding:12px;}
+body[data-ui="v12"] .monster-atelier-embedded .monster-review {display:grid;gap:14px;}

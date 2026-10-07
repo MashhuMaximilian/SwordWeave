@@ -43,7 +43,7 @@ export function AtelierMonsterLibrary({ onLoad, currentUserInternalId }: {
   }, [search, offset, revision]);
   function preview(item: LibraryItem) {
     stack.push({ key: `monster:${item.targetId}`, label: item.name, category: "Creature template", content:
-      <MonsterTemplatePreview id={item.targetId} compact actions={{
+      <MonsterTemplatePreview id={item.targetId} compact actionPlacement="top" actions={{
         workspace: { label: phone ? "Replace primary build" : "Edit in middle workspace", description: "Load this creature into the Atelier editor.", onClick: () => onLoad(item.targetId) },
         buildModal: { label: "Replace modal build", description: "Load this creature into the independent Build & Preview workspace.", onClick: () => {
           window.dispatchEvent(new CustomEvent("sw-replace-secondary-monster", { detail: { id: item.targetId, name: item.name } }));
