@@ -1791,9 +1791,11 @@ function SecondaryBuildWorkspace({
   const [kind, setKind] = useState<"primitive" | "effect" | "capability" | "heritage" | "item" | "monster" | null>(null);
   const [secondaryMonsterId,setSecondaryMonsterId]=useState<string|undefined>();
   const [pendingReplacement,setPendingReplacement]=useState<(() => void)|null>(null);
-  const onMonsterState=useCallback<NonNullable<ComponentProps<typeof MonsterWorkbench>["onPreview"]>>(value=>setModalPreview(value?<MonsterSheetPreview {...value} compact/>:null),[]);
+  const [secondaryMonsterReady,setSecondaryMonsterReady]=useState(false);
+  const onMonsterReady=useCallback(()=>setSecondaryMonsterReady(true),[]);
   const [phone, setPhone] = useState(false);
   const [modalPreview, setModalPreview] = useState<ReactNode>(null);
+  const onMonsterState=useCallback<NonNullable<ComponentProps<typeof MonsterWorkbench>["onPreview"]>>(value=>setModalPreview(value?<MonsterSheetPreview {...value} compact/>:null),[]);
   useEffect(() => {
     const media = window.matchMedia("(max-width: 767px)");
     const update = () => setPhone(media.matches);
@@ -1817,6 +1819,7 @@ function SecondaryBuildWorkspace({
       const detail = (event as CustomEvent<{kind:"primitive"|"effect"|"capability"|"item";id:string|number;label:string}>).detail;
       if (!detail) return;
       if (!kind) {
+        setSecondaryMonsterReady(false);
         setPendingSlot(detail);
         setKind(detail.kind === "item" ? "monster" : detail.kind === "capability" ? "heritage" : "capability");
       } else {
@@ -1844,12 +1847,12 @@ function SecondaryBuildWorkspace({
     return () => window.removeEventListener("sw-replace-secondary-build", replace);
   }, [phone, kind, openDrawer]);
 
-  useEffect(()=>{const replace=(event:Event)=>{const detail=(event as CustomEvent<{id:string;name:string}>).detail;if(!detail?.id)return;const apply=()=>{setSecondaryMonsterId(detail.id);setKind("monster");setInitialEntry(null);setSaved(null);setPendingSlot(null);setModalPreview(null);setRevision(value=>value+1);openDrawer("build");};if(kind)setPendingReplacement(()=>apply);else apply();};window.addEventListener("sw-replace-secondary-monster",replace);return()=>window.removeEventListener("sw-replace-secondary-monster",replace);},[kind,openDrawer]);
+  useEffect(()=>{const replace=(event:Event)=>{const detail=(event as CustomEvent<{id:string;name:string}>).detail;if(!detail?.id)return;const apply=()=>{setSecondaryMonsterReady(false);setSecondaryMonsterId(detail.id);setKind("monster");setInitialEntry(null);setSaved(null);setPendingSlot(null);setModalPreview(null);setRevision(value=>value+1);openDrawer("build");};if(kind)setPendingReplacement(()=>apply);else apply();};window.addEventListener("sw-replace-secondary-monster",replace);return()=>window.removeEventListener("sw-replace-secondary-monster",replace);},[kind,openDrawer]);
 
   const requestReset = () => {
     if(kind)setPendingReplacement(()=>reset);else reset();
   };
-  const reset = () => { setSecondaryMonsterId(undefined);setInitialEntry(null); setModalPreview(null); setKind(null); setHeritageKind("MANIFEST"); setSaved(null); setPendingSlot(null); setRevision((value) => value + 1); };
+  const reset = () => {setSecondaryMonsterReady(false); setSecondaryMonsterId(undefined);setInitialEntry(null); setModalPreview(null); setKind(null); setHeritageKind("MANIFEST"); setSaved(null); setPendingSlot(null); setRevision((value) => value + 1); };
   const commonSaved = (next: { id: string; name: string }, nextKind: NonNullable<typeof kind>, heritageKind?: "LINEAGE" | "UPBRINGING" | "MANIFEST") => {
     setSaved({ kind: nextKind, id: String(next.id), name: next.name, ...(heritageKind ? { heritageKind } : {}) });
     window.dispatchEvent(new CustomEvent("sw:library-changed"));
@@ -1864,7 +1867,7 @@ function SecondaryBuildWorkspace({
         <NewEntityChoices
           className="space-y-4"
           onPick={(choice) => {
-            if (choice.tab === "monster") {setSecondaryMonsterId(undefined);setKind("monster");return;}
+            if (choice.tab === "monster") {setSecondaryMonsterReady(false);setSecondaryMonsterId(undefined);setKind("monster");return;}
             if (choice.mechanicsSubKind === "primitive") {
               if (phone) { setKind("primitive"); return; }
               // Primitive authoring belongs to the middle workspace. Close
@@ -1887,13 +1890,13 @@ function SecondaryBuildWorkspace({
           }}
         />
       ) : null}
-      {kind === "monster" ? <MonsterWorkbench key={`monster-${revision}`} {...(secondaryMonsterId?{id:secondaryMonsterId}:{})} embedded slotEvents={slotBus} onPreview={onMonsterState} onSaved={id=>{setSecondaryMonsterId(id);commonSaved({id,name:"Creature"},"monster");}}/> : null}
+      {kind === "monster" ? <MonsterWorkbench key={`monster-${revision}`} {...(secondaryMonsterId?{id:secondaryMonsterId}:{})} embedded slotEvents={slotBus} onReady={onMonsterReady} onPreview={onMonsterState} onSaved={id=>{setSecondaryMonsterId(id);commonSaved({id,name:"Creature"},"monster");}}/> : null}
       {kind === "primitive" ? <PrimitiveForm key={`primitive-${revision}`} initialPrimitive={initialEntry?.kind === "primitive" ? initialEntry.row : null} intent={initialEntry ? "fork" : null} onStateChange={onPrimitiveState} onSaved={row=>commonSaved({id:String(row.id),name:row.name},"primitive")} /> : null}
       {kind === "capability" ? <CapabilityForm {...(phone ? {onStateChange:onCapabilityState} : {})} key={`cap-${revision}`} slotEvents={slotBus} initialCapability={initialEntry?.kind === "capability" ? initialEntry.row : null} intent={initialEntry ? "fork" : null} availablePrimitives={primitiveOptions} availableEffects={effects} onSaved={(row)=>commonSaved(row,"capability")} /> : null}
       {kind === "effect" ? <EffectForm {...(phone ? {onStateChange:onEffectState} : {})} key={`eff-${revision}`} slotEvents={slotBus} initialEffect={initialEntry?.kind === "effect" ? initialEntry.row : null} intent={initialEntry ? "fork" : null} availablePrimitives={primitiveOptions} onSaved={(row)=>commonSaved(row,"effect")} /> : null}
       {kind === "heritage" ? <HeritageForm {...(phone ? {onStateChange:onHeritageState} : {})} key={`her-${revision}`} slotEvents={slotBus} initialTemplate={initialEntry?.kind === "heritage" ? initialEntry.row : null} intent={initialEntry ? "fork" : null} initialKind={heritageKind} availablePrimitives={primitiveOptions} availableCapabilities={capabilities} onSaved={(row)=>commonSaved(row,"heritage",row.kind)} /> : null}
       {kind === "item" ? <ItemForm {...(phone ? {onStateChange:onItemState} : {})} key={`item-${revision}`} slotEvents={slotBus} initialItem={initialEntry?.kind === "item" ? initialEntry.row : null} intent={initialEntry ? "fork" : null} availablePrimitives={primitiveOptions} availableCapabilities={capabilities} availableEffects={effects} onSaved={(row)=>commonSaved(row,"item")} /> : null}
-      {pendingSlot ? <SecondarySlotDelivery slotBus={slotBus} detail={pendingSlot} onDelivered={()=>setPendingSlot(null)} /> : null}
+      {pendingSlot && (kind!=="monster"||secondaryMonsterReady) ? <SecondarySlotDelivery slotBus={slotBus} detail={pendingSlot} onDelivered={()=>setPendingSlot(null)} /> : null}
       {saved ? <div className="v12-secondary-build-saved"><span>Saved: {saved.name}</span>{saved.kind!=="monster"&&<button type="button" className="v12-metal-button v12-metal-button--primary" onClick={()=>{
         const tab = saved.kind === "item" ? "items" : characterModal.activeStep === "lineage" || characterModal.activeStep === "upbringing" || characterModal.activeStep === "manifest" ? characterModal.activeStep : "manifest";
         if(saved.kind === "primitive") characterModal.queueSlot({kind:"primitive",primitiveId:Number(saved.id),tab,name:saved.name});

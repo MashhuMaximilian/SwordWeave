@@ -23,7 +23,7 @@ type BestiaryEntry={id:string;name:string;budget?:number;size?:string;descriptio
 function entryVitality(entry:BestiaryEntry){if(typeof entry.baselineVitality==="number"&&entry.baselineVitality>0)return entry.baselineVitality;return typeof entry.budget==="number"&&Number.isSafeInteger(entry.budget)&&entry.budget>0?monsterBaselines(entry.budget).vitality:null;}
 const stages=[{title:"The concept",hint:"Name & story"},{title:"Foundation",hint:"Budget, attributes & size"},{title:"Weaknesses",hint:"Optional mirrored rules"},{title:"Abilities",hint:"Library & mechanics"},{title:"Review & save",hint:"Resolve your creature"}];
 const initial:MonsterDefinition={name:"",concept:"",budget:25,size:"MEDIUM",attributes:{physical:3,mental:0,magical:0},proficientAttribute:"physical",baselineVitality:null,practiceSlices:{},references:[]};
-type WorkbenchProps={id?:string;browse?:boolean;embedded?:boolean;slotEvents?:EventTarget;intent?:SaveIntent;onPreview?:(value:{definition:PinnedDefinition;sheet:Sheet;slots:MonsterSlot[]}|null)=>void;onDirty?:(dirty:boolean)=>void;onSaved?:(id:string)=>void};
+type WorkbenchProps={id?:string;browse?:boolean;embedded?:boolean;slotEvents?:EventTarget;intent?:SaveIntent;onReady?:()=>void;onPreview?:(value:{definition:PinnedDefinition;sheet:Sheet;slots:MonsterSlot[]}|null)=>void;onDirty?:(dirty:boolean)=>void;onSaved?:(id:string)=>void};
 export function MonsterWorkbench(props:WorkbenchProps){
  const {isLoaded,userId}=useAuth();
  if(!isLoaded)return <main className="sw-monster-page"><p role="status">Loading account…</p></main>;
@@ -31,7 +31,7 @@ export function MonsterWorkbench(props:WorkbenchProps){
  // render during the interval before effects clear or fetch the new account.
  return <AccountMonsterWorkbench key={`${userId??"anonymous"}:${props.id??"new"}`} {...props}/>;
 }
-function AccountMonsterWorkbench({id,browse=false,embedded=false,slotEvents,intent=null,onPreview,onDirty,onSaved}:WorkbenchProps){
+function AccountMonsterWorkbench({id,browse=false,embedded=false,slotEvents,intent=null,onReady,onPreview,onDirty,onSaved}:WorkbenchProps){
  const {isSignedIn,isLoaded,userId}=useAuth();const {redirectToSignIn}=useClerk();
  const [bestiarySearch,setBestiarySearch]=useState(""),[previewEntry,setPreviewEntry]=useState<BestiaryEntry|null>(null);
  const [stage,setStage]=useState(embedded?3:id?4:0),[referenceLabels,setReferenceLabels]=useState<Record<string,string>>({});
@@ -70,6 +70,7 @@ function AccountMonsterWorkbench({id,browse=false,embedded=false,slotEvents,inte
   const add=(event:Event)=>{const detail=(event as CustomEvent<SlotEvent>).detail;if(!detail||!["primitive","effect","capability","item"].includes(detail.kind))return;const kind=detail.kind.toUpperCase() as MonsterReference["kind"];const refId=String(detail.id);setReferenceLabels(current=>({...current,[`${kind}:${refId}`]:detail.label}));definitionRevision.current+=1;setDefinitionState(current=>({...current,references:current.references.some(ref=>ref.kind===kind&&ref.id===refId&&!ref.isMirrored)?current.references:[...current.references,{kind,id:refId,quantity:1,isMirrored:false,versionId:null}]}));setSheet(null);setComponentSlots([]);setShuffleOptions([]);setStage(3);};
   bus.addEventListener(SLOT_EVENT_NAME,add);return()=>bus.removeEventListener(SLOT_EVENT_NAME,add);
  },[embedded,canEdit,slotEvents]);
+ useEffect(()=>{if(canEdit)onReady?.();},[canEdit,onReady]);
  const [hasMore,setHasMore]=useState(false),[loadingMore,setLoadingMore]=useState(false);
  async function request(url:string,method="GET",body?:unknown,signal?:AbortSignal){
   const requestSignal=signal??lifetime.current?.signal;
