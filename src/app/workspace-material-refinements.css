@@ -61,7 +61,6 @@ body[data-ui="v12"] .v12-creations-tab.is-active {background:var(--sw-metal-gold
 body[data-ui="v12"] .v12-creations-chip.is-active {background:var(--sw-metal-gold)!important;color:#17140f!important}
 body[data-ui="v12"] :is(.v12-creations-tab,.v12-creations-chip).is-active :is(span,b) {color:#17140f!important}
 /* Heritage type chips share the same contrast rule as mechanical types. */
-body[data-ui="v12"] :is(button,a,[role="tab"]):is([aria-selected="true"],[aria-pressed="true"],[aria-checked="true"],[data-state="active"]):not([data-fab-trigger]):not([data-selection-card]) .sw-entity-type-icon {background:#17140f!important}
 body[data-ui="v12"] button[aria-pressed="true"].bg-primary>.sw-entity-type-icon {background:#17140f!important}
 body[data-ui="v12"] :is(.v12-metal-button--primary,.sw-metal-button--primary)>.sw-entity-type-icon,
 body[data-ui="v12"] :is(.v12-metal-button,.sw-metal-button):is(:hover,:focus-visible)>.sw-entity-type-icon {background:#17140f!important}

@@ -44,6 +44,7 @@ import "./component-refinements.css";
 import "./card-interactions.css";
 import "./fab-metal.css";
 import "./workspace-material-refinements.css";
+import "./platform-contrast.css";
 
 // Retain the previous typefaces behind the data-ui switch so setting
 // NEXT_PUBLIC_SW_UI_VERSION=legacy is a complete visual rollback.

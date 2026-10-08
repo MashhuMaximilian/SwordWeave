@@ -1,0 +1,122 @@
+/* Keep foregrounds paired with their actual material. Gold rows have dark
+   copy, but inset cost badges and entity medallions remain dark with light ink.
+   These selectors deliberately stop at row chrome: full nested previews retain
+   their own surface and foreground tokens. */
+body[data-ui="v12"] {
+  --sw-contrast-ink: #17140f;
+  --sw-contrast-muted: #49351b;
+  --sw-contrast-inset: #132d33;
+  --sw-contrast-inset-ink: #e0f1ed;
+}
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open):focus-visible span.sw-library-cost-badge.sw-library-cost-badge,
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open):focus-visible span.sheet-library-entry-cost.sheet-library-entry-cost {
+  background:var(--sw-contrast-inset)!important;
+  color:var(--sw-contrast-inset-ink)!important;
+  border-color:#516a6d!important;
+}
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open):focus-visible :is(.sw-entity-medallion,.v12-entry-glyph,.sheet-library-entry-icon) {
+  background:linear-gradient(var(--sw-contrast-inset),var(--sw-contrast-inset)) padding-box,var(--v12-silver-edge) border-box!important;
+  color:var(--sw-contrast-inset-ink)!important;
+  border-color:transparent!important;
+}
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open):focus-visible :is(.sw-entity-medallion,.v12-entry-glyph,.sheet-library-entry-icon) :is(svg,span) {
+  color:var(--sw-contrast-inset-ink)!important;
+}
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open):focus-visible :is(.sw-entity-medallion,.v12-entry-glyph,.sheet-library-entry-icon) .sw-entity-type-icon {
+  background:var(--sw-metal-gold)!important;
+}
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open):focus-visible :is(.v12-tag,[aria-label="Engagement"] button,button[aria-label="Save to collections"]) {
+  background:#fff1c2!important;color:var(--sw-contrast-ink)!important;border-color:#765626!important;
+}
+@media (hover:hover) and (pointer:fine) {
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open):hover span.sw-library-cost-badge.sw-library-cost-badge,
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open):hover span.sheet-library-entry-cost.sheet-library-entry-cost {
+  background:var(--sw-contrast-inset)!important;
+  color:var(--sw-contrast-inset-ink)!important;
+  border-color:#516a6d!important;
+}
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open):hover :is(.sw-entity-medallion,.v12-entry-glyph,.sheet-library-entry-icon) {
+  background:linear-gradient(var(--sw-contrast-inset),var(--sw-contrast-inset)) padding-box,var(--v12-silver-edge) border-box!important;
+  color:var(--sw-contrast-inset-ink)!important;
+  border-color:transparent!important;
+}
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open):hover :is(.sw-entity-medallion,.v12-entry-glyph,.sheet-library-entry-icon) :is(svg,span) {
+  color:var(--sw-contrast-inset-ink)!important;
+}
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open):hover :is(.sw-entity-medallion,.v12-entry-glyph,.sheet-library-entry-icon) .sw-entity-type-icon {
+  background:var(--sw-metal-gold)!important;
+}
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open):hover :is(.v12-tag,[aria-label="Engagement"] button,button[aria-label="Save to collections"]) {
+  background:#fff1c2!important;color:var(--sw-contrast-ink)!important;border-color:#765626!important;
+}
+}
+@media (hover:none), (pointer:coarse) {
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open):active span.sw-library-cost-badge.sw-library-cost-badge,
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open):active span.sheet-library-entry-cost.sheet-library-entry-cost {
+  background:var(--sw-contrast-inset)!important;
+  color:var(--sw-contrast-inset-ink)!important;
+  border-color:#516a6d!important;
+}
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open):active :is(.sw-entity-medallion,.v12-entry-glyph,.sheet-library-entry-icon) {
+  background:linear-gradient(var(--sw-contrast-inset),var(--sw-contrast-inset)) padding-box,var(--v12-silver-edge) border-box!important;
+  color:var(--sw-contrast-inset-ink)!important;
+  border-color:transparent!important;
+}
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open):active :is(.sw-entity-medallion,.v12-entry-glyph,.sheet-library-entry-icon) :is(svg,span) {
+  color:var(--sw-contrast-inset-ink)!important;
+}
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open):active :is(.sw-entity-medallion,.v12-entry-glyph,.sheet-library-entry-icon) .sw-entity-type-icon {
+  background:var(--sw-metal-gold)!important;
+}
+html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open):active :is(.v12-tag,[aria-label="Engagement"] button,button[aria-label="Save to collections"]) {
+  background:#fff1c2!important;color:var(--sw-contrast-ink)!important;border-color:#765626!important;
+}
+}
+/* Cost is inset chrome even at rest, including on pale daylight surfaces. */
+html:root body[data-ui="v12"] :is(span.sw-library-cost-badge.sw-library-cost-badge,span.sheet-library-entry-cost.sheet-library-entry-cost) {
+  background:var(--sw-contrast-inset)!important;color:var(--sw-contrast-inset-ink)!important;
+  border-color:#516a6d!important;
+}
+/* Shared navigation and action families use the same readable filled state.
+   aria-expanded alone is not a selection, and a subtle teal selection elsewhere
+   must never inherit a black icon simply because it is pressed. */
+html:root body[data-ui="v12"] :is(.v12-source-tabs button,.v12-source-browser-choices button,.phone-type-choices button,.sheet-library-types button,.sheet-root-nav button,.v12-source-family,.v12-tier-tabs button,.v12-origin-tabs button,.v12-choice-chips button,.v12-author-tabs button,.v12-rule-family-tabs button,.sheet-source-tabs button,.sheet-mobile-nav button,.v12-preview-destination-action,.v12-creations-view-button):is([aria-selected="true"],[aria-pressed="true"],.is-active):not(:disabled) {
+  background:var(--sw-metal-gold)!important;color:var(--sw-contrast-ink)!important;
+  --foreground:var(--sw-contrast-ink);--muted-foreground:var(--sw-contrast-muted);
+  --v12-paper:var(--sw-contrast-ink);--v12-soft:var(--sw-contrast-muted);--v12-faint:var(--sw-contrast-muted);
+  --sw-text-gold:var(--sw-contrast-ink);--sw-text-teal:#24473d;
+}
+html:root body[data-ui="v12"] :is(.v12-source-tabs button,.v12-source-browser-choices button,.phone-type-choices button,.sheet-library-types button,.sheet-root-nav button,.v12-source-family,.v12-tier-tabs button,.v12-origin-tabs button,.v12-choice-chips button,.v12-author-tabs button,.v12-rule-family-tabs button,.sheet-source-tabs button,.sheet-mobile-nav button,.v12-preview-destination-action,.v12-creations-view-button):is([aria-selected="true"],[aria-pressed="true"],.is-active):not(:disabled) :is(span,small,strong,b,svg) {color:inherit!important}
+html:root body[data-ui="v12"] :is(.v12-source-tabs button,.v12-source-browser-choices button,.phone-type-choices button,.sheet-library-types button,.sheet-root-nav button,.v12-source-family,.v12-tier-tabs button,.v12-origin-tabs button,.v12-choice-chips button,.v12-author-tabs button,.v12-rule-family-tabs button,.sheet-source-tabs button,.sheet-mobile-nav button,.v12-preview-destination-action,.v12-creations-view-button):is([aria-selected="true"],[aria-pressed="true"],.is-active):not(:disabled) .sw-entity-type-icon {background:var(--sw-contrast-ink)!important}
+html:root body[data-ui="v12"] :is(.v12-source-tabs button,.v12-source-browser-choices button,.phone-type-choices button,.sheet-library-types button,.sheet-root-nav button,.v12-source-family,.v12-tier-tabs button,.v12-origin-tabs button,.v12-choice-chips button,.v12-author-tabs button,.v12-rule-family-tabs button,.sheet-source-tabs button,.sheet-mobile-nav button,.v12-preview-destination-action,.v12-creations-view-button):is([aria-selected="true"],[aria-pressed="true"],.is-active):not(:disabled) :is(img.sw-entity-icon,.sw-fab__theme-icon) {filter:brightness(0)!important}
+html:root body[data-ui="v12"] :is(.v12-source-tabs button,.v12-source-browser-choices button,.phone-type-choices button,.sheet-library-types button,.sheet-root-nav button,.v12-source-family,.v12-tier-tabs button,.v12-origin-tabs button,.v12-choice-chips button,.v12-author-tabs button,.v12-rule-family-tabs button,.sheet-source-tabs button,.sheet-mobile-nav button,.v12-preview-destination-action,.v12-creations-view-button):not(:disabled):focus-visible {
+  background:var(--sw-metal-gold)!important;color:var(--sw-contrast-ink)!important;
+  --foreground:var(--sw-contrast-ink);--muted-foreground:var(--sw-contrast-muted);
+  --v12-paper:var(--sw-contrast-ink);--v12-soft:var(--sw-contrast-muted);--v12-faint:var(--sw-contrast-muted);
+  --sw-text-gold:var(--sw-contrast-ink);--sw-text-teal:#24473d;
+}
+html:root body[data-ui="v12"] :is(.v12-source-tabs button,.v12-source-browser-choices button,.phone-type-choices button,.sheet-library-types button,.sheet-root-nav button,.v12-source-family,.v12-tier-tabs button,.v12-origin-tabs button,.v12-choice-chips button,.v12-author-tabs button,.v12-rule-family-tabs button,.sheet-source-tabs button,.sheet-mobile-nav button,.v12-preview-destination-action,.v12-creations-view-button):not(:disabled):focus-visible :is(span,small,strong,b,svg) {color:inherit!important}
+html:root body[data-ui="v12"] :is(.v12-source-tabs button,.v12-source-browser-choices button,.phone-type-choices button,.sheet-library-types button,.sheet-root-nav button,.v12-source-family,.v12-tier-tabs button,.v12-origin-tabs button,.v12-choice-chips button,.v12-author-tabs button,.v12-rule-family-tabs button,.sheet-source-tabs button,.sheet-mobile-nav button,.v12-preview-destination-action,.v12-creations-view-button):not(:disabled):focus-visible .sw-entity-type-icon {background:var(--sw-contrast-ink)!important}
+html:root body[data-ui="v12"] :is(.v12-source-tabs button,.v12-source-browser-choices button,.phone-type-choices button,.sheet-library-types button,.sheet-root-nav button,.v12-source-family,.v12-tier-tabs button,.v12-origin-tabs button,.v12-choice-chips button,.v12-author-tabs button,.v12-rule-family-tabs button,.sheet-source-tabs button,.sheet-mobile-nav button,.v12-preview-destination-action,.v12-creations-view-button):not(:disabled):focus-visible :is(img.sw-entity-icon,.sw-fab__theme-icon) {filter:brightness(0)!important}
+@media (hover:hover) and (pointer:fine) {
+html:root body[data-ui="v12"] :is(.v12-source-tabs button,.v12-source-browser-choices button,.phone-type-choices button,.sheet-library-types button,.sheet-root-nav button,.v12-source-family,.v12-tier-tabs button,.v12-origin-tabs button,.v12-choice-chips button,.v12-author-tabs button,.v12-rule-family-tabs button,.sheet-source-tabs button,.sheet-mobile-nav button,.v12-preview-destination-action,.v12-creations-view-button):not(:disabled):hover {
+  background:var(--sw-metal-gold)!important;color:var(--sw-contrast-ink)!important;
+  --foreground:var(--sw-contrast-ink);--muted-foreground:var(--sw-contrast-muted);
+  --v12-paper:var(--sw-contrast-ink);--v12-soft:var(--sw-contrast-muted);--v12-faint:var(--sw-contrast-muted);
+  --sw-text-gold:var(--sw-contrast-ink);--sw-text-teal:#24473d;
+}
+html:root body[data-ui="v12"] :is(.v12-source-tabs button,.v12-source-browser-choices button,.phone-type-choices button,.sheet-library-types button,.sheet-root-nav button,.v12-source-family,.v12-tier-tabs button,.v12-origin-tabs button,.v12-choice-chips button,.v12-author-tabs button,.v12-rule-family-tabs button,.sheet-source-tabs button,.sheet-mobile-nav button,.v12-preview-destination-action,.v12-creations-view-button):not(:disabled):hover :is(span,small,strong,b,svg) {color:inherit!important}
+html:root body[data-ui="v12"] :is(.v12-source-tabs button,.v12-source-browser-choices button,.phone-type-choices button,.sheet-library-types button,.sheet-root-nav button,.v12-source-family,.v12-tier-tabs button,.v12-origin-tabs button,.v12-choice-chips button,.v12-author-tabs button,.v12-rule-family-tabs button,.sheet-source-tabs button,.sheet-mobile-nav button,.v12-preview-destination-action,.v12-creations-view-button):not(:disabled):hover .sw-entity-type-icon {background:var(--sw-contrast-ink)!important}
+html:root body[data-ui="v12"] :is(.v12-source-tabs button,.v12-source-browser-choices button,.phone-type-choices button,.sheet-library-types button,.sheet-root-nav button,.v12-source-family,.v12-tier-tabs button,.v12-origin-tabs button,.v12-choice-chips button,.v12-author-tabs button,.v12-rule-family-tabs button,.sheet-source-tabs button,.sheet-mobile-nav button,.v12-preview-destination-action,.v12-creations-view-button):not(:disabled):hover :is(img.sw-entity-icon,.sw-fab__theme-icon) {filter:brightness(0)!important}
+}
+@media (hover:none), (pointer:coarse) {
+html:root body[data-ui="v12"] :is(.v12-source-tabs button,.v12-source-browser-choices button,.phone-type-choices button,.sheet-library-types button,.sheet-root-nav button,.v12-source-family,.v12-tier-tabs button,.v12-origin-tabs button,.v12-choice-chips button,.v12-author-tabs button,.v12-rule-family-tabs button,.sheet-source-tabs button,.sheet-mobile-nav button,.v12-preview-destination-action,.v12-creations-view-button):not(:disabled):active {
+  background:var(--sw-metal-gold)!important;color:var(--sw-contrast-ink)!important;
+  --foreground:var(--sw-contrast-ink);--muted-foreground:var(--sw-contrast-muted);
+  --v12-paper:var(--sw-contrast-ink);--v12-soft:var(--sw-contrast-muted);--v12-faint:var(--sw-contrast-muted);
+  --sw-text-gold:var(--sw-contrast-ink);--sw-text-teal:#24473d;
+}
+html:root body[data-ui="v12"] :is(.v12-source-tabs button,.v12-source-browser-choices button,.phone-type-choices button,.sheet-library-types button,.sheet-root-nav button,.v12-source-family,.v12-tier-tabs button,.v12-origin-tabs button,.v12-choice-chips button,.v12-author-tabs button,.v12-rule-family-tabs button,.sheet-source-tabs button,.sheet-mobile-nav button,.v12-preview-destination-action,.v12-creations-view-button):not(:disabled):active :is(span,small,strong,b,svg) {color:inherit!important}
+html:root body[data-ui="v12"] :is(.v12-source-tabs button,.v12-source-browser-choices button,.phone-type-choices button,.sheet-library-types button,.sheet-root-nav button,.v12-source-family,.v12-tier-tabs button,.v12-origin-tabs button,.v12-choice-chips button,.v12-author-tabs button,.v12-rule-family-tabs button,.sheet-source-tabs button,.sheet-mobile-nav button,.v12-preview-destination-action,.v12-creations-view-button):not(:disabled):active .sw-entity-type-icon {background:var(--sw-contrast-ink)!important}
+html:root body[data-ui="v12"] :is(.v12-source-tabs button,.v12-source-browser-choices button,.phone-type-choices button,.sheet-library-types button,.sheet-root-nav button,.v12-source-family,.v12-tier-tabs button,.v12-origin-tabs button,.v12-choice-chips button,.v12-author-tabs button,.v12-rule-family-tabs button,.sheet-source-tabs button,.sheet-mobile-nav button,.v12-preview-destination-action,.v12-creations-view-button):not(:disabled):active :is(img.sw-entity-icon,.sw-fab__theme-icon) {filter:brightness(0)!important}
+}

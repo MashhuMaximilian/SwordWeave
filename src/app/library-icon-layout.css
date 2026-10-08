@@ -85,3 +85,19 @@ body[data-ui="v12"] .v12-live-recipe .v12-live-identity:has(.sw-heritage-portrai
 }
 body[data-ui="v12"] .v12-live-emblem:has(> img.sw-entity-image)::after { display: none; }
 body[data-ui="v12"] .sw-heritage-art-input .sw-portrait-input__preview { max-width: 180px; }
+
+/* One physical rim width at every badge size; the child fits the inner frame. */
+body[data-ui="v12"] {--sw-entity-rim-width:3px}
+html:root body[data-ui="v12"] :is(.v12-entry-glyph,.sheet-library-entry-icon,.sw-entity-medallion,.v12-source-medallion,.v12-live-emblem,.v12-preview-medallion) {
+ box-sizing:border-box!important;display:grid!important;place-items:center!important;
+ border:var(--sw-entity-rim-width) solid transparent!important;border-radius:50%!important;
+ background:linear-gradient(#132d33,#132d33) padding-box,var(--v12-silver-edge) border-box!important;
+ box-shadow:inset 0 0 0 1px var(--card),0 2px 6px #0002!important;
+ flex-shrink:0;overflow:hidden;
+}
+html:root body[data-ui="v12"] .v12-preview-medallion > :is(img,svg,div) {
+ display:block!important;width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;
+ max-width:100%!important;max-height:100%!important;margin:0!important;object-fit:contain!important;
+}
+html:root body[data-ui="v12"] .v12-preview-medallion > img.sw-entity-image {object-fit:cover!important}
+html:root body[data-ui="v12"] .v12-live-emblem::after {display:none!important}

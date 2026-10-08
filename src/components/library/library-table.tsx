@@ -304,7 +304,7 @@ function ListItem({
           </div>
         )}
         {item.buCost !== null && (
-          <span className={cn("rounded-full px-1.5 py-0 text-center font-mono text-xs font-semibold", isAtelier ? "border border-border bg-black/25 text-[#72d5cf]" : "bg-primary/10 text-primary")}>
+          <span className={cn("sw-library-cost-badge rounded-full px-1.5 py-0 text-center font-mono text-xs font-semibold", isAtelier ? "border border-border bg-black/25 text-[#72d5cf]" : "bg-primary/10 text-primary")}>
             {item.buCost} BU
           </span>
         )}
