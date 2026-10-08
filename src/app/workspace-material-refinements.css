@@ -13,7 +13,7 @@ html:not(.dark) body[data-ui="v12"] {
   --sw-icon-silver:linear-gradient(125deg,#526c72,#a9bdbe 23%,#fff 36%,#637f86 48%,#c5d4d4 68%,#526c72);
 }
 body[data-ui="v12"] .sw-entity-type-icon {display:inline-block;flex:none;vertical-align:middle;background:var(--sw-icon-silver);mask-size:contain;mask-position:center;mask-repeat:no-repeat;-webkit-mask-size:contain;-webkit-mask-position:center;-webkit-mask-repeat:no-repeat}
-body[data-ui="v12"] :is(button,a):is(:hover,:focus-visible,[aria-pressed="true"])>.sw-entity-type-icon {background:var(--sw-metal-gold)}
+
 body[data-ui="v12"] :is(.v12-modal-surface,.v12-entity-preview,.v12-fetched-preview,.v12-preview-actions) {background:var(--sw-preview-glass)!important}
 body[data-ui="v12"] .v12-modal-surface {box-shadow:inset 0 1px #c3e9dd24,0 24px 80px #05141a66!important}
 body[data-ui="v12"] .v12-modal-backdrop {background:linear-gradient(125deg,#071a20bb,#0a2224cc)!important;backdrop-filter:blur(8px)}
@@ -54,8 +54,8 @@ html:not(.dark) body[data-ui="v12"] :is(.v12-modal-surface,.v12-instrument-dialo
 /* Entity navigation uses reflected gold, with readable silhouettes on gold tabs. */
 body[data-ui="v12"] .sw-entity-type-icon {background:var(--sw-metal-gold)}
 body[data-ui="v12"] :is(.v12-library-submodes a,.v12-creations-chip,.v12-creations-tab) {display:inline-flex;align-items:center;gap:8px}
-body[data-ui="v12"] :is(.v12-source-tabs,.v12-source-browser-choices,.phone-type-choices,.sheet-library-types,.sheet-root-nav) button:is([aria-pressed="true"],:hover,:focus-visible)>.sw-entity-type-icon,
-body[data-ui="v12"] :is(.v12-creations-tab,.v12-creations-chip):is(.is-active,:hover,:focus-visible)>.sw-entity-type-icon,
+body[data-ui="v12"] :is(.v12-source-tabs,.v12-source-browser-choices,.phone-type-choices,.sheet-library-types,.sheet-root-nav) button[aria-pressed="true"]>.sw-entity-type-icon,
+body[data-ui="v12"] :is(.v12-creations-tab,.v12-creations-chip).is-active>.sw-entity-type-icon,
 body[data-ui="v12"] .v12-new-entity-choices button:is(:hover,:focus-visible)>.sw-entity-type-icon {background:#17140f!important}
 body[data-ui="v12"] .v12-creations-tab.is-active {background:var(--sw-metal-gold)!important;color:#17140f!important}
 body[data-ui="v12"] .v12-creations-chip.is-active {background:var(--sw-metal-gold)!important;color:#17140f!important}
@@ -66,3 +66,23 @@ body[data-ui="v12"] button[aria-pressed="true"].bg-primary>.sw-entity-type-icon 
 body[data-ui="v12"] :is(.v12-metal-button--primary,.sw-metal-button--primary)>.sw-entity-type-icon,
 body[data-ui="v12"] :is(.v12-metal-button,.sw-metal-button):is(:hover,:focus-visible)>.sw-entity-type-icon {background:#17140f!important}
 body[data-ui="v12"] :is(.v12-source-tabs,.v12-source-browser-choices,.phone-type-choices,.sheet-library-types,.sheet-root-nav,.v12-creations-tabs,.v12-creations-subtabs) :is([aria-pressed="true"],[aria-selected="true"],.is-active) :is(svg,img[src*="/api/icons/game/"]) {filter:brightness(0)!important}
+
+/* A control's fill and foreground change together, in both themes. */
+body[data-ui="v12"] :is(.v12-metal-button,.sw-metal-button,.v12-creations-tab,.v12-creations-chip,[role="tab"],.v12-source-tabs button,.v12-source-browser-choices button,.phone-type-choices button,.sheet-library-types button,.sheet-root-nav button) {transition-property:box-shadow,border-color,transform!important}
+body[data-ui="v12"] {--sw-navigation-icon:var(--sw-metal-gold)}
+html:not(.dark) body[data-ui="v12"] {--sw-navigation-icon:linear-gradient(125deg,#6b4511,#977024 24%,#c49a47 36%,#76501a 48%,#a47a2e 68%,#65400f)}
+body[data-ui="v12"] .sw-entity-type-icon {background:var(--sw-navigation-icon)}
+body[data-ui="v12"] :is(.v12-metal-button,.sw-metal-button,.v12-creations-tab,.v12-creations-chip,[role="tab"],.v12-source-tabs button,.v12-source-browser-choices button,.phone-type-choices button,.sheet-library-types button,.sheet-root-nav button):not(:disabled):focus-visible {
+ background:var(--sw-metal-gold)!important;color:#17140f!important;
+ --foreground:#17140f;--muted-foreground:#49351b;--v12-soft:#17140f;--v12-muted:#49351b;
+}
+body[data-ui="v12"] :is(.v12-metal-button,.sw-metal-button,.v12-creations-tab,.v12-creations-chip,[role="tab"],.v12-source-tabs button,.v12-source-browser-choices button,.phone-type-choices button,.sheet-library-types button,.sheet-root-nav button):not(:disabled):focus-visible :is(span,b,svg) {color:inherit!important}
+body[data-ui="v12"] :is(.v12-metal-button,.sw-metal-button,.v12-creations-tab,.v12-creations-chip,[role="tab"],.v12-source-tabs button,.v12-source-browser-choices button,.phone-type-choices button,.sheet-library-types button,.sheet-root-nav button):not(:disabled):focus-visible .sw-entity-type-icon {background:#17140f!important}
+@media(hover:hover) and (pointer:fine) {
+ body[data-ui="v12"] :is(.v12-metal-button,.sw-metal-button,.v12-creations-tab,.v12-creations-chip,[role="tab"],.v12-source-tabs button,.v12-source-browser-choices button,.phone-type-choices button,.sheet-library-types button,.sheet-root-nav button):not(:disabled):hover {
+  background:var(--sw-metal-gold)!important;color:#17140f!important;
+  --foreground:#17140f;--muted-foreground:#49351b;--v12-soft:#17140f;--v12-muted:#49351b;
+ }
+ body[data-ui="v12"] :is(.v12-metal-button,.sw-metal-button,.v12-creations-tab,.v12-creations-chip,[role="tab"],.v12-source-tabs button,.v12-source-browser-choices button,.phone-type-choices button,.sheet-library-types button,.sheet-root-nav button):not(:disabled):hover :is(span,b,svg) {color:inherit!important}
+ body[data-ui="v12"] :is(.v12-metal-button,.sw-metal-button,.v12-creations-tab,.v12-creations-chip,[role="tab"],.v12-source-tabs button,.v12-source-browser-choices button,.phone-type-choices button,.sheet-library-types button,.sheet-root-nav button):not(:disabled):hover .sw-entity-type-icon {background:#17140f!important}
+}

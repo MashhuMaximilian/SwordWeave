@@ -228,5 +228,19 @@ body[data-ui="v12"] .sw-fab .sw-fab__support .sw-fab-glyph {background-clip:bord
 body[data-ui="v12"] .sw-fab .sw-fab__support:is(:hover,:focus-visible) .sw-fab-glyph {background:var(--fab-silver)!important;background-clip:border-box!important;-webkit-background-clip:border-box!important}
 body[data-ui="v12"] .sw-fab .sw-fab__utility-grid [data-fab-action="account"]:is(:hover,:focus-visible) {background:transparent!important;border-color:transparent!important;box-shadow:none!important}
 body[data-ui="v12"] .sw-fab .sw-fab__utility-grid [data-fab-action="account"]:is(:hover,:focus-visible) .sw-fab__account-rim {background:var(--sw-metal-gold)!important}
-body[data-ui="v12"] .sw-fab .sw-fab__utility-strip [data-fab-link="rules"]:is(:hover,:focus-visible) svg {stroke:url(#sw-fab-silver)!important}
+body[data-ui="v12"] .sw-fab .sw-fab__utility-strip [data-fab-link="rules"]:is(:hover,:focus-visible) svg {stroke:url(#sw-fab-gold)!important}
 body[data-ui="v12"] .sw-fab .sw-fab__utility-grid :is([data-fab-action="dark"],[data-fab-action="fullscreen"]):is(:hover,:focus-visible) svg {stroke:url(#sw-fab-gold)!important}
+
+/* Gradient definitions stay mounted with the trigger, including closed state. */
+body[data-ui="v12"] .sw-fab :is(a,button) {transition-property:box-shadow,border-color!important}
+body[data-ui="v12"] .sw-fab [data-fab-trigger] svg {stroke:url(#sw-fab-gold)!important;filter:none!important}
+body[data-ui="v12"] .sw-fab [data-fab-trigger]:focus-visible {background:var(--fab-gold)!important;color:#17140f!important}
+@media(hover:hover) and (pointer:fine) {
+ body[data-ui="v12"] .sw-fab [data-fab-trigger]:hover {background:var(--fab-gold)!important;color:#17140f!important}
+}
+
+body[data-ui="v12"] .sw-fab [data-fab-trigger]:focus-visible svg {stroke:#17140f!important}
+@media(hover:hover) and (pointer:fine) {body[data-ui="v12"] .sw-fab [data-fab-trigger]:hover svg {stroke:#17140f!important}}
+
+/* Reflected bronze stays legible on the light menu's pale glass. */
+html:not(.dark) body[data-ui="v12"] .sw-fab {--sw-metal-gold:var(--sw-navigation-icon)}

@@ -247,7 +247,7 @@ export default async function CreationsPage({
         <div className="v12-creations-actions v12-archive-actions">
           <Link
             href="/atelier?build=primitive"
-            className="v12-metal-button v12-metal-button--primary"
+            className="v12-metal-button"
           >
             <EntityTypeIcon type="GROUP_MECHANICS"/> New Mechanics
           </Link>
