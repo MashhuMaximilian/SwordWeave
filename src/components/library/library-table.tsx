@@ -164,7 +164,7 @@ export function LibraryTable({
 
   if (view === "LIST" || surface === "atelier") {
     return (
-      <div className="space-y-2">
+      <div className={surface === "atelier" ? "sw-source-record-list" : "space-y-2"}>
         {shownItems.map((item) => (
           <div key={item.id} className={renderActions ? "v12-library-action-row" : "v12-library-result-row"} style={{ contentVisibility: surface === "atelier" ? "visible" : "auto", containIntrinsicSize: view === "LIST" ? "auto 110px" : "auto 180px" }}>
           <ListItem
