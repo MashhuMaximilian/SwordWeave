@@ -244,3 +244,6 @@ body[data-ui="v12"] .sw-fab [data-fab-trigger]:focus-visible svg {stroke:#17140f
 
 /* Reflected bronze stays legible on the light menu's pale glass. */
 html:not(.dark) body[data-ui="v12"] .sw-fab {--sw-metal-gold:var(--sw-navigation-icon)}
+html:not(.dark) body[data-ui="v12"] .sw-fab .sw-fab__workspace-grid [data-fab-action] {background:linear-gradient(125deg,#f0e3c2,#dae5de 65%) padding-box,var(--fab-edge) border-box!important;color:#302a15!important}
+html:not(.dark) body[data-ui="v12"] .sw-fab .sw-fab__workspace-grid [data-fab-action]:focus-visible {background:var(--fab-gold)!important;color:#17140f!important}
+@media(hover:hover) and (pointer:fine) {html:not(.dark) body[data-ui="v12"] .sw-fab .sw-fab__workspace-grid [data-fab-action]:hover {background:var(--fab-gold)!important;color:#17140f!important}}
