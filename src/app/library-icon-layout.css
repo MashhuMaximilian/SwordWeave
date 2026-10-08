@@ -87,12 +87,12 @@ body[data-ui="v12"] .v12-live-emblem:has(> img.sw-entity-image)::after { display
 body[data-ui="v12"] .sw-heritage-art-input .sw-portrait-input__preview { max-width: 180px; }
 
 /* One physical rim width at every badge size; the child fits the inner frame. */
-body[data-ui="v12"] {--sw-entity-rim-width:3px}
+body[data-ui="v12"] {--sw-entity-rim-width:4px}
 html:root body[data-ui="v12"] :is(.v12-entry-glyph,.sheet-library-entry-icon,.sw-entity-medallion,.v12-source-medallion,.v12-live-emblem,.v12-preview-medallion) {
  box-sizing:border-box!important;display:grid!important;place-items:center!important;
  border:var(--sw-entity-rim-width) solid transparent!important;border-radius:50%!important;
- background:linear-gradient(#132d33,#132d33) padding-box,var(--v12-silver-edge) border-box!important;
- box-shadow:inset 0 0 0 1px var(--card),0 2px 6px #0002!important;
+ background:linear-gradient(#132d33,#132d33) padding-box,var(--v12-gold-edge) border-box!important;
+ box-shadow:0 2px 6px #0002!important;
  flex-shrink:0;overflow:hidden;
 }
 html:root body[data-ui="v12"] .v12-preview-medallion > :is(img,svg,div) {

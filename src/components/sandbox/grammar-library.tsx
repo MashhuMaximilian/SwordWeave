@@ -240,7 +240,7 @@ export function GrammarLibrary({
   onFork,
 }: GrammarLibraryProps) {
   const phone = useIsMobile(true);
-  const [familiesCollapsed, setFamiliesCollapsed] = useState(false);
+  const [familiesCollapsed, setFamiliesCollapsed] = useState(true);
   const [entriesCollapsed, setEntriesCollapsed] = useState(false);
   // Default type filter per build mode. For the collapsed Mechanics tab
   // we default to "ALL" so primitives + effects + capabilities show

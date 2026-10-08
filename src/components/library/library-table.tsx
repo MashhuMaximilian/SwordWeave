@@ -23,6 +23,7 @@ import { libraryHeritageArt } from "@/lib/heritage/lineage-art";
 // =============================================================================
 
 import Link from "next/link";
+import { libraryOrigin, libraryTier } from "@/lib/publishing/library-classification";
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, ExternalLink, SearchX, User as UserIcon } from "lucide-react";
 import { Markdown } from "@/components/ui/markdown";
@@ -30,6 +31,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { BookmarkButton } from "@/components/collections/bookmark-button";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
 import { IconDisplay } from "@/components/icons/icon-display";
+import { ENTITY_TYPE_ICONS } from "@/components/icons/entity-type-icon";
 import { cn } from "@/lib/utils";
 import {
   authorDisplayName,
@@ -160,7 +162,7 @@ export function LibraryTable({
 
   if (surface === "catalogue") return <><section className={`v12-catalogue-collection v12-creation-grid ${view === "LIST" ? "is-list" : "is-mosaic"}`}>{shownItems.map(item => <LibraryCatalogueCard key={item.id} item={item} engagement={engagement} currentUserInternalId={currentUserInternalId} selected={selectedKey === item.id} onSelect={item => onSelect?.(item)}/>)}</section>{loadingTail}{pagination}</>;
 
-  if (view === "LIST") {
+  if (view === "LIST" || surface === "atelier") {
     return (
       <div className="space-y-2">
         {shownItems.map((item) => (
@@ -211,7 +213,7 @@ export function LibraryTable({
           }}
         >
           {shownItems.map((item) => (
-            <div key={item.id} className={renderActions ? "v12-library-action-row" : "v12-library-result-row"} style={{ contentVisibility: surface === "atelier" ? "visible" : "auto", containIntrinsicSize: "auto 180px" }}>
+            <div key={item.id} className={renderActions ? "v12-library-action-row" : "v12-library-result-row"} style={{ contentVisibility: "auto", containIntrinsicSize: "auto 180px" }}>
             <GridCard
               item={item}
               engagement={engagement}
@@ -255,11 +257,34 @@ function ListItem({
   compact,
 }: ListItemProps) {
   const isAtelier = surface === "atelier";
-  const inner = compact ? (
+  const tier = libraryTier(item);
+  const rule = item.definitionKind === "TEMPLATE" ? item.description || item.mechanicalDescription : item.mechanicalDescription || item.description;
+  const origin = libraryOrigin({ ...item, sourceOrigin: item.sourceOrigin ?? null });
+  const inner = isAtelier ? (
+    <>
+      <span className="sw-entity-medallion sw-source-record-icon" aria-hidden="true">
+        <IconDisplay portraitUrl={libraryHeritageArt(item)} iconSource={item.iconSource || "GAME_ICONS"} iconKey={item.iconKey || ENTITY_TYPE_ICONS[item.targetType] || "lorc/cubes"} iconUrl={item.iconUrl} iconColor={item.iconColor} size={28} alt="" />
+      </span>
+      <div className="sw-source-record-copy">
+        <h3>{item.name}</h3>
+        <div className="sw-source-record-rule"><Markdown copyRole={rule === item.mechanicalDescription ? "mechanical" : "narrative"}>{rule || "Open the preview to inspect this entry’s rules."}</Markdown></div>
+        <div className="sw-source-record-meta">
+          {tier !== null && <span>Tier {tier}</span>}
+          <span>{origin === "system" ? "Canonical" : "Community"}</span>
+          <span aria-label={`${item.likesCount} likes`}>♥ {item.likesCount}</span>
+          <span aria-label={`${item.forkCount} forks`}>⑂ {item.forkCount}</span>
+        </div>
+      </div>
+      <div className="sw-source-record-end">
+        {item.buCost !== null && <span className="sw-library-cost-badge">{item.buCost} BU</span>}
+        <div className="sw-source-record-actions"><BookmarkButton targetType={item.targetType} targetId={item.targetId} /><ArrowRight aria-hidden="true" /></div>
+      </div>
+    </>
+  ) : compact ? (
     <>
       <BookmarkButton targetType={item.targetType} targetId={item.targetId} />
       <span className="sheet-library-entry-icon" aria-hidden="true">
-        <IconDisplay portraitUrl={libraryHeritageArt(item)} iconSource={item.iconSource || "GAME_ICONS"} iconKey={item.iconKey || "lorc/cubes"} iconUrl={item.iconUrl} iconColor={item.iconColor} size={24} alt="" />
+        <IconDisplay portraitUrl={libraryHeritageArt(item)} iconSource={item.iconSource || "GAME_ICONS"} iconKey={item.iconKey || ENTITY_TYPE_ICONS[item.targetType] || "lorc/cubes"} iconUrl={item.iconUrl} iconColor={item.iconColor} size={24} alt="" />
       </span>
       <div className="sheet-library-entry-copy">
         <div className="sheet-library-entry-heading">
@@ -280,7 +305,7 @@ function ListItem({
           between rows. */}
       <div className={cn("flex shrink-0 flex-col items-center gap-1", isAtelier ? "w-11" : "w-12")}>
         {item.iconSource || libraryHeritageArt(item) ? (
-          <span className={cn(isAtelier && "sw-entity-medallion grid size-10 place-items-center rounded-full border border-[#a97830] bg-black/30 shadow-[inset_0_0_0_3px_rgba(8,13,20,0.9)]")}>
+          <span className={cn("sw-entity-medallion size-11", isAtelier && "sw-entity-medallion grid size-10 place-items-center rounded-full border border-[#a97830] bg-black/30 shadow-[inset_0_0_0_3px_rgba(8,13,20,0.9)]")}>
             <IconDisplay
               portraitUrl={libraryHeritageArt(item)}
               iconSource={item.iconSource}
@@ -341,7 +366,7 @@ function ListItem({
 
   const baseClass = cn(
     "flex items-start gap-2 border transition-colors md:gap-3",
-    compact && isAtelier && "phone-library-record",
+    isAtelier && "sw-source-record",
     isAtelier
       ? "rounded-lg border-transparent border-b-border/80 bg-transparent px-2 py-2.5 hover:border-[#8f672e] hover:bg-black/15"
       : "rounded-md bg-card p-2 md:p-3",
@@ -373,6 +398,7 @@ function ListItem({
         data-preview-trigger="true"
         data-library-kind={item.targetType}
         data-library-surface={surface}
+        aria-current={selected ? "true" : undefined}
         className={cn(baseClass, "w-full cursor-pointer text-left")}
       >
         {inner}
@@ -431,7 +457,7 @@ function GridCard({
       <header className="flex items-start gap-2">
         <div className="flex w-10 shrink-0 flex-col items-center gap-1">
           {item.iconSource || libraryHeritageArt(item) ? (
-            <span className={cn(isAtelier && "sw-entity-medallion grid size-9 place-items-center rounded-full border border-[#a97830] bg-black/30 shadow-[inset_0_0_0_3px_rgba(8,13,20,0.9)]")}>
+            <span className={cn("sw-entity-medallion size-11", isAtelier && "sw-entity-medallion grid size-9 place-items-center rounded-full border border-[#a97830] bg-black/30 shadow-[inset_0_0_0_3px_rgba(8,13,20,0.9)]")}>
               <IconDisplay
               portraitUrl={libraryHeritageArt(item)}
                 iconSource={item.iconSource}
@@ -578,6 +604,7 @@ function GridCard({
         data-preview-trigger="true"
         data-library-kind={item.targetType}
         data-library-surface={surface}
+        aria-current={selected ? "true" : undefined}
         className={cn(
           "flex h-full min-h-[7rem] flex-col border p-2 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary md:p-2.5",
           isAtelier ? "rounded-lg bg-transparent" : "rounded-md bg-card",
