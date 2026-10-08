@@ -29,7 +29,7 @@ body[data-ui="v12"] .v12-new-entity-choices button span.text-foreground {font-si
 body[data-ui="v12"] .v12-new-entity-choices button span.text-muted-foreground {font-size:12px!important;line-height:1.4!important}
 body[data-ui="v12"] .v12-new-entity-choices button:is(:hover,:focus-visible) {background:var(--sw-metal-gold) padding-box,var(--sw-workspace-edge) border-box!important}
 body[data-ui="v12"] .v12-new-entity-choices button:is(:hover,:focus-visible) span {color:#302611!important}
-body[data-ui="v12"] .v12-new-entity-choices button:is(:hover,:focus-visible) .sw-entity-type-icon {background:var(--sw-icon-silver)!important}
+body[data-ui="v12"] .v12-new-entity-choices button:is(:hover,:focus-visible) .sw-entity-type-icon {background:#17140f!important}
 /* A container follows the actual panel width rather than the browser width. */
 body[data-ui="v12"] .v12-preview-actions {container:preview-actions / inline-size;padding:12px 8px!important}
 body[data-ui="v12"] .v12-preview-actions .v12-preview-destination-grid {display:grid!important;grid-template-columns:1fr!important;gap:8px!important}
@@ -51,3 +51,18 @@ body[data-ui="v12"] :is(.v12-entity-preview,.v12-instrument-dialog,.v12-studio-b
 }
 body[data-ui="v12"] :is(.v12-modal-surface,.v12-instrument-dialog) {--background:#102229;--card:#183239;--popover:#1b373d;--v12-inset:#102229}
 html:not(.dark) body[data-ui="v12"] :is(.v12-modal-surface,.v12-instrument-dialog) {--background:#e4eee5;--card:#f0f4e9;--popover:#f5f7ed;--v12-inset:#dce9e0}
+/* Entity navigation uses reflected gold, with readable silhouettes on gold tabs. */
+body[data-ui="v12"] .sw-entity-type-icon {background:var(--sw-metal-gold)}
+body[data-ui="v12"] :is(.v12-library-submodes a,.v12-creations-chip,.v12-creations-tab) {display:inline-flex;align-items:center;gap:8px}
+body[data-ui="v12"] :is(.v12-source-tabs,.v12-source-browser-choices,.phone-type-choices,.sheet-library-types,.sheet-root-nav) button:is([aria-pressed="true"],:hover,:focus-visible)>.sw-entity-type-icon,
+body[data-ui="v12"] :is(.v12-creations-tab,.v12-creations-chip):is(.is-active,:hover,:focus-visible)>.sw-entity-type-icon,
+body[data-ui="v12"] .v12-new-entity-choices button:is(:hover,:focus-visible)>.sw-entity-type-icon {background:#17140f!important}
+body[data-ui="v12"] .v12-creations-tab.is-active {background:var(--sw-metal-gold)!important;color:#17140f!important}
+body[data-ui="v12"] .v12-creations-chip.is-active {background:var(--sw-metal-gold)!important;color:#17140f!important}
+body[data-ui="v12"] :is(.v12-creations-tab,.v12-creations-chip).is-active :is(span,b) {color:#17140f!important}
+/* Heritage type chips share the same contrast rule as mechanical types. */
+body[data-ui="v12"] :is(button,a,[role="tab"]):is([aria-selected="true"],[aria-pressed="true"],[aria-checked="true"],[data-state="active"]):not([data-fab-trigger]):not([data-selection-card]) .sw-entity-type-icon {background:#17140f!important}
+body[data-ui="v12"] button[aria-pressed="true"].bg-primary>.sw-entity-type-icon {background:#17140f!important}
+body[data-ui="v12"] :is(.v12-metal-button--primary,.sw-metal-button--primary)>.sw-entity-type-icon,
+body[data-ui="v12"] :is(.v12-metal-button,.sw-metal-button):is(:hover,:focus-visible)>.sw-entity-type-icon {background:#17140f!important}
+body[data-ui="v12"] :is(.v12-source-tabs,.v12-source-browser-choices,.phone-type-choices,.sheet-library-types,.sheet-root-nav,.v12-creations-tabs,.v12-creations-subtabs) :is([aria-pressed="true"],[aria-selected="true"],.is-active) :is(svg,img[src*="/api/icons/game/"]) {filter:brightness(0)!important}

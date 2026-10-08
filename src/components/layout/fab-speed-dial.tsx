@@ -17,7 +17,7 @@ import {
   ChevronRight,
   ArrowUpRight,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode, type MouseEvent } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { fabCreationMode } from "@/lib/fab-visibility";
@@ -158,13 +158,18 @@ export function FabSpeedDial({
     window.dispatchEvent(event);
     if (!event.defaultPrevented) { window.location.assign(href); setOpen(false); }
   }
+  function followLink(event: MouseEvent<HTMLAnchorElement>, href: string) {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    navigate(href);
+  }
   function destination(key: string, description?: string, feature = false) {
     const item = items.find(item => item.key === key);
     if (!item || item.kind === "divider" || item.kind === "userMenu") return null;
     const label = key === "builds" ? "Characters" : item.label;
     const content = <><span className="sw-fab__destination-icon">{referenceIcon(key) ?? item.icon}</span><span className="sw-fab__copy"><strong>{label}</strong>{description && <small>{description}</small>}</span>{!feature && <ChevronRight className="sw-fab__chevron" size={17}/>}</>;
     const className = cn("sw-fab__destination", feature && "sw-fab__feature", key === "atelier" && "sw-fab__atelier");
-    return item.kind === "link" ? <Link key={key} data-fab-link={key} aria-label={label} className={className} href={item.href} onClick={event => { event.preventDefault(); navigate(item.href); }}>{content}</Link>
+    return item.kind === "link" ? <Link key={key} data-fab-link={key} aria-label={label} className={className} href={item.href} onClick={event => followLink(event, item.href)}>{content}</Link>
       : <button key={key} type="button" data-fab-action={key} className={className} disabled={item.disabled} onClick={() => { item.onClick(); setOpen(false); }}>{content}</button>;
   }
 
@@ -172,7 +177,7 @@ export function FabSpeedDial({
   return <div ref={containerRef} className="sw-fab fixed right-3 z-40 flex flex-col items-end gap-3 sm:right-4" data-fab-root style={{ bottom: `calc(${bottomOffset}px + env(safe-area-inset-bottom, 0px))` }}>
     {open && <div className="sw-fab__menu" data-fab-menu id="sw-quick-access" role="region" aria-label="Quick access" style={{ maxHeight: `calc(var(--sw-visible-height, 100dvh) - ${bottomOffset + 82}px - env(safe-area-inset-bottom, 0px))` }}>
       <svg className="sw-fab__metal-defs" aria-hidden="true"><defs><linearGradient id="sw-fab-gold" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="32" y2="32"><stop stopColor="var(--fab-gold-low, #b68b3f)"/><stop offset=".19" stopColor="var(--fab-gold-mid, #e8c47a)"/><stop offset=".36" stopColor="#fffbe1"/><stop offset=".46" stopColor="var(--fab-gold-low, #a87929)"/><stop offset=".65" stopColor="var(--fab-gold-mid, #e7c780)"/><stop offset=".84" stopColor="var(--fab-gold-low, #ad813c)"/><stop offset="1" stopColor="var(--fab-gold-mid, #f2d994)"/></linearGradient><linearGradient id="sw-fab-silver" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="24" y2="24"><stop stopColor="var(--fab-silver-low, #6e8589)"/><stop offset=".22" stopColor="var(--fab-silver-mid, #d8e3e3)"/><stop offset=".3" stopColor="#fff"/><stop offset=".38" stopColor="var(--fab-silver-low, #82999e)"/><stop offset=".6" stopColor="var(--fab-silver-mid, #edf5f4)"/><stop offset=".65" stopColor="#fff"/><stop offset=".72" stopColor="var(--fab-silver-low, #7e969b)"/><stop offset="1" stopColor="var(--fab-silver-mid, #d8e3e3)"/></linearGradient></defs></svg>
-      <header className="sw-fab__heading"><Link href="/" className="sw-fab__brand" aria-label="SwordWeave home" onClick={event => {event.preventDefault();navigate("/");}}><span className="sw-public-nav__brandmark" aria-hidden="true"/><span className="sw-public-nav__wordmark"><span>Sword</span><span>·</span><span>Weave</span></span></Link><span>Quick access</span></header>
+      <header className="sw-fab__heading"><Link href="/" className="sw-fab__brand" aria-label="SwordWeave home" onClick={event => followLink(event, "/")}><span className="sw-public-nav__brandmark" aria-hidden="true"/><span className="sw-public-nav__wordmark"><span>Sword</span><span>·</span><span>Weave</span></span></Link><span>Quick access</span></header>
       <div className="sw-fab__navigation">
         <section className="sw-fab__section"><h3>Browse & make</h3><div className="sw-fab__pair">{destination("library", "Public entries", true)}{destination("atelier", "Build & edit", true)}</div></section>
         <section className="sw-fab__section"><h3>Play sheets</h3><div className="sw-fab__pair">{destination("builds")}{destination("monsters")}</div></section>
@@ -180,9 +185,9 @@ export function FabSpeedDial({
       </div>
       {workspaces.length > 0 && <div className="sw-fab__workspace-grid">
         {workspaces.map(item => <FabGridAction key={item.key} action={item} badgeCount={badgeCounts[item.key] ?? 0} onInvoke={() => setOpen(false)}/>)}
-        {creationMode === "menu" && <div className="sw-fab__create-wrap"><button type="button" className="sw-fab__create-plus" data-fab-action="create" aria-label="Create a character or monster" aria-expanded={createOpen} aria-controls="sw-fab-create-menu" onClick={() => setCreateOpen(value => !value)}><Plus size={20}/></button>{createOpen && <div id="sw-fab-create-menu" className="sw-fab__create-menu" role="group" aria-label="Create"><button type="button" onClick={() => navigate("/characters/new")}><FabIcon iconKey="lorc/cultist" alt=""/><span>Create character</span></button><button type="button" onClick={() => navigate("/monsters/new")}><FabIcon iconKey="delapouite/spiked-dragon-head" alt=""/><span>Create monster</span></button></div>}</div>}
+        {creationMode === "menu" && <div className="sw-fab__create-wrap"><button type="button" className="sw-fab__create-plus" data-fab-action="create" aria-label="Create a character or monster" aria-expanded={createOpen} aria-controls="sw-fab-create-menu" onClick={() => setCreateOpen(value => !value)}><Plus size={20}/></button>{createOpen && <div id="sw-fab-create-menu" className="sw-fab__create-menu" role="group" aria-label="Create"><Link href="/characters/new" onClick={event => followLink(event, "/characters/new")}><FabIcon iconKey="lorc/cultist" alt=""/><span>Create character</span></Link><Link href="/monsters/new" onClick={event => followLink(event, "/monsters/new")}><FabIcon iconKey="delapouite/spiked-dragon-head" alt=""/><span>Create monster</span></Link></div>}</div>}
       </div>}
-      {creationMode === "buttons" && <div className="sw-fab__pair sw-fab__creators"><button type="button" data-fab-action="create-character" onClick={() => navigate("/characters/new")}><FabIcon iconKey="lorc/cultist" alt=""/><span>Create character</span></button><button type="button" data-fab-action="create-monster" onClick={() => navigate("/monsters/new")}><FabIcon iconKey="delapouite/spiked-dragon-head" alt=""/><span>Create monster</span></button></div>}
+      {creationMode === "buttons" && <div className="sw-fab__pair sw-fab__creators"><Link href="/characters/new" data-fab-action="create-character" onClick={event => followLink(event, "/characters/new")}><FabIcon iconKey="lorc/cultist" alt=""/><span>Create character</span></Link><Link href="/monsters/new" data-fab-action="create-monster" onClick={event => followLink(event, "/monsters/new")}><FabIcon iconKey="delapouite/spiked-dragon-head" alt=""/><span>Create monster</span></Link></div>}
       <footer className="sw-fab__utilities">
         <div className="sw-fab__utility-strip">
           {destination("home")}{destination("rules")}

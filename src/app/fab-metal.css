@@ -153,8 +153,8 @@ body[data-ui="v12"] .sw-fab .sw-fab__workspace-grid:has(.sw-fab__create-wrap) {g
 .sw-fab__create-wrap {position:relative}
 body[data-ui="v12"] .sw-fab .sw-fab__workspace-grid .sw-fab__create-plus {width:44px;padding:8px!important}
 .sw-fab__create-menu {position:absolute;bottom:calc(100% + 8px);right:0;z-index:2;width:178px;padding:6px;border:1px solid var(--fab-line);border-radius:10px;background:var(--fab-panel);box-shadow:0 6px 20px #0008}
-body[data-ui="v12"] .sw-fab .sw-fab__create-menu button {display:block;width:100%;min-height:44px;padding:8px;border-radius:6px;text-align:left;color:var(--fab-ink);font:600 12px Arial,sans-serif;background:transparent}
-body[data-ui="v12"] .sw-fab .sw-fab__create-menu button:is(:hover,:focus-visible) {background:var(--fab-gold);color:#302611}
+body[data-ui="v12"] .sw-fab .sw-fab__create-menu :is(button,a) {display:block;width:100%;min-height:44px;padding:8px;border-radius:6px;text-align:left;color:var(--fab-ink);font:600 12px Arial,sans-serif;background:transparent}
+body[data-ui="v12"] .sw-fab .sw-fab__create-menu :is(button,a):is(:hover,:focus-visible) {background:var(--fab-gold);color:#302611}
 body[data-ui="v12"] .sw-fab .sw-fab__creators [data-fab-action] {font-size:12px!important;min-height:44px!important;gap:6px!important}
 body[data-ui="v12"] .sw-fab .sw-fab__utility-grid [data-fab-action] svg {stroke:url(#sw-fab-silver)}
 html:not(.dark) body[data-ui="v12"] .sw-fab .sw-fab__utility-grid [data-fab-action="dark"] svg,
@@ -204,7 +204,7 @@ body[data-ui="v12"] .sw-fab .sw-fab-glyph {background:var(--sw-metal-gold)!impor
 body[data-ui="v12"] .sw-fab :is(.sw-fab__atelier,.sw-fab__workspace-grid,.sw-fab__creators) .sw-fab-glyph,
 body[data-ui="v12"] .sw-fab .sw-fab__theme-icon-metal {background:var(--fab-silver)!important}
 body[data-ui="v12"] .sw-fab :is(.sw-fab__atelier,.sw-fab__workspace-grid,.sw-fab__creators) svg {stroke:url(#sw-fab-silver)}
-body[data-ui="v12"] .sw-fab .sw-fab__create-menu button {display:flex;align-items:center;gap:9px}
+body[data-ui="v12"] .sw-fab .sw-fab__create-menu :is(button,a) {display:flex;align-items:center;gap:9px}
 body[data-ui="v12"] .sw-fab .sw-fab__create-menu .sw-fab-glyph {width:22px;height:22px;flex:none}
 body[data-ui="v12"] .sw-fab :is(a,button):is(:hover,:focus-visible) :is(.sw-fab-glyph,.sw-fab__theme-icon-metal,.sw-fab__home-logo) {background:var(--fab-silver)!important}
 body[data-ui="v12"] .sw-fab :is(a,button):is(:hover,:focus-visible) svg {stroke:url(#sw-fab-silver)}
@@ -217,3 +217,16 @@ html:not(.dark) body[data-ui="v12"] .sw-fab .sw-fab__atelier :is(strong,small) {
 body[data-ui="v12"] .sw-fab .sw-fab__atelier :is(.sw-fab__destination-icon,strong,small) {color:#ffe1a0!important}
 body[data-ui="v12"] .sw-fab .sw-fab__atelier:is(:hover,:focus-visible) :is(strong,small) {color:#302611!important}
 html:not(.dark) body[data-ui="v12"] .sw-fab .sw-fab__atelier :is(.sw-fab__destination-icon,strong,small) {color:#302a15!important}
+/* Default gold, dark silhouettes on gold-filled feedback, metal on utilities. */
+body[data-ui="v12"] .sw-fab :is(.sw-fab__atelier,.sw-fab__workspace-grid,.sw-fab__creators) :is(.sw-fab-glyph,.sw-fab__theme-icon-metal) {background:var(--sw-metal-gold)!important}
+body[data-ui="v12"] .sw-fab :is(.sw-fab__atelier,.sw-fab__workspace-grid,.sw-fab__creators) svg {stroke:url(#sw-fab-gold)}
+body[data-ui="v12"] .sw-fab :is(.sw-fab__destination,[data-fab-action],.sw-fab__create-menu a):is(:hover,:focus-visible) :is(.sw-fab-glyph,.sw-fab__theme-icon-metal) {background:#17140f!important}
+body[data-ui="v12"] .sw-fab :is(.sw-fab__destination,[data-fab-action],.sw-fab__create-menu a):is(:hover,:focus-visible) svg {stroke:#17140f!important}
+body[data-ui="v12"] .sw-fab .sw-fab__create-menu a {text-decoration:none;display:flex;align-items:center;gap:9px}
+body[data-ui="v12"] .sw-fab .sw-fab__create-menu .sw-fab-glyph {background:var(--fab-silver)!important}
+body[data-ui="v12"] .sw-fab .sw-fab__support .sw-fab-glyph {background-clip:border-box!important;-webkit-background-clip:border-box!important}
+body[data-ui="v12"] .sw-fab .sw-fab__support:is(:hover,:focus-visible) .sw-fab-glyph {background:var(--fab-silver)!important;background-clip:border-box!important;-webkit-background-clip:border-box!important}
+body[data-ui="v12"] .sw-fab .sw-fab__utility-grid [data-fab-action="account"]:is(:hover,:focus-visible) {background:transparent!important;border-color:transparent!important;box-shadow:none!important}
+body[data-ui="v12"] .sw-fab .sw-fab__utility-grid [data-fab-action="account"]:is(:hover,:focus-visible) .sw-fab__account-rim {background:var(--sw-metal-gold)!important}
+body[data-ui="v12"] .sw-fab .sw-fab__utility-strip [data-fab-link="rules"]:is(:hover,:focus-visible) svg {stroke:url(#sw-fab-silver)!important}
+body[data-ui="v12"] .sw-fab .sw-fab__utility-grid :is([data-fab-action="dark"],[data-fab-action="fullscreen"]):is(:hover,:focus-visible) svg {stroke:url(#sw-fab-gold)!important}

@@ -23,7 +23,7 @@ import { EntityTypeIcon } from "@/components/icons/entity-type-icon";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Dna, FolderOpen, LayoutGrid, List, ScrollText, UsersRound, Swords } from "lucide-react";
+import { LayoutGrid, List } from "lucide-react";
 import { useModalStack } from "@/components/ui/modal-stack";
 import { CollectionsClient } from "@/components/collections/collections-client";
 import "./creations-tabs.css";
@@ -429,12 +429,12 @@ export function CreationsClient({
   };
 
   const tabIcon = {
-    mechanics: ScrollText,
-    heritages: Dna,
-    characters: UsersRound,
-    monsters: Swords,
-    collections: FolderOpen,
-  } satisfies Record<CreationTab, typeof ScrollText>;
+    mechanics: "GROUP_MECHANICS",
+    heritages: "GROUP_HERITAGES",
+    characters: "CHARACTER",
+    monsters: "MONSTER",
+    collections: "COLLECTION",
+  } satisfies Record<CreationTab, string>;
 
   const mechanicIndexLabel: Record<TypeFilter, string> = {
     all: "Rules, effects, capabilities, and equipment",
@@ -452,12 +452,12 @@ export function CreationsClient({
     <div className="v12-creations-browser">
       <div ref={tabListRef} role="tablist" aria-label="My creations" className="v12-creations-tabs v12-creations-tabs--with-collections">
         {([['mechanics', 'Mechanics'], ['heritages', 'Heritages'], ['characters', 'Characters'], ['monsters', 'Monsters'], ['collections', 'Collections']] as const).map(([key, label]) => {
-          const TabIcon = tabIcon[key];
+          const iconType = tabIcon[key];
           return (
             <button key={key} type="button" role="tab" aria-selected={tab === key}
               onClick={() => { setTab(key); setType('all'); }}
               className={cn('v12-creations-tab', tab === key ? 'is-active' : '')}>
-              {key === "monsters" ? <EntityTypeIcon type="MONSTER"/> : <TabIcon aria-hidden="true" />}
+              <EntityTypeIcon type={iconType}/>
               <span>{label}</span>
               <b>{tabMeta[key].count}</b>
             </button>
@@ -478,7 +478,7 @@ export function CreationsClient({
             return (
               <button key={key} type="button" aria-pressed={type === key} onClick={() => setType(key)}
                 className={cn('v12-creations-chip', type === key ? 'is-active' : '')}>
-                <span>{label}</span><b>{count}</b>
+                <EntityTypeIcon type={key === "all" ? "GROUP_MECHANICS" : key}/><span>{label}</span><b>{count}</b>
               </button>
             );
           })}
@@ -489,7 +489,7 @@ export function CreationsClient({
           {([['all', 'All heritages'], ['LINEAGE_TEMPLATE', 'Lineages'], ['MANIFEST_TEMPLATE', 'Manifests'], ['UPBRINGING_TEMPLATE', 'Upbringings']] as const).map(([key, label]) => (
             <button key={key} type="button" aria-pressed={heritageKind === key} onClick={() => setHeritageKind(key)}
               className={cn('v12-creations-chip', heritageKind === key ? 'is-active' : '')}>
-              {label}
+              <EntityTypeIcon type={key === "all" ? "GROUP_HERITAGES" : key}/><span>{label}</span>
             </button>
           ))}
         </div>

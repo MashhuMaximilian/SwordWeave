@@ -4,7 +4,7 @@ import { monsterLibraryColumns,monsterRowsToLibraryItems } from "@/lib/publishin
 import { redirect } from "next/navigation";
 import { and, asc, desc, eq, or, isNull } from "drizzle-orm";
 import Link from "next/link";
-import { Hammer, Plus } from "lucide-react";
+import { Hammer } from "lucide-react";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NewCharacterButton } from "@/components/characters/new-character-button";
 import { db } from "@/db/client";
@@ -249,17 +249,17 @@ export default async function CreationsPage({
             href="/atelier?build=primitive"
             className="v12-metal-button v12-metal-button--primary"
           >
-            <Plus className="size-4" /> New Grammar
+            <EntityTypeIcon type="GROUP_MECHANICS"/> New Mechanics
           </Link>
           <Link
             href="/atelier?build=heritage"
             className="v12-metal-button"
           >
-            <Plus className="size-4" /> New Heritage
+            <EntityTypeIcon type="GROUP_HERITAGES"/> New Heritage
           </Link>
           <NewCharacterButton variant="outline" />
           <Link href="/monsters/new" className="v12-metal-button"><EntityTypeIcon type="CREATE_MONSTER"/> Create Monster</Link>
-          <Link href="/collections?create=1#create-collection" className="v12-metal-button"><Plus className="size-4" /> New Collection</Link>
+          <Link href="/collections?create=1#create-collection" className="v12-metal-button"><EntityTypeIcon type="COLLECTION"/> New Collection</Link>
         </div>
       </header>
       <div className="v12-archive-telemetry" aria-label="Creation summary">

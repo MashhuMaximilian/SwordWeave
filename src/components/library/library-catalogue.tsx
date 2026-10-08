@@ -236,7 +236,7 @@ export async function LibraryCatalogue({ searchParams, monsterCatalogue = false 
               className={targetType === type ? "is-active" : ""}
               href={`/library/browse?type=${type}`}
             >
-              {label}
+              <EntityTypeIcon type={type ?? "ALL"}/><span>{label}</span>
             </Link>
           ))}
         </nav>
