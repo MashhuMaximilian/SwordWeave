@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useId, type FormEvent } from "react";
 import { useAuth, useClerk } from "@clerk/nextjs";
 import Link from "next/link";
+import {useAccount} from "@/components/account/account-provider";
 import { Swords, BookOpen, Layers, ArrowRight } from "lucide-react";
 import { BookmarkButton } from "@/components/collections/bookmark-button";
 import { Markdown } from "@/components/ui/markdown";
@@ -25,13 +26,14 @@ type PreviewData = {
 const signed = (value: number) => value >= 0 ? `+${value}` : String(value);
 
 /** A template is read-only here. Playing creates an independent, pinned copy. */
-export function MonsterTemplatePreview({ id, compact = false, actions, actionPlacement = "bottom" }: { id: string; compact?: boolean; actions?: PreviewActionProps; actionPlacement?: "top" | "bottom" }) {
+export function MonsterTemplatePreview({ id, version, compact = false, actions, actionPlacement = "bottom" }: { id: string; version?:number; compact?: boolean; actions?: PreviewActionProps; actionPlacement?: "top" | "bottom" }) {
   const { userId, isLoaded } = useAuth();
-  return <AccountPreview key={`${userId ?? "anonymous"}:${id}`} id={id} compact={compact} {...(actions?{actions}:{})} actionPlacement={actionPlacement} ready={isLoaded} />;
+  return <AccountPreview key={`${userId ?? "anonymous"}:${id}`} id={id} {...(version?{version}:{})} compact={compact} {...(actions?{actions}:{})} actionPlacement={actionPlacement} ready={isLoaded} />;
 }
 
-function AccountPreview({ id, compact, ready, actions, actionPlacement }: { id: string; compact: boolean; ready: boolean; actions?: PreviewActionProps; actionPlacement: "top" | "bottom" }) {
+function AccountPreview({ id, version, compact, ready, actions, actionPlacement }: { id: string; version?:number; compact: boolean; ready: boolean; actions?: PreviewActionProps; actionPlacement: "top" | "bottom" }) {
   const { isSignedIn } = useAuth();
+  const {isGameMaster}=useAccount();
   const { redirectToSignIn } = useClerk();
   const [data, setData] = useState<PreviewData | null>(null);
   const [error, setError] = useState("");
@@ -43,7 +45,7 @@ function AccountPreview({ id, compact, ready, actions, actionPlacement }: { id: 
   useEffect(() => {
     if (!ready) return;
     const controller = new AbortController();
-    void fetch(`/api/monsters/${id}`, { signal: controller.signal, cache: "no-store" })
+    void fetch(`/api/monsters/${id}${version?`?version=${version}`:""}`, { signal: controller.signal, cache: "no-store" })
       .then(async response => {
         const body = await response.json();
         if (!response.ok) throw new Error(body.error ?? "This creature is unavailable.");
@@ -51,7 +53,7 @@ function AccountPreview({ id, compact, ready, actions, actionPlacement }: { id: 
       })
       .catch(reason => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : "Unable to open this creature."); });
     return () => controller.abort();
-  }, [id, ready]);
+  }, [id, ready, version]);
   async function createCopy(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!copyName.trim() || pending) return;
@@ -59,7 +61,7 @@ function AccountPreview({ id, compact, ready, actions, actionPlacement }: { id: 
     const controller = new AbortController();
     copyController.current = controller;
     try {
-      const response = await fetch(`/api/monsters/${id}/copies`, { method: "POST", signal: controller.signal, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: copyName.trim() }) });
+      const response = await fetch(`/api/monsters/${id}/copies`, { method: "POST", signal: controller.signal, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: copyName.trim(), ...(version?{version}:{}) }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Unable to create a play copy.");
       if (!controller.signal.aborted) location.href = `/monsters/play/${body.id}`;
@@ -71,7 +73,7 @@ function AccountPreview({ id, compact, ready, actions, actionPlacement }: { id: 
     setPending(true); setError("");
     const controller = new AbortController(); copyController.current = controller;
     try {
-      const response = await fetch(`/api/monsters/${id}`, { method: "POST", signal: controller.signal });
+      const response = await fetch(`/api/monsters/${id}${version?`?version=${version}`:""}`, { method: "POST", signal: controller.signal });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Unable to fork this creature.");
       if (!controller.signal.aborted) location.href = `/monsters/${body.id}?edit=1`;
@@ -93,9 +95,9 @@ function AccountPreview({ id, compact, ready, actions, actionPlacement }: { id: 
 
     {error && <p role="alert">{error}</p>}
     {actions ? (actionPlacement === "bottom" && <PreviewActions {...actions}/>) : <footer className="sw-creature-preview-actions">
-      <button type="button" className="v12-metal-button v12-metal-button--primary" onClick={() => isSignedIn ? setCopyOpen(value => !value) : void redirectToSignIn({ redirectUrl: `/monsters/${id}` })}>Bring to the table <ArrowRight size={16}/></button>
+      {isGameMaster&&<button type="button" className="v12-metal-button v12-metal-button--primary" onClick={() => isSignedIn ? setCopyOpen(value => !value) : void redirectToSignIn({ redirectUrl: `/monsters/${id}` })}>Bring to the table <ArrowRight size={16}/></button>}
       <Link className="v12-metal-button" href={`/monsters/${id}${data.canEdit ? "?edit=1" : ""}`}>{data.canEdit ? "Edit creature" : "Open source"}</Link>
-      <button type="button" className="v12-metal-button" disabled={pending} onClick={() => void forkCreature()}>Fork creature</button>
+      {isGameMaster&&<button type="button" className="v12-metal-button" disabled={pending} onClick={() => void forkCreature()}>Fork creature</button>}
     </footer>}
     {copyOpen && <form className="sw-creature-copy-form" onSubmit={event => void createCopy(event)}><label>Name for this play copy<input maxLength={200} value={copyName} onChange={event => setCopyName(event.target.value)} /></label><p>Its session is private and independent of this template.</p><button className="v12-metal-button v12-metal-button--primary" disabled={pending || !copyName.trim()}>{pending ? "Creating…" : "Create play copy"}</button></form>}
   </section>;

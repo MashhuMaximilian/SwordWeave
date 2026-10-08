@@ -1,4 +1,5 @@
 "use client";
+import {useAccount} from "@/components/account/account-provider";
 import { EntityTypeIcon } from "@/components/icons/entity-type-icon";
 
 
@@ -112,6 +113,7 @@ export function CreationsClient({
   engagement: initialEngagement,
   currentUserInternalId,
 }: CreationsClientProps) {
+  const {isGameMaster}=useAccount();
   const [type, setType] = useState<TypeFilter>(
     (TYPE_CHIPS.find((c) => c.key === initialType)?.key ?? "all") as TypeFilter,
   );
@@ -451,7 +453,7 @@ export function CreationsClient({
   return (
     <div className="v12-creations-browser">
       <div ref={tabListRef} role="tablist" aria-label="My creations" className="v12-creations-tabs v12-creations-tabs--with-collections">
-        {([['mechanics', 'Mechanics'], ['heritages', 'Heritages'], ['characters', 'Characters'], ['monsters', 'Monsters'], ['collections', 'Collections']] as const).map(([key, label]) => {
+        {([['mechanics', 'Mechanics'], ['heritages', 'Heritages'], ['characters', 'Characters'], ['monsters', 'Monsters'], ['collections', 'Collections']] as const).filter(([key])=>isGameMaster||key!=="monsters").map(([key, label]) => {
           const iconType = tabIcon[key];
           return (
             <button key={key} type="button" role="tab" aria-selected={tab === key}

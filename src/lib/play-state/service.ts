@@ -16,8 +16,8 @@ export async function readPlayState(kind: SubjectKind, id: string): Promise<Play
   return { revision: state.revision, overrides: state.overrides, fieldRevisions: state.fieldRevisions };
 }
 /** Adapter can participate in this same transaction to maintain canonical vitality/consequences. */
-export async function mutatePlayState(kind: SubjectKind, id: string, raw: PlayMutation, apply?: (next: PlayState, mutation: PlayMutation) => Promise<void>): Promise<PlayState> {
-  const mutation = playMutationSchema.parse(raw);
+export async function mutatePlayState(kind: SubjectKind, id: string, raw: PlayMutation, apply?: (next: PlayState, mutation: PlayMutation) => Promise<void>, validate: (raw:unknown)=>PlayMutation = raw=>playMutationSchema.parse(raw)): Promise<PlayState> {
+  const mutation = validate(raw);
   const hash = createHash("sha256").update(JSON.stringify(mutation)).digest("hex");
   return withDatabaseTransaction(async () => {
     await readPlayState(kind, id);

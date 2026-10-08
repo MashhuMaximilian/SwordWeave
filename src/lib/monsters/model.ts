@@ -3,6 +3,7 @@ import { z } from "zod";
 const safeInt = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
 export const referenceSchema = z.object({ kind: z.enum(["PRIMITIVE", "CAPABILITY", "EFFECT", "HERITAGE", "ITEM"]), id: z.string().min(1), quantity: safeInt.min(1).default(1), isMirrored: z.boolean().default(false), versionId: z.string().nullable().default(null) });
 export const monsterDefinitionSchema = z.object({
+  catalogue: z.object({environment:z.string().max(100),role:z.string().max(100),tactics:z.string().max(3000),tags:z.array(z.string().max(60)).max(20)}).optional(),
   name: z.string().trim().min(1).max(200), sourceOrigin: z.string().trim().max(2000).optional(), concept: z.string().max(20000).default(""), budget: safeInt.min(1),
   // Optional fields keep historical snapshots byte-compatible. Artwork is a
   // reference, never image data embedded in a template or play copy.

@@ -18,6 +18,7 @@
 // no external deps, no framer-motion.
 // =============================================================================
 
+import {useAccount} from "@/components/account/account-provider";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { usePathname } from "next/navigation";
@@ -44,6 +45,9 @@ const NAV_ITEMS: readonly NavItem[] = [
 ];
 
 export function PublicNav() {
+  const {isGameMaster}=useAccount();
+  const navItems=NAV_ITEMS.filter(item=>isGameMaster||item.href!=="/monsters");
+  if(isGameMaster)navItems.splice(navItems.findIndex(item=>item.href==="/monsters")+1,0,{href:"/encounters",label:"Encounters",group:"content"});
   const pathname = usePathname() || "/";
   const [scrolled, setScrolled] = useState(false);
   const [openPath, setOpenPath] = useState<string | null>(null);
@@ -111,7 +115,7 @@ export function PublicNav() {
 
           {/* Desktop links */}
           <ul className="sw-public-nav__links" role="list">
-            {NAV_ITEMS.map((item) => (
+            {navItems.map((item) => (
               <li key={item.href}>
                 <Link
                   href={item.href}
@@ -151,7 +155,7 @@ export function PublicNav() {
       {mobileOpen && (
         <nav id="public-navigation-menu" className="sw-public-nav__drawer" aria-label="Navigation menu">
           <ul className="sw-public-nav__drawer-list" role="list">
-            {NAV_ITEMS.map((item) => (
+            {navItems.map((item) => (
               <li key={item.href}>
                 <Link
                   href={item.href}

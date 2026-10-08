@@ -11,6 +11,7 @@
 // viewport (fixed positioning).
 // =============================================================================
 
+import { AccountProvider } from "@/components/account/account-provider";
 import { GlobalControls } from "./global-controls";
 import { ModalStackHost } from "@/components/ui/modal-stack";
 import {
@@ -37,7 +38,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // CharacterModal still lives inside CharacterModalProvider so the
   // FAB + portal modal see the same store.
   return (
-    <CharacterModalProvider>
+    <AccountProvider><CharacterModalProvider>
       <ModalStackHost>
         <GlobalControls>
           <div className={`sw-app-shell flex min-h-dvh flex-col${phoneTool ? " sw-phone-tool-shell" : ""}`}>
@@ -74,6 +75,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <CharacterModal />
         </GlobalControls>
       </ModalStackHost>
-    </CharacterModalProvider>
+    </CharacterModalProvider></AccountProvider>
   );
 }

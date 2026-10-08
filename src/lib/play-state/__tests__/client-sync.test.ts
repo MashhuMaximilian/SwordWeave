@@ -9,6 +9,11 @@ function browser(values = new Map<string, string>()) {
 }
 afterEach(() => { setPlaySessionAccount(null); vi.unstubAllGlobals(); });
 describe("coordinated session client", () => {
+  it("restores encounter markers offline and uses the separate run endpoint", async()=>{
+    const {values,online}=browser();let server=emptyPlayState();const writes:unknown[]=[];vi.stubGlobal("fetch",vi.fn(async(url,init)=>{expect(url).toBe("/api/encounters/runs/run?session=1");if(init?.body){expect(init.method).toBe("PATCH");const op=JSON.parse(init.body);writes.push(op);server={revision:1,overrides:{phase:"Heavy"},fieldRevisions:{phase:1}};}return Response.json({state:server});}));
+    let disconnect=connectPlayState("ENCOUNTER_RUN","run","/api/encounters/runs/run?session=1",[],{accountId:"gm-account",method:"PATCH"});
+    await vi.waitFor(()=>expect(getPlaySession("ENCOUNTER_RUN","run").status).toBe("saved"));online.onLine=false;queuePlayChanges("ENCOUNTER_RUN","run",[{field:"phase",value:"Heavy"}]);const cached=JSON.parse(values.get("sw:session:gm-account:ENCOUNTER_RUN:run")!);disconnect();disconnect=connectPlayState("ENCOUNTER_RUN","run","/api/encounters/runs/run?session=1",[],{accountId:"gm-account",method:"PATCH"});try{expect(getEffectivePlayState("ENCOUNTER_RUN","run").overrides["phase"]).toBe("Heavy");online.onLine=true;retryPlaySync("ENCOUNTER_RUN","run");await vi.waitFor(()=>expect(getPlaySession("ENCOUNTER_RUN","run").pending).toBe(0));expect(writes).toMatchObject([{opId:cached.queue[0].opId,changes:[{field:"phase",value:"Heavy"}]}]);}finally{disconnect();}
+  });
   it("restores a durable offline queue and retries the identical operation ID", async () => {
     const { values, online } = browser();
     let server = emptyPlayState(); const sent: string[] = [];

@@ -266,6 +266,9 @@ export async function anonymizeUser(userId: string): Promise<{
 }> {
   const anonymizedUsername = await buildAnonymizedName(userId);
 
+  const {encounters,encounterRuns}=await import("@/db/schema/encounters");
+  const [identity]=await db.select({clerkUserId:users.clerkUserId}).from(users).where(eq(users.id,userId));
+  if(identity){await db.delete(encounters).where(eq(encounters.ownerId,identity.clerkUserId));await db.delete(encounterRuns).where(eq(encounterRuns.ownerId,identity.clerkUserId));}
   const [updated] = await db
     .update(users)
     .set({
@@ -275,6 +278,7 @@ export async function anonymizeUser(userId: string): Promise<{
       bio: null,
       socialLinks: {},
       isAnonymized: true,
+      isGameMaster: false,
       updatedAt: new Date(),
     })
     .where(eq(users.id, userId))

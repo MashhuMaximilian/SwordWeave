@@ -1,3 +1,4 @@
+import {GMOnly} from "@/components/account/account-provider";
 import Link from "next/link";
 import { ThemeToggle } from "./theme-toggle";
 
@@ -12,7 +13,7 @@ export function V12Navigation({ page }: { page: "Library" | "Atelier" }) {
         <Link href="/library/collections">Public collections</Link>
         <Link href="/atelier">Atelier</Link>
         <Link href="/characters">Characters</Link>
-        <Link href="/monsters">Monsters</Link>
+        <GMOnly><Link href="/monsters">Monsters</Link><Link href="/encounters">Encounters</Link></GMOnly>
         <Link href="/collections">Collections</Link>
         <Link href="/rules">Rules</Link>
         <Link href="/atelier?build=primitive&new=1">Author a rule</Link>
@@ -25,7 +26,7 @@ export function V12Navigation({ page }: { page: "Library" | "Atelier" }) {
       <Link href="/library/collections">Public collections</Link>
       <Link aria-current={page === "Atelier" ? "page" : undefined} href="/atelier">Atelier</Link>
       <Link href="/characters">Character</Link>
-      <Link href="/monsters">Monsters</Link>
+      <GMOnly><Link href="/monsters">Monsters</Link><Link href="/encounters">Encounters</Link></GMOnly>
       <Link href="/rules">Rules</Link>
       <Link href="/atelier?build=primitive&new=1">Author</Link>
       <Link className="v12-navigation-collection" href="/creations">My collection</Link>

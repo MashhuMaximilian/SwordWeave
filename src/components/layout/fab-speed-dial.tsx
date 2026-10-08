@@ -2,6 +2,8 @@
 
 // Shared quick-access navigation, contextual workspaces and account utilities.
 
+import {AccountMenu} from "@/components/account/account-menu";
+import {useAccount} from "@/components/account/account-provider";
 import {
   Plus,
   Columns2,
@@ -64,7 +66,7 @@ export type FabDivider = {
   label: string;
 };
 
-/** User-menu opener: when tapped, opens the user menu modal. */
+/** Account submenu marker. */
 export type FabUserMenu = {
   kind: "userMenu";
   key: string;
@@ -114,7 +116,6 @@ export function FabSpeedDial({
   primaryLabel = "Open menu",
   bottomOffset = 16,
   visible = true,
-  onUserMenu,
   currentUser,
   buildStashCount = 0,
   actionBadgeCounts,
@@ -129,6 +130,8 @@ export function FabSpeedDial({
     }),
     [buildStashCount, actionBadgeCounts],
   );
+  const {isGameMaster}=useAccount();
+  const [accountOpen,setAccountOpen]=useState(false);
   const [open, setOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const creationMode = fabCreationMode(usePathname());
@@ -178,29 +181,31 @@ export function FabSpeedDial({
       <svg className="sw-fab__metal-defs" aria-hidden="true"><defs><linearGradient id="sw-fab-gold" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="32" y2="32"><stop stopColor="var(--fab-gold-low, #b68b3f)"/><stop offset=".19" stopColor="var(--fab-gold-mid, #e8c47a)"/><stop offset=".36" stopColor="#fffbe1"/><stop offset=".46" stopColor="var(--fab-gold-low, #a87929)"/><stop offset=".65" stopColor="var(--fab-gold-mid, #e7c780)"/><stop offset=".84" stopColor="var(--fab-gold-low, #ad813c)"/><stop offset="1" stopColor="var(--fab-gold-mid, #f2d994)"/></linearGradient><linearGradient id="sw-fab-silver" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="24" y2="24"><stop stopColor="var(--fab-silver-low, #6e8589)"/><stop offset=".22" stopColor="var(--fab-silver-mid, #d8e3e3)"/><stop offset=".3" stopColor="#fff"/><stop offset=".38" stopColor="var(--fab-silver-low, #82999e)"/><stop offset=".6" stopColor="var(--fab-silver-mid, #edf5f4)"/><stop offset=".65" stopColor="#fff"/><stop offset=".72" stopColor="var(--fab-silver-low, #7e969b)"/><stop offset="1" stopColor="var(--fab-silver-mid, #d8e3e3)"/></linearGradient></defs></svg>
     {open && <div className="sw-fab__menu" data-fab-menu id="sw-quick-access" role="region" aria-label="Quick access" style={{ maxHeight: `calc(var(--sw-visible-height, 100dvh) - ${bottomOffset + 82}px - env(safe-area-inset-bottom, 0px))` }}>
 
+      {accountOpen ? <AccountMenu back={()=>{setAccountOpen(false);requestAnimationFrame(()=>containerRef.current?.querySelector<HTMLButtonElement>('[data-fab-action="account"]')?.focus());}} close={()=>setOpen(false)} onLink={followLink}/> : <>
       <header className="sw-fab__heading"><Link href="/" className="sw-fab__brand" aria-label="SwordWeave home" onClick={event => followLink(event, "/")}><span className="sw-public-nav__brandmark" aria-hidden="true"/><span className="sw-public-nav__wordmark"><span>Sword</span><span>·</span><span>Weave</span></span></Link><span>Quick access</span></header>
       <div className="sw-fab__navigation">
         <section className="sw-fab__section"><h3>Browse & make</h3><div className="sw-fab__pair">{destination("library", "Public entries", true)}{destination("atelier", "Build & edit", true)}</div></section>
-        <section className="sw-fab__section"><h3>Play sheets</h3><div className="sw-fab__pair">{destination("builds")}{destination("monsters")}</div></section>
+        <section className="sw-fab__section"><h3>Play sheets</h3><div className="sw-fab__pair">{destination("builds")}{isGameMaster&&destination("monsters")}</div></section>
+        {isGameMaster&&destination("encounters")}
         <section className="sw-fab__archive"><h3>My archive</h3>{destination("creations", "Authored records")}{destination("collections", "Discover public collections")}</section>
       </div>
       {workspaces.length > 0 && <div className="sw-fab__workspace-grid">
         {workspaces.map(item => <FabGridAction key={item.key} action={item} badgeCount={badgeCounts[item.key] ?? 0} onInvoke={() => setOpen(false)}/>)}
-        {creationMode === "menu" && <div className="sw-fab__create-wrap"><button type="button" className="sw-fab__create-plus" data-fab-action="create" aria-label="Create a character or monster" aria-expanded={createOpen} aria-controls="sw-fab-create-menu" onClick={() => setCreateOpen(value => !value)}><Plus size={20}/></button>{createOpen && <div id="sw-fab-create-menu" className="sw-fab__create-menu" role="group" aria-label="Create"><Link href="/characters/new" onClick={event => followLink(event, "/characters/new")}><FabIcon iconKey="lorc/cultist" alt=""/><span>Create character</span></Link><Link href="/monsters/new" onClick={event => followLink(event, "/monsters/new")}><FabIcon iconKey="delapouite/spiked-dragon-head" alt=""/><span>Create monster</span></Link></div>}</div>}
+        {creationMode === "menu" && <div className="sw-fab__create-wrap"><button type="button" className="sw-fab__create-plus" data-fab-action="create" aria-label="Create a character or monster" aria-expanded={createOpen} aria-controls="sw-fab-create-menu" onClick={() => setCreateOpen(value => !value)}><Plus size={20}/></button>{createOpen && <div id="sw-fab-create-menu" className="sw-fab__create-menu" role="group" aria-label="Create"><Link href="/characters/new" onClick={event => followLink(event, "/characters/new")}><FabIcon iconKey="lorc/cultist" alt=""/><span>Create character</span></Link>{isGameMaster&&<Link href="/monsters/new" onClick={event => followLink(event, "/monsters/new")}><FabIcon iconKey="delapouite/spiked-dragon-head" alt=""/><span>Create monster</span></Link>}</div>}</div>}
       </div>}
-      {creationMode === "buttons" && <div className="sw-fab__pair sw-fab__creators"><Link href="/characters/new" data-fab-action="create-character" onClick={event => followLink(event, "/characters/new")}><FabIcon iconKey="lorc/cultist" alt=""/><span>Create character</span></Link><Link href="/monsters/new" data-fab-action="create-monster" onClick={event => followLink(event, "/monsters/new")}><FabIcon iconKey="delapouite/spiked-dragon-head" alt=""/><span>Create monster</span></Link></div>}
+      {creationMode === "buttons" && <div className="sw-fab__pair sw-fab__creators"><Link href="/characters/new" data-fab-action="create-character" onClick={event => followLink(event, "/characters/new")}><FabIcon iconKey="lorc/cultist" alt=""/><span>Create character</span></Link>{isGameMaster&&<Link href="/monsters/new" data-fab-action="create-monster" onClick={event => followLink(event, "/monsters/new")}><FabIcon iconKey="delapouite/spiked-dragon-head" alt=""/><span>Create monster</span></Link>}</div>}
       <footer className="sw-fab__utilities">
         <div className="sw-fab__utility-strip">
           {destination("home")}{destination("rules")}
           <div className="sw-fab__utility-grid">
             {[action("dark"), action("fullscreen"), action("split")].filter((item): item is FabAction => !!item).map(item => <FabGridAction key={item.key} action={item} badgeCount={0} onInvoke={() => {if (isMobile && item.key === "split") setOpen(false);}}/>)}
-            <FabGridAction action={{ kind: "action", key: "account", label: accountLabel, icon: currentUser ? <span className="sw-fab__account-rim"><FabAccountAvatar user={currentUser}/></span> : <UserRound size={22}/>, onClick: () => {onUserMenu?.(); setOpen(false);} }} badgeCount={0}/>
+            <FabGridAction action={{ kind: "action", key: "account", label: accountLabel, icon: currentUser ? <span className="sw-fab__account-rim"><FabAccountAvatar user={currentUser}/></span> : <UserRound size={22}/>, onClick: () => {setAccountOpen(true);setCreateOpen(false);} }} badgeCount={0}/>
           </div>
         </div>
         {items.filter((item): item is FabLink => item.kind === "link" && item.key === "buymeacoffee").map(item => <a key={item.key} href={item.href} target="_blank" rel="noopener noreferrer" className="sw-fab__support" data-fab-link={item.key}>{item.icon}<span>{item.label}</span><ArrowUpRight size={16}/></a>)}
-      </footer>
+      </footer></>}
     </div>}
-    <button ref={triggerRef} type="button" data-fab-trigger onClick={() => {setOpen(value => !value);setCreateOpen(false);}} aria-label={open ? "Close menu" : primaryLabel} aria-expanded={open} aria-controls="sw-quick-access" className="sw-fab__trigger">{open ? <X size={24}/> : <Menu size={24}/>}</button>
+    <button ref={triggerRef} type="button" data-fab-trigger onClick={() => {setOpen(value => !value);setCreateOpen(false);setAccountOpen(false);}} aria-label={open ? "Close menu" : primaryLabel} aria-expanded={open} aria-controls="sw-quick-access" className="sw-fab__trigger">{open ? <X size={24}/> : <Menu size={24}/>}</button>
   </div>;
 }
 

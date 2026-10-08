@@ -12,3 +12,4 @@ export * from "./library";
 export * from "./collections";
 export * from "./monsters";
 export * from "./play-state";
+export * from "./encounters";

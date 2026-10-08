@@ -1,6 +1,6 @@
 import { consequenceJson } from "@/lib/character/consequences/json";
 import { z } from "zod";
-export type SubjectKind = "CHARACTER" | "MONSTER_PLAY_COPY";
+export type SubjectKind = "CHARACTER" | "MONSTER_PLAY_COPY" | "ENCOUNTER_RUN";
 export type PlayOverrides = Record<string, unknown>;
 export type PlayState = { revision: number; overrides: PlayOverrides; fieldRevisions: Record<string, number> };
 export const emptyPlayState = (): PlayState => ({ revision: 0, overrides: {}, fieldRevisions: {} });

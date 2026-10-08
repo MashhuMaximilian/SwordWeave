@@ -1,3 +1,4 @@
+import {GMOnly} from "@/components/account/account-provider";
 import { EntityTypeIcon } from "@/components/icons/entity-type-icon";
 import { monsters } from "@/db/schema/monsters";
 import { monsterLibraryColumns,monsterRowsToLibraryItems } from "@/lib/publishing/monster-library-item";
@@ -258,7 +259,7 @@ export default async function CreationsPage({
             <EntityTypeIcon type="GROUP_HERITAGES"/> New Heritage
           </Link>
           <NewCharacterButton variant="outline" />
-          <Link href="/monsters/new" className="v12-metal-button"><EntityTypeIcon type="CREATE_MONSTER"/> Create Monster</Link>
+          <GMOnly><Link href="/monsters/new" className="v12-metal-button"><EntityTypeIcon type="CREATE_MONSTER"/> Create Monster</Link></GMOnly>
           <Link href="/collections?create=1#create-collection" className="v12-metal-button"><EntityTypeIcon type="COLLECTION"/> New Collection</Link>
         </div>
       </header>

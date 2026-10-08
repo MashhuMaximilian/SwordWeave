@@ -484,6 +484,13 @@
       "when": 1791200003000,
       "tag": "0072_monster_engagement",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1791470679617,
+      "tag": "0073_gm_encounters",
+      "breakpoints": true
     }
   ]
 }

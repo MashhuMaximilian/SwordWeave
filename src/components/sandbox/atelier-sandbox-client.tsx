@@ -23,6 +23,7 @@ import { readCreationReturn,setCreationReturnResult } from "@/lib/character/crea
 //   - Split mode may focus its inline Build tab after a load.
 //   - The persistent Build & Preview drawer opens only from its FAB action.
 
+import {useAccount} from "@/components/account/account-provider";
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useModalStack } from "@/components/ui/modal-stack";
@@ -339,6 +340,7 @@ export function AtelierSandboxClient({
   currentUser: { username: string; displayName: string | null; avatarUrl: string | null } | null;
   versionMap?: Record<string, number> | undefined;
 }) {
+  const {isGameMaster}=useAccount();
   const [build, setBuild] = useState<AtelierTab>(initialBuild);
   const [editing, setEditing] = useState<EditingState>(initialEditing);
   const [formIsDirty, setFormIsDirty] = useState(false);
@@ -1581,7 +1583,7 @@ export function AtelierSandboxClient({
             ["heritage", "Heritages"],
             ["item", "Items"],
             ["monster", "Monsters"],
-          ] as const).map(([value, label]) => (
+          ] as const).filter(([value])=>isGameMaster||value!=="monster").map(([value, label]) => (
             <button
               key={value}
               type="button"
@@ -1599,7 +1601,7 @@ export function AtelierSandboxClient({
       return (
         <div className="v12-unified-source-browser">{sourcePicker}
         <GrammarLibrary
-          phoneSourceControl={<PhoneTypeChoices label="Browse collection" value={build} options={[{value:"mechanics",label:"Mechanics"},{value:"heritage",label:"Heritages"},{value:"item",label:"Items"},{value:"monster",label:"Monsters"}]} onChange={value=>guardedSwitchBuild(value as AtelierTab)}/>}
+          phoneSourceControl={<PhoneTypeChoices label="Browse collection" value={build} options={[{value:"mechanics",label:"Mechanics"},{value:"heritage",label:"Heritages"},{value:"item",label:"Items"},{value:"monster",label:"Monsters"}].filter(option=>isGameMaster||option.value!=="monster")} onChange={value=>guardedSwitchBuild(value as AtelierTab)}/>}
           build={build as "mechanics"}
           buildFormKind={buildFormKind}
           libraryItems={libraryItems}
@@ -1634,7 +1636,7 @@ export function AtelierSandboxClient({
     return (
       <div className="v12-unified-source-browser">{sourcePicker}
       <HeritageLibrary
-        phoneSourceControl={<PhoneTypeChoices label="Browse collection" value={build} options={[{value:"mechanics",label:"Mechanics"},{value:"heritage",label:"Heritages"},{value:"item",label:"Items"},{value:"monster",label:"Monsters"}]} onChange={value=>guardedSwitchBuild(value as AtelierTab)}/>}
+        phoneSourceControl={<PhoneTypeChoices label="Browse collection" value={build} options={[{value:"mechanics",label:"Mechanics"},{value:"heritage",label:"Heritages"},{value:"item",label:"Items"},{value:"monster",label:"Monsters"}].filter(option=>isGameMaster||option.value!=="monster")} onChange={value=>guardedSwitchBuild(value as AtelierTab)}/>}
         build={build as "heritage" | "item" | "monster"}
         buildFormKind={buildFormKind}
         libraryItems={libraryItems}
@@ -2010,9 +2012,10 @@ function NewEntityChoices({
   onPick: (choice: NewEntityChoice) => void;
   className?: string;
 }) {
+  const {isGameMaster}=useAccount();
   return (
     <div className={cn("v12-new-entity-choice-groups", className)}>
-      {NEW_ENTITY_GROUPS.map((group) => (
+      {NEW_ENTITY_GROUPS.filter(group=>isGameMaster||group.heading!=="Monsters").map((group) => (
         <section key={group.heading}>
           <p className="v12-kicker mb-2 text-xs text-muted-foreground">
             {group.heading}

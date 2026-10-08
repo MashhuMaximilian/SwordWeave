@@ -12,9 +12,10 @@
 //
 // The FAB exposes 5 nav destinations (Library, My Creations, Grammar,
 // Templates, Builds) + a Functions card (3 icon-only toggles + 2 icon-only
-// actions) + a Profile row that opens the user menu modal.
+// actions) + a Profile row that opens the inline account submenu.
 // =============================================================================
 
+import {useAccount} from "@/components/account/account-provider";
 import {
   createContext,
   useCallback,
@@ -34,17 +35,13 @@ import { PlayGuide } from "@/components/rules/play-guide";
 import { RightFilterPanel } from "./right-filter-panel";
 import { BuildPreviewDrawer } from "./build-preview-drawer";
 import { usePathname } from "next/navigation";
-import { useClerk, useUser } from "@clerk/nextjs";
 import { useCharacterModal } from "@/components/character-modal/character-modal-store";
 import {
   Columns2,
-  LogOut,
   Maximize2,
   Minimize2,
   Moon,
-  Settings,
   Sun,
-  User as UserIcon,
 } from "lucide-react";
 import { useModalStack } from "@/components/ui/modal-stack";
 import { cn } from "@/lib/utils";
@@ -53,14 +50,6 @@ import { FabThemeIcon } from "./fab-theme-icon";
 import { fabWorkspaceVisibility } from "@/lib/fab-visibility";
 
 type DrawerTab = "build" | "preview" | null;
-
-type CurrentUser = {
-  username: string;
-  displayName: string | null;
-  avatarUrl: string | null;
-};
-
-type ProfileResponse = CurrentUser;
 
 interface GlobalControlsState {
   /** Dark mode on/off. */
@@ -158,110 +147,10 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
   const isSandboxRoute =
     pathname?.startsWith("/sandbox") || pathname === "/atelier" || false;
   const isMobile = useIsMobile();
-  const { user, isSignedIn, isLoaded } = useUser();
-  const { signOut, openUserProfile } = useClerk();
   const stack = useModalStack();
   const characterModal = useCharacterModal();
 
-  // Clerk is the identity source, while our profile API carries the latest
-  // SwordWeave username/display name/avatar edits. Keep the Clerk values as
-  // an immediate fallback so the FAB never renders an empty account control
-  // while the profile request is in flight.
-  const [profileResult, setProfileResult] = useState<{
-    userId: string;
-    profile: ProfileResponse;
-  } | null>(null);
-  useEffect(() => {
-    if (!isLoaded || !isSignedIn || !user) return undefined;
-    const userId = user.id;
-    let cancelled = false;
-    void fetch("/api/users/me", { cache: "no-store" })
-      .then(async (response) => {
-        if (!response.ok) return null;
-        return (await response.json()) as ProfileResponse;
-      })
-      .then((nextProfile) => {
-        if (!cancelled && nextProfile) {
-          setProfileResult({ userId, profile: nextProfile });
-        }
-      })
-      .catch(() => {
-        // Clerk data remains a safe fallback during a network/database blip.
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isLoaded, isSignedIn, user]);
-
-  const currentUser = useMemo(() => {
-    if (!isLoaded || !isSignedIn || !user) return null;
-    const profile = profileResult?.userId === user.id
-      ? profileResult.profile
-      : null;
-    const clerkUsername =
-      user.username ??
-      user.primaryEmailAddress?.emailAddress?.split("@")[0] ??
-      "user";
-    const clerkDisplayName =
-      [user.firstName, user.lastName].filter(Boolean).join(" ") ||
-      user.username ||
-      clerkUsername;
-    return {
-      username: profile?.username ?? clerkUsername,
-      displayName: profile?.displayName ?? clerkDisplayName,
-      avatarUrl: profile?.avatarUrl ?? user.imageUrl ?? null,
-    };
-  }, [isLoaded, isSignedIn, profileResult, user]);
-
-  const navigateFromAccount = useCallback(
-    (href: string) => {
-      const navEvent = new CustomEvent<string>("sw-navigate-away", {
-        detail: href,
-        cancelable: true,
-      });
-      window.dispatchEvent(navEvent);
-      // The character editor may prevent this event to show its discard
-      // prompt. Leave the account sheet open until the user resolves that
-      // prompt; otherwise hard navigation guarantees the destination opens
-      // even when the modal stack is being unmounted in the same click.
-      if (navEvent.defaultPrevented) return;
-      stack.clear();
-      window.location.assign(href);
-    },
-    [stack],
-  );
-
-  function openUserMenu() {
-    if (!stack.canPush) return;
-    stack.push({
-      key: "user-menu",
-      label: currentUser?.displayName ?? currentUser?.username ?? "Profile",
-      category: "Account",
-      content: (
-        <UserMenuBody
-          currentUser={currentUser}
-          onSignIn={() => navigateFromAccount("/sign-in")}
-          onSignUp={() => navigateFromAccount("/sign-up")}
-          onViewProfile={() => {
-            if (currentUser) navigateFromAccount(`/u/${currentUser.username}`);
-          }}
-          onEditProfile={() => {
-            navigateFromAccount("/settings/profile");
-          }}
-          onManageAccount={() => {
-            openUserProfile();
-            stack.clear();
-          }}
-          onSignOut={() => {
-            stack.clear();
-            void signOut(() => window.location.assign("/"));
-          }}
-        />
-      ),
-    });
-  }
-
+  const {profile:currentUser,isGameMaster}=useAccount();
   // Dark is the product default. Light mode is only entered after an explicit
   // user switch; the operating-system preference never changes the app.
   const [dark, setDarkState] = useState(true);
@@ -421,7 +310,8 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
   // the icon grid (split/fullscreen/dark/build/filters) from the list view.
   const items = useMemo<FabItem[]>(() => {
     const list: FabItem[] = [
-      ...NAV_LINKS.map(item => item.key === "rules" && isCharacterSheetRoute && pathname !== "/characters/new" ? {
+      ...(isGameMaster ? [{kind:"link" as const,key:"encounters",label:"Encounter Builder",href:"/encounters",icon:<FabIcon iconKey="lorc/crossed-swords" alt=""/>}] : []),
+      ...NAV_LINKS.filter(item=>isGameMaster || item.key!=="monsters").map(item => item.key === "rules" && isCharacterSheetRoute && pathname !== "/characters/new" ? {
         kind: "action" as const, key: "rules", label: "Play guide", icon: <FabIcon iconKey="delapouite/rule-book" alt="Play guide" />,
         onClick: () => { stack.push({ key: "play-guide", label: "Rules & play guide", category: "At the table", global: true, content: <PlayGuide embedded /> }); },
       } : item),
@@ -549,6 +439,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
     isCharacterSheetRoute,
     readOnlySheet,
     stack,
+    isGameMaster,
   ]);
 
   const ctxValue: GlobalControlsState = {
@@ -579,7 +470,6 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
       {children}
       <FabSpeedDial
         items={items}
-        onUserMenu={openUserMenu}
         currentUser={currentUser}
         buildStashCount={sandboxFormDirty ? 1 : 0}
         actionBadgeCounts={{
@@ -603,121 +493,5 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
       <RightFilterPanel />
       <BuildPreviewDrawer />
     </Ctx.Provider>
-  );
-}
-
-// -----------------------------------------------------------------------------
-// UserMenuBody — body for the user menu modal. Renders the same profile
-// block + action list as the existing UserMenu component, but as a modal
-// stack entry so it can be opened from the FAB on mobile.
-// -----------------------------------------------------------------------------
-
-function UserMenuBody({
-  currentUser,
-  onSignIn,
-  onSignUp,
-  onViewProfile,
-  onEditProfile,
-  onManageAccount,
-  onSignOut,
-}: {
-  currentUser: {
-    username: string;
-    displayName: string | null;
-    avatarUrl: string | null;
-  } | null;
-  onSignIn: () => void;
-  onSignUp: () => void;
-  onViewProfile: () => void;
-  onEditProfile: () => void;
-  onManageAccount: () => void;
-  onSignOut: () => void;
-}) {
-  if (!currentUser) {
-    // Signed out — previously this just showed a "Sign in to manage your
-    // profile" notice and gave the user no way to actually sign in. The
-    // user reported they had to know the magic URL (/sign-in) to get back
-    // in. Add explicit Sign in / Sign up buttons so the path is obvious.
-    return (
-      <div className="space-y-3">
-        <div className="rounded-md border border-dashed border-border bg-card/30 p-6 text-center text-sm text-muted-foreground">
-          Sign in to manage your profile, fork library entries to your
-          sandbox, and publish your own creations.
-        </div>
-        <button
-          type="button"
-          onClick={onSignIn}
-          className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          Sign in
-        </button>
-        <button
-          type="button"
-          onClick={onSignUp}
-          className="flex w-full items-center justify-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-accent"
-        >
-          Create an account
-        </button>
-      </div>
-    );
-  }
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-3 rounded-md border border-border bg-card p-3">
-        {currentUser.avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={currentUser.avatarUrl}
-            alt={currentUser.displayName ?? currentUser.username}
-            className="size-10 shrink-0 rounded-full border border-border object-cover"
-          />
-        ) : (
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-background text-sm font-bold text-primary">
-            {(currentUser.displayName ?? currentUser.username)[0]?.toUpperCase()}
-          </div>
-        )}
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">
-            {currentUser.displayName}
-          </p>
-          <p className="truncate text-xs text-muted-foreground">
-            @{currentUser.username}
-          </p>
-        </div>
-      </div>
-
-      <button
-        type="button"
-        onClick={onViewProfile}
-        className="flex w-full items-center gap-2 rounded-md border border-transparent px-3 py-2 text-sm hover:border-border hover:bg-accent"
-      >
-        <UserIcon className="size-4" /> View profile
-      </button>
-      <button
-        type="button"
-        onClick={onEditProfile}
-        className="flex w-full items-center gap-2 rounded-md border border-transparent px-3 py-2 text-sm hover:border-border hover:bg-accent"
-      >
-        <Settings className="size-4" /> Edit profile
-      </button>
-      <button
-        type="button"
-        onClick={onManageAccount}
-        className="flex w-full items-center gap-2 rounded-md border border-transparent px-3 py-2 text-sm hover:border-border hover:bg-accent"
-      >
-        <Settings className="size-4" /> Manage account
-      </button>
-      <div className="my-1 border-t border-border" />
-      <button
-        type="button"
-        onClick={onSignOut}
-        className={cn(
-          "flex w-full items-center gap-2 rounded-md border border-transparent px-3 py-2 text-sm",
-          "text-destructive hover:bg-destructive/10",
-        )}
-      >
-        <LogOut className="size-4" /> Sign out
-      </button>
-    </div>
   );
 }

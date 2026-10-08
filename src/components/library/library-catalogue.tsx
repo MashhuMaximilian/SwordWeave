@@ -5,6 +5,7 @@ import { EntityTypeIcon } from "@/components/icons/entity-type-icon";
 // set off to LibraryBrowseClient which owns the toolbar + URL sync.
 // =============================================================================
 
+import {GMOnly} from "@/components/account/account-provider";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db/client";
@@ -203,7 +204,7 @@ export async function LibraryCatalogue({ searchParams, monsterCatalogue = false 
         </div>
 
       </div>
-      {monsterCatalogue && <Link className="sw-metal-button sw-metal-button--primary" href="/monsters/new"><EntityTypeIcon type="CREATE_MONSTER"/>Create monster or NPC</Link>}
+      {monsterCatalogue && <GMOnly><Link className="sw-metal-button sw-metal-button--primary" href="/monsters/new"><EntityTypeIcon type="CREATE_MONSTER"/>Create monster or NPC</Link></GMOnly>}
 
       <nav className="v12-library-modes" aria-label="Library record groups">
         <Link className={targetType === "PRIMITIVE" ? "is-active" : ""} href="/library/browse?type=PRIMITIVE">
@@ -212,9 +213,9 @@ export async function LibraryCatalogue({ searchParams, monsterCatalogue = false 
         <Link className={["EFFECT", "CAPABILITY", "LINEAGE_TEMPLATE", "UPBRINGING_TEMPLATE", "MANIFEST_TEMPLATE", "ITEM"].includes(targetType) ? "is-active" : ""} href="/library/browse?type=CAPABILITY">
           Creations
         </Link>
-        <Link className={targetType === "MONSTER" ? "is-active" : ""} href="/library/browse?type=MONSTER">
+        <GMOnly><Link className={targetType === "MONSTER" ? "is-active" : ""} href="/library/browse?type=MONSTER">
           Monsters &amp; NPCs
-        </Link>
+        </Link></GMOnly>
         <Link href="/creations">My collection</Link>
         <Link href="/library/collections">Public collections</Link>
         <Link href="/library">Library hub ↗</Link>

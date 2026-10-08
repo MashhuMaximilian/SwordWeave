@@ -64,6 +64,7 @@ export const users = pgTable(
       }>()
       .notNull()
       .default({}),
+    isGameMaster: boolean("is_game_master").notNull().default(false),
     isPublic: boolean("is_public").notNull().default(true),
     isAnonymized: boolean("is_anonymized").notNull().default(false),
     // Phase 7.10 system-user rule: when true, the user's authored canon rows

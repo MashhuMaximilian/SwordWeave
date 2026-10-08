@@ -9,6 +9,7 @@
  *   - Shows "Manage account" (Clerk hosted UI) and "Sign out" without forcing
  *     users through a full redirect.
  */
+import {useAccount} from "@/components/account/account-provider";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -26,28 +27,8 @@ export function UserMenu() {
   const { user, isSignedIn, isLoaded } = useUser();
   const { signOut, openUserProfile } = useClerk();
   const [open, setOpen] = useState(false);
-  const [profile, setProfile] = useState<UserMenuProfile | null>(null);
+  const {profile}=useAccount();
   const containerRef = useRef<HTMLDivElement | null>(null);
-
-  // Fetch the latest profile from our DB so display name + avatar
-  // reflect edits made on /settings/profile (Clerk's session data is stale).
-  useEffect(() => {
-    if (!isSignedIn || !user) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/users/me", { cache: "no-store" });
-        if (!res.ok) return;
-        const data = (await res.json()) as UserMenuProfile | null;
-        if (!cancelled) setProfile(data);
-      } catch {
-        // Network blip — fall back to Clerk session data
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [isSignedIn, user]);
 
   // Close dropdown on outside click + Escape
   useEffect(() => {

@@ -10,7 +10,7 @@
  *
  * Response: 200 { username, displayName, avatarUrl } | 401
  */
-import { NextResponse } from "next/server";
+import { privateJson } from "@/lib/http/private-json";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
@@ -23,7 +23,7 @@ export const dynamic = "force-dynamic";
 export async function GET(): Promise<Response> {
   const { userId: clerkUserId } = await auth();
   if (!clerkUserId) {
-    return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+    return privateJson({ error: "UNAUTHENTICATED" }, { status: 401 });
   }
 
   const clerkAccount = await currentUser();
@@ -37,16 +37,18 @@ export async function GET(): Promise<Response> {
       username: true,
       displayName: true,
       avatarUrl: true,
+      isGameMaster: true,
     },
   });
 
   if (!row) {
-    return NextResponse.json({ error: "PROFILE_NOT_FOUND" }, { status: 404 });
+    return privateJson({ error: "PROFILE_NOT_FOUND" }, { status: 404 });
   }
 
-  return NextResponse.json({
+  return privateJson({
     username: row.username,
     displayName: row.displayName,
     avatarUrl: row.avatarUrl,
+    isGameMaster: row.isGameMaster,
   });
 }
