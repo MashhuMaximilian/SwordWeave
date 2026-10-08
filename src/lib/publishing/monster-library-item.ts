@@ -34,7 +34,7 @@ export function monsterToLibraryItem(row:MonsterLibraryRow):LibraryItem {
  compositionPaths, mechanicalDescription:`${row.size.toLowerCase()} · ${row.budget} BU budget`,category:"Monster / NPC",buCost:row.budget,
  authorId:row.userId,authorUsername:null,authorDisplayName:null,authorAvatarUrl:null,authorIsAdmin:false,
  publishedAt:row.visibility==="PRIVATE"?null:row.createdAt,visibility:row.visibility,versionNumber:row.version,
- likesCount:0,dislikesCount:0,forkCount:0,tags:[],sourceOrigin:row.forkedFromId?`fork:${row.forkedFromId}`:null,
+ likesCount:0,dislikesCount:0,forkCount:0,tags:[],sourceOrigin:row.forkedFromId?`fork:${row.forkedFromId}`:row.userId.startsWith("system:")?row.userId:null,
  imageUrl,iconSource:imageUrl?"UPLOAD":"GAME_ICONS",iconKey:imageUrl?null:"lorc/gluttonous-smile",iconUrl:imageUrl,iconColor:"#ffffff"};
 }
 

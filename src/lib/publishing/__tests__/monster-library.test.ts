@@ -6,6 +6,7 @@ vi.mock("@/lib/engagement/engagement-aggregates",()=>({resolveEngagementMap:asyn
 vi.mock("@/lib/engagement/library-flag-counts",()=>({loadLibraryFlagCounts:async()=>new Map()}));
 import { queryLibrary } from "../library-query";
 import { monsterToLibraryItem } from "../monster-library-item";
+import { libraryOrigin, libraryAuthorLabel } from "../library-classification";
 const row={id:"monster",userId:"author",name:"Moss guardian",description:"Guards the grove",visibility:"PUBLIC" as const,createdAt:new Date("2026-10-01"),forkedFromId:null,version:1,budget:25,size:"MEDIUM"};
 beforeEach(()=>{vi.clearAllMocks();mocks.where.mockResolvedValue([row]);});
 describe("monster discovery",()=>{
@@ -13,6 +14,8 @@ describe("monster discovery",()=>{
  it("gates anonymous discovery by the live monster visibility",async()=>{await queryLibrary({targetType:"MONSTER"});const compiled=new PgDialect().sqlToQuery(mocks.where.mock.calls[0]![0]);expect(compiled.sql).toContain("visibility");expect(compiled.sql).toContain("'PUBLIC'");expect(compiled.params).not.toContain("viewer");});
  it("filters a saved collection by independent collection access and actual entry membership",async()=>{await queryLibrary({targetType:"MONSTER",viewerClerkId:"viewer",collectionId:"saved-collection"});const compiled=new PgDialect().sqlToQuery(mocks.where.mock.calls[0]![0]);expect(compiled.sql).toContain("collection_entries");expect(compiled.sql).toContain("c.visibility='PUBLIC'");expect(compiled.params).toContain("saved-collection");expect(compiled.params).toContain("viewer");});
  it("maps private templates as drafts and preserves explicit fork provenance",()=>{const mapped=monsterToLibraryItem({...row,visibility:"PRIVATE",forkedFromId:"source"});expect(mapped.publishedAt).toBeNull();expect(mapped.visibility).toBe("PRIVATE");expect(mapped.sourceOrigin).toBe("fork:source");});
+ it("attributes reserved system bestiary owners to System",()=>{const mapped=monsterToLibraryItem({...row,userId:"system:bestiary-2026-10",sourceOrigin:"SRD"});expect(mapped.sourceOrigin).toBe("system:bestiary-2026-10");expect(libraryOrigin(mapped)).toBe("system");expect(libraryAuthorLabel(mapped)).toBe("System");});
+ it("does not turn an authored source label into System attribution",()=>{expect(libraryOrigin(monsterToLibraryItem({...row,sourceOrigin:"SRD"}))).toBe("community");});
 });
 
 it("preserves every pinned containment path and quantity for catalogue mechanics", () => {

@@ -69,13 +69,19 @@ pnpm exec tsx scripts/seed-system-bestiary-2026-10.ts --initial
 pnpm exec tsx scripts/seed-system-bestiary-2026-10.ts
 pnpm exec tsx scripts/seed-system-bestiary-2026-10.ts --apply
 pnpm exec tsx scripts/verify-gm-encounters.ts
-pnpm exec vitest run src/lib/encounters/__tests__ src/lib/monsters/__tests__ src/lib/play-state/__tests__ src/lib/__tests__/fab-visibility.test.ts
+pnpm exec vitest run src/lib/encounters/__tests__ src/lib/monsters/__tests__ src/lib/play-state/__tests__ src/lib/__tests__/fab-visibility.test.ts src/lib/publishing/__tests__/monster-library.test.ts
 pnpm typecheck
 pnpm exec next build --webpack
 ```
 
 The migration tool touches only 0073. Verification uses a rollback transaction
 for every fixture. Stop the local server after browser checks and release.
+
+Release verification passed 111 focused tests and 19 real-database checks,
+including the initial 12 creatures through preparation and playable runs.
+All 100 templates passed seed validation; a repeated apply created zero duplicates.
+Library attribution derives System provenance from the reserved system owner,
+so an authored source label cannot impersonate the system catalogue.
 
 ## Later phases
 
