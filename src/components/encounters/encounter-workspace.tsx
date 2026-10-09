@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
 import {
@@ -13,7 +13,6 @@ import {
   ArrowLeft,
   ChevronRight,
   Users,
-  SlidersHorizontal,
 } from "lucide-react";
 import { useAccount } from "@/components/account/account-provider";
 import { EntityTypeIcon } from "@/components/icons/entity-type-icon";
@@ -31,6 +30,7 @@ import {
   ForgeProgressRail,
   ForgeWorkbench,
 } from "@/components/characters/forge-section";
+import { EncounterBudgetReadout } from "./encounter-budget-readout";
 import { EncounterGroupPicker } from "./encounter-group-picker";
 import {
   EncounterPartyDirectory,
@@ -39,8 +39,6 @@ import {
 import { MonsterQuickDetails } from "@/components/monsters/monster-quick-details";
 import { CatalogueQuickLook } from "@/components/library/catalogue-quick-look";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
-import { useFilterSlot } from "@/components/layout/right-filter-panel";
-import { useGlobalControls } from "@/components/layout/global-controls";
 import type { LibraryView } from "@/lib/preferences/library-prefs";
 import "./encounters.css";
 type Saved = {
@@ -139,11 +137,7 @@ function AccountWorkspace({
     [catalogueLoading, setCatalogueLoading] = useState(true),
     [offset, setOffset] = useState(0),
     [hasMore, setHasMore] = useState(false),
-    [q, setQ] = useState(""),
-    [env, setEnv] = useState(""),
-    [role, setRole] = useState(""),
-    [min, setMin] = useState(""),
-    [max, setMax] = useState("");
+    [q, setQ] = useState("");
   const [partySearch, setPartySearch] = useState("");
   const [partyPending, setPartyPending] = useState(false);
   const partyRequest = useRef<AbortController | null>(null);
@@ -229,10 +223,6 @@ function AccountWorkspace({
       setCatalogueLoading(true);
       const p = new URLSearchParams({
         q,
-        environment: env,
-        role,
-        min,
-        max,
         offset: String(offset),
       });
       void fetch(`/api/encounters/catalogue?${p}`, {
@@ -258,7 +248,7 @@ function AccountWorkspace({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [userId, picker, oppositionMode, q, env, role, min, max, offset]);
+  }, [userId, picker, oppositionMode, q, offset]);
   let appraisal = appraiseEncounter(empty, []);
   let appraisalError = "";
   try {
@@ -435,114 +425,31 @@ function AccountWorkspace({
       setBusy(false);
     }
   }
-  const { setFilterPanelOpen } = useGlobalControls();
-  const filterContent = useMemo(
-    () =>
-      !picker ? null : (
-        <div className="sw-encounters sw-encounter-filters">
-          <h2>Creature filters</h2>{" "}
-          {oppositionMode === "manual" && (
-            <div className="sw-encounter-fields">
-              <label>
-                Minimum BU
-                <input
-                  type="number"
-                  min="0"
-                  value={min}
-                  onChange={(e) => {
-                    setMin(e.target.value);
-                    setOffset(0);
-                  }}
-                />
-              </label>
-              <label>
-                Maximum BU
-                <input
-                  type="number"
-                  min="0"
-                  value={max}
-                  onChange={(e) => {
-                    setMax(e.target.value);
-                    setOffset(0);
-                  }}
-                />
-              </label>
-            </div>
-          )}
-          <div className="sw-encounter-fields">
-            <label>
-              Environment
-              <select
-                value={env}
-                onChange={(e) => {
-                  setEnv(e.target.value);
-                  setOffset(0);
-                }}
-              >
-                <option value="">All environments</option>
-                {[
-                  "Wilderness",
-                  "Subterranean",
-                  "Urban",
-                  "Aquatic",
-                  "Aerial",
-                  "Undead",
-                  "Constructs",
-                  "Arcane anomalies",
-                  "Infernal",
-                  "Ancient guardians",
-                ].map((v) => (
-                  <option key={v}>{v}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Role
-              <select
-                value={role}
-                onChange={(e) => {
-                  setRole(e.target.value);
-                  setOffset(0);
-                }}
-              >
-                <option value="">All roles</option>
-                {[
-                  "Melee",
-                  "Ranged",
-                  "Defender",
-                  "Ambusher",
-                  "Controller",
-                  "Support",
-                  "Solo",
-                ].map((v) => (
-                  <option key={v}>{v}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <button
-            type="button"
-            className="sw-metal-button"
-            onClick={() => {
-              setMin("");
-              setMax("");
-              setEnv("");
-              setRole("");
-              setOffset(0);
-            }}
-          >
-            Clear filters
-          </button>
-        </div>
-      ),
-    [picker, oppositionMode, min, max, env, role],
-  );
-  useFilterSlot(filterContent);
   const chapters = [
-    { title: "The scene", hint: "Name & encounter note", icon: Swords },
-    { title: "The party", hint: "Creature & item budgets", icon: Users },
-    { title: "The opposition", hint: "Choose your creatures", icon: Plus },
-    { title: "Review & run", hint: "Compare, save & play", icon: Shield },
+    {
+      title: "The scene",
+      short: "Scene",
+      hint: "Name & encounter note",
+      icon: Swords,
+    },
+    {
+      title: "The party",
+      short: "Party",
+      hint: "Creature & item budgets",
+      icon: Users,
+    },
+    {
+      title: "The opposition",
+      short: "Opposition",
+      hint: "Choose your creatures",
+      icon: Plus,
+    },
+    {
+      title: "Review & run",
+      short: "Review",
+      hint: "Compare, save & play",
+      icon: Shield,
+    },
   ];
   if (!isLoaded) return <main className="sw-encounters">Loading account…</main>;
   if (!userId)
@@ -582,8 +489,14 @@ function AccountWorkspace({
           </p>
         </div>
         {editing ? (
-          <Link href="/encounters" className="sw-metal-button">
-            Saved encounters
+          <Link
+            href="/encounters"
+            className="sw-metal-button sw-encounter-saved-link"
+            aria-label="Saved encounters"
+            title="Saved encounters"
+          >
+            <ArrowLeft size={16} />
+            <span>Saved encounters</span>
           </Link>
         ) : (
           <button
@@ -697,7 +610,14 @@ function AccountWorkspace({
                     <chapter.icon size={20} />
                   </span>
                   <span>
-                    <b>{chapter.title}</b>
+                    <b>
+                      <span className="sw-encounter-step-full">
+                        {chapter.title}
+                      </span>
+                      <span className="sw-encounter-step-short">
+                        {chapter.short}
+                      </span>
+                    </b>
                     <small>{chapter.hint}</small>
                   </span>
                   <em>{String(index + 1).padStart(2, "0")}</em>
@@ -726,7 +646,7 @@ function AccountWorkspace({
                 <h2>{chapters[stage]!.title}</h2>
                 <p>
                   {stage === 2
-                    ? "Shuffle a suggested group or choose creatures yourself. Preview, tune quantities, and keep equipment BU separate."
+                    ? "Set your limits, choose a group, or build a roster yourself."
                     : chapters[stage]!.hint}
                 </p>
               </header>
@@ -856,22 +776,23 @@ function AccountWorkspace({
                   Enter the party&apos;s totals. Leave unknown budgets blank;
                   enter 0 for no equipment.
                 </p>
-                <details>
+                <details
+                  onToggle={(event) => {
+                    if (
+                      event.currentTarget.open &&
+                      !party.length &&
+                      !partyPending
+                    )
+                      void loadParty();
+                  }}
+                >
                   <summary>Use owned or shared characters instead</summary>
-                  <button
-                    disabled={busy}
-                    className="sw-metal-button"
-                    onClick={() => void loadParty()}
-                  >
-                    {party.length
-                      ? "Refresh character list"
-                      : "Choose characters"}
-                  </button>
                   <EncounterPartyDirectory
                     characters={party}
                     selected={draft.characterIds}
                     search={partySearch}
                     pending={partyPending || busy}
+                    onRefresh={() => void loadParty()}
                     onSearch={(value) => {
                       setPartySearch(value);
                       void loadParty(false, value);
@@ -990,23 +911,6 @@ function AccountWorkspace({
                 >
                   Choose creatures
                 </button>
-                {oppositionMode === "groups" && (
-                  <button
-                    type="button"
-                    className="sw-metal-button sw-catalogue-filter-toggle sw-encounter-group-filters"
-                    title="Environment & role filters"
-                    aria-label="Open creature filters"
-                    onClick={() => setFilterPanelOpen(true)}
-                  >
-                    <SlidersHorizontal size={18} />
-                    {(env || role) && (
-                      <span
-                        className="sw-catalogue-filter-dot"
-                        aria-label="Filters applied"
-                      />
-                    )}
-                  </button>
-                )}
               </div>
               <div className="sw-encounter-catalogue-pane">
                 <button
@@ -1021,8 +925,6 @@ function AccountWorkspace({
                     selected={draft.entries}
                     partyBu={draft.partyBu}
                     partySize={draft.partySize}
-                    environment={env}
-                    role={role}
                     disabled={busy}
                     onChoose={(group) => {
                       patch({ entries: group.entries });
@@ -1052,8 +954,6 @@ function AccountWorkspace({
                         setQ(value);
                         setOffset(0);
                       }}
-                      onOpenFilters={() => setFilterPanelOpen(true)}
-                      hasActiveFilters={!!(min || max || env || role)}
                       view={catalogueView}
                       onViewChange={setCatalogueView}
                       placeholder="Search creatures…"
@@ -1190,9 +1090,13 @@ function AccountWorkspace({
                       setSelectionOpen(true);
                     }}
                   >
-                    Selected creatures <b>{appraisal.count}</b>
+                    Roster <b>{appraisal.count}</b>
                   </button>
-                  <span>{preview ? "Creature preview" : "Your encounter"}</span>
+                  <span>
+                    {preview
+                      ? "Creature preview"
+                      : `${appraisal.enemyBu} BU + ${appraisal.enemyItemBu} Item`}
+                  </span>
                 </div>
                 {preview ? (
                   <div className="sw-encounter-preview">
@@ -1247,10 +1151,24 @@ function AccountWorkspace({
                         <div
                           key={`${entry.templateId}:${entry.version}`}
                           className="sw-encounter-entry"
+                          data-preview-trigger="true"
                         >
                           <EntityTypeIcon type="MONSTER" />
                           <div>
-                            <strong>{c?.name ?? "Creature"}</strong>
+                            <button
+                              type="button"
+                              className="sw-encounter-selected-opener"
+                              data-quick-look-opener
+                              disabled={c?.unavailable}
+                              onClick={() =>
+                                setPreview({
+                                  id: entry.templateId,
+                                  version: entry.version,
+                                })
+                              }
+                            >
+                              <strong>{c?.name ?? "Creature"}</strong>
+                            </button>
                             <small>
                               {c?.unavailable
                                 ? "Access unavailable"
@@ -1258,7 +1176,7 @@ function AccountWorkspace({
                             </small>
                           </div>
                           <label>
-                            Quantity
+                            <span className="sr-only">Quantity</span>
                             <input
                               type="number"
                               aria-label={`Quantity for ${c?.name ?? "creature"}`}
@@ -1309,9 +1227,40 @@ function AccountWorkspace({
                               <Eye size={16} />
                             </button>
                           )}
+                          {!c?.unavailable && (
+                            <CatalogueQuickLook name={c?.name ?? "Creature"}>
+                              <MonsterQuickDetails
+                                id={entry.templateId}
+                                version={entry.version}
+                                tactics={c?.tactics}
+                              />
+                            </CatalogueQuickLook>
+                          )}
                         </div>
                       );
                     })}
+                    {!!draft.entries.length && (
+                      <button
+                        type="button"
+                        className="sw-encounter-text-action"
+                        disabled={busy}
+                        onClick={() => {
+                          patch({ entries: [] });
+                          setCreatures([]);
+                        }}
+                      >
+                        Clear roster
+                      </button>
+                    )}
+                    <EncounterBudgetReadout
+                      draft={draft}
+                      appraisal={appraisal}
+                      onEditParty={() => {
+                        setStage(1);
+                        setSelectionOpen(false);
+                        setPreview(null);
+                      }}
+                    />
                     {!draft.entries.length && (
                       <p className="sw-encounter-help">
                         Add a template, then choose how many creatures will

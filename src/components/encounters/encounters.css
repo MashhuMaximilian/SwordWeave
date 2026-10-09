@@ -610,3 +610,114 @@ html:root body[data-ui="v12"] :is(.sw-encounter-group-creature,.sw-encounter-par
  .sw-encounter-party-records.is-list .sw-encounter-party-record-actions {grid-column:2;justify-content:flex-start;}
  .sw-encounter-party-record .v12-roster-avatar-frame {width:38px;height:38px;}
 }
+
+/* Compact encounter instrument: one focused suggestion and a readable roster. */
+html:root body[data-ui="v12"] .sw-encounter-forge.sw-character-forge {grid-template-columns:170px minmax(0,1fr);gap:10px}
+.sw-encounter-workbench-heading {padding:12px 16px}
+.sw-encounter-workbench-heading h2 {font-size:24px;margin:4px 0}
+.sw-encounter-workbench-heading > p:last-child {margin:4px 0 0;font-size:12px}
+.sw-encounter-opposition-modes {padding:9px 12px!important;gap:6px!important}
+.sw-encounter-opposition-modes > button {flex:1}
+.sw-encounter-catalogue-pane {padding:12px}
+.sw-encounter-group-picker {padding:0}
+.sw-encounter-shuffle-kit {padding:0;border:0;margin:0;min-width:0}
+.sw-encounter-shuffle-kit legend {font:600 14px var(--font-system);padding:4px 0 8px}
+.sw-encounter-budget-mode {display:flex;gap:6px;margin-bottom:10px}
+.sw-encounter-budget-mode .sw-metal-button {flex:1}
+.sw-encounter-shuffle-controls {grid-template-columns:minmax(0,1.4fr) minmax(64px,.7fr) repeat(2,minmax(0,1fr));gap:8px;margin:0 0 8px}
+.sw-encounter-shuffle-controls label {display:flex;flex-direction:column;gap:3px;margin:0;font-size:11px}
+.sw-encounter-shuffle-controls input {margin-top:auto}
+.sw-encounter-shuffle-controls small {font-size:10px;color:var(--muted-foreground)}
+.sw-encounter-shuffle-summary {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;font:11px var(--font-technical)}
+html:root body[data-ui="v12"] .sw-encounters .sw-encounter-text-action {border:0;background:transparent!important;color:var(--sw-text-teal)!important;font:600 11px var(--font-system);padding:8px 0;min-height:36px;text-decoration:underline;text-underline-offset:3px}
+html:root body[data-ui="v12"] .sw-encounters .sw-encounter-text-action:focus-visible {outline:2px solid var(--primary);outline-offset:2px}
+html:root body[data-ui="v12"] .sw-encounters .sw-encounter-shuffle-action {width:100%;margin:8px 0 10px}
+.sw-encounter-group-tabs {display:flex;gap:6px;min-width:0;overflow:auto;padding:2px}
+.sw-encounter-group-tabs > button {flex:1;display:grid!important;gap:3px!important;min-width:90px;position:relative}
+.sw-encounter-group-tabs small {font:10px var(--font-technical);color:inherit}
+.sw-encounter-group-tabs svg {position:absolute;right:4px;top:4px}
+.sw-encounter-last-limits {font-size:10px!important;margin:8px 0!important}
+.sw-encounter-group-card {padding:10px;border-radius:8px}
+.sw-encounter-group-card > header {justify-content:space-between;gap:8px;margin-bottom:6px}
+.sw-encounter-group-card > header .sw-metal-button {min-height:44px;font-size:11px!important;padding:6px 10px!important}
+.sw-encounter-group-card h3 {font-size:14px}
+.sw-encounter-group-card small {font-size:11px}
+.sw-encounter-group-creature {padding:5px 2px;min-height:56px;gap:8px}
+.sw-encounter-group-creature strong {overflow-wrap:anywhere}
+.sw-encounter-boss-label {display:inline-flex;align-items:center;gap:3px;margin-left:6px;font:600 10px var(--font-system)}
+.sw-encounter-group-empty {margin:10px 0;padding:12px;font-size:12px}
+.sw-encounter-selection-tabs {padding:10px;gap:6px}
+.sw-encounter-selection-tabs .sw-metal-button {font-size:11px!important}
+html:root body[data-ui="v12"] .sw-encounter-selected .sw-encounter-entry {grid-template-columns:24px minmax(0,1fr) 46px 40px 40px;gap:6px;min-height:64px;padding:8px 0}
+html:root body[data-ui="v12"] .sw-encounter-selected .sw-encounter-entry > :is(.sw-entity-type-icon,div,label,.sw-encounter-icon-action) {grid-row:1;align-self:center}
+html:root body[data-ui="v12"] .sw-encounter-selected .sw-encounter-entry > .sw-encounter-icon-action {grid-column:4}
+html:root body[data-ui="v12"] .sw-encounter-selected .sw-encounter-entry > .sw-encounter-icon-action:last-of-type {grid-column:5;grid-row:1}
+html:root body[data-ui="v12"] .sw-encounters .sw-encounter-selected-opener {background:transparent!important;color:inherit!important;border:0!important;padding:0!important;text-align:left;box-shadow:none!important;min-height:28px}
+.sw-encounter-selected-opener strong {font-size:12px!important;line-height:1.3;display:-webkit-box!important;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sw-encounter-selected .sw-encounter-entry > div small {font-size:10px;line-height:1.4}
+.sw-encounter-directory-tools {display:flex;align-items:center;gap:6px}
+.sw-encounter-directory-tools > div {flex:1;min-width:0}
+.sw-encounter-party-records.is-grid {grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));gap:8px}
+.sw-encounter-party-record {padding:10px;gap:8px;border-radius:8px}
+.sw-encounter-party-record strong {font-size:13px}
+.sw-encounter-party-record small {font-size:11px}
+.sw-encounter-party-records.is-list .sw-encounter-party-record {min-height:70px;align-items:center}
+html:root body[data-ui="v12"] .sw-encounters :is(.sw-encounter-group-creature,.sw-encounter-party-record):is(:hover,:focus-within) .sw-metal-button:not(:disabled) {background:rgb(255 255 255 / 28%)!important;color:#17140f!important;border-color:rgb(23 20 15 / 38%)!important}
+html:root body[data-ui="v12"] .sw-encounters :is(.sw-encounter-group-creature,.sw-encounter-party-record):is(:hover,:focus-within) :is(.sw-metal-button svg,.sw-metal-button span) {color:#17140f!important;stroke:#17140f!important}
+html:root body[data-ui="v12"] :is(.sw-encounter-group-creature,.sw-encounter-party-record):is(:hover,:focus-within) .sw-entity-type-icon {background:#17140f!important}
+@media(max-width:1199px) {html:root body[data-ui="v12"] .sw-encounter-forge.sw-character-forge {grid-template-columns:140px minmax(0,1fr)}}
+@media(max-width:999px) {
+ html:root body[data-ui="v12"] .sw-encounter-forge.sw-character-forge {grid-template-columns:minmax(0,1fr)}
+ .sw-encounter-workbench-heading {padding:10px 12px}
+ .sw-encounter-workbench-heading h2 {font-size:22px}
+ .sw-encounter-selection-tabs {position:sticky;top:0;z-index:2;background:var(--sw-surface-fill,var(--card))}
+}
+@media(max-width:600px) {
+ .sw-encounter-shuffle-controls {grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .sw-encounter-shuffle-controls label:last-child {grid-column:auto}
+ .sw-encounter-shuffle-controls label {font-size:12px}
+ .sw-encounter-group-card > header {flex-wrap:wrap}
+ .sw-encounter-group-card > header .sw-metal-button {margin-left:auto}
+ .sw-encounter-opposition-modes > button {padding:8px!important;font-size:11px!important;min-width:0}
+ .sw-encounter-party-records.is-list .sw-encounter-party-record {grid-template-columns:38px minmax(0,1fr) auto}
+ .sw-encounter-party-records.is-list .sw-encounter-party-record-actions {grid-column:3;flex-wrap:nowrap}
+ .sw-encounter-party-records.is-list .sw-encounter-party-record-actions a {font-size:10px!important;padding:6px!important}
+ html:root body[data-ui="v12"] .sw-encounters .sw-encounter-icon-action {min-height:44px;width:44px;min-width:44px}
+ html:root body[data-ui="v12"] .sw-encounter-selected .sw-encounter-entry {grid-template-columns:24px minmax(0,1fr) 46px 44px 44px;gap:5px}
+ .sw-encounter-shuffle-kit legend {padding-bottom:8px}
+ .sw-encounter-mobile-selection {width:100%;justify-content:space-between!important}
+}
+
+html:root body[data-ui="v12"] .sw-encounters .sw-encounter-group-tabs button[aria-selected="true"] {background:var(--sw-metal-gold)!important;color:#17140f!important}
+html:root body[data-ui="v12"] .sw-encounters .sw-encounter-group-tabs button[aria-selected="true"] :is(span,small,svg) {color:#17140f!important;stroke:#17140f!important}
+.sw-encounter-readout {margin-top:12px;padding:10px 0;border-top:1px solid transparent;border-image:var(--v12-instrument-edge) 1;min-width:0}
+.sw-encounter-readout header {display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sw-encounter-readout header strong {font:600 12px var(--font-system)}
+.sw-encounter-readout table {width:100%;font:11px/1.5 var(--font-technical);border-collapse:collapse;table-layout:fixed}
+.sw-encounter-readout :is(td,th) {text-align:right;padding:5px 2px;overflow-wrap:anywhere}
+.sw-encounter-readout :is(td,th):first-child {text-align:left}
+.sw-encounter-readout thead th {color:var(--muted-foreground);font-size:10px;font-weight:500}
+.sw-encounter-readout tbody th {font-weight:500}
+.sw-encounter-readout-total {border-top:1px solid var(--border);color:var(--sw-text-teal);font-weight:600}
+.sw-encounter-readout p {font-size:10px;line-height:1.5;margin:6px 0}
+@media(min-width:1000px) {.sw-encounter-selection-pane {position:sticky;top:12px;align-self:start;max-height:calc(100dvh - 28px);overflow:auto}.sw-encounter-selection-pane .sw-encounter-preview {max-height:none}.sw-encounter-selection-pane:has(.sw-encounter-readout) {padding-bottom:4px}}
+/* Leave the lower right values clear of the floating menu trigger. */
+.sw-encounter-readout {padding-right:56px}
+.sw-encounter-step-short {display:none}
+/* Nested controls keep dark ink on a pale face when the roster row turns gold. */
+html:root body[data-ui="v12"] .sw-encounters .sw-encounter-entry[data-preview-trigger]:is(:hover,:focus-within) {background:var(--sw-metal-gold)!important;color:#17140f!important}
+html:root body[data-ui="v12"] .sw-encounters .sw-encounter-entry[data-preview-trigger]:is(:hover,:focus-within) :is(strong,small) {color:#17140f!important}
+html:root body[data-ui="v12"] .sw-encounters .sw-encounter-entry[data-preview-trigger]:is(:hover,:focus-within) .sw-entity-type-icon {background:#17140f!important}
+html:root body[data-ui="v12"] .sw-encounters :is(.sw-encounter-entry,.sw-encounter-catalogue-row,.sw-encounter-group-creature,.sw-encounter-party-record):is(:hover,:focus-within) :is(.sw-metal-button,input) {background:rgb(255 255 255 / 28%)!important;background-image:none!important;color:#17140f!important;border-color:rgb(23 20 15 / 38%)!important}
+html:root body[data-ui="v12"] .sw-encounters :is(.sw-encounter-entry,.sw-encounter-catalogue-row,.sw-encounter-group-creature,.sw-encounter-party-record):is(:hover,:focus-within) :is(.sw-metal-button svg,.sw-metal-button span) {color:#17140f!important;stroke:#17140f!important}
+@media(max-width:600px) {
+ .sw-encounter-heading {flex-wrap:nowrap;align-items:center;gap:8px;margin-bottom:10px}
+ .sw-encounter-heading > div {flex:1;min-width:0}
+ .sw-encounter-heading h1 {font-size:24px;margin:4px 0}
+ .sw-encounter-heading > div > p:not(.v12-kicker) {display:none}
+ html:root body[data-ui="v12"] .sw-encounters .sw-encounter-saved-link {width:44px;min-width:44px;height:44px;padding:0}
+ .sw-encounter-saved-link > span {display:none}
+ .sw-encounter-step-full {display:none}
+ .sw-encounter-step-short {display:inline}
+ html:root body[data-ui="v12"] .sw-encounter-forge .sw-character-forge__rail nav button {min-height:52px;flex-basis:66px;font-size:10px;gap:4px;padding:6px 4px}
+}

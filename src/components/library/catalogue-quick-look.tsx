@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -11,6 +12,7 @@ import {
 import { X } from "lucide-react";
 import { createPortal } from "react-dom";
 import "./catalogue-layout.css";
+import { quickDetailsPosition } from "@/lib/catalogue/quick-details-position";
 import { createHoldPreview } from "@/lib/catalogue/hold-preview";
 
 /** Authored details: hover/focus the row, or hold it on a touch screen. A normal tap still opens the full preview. */
@@ -24,6 +26,7 @@ export function CatalogueQuickLook({
   const id = useId();
   const anchor = useRef<HTMLSpanElement>(null);
   const panel = useRef<HTMLDivElement>(null);
+  const point = useRef<{ x: number; y: number } | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [position, setPosition] = useState<{
     top: number;
@@ -52,18 +55,14 @@ export function CatalogueQuickLook({
       cancelClose();
       const rect = row.getBoundingClientRect();
       const width = Math.min(420, window.innerWidth - 24);
-      const height = Math.min(400, window.innerHeight - 24);
-      const beside = window.innerWidth - rect.right > width + 20;
+      const at = point.current ?? { x: rect.right, y: rect.top };
       setPosition({
         width,
-        left: beside
-          ? rect.right + 8
-          : Math.max(12, Math.min(rect.left, window.innerWidth - width - 12)),
-        top: beside
-          ? Math.max(12, Math.min(rect.top, window.innerHeight - height - 12))
-          : rect.bottom + height + 20 < window.innerHeight
-            ? rect.bottom + 8
-            : Math.max(12, rect.top - height - 8),
+        ...quickDetailsPosition(
+          at,
+          { width, height: Math.min(400, window.innerHeight - 24) },
+          { width: window.innerWidth, height: window.innerHeight },
+        ),
       });
     };
     // Independent actions (bookmark, add, quantity…) never summon or consume a preview.
@@ -82,6 +81,7 @@ export function CatalogueQuickLook({
     };
     const enter = (e: PointerEvent) => {
       if (e.pointerType !== "touch") {
+        point.current = { x: e.clientX, y: e.clientY };
         cancelClose();
         openTimer = setTimeout(open, 350);
       }
@@ -94,10 +94,12 @@ export function CatalogueQuickLook({
     };
     const down = (e: PointerEvent) => {
       cancelOpen();
+      point.current = { x: e.clientX, y: e.clientY };
       if (e.pointerType === "touch" && !independent(e.target))
         hold.start(e.clientX, e.clientY);
     };
     const move = (e: PointerEvent) => {
+      point.current = { x: e.clientX, y: e.clientY };
       if (e.pointerType === "touch") hold.move(e.clientX, e.clientY);
     };
     const up = () => {
@@ -122,14 +124,17 @@ export function CatalogueQuickLook({
         !independent(e.target) &&
         e.target instanceof Element &&
         e.target.matches(":focus-visible")
-      )
+      ) {
+        point.current = null;
         openTimer = setTimeout(open, 350);
+      }
     };
     const keyboard = (event: KeyboardEvent) => {
       if (
         !independent(event.target) &&
         ["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"].includes(event.key)
       ) {
+        point.current = null;
         cancelOpen();
         openTimer = setTimeout(open, 350);
       }
@@ -169,15 +174,43 @@ export function CatalogueQuickLook({
       row.removeEventListener("focusout", blur);
     };
   }, [cancelClose, closeSoon]);
+  const visible = position !== null;
+  useLayoutEffect(() => {
+    if (!visible || !panel.current) return;
+    const place = () => {
+      const row = anchor.current?.closest<HTMLElement>(
+        "[data-preview-trigger], [data-catalogue-row]",
+      );
+      if (!row || !panel.current) return;
+      const rect = row.getBoundingClientRect(),
+        measured = panel.current.getBoundingClientRect();
+      const next = quickDetailsPosition(
+        point.current ?? { x: rect.right, y: rect.top },
+        { width: measured.width, height: measured.height },
+        { width: window.innerWidth, height: window.innerHeight },
+      );
+      setPosition((previous) =>
+        previous && (previous.left !== next.left || previous.top !== next.top)
+          ? { ...previous, ...next }
+          : previous,
+      );
+    };
+    place();
+    // Lazy monster mechanics can change the actual height after the popover opens.
+    const observer = new ResizeObserver(place);
+    observer.observe(panel.current);
+    return () => observer.disconnect();
+  }, [visible]);
   useEffect(() => {
     if (!position) return;
     const row = anchor.current?.closest<HTMLElement>(
       "[data-preview-trigger], [data-catalogue-row]",
     );
     const dismiss = (event: Event) => {
+      const target = event.target instanceof Node ? event.target : null;
       if (
-        !row?.contains(event.target as Node) &&
-        !panel.current?.contains(event.target as Node)
+        !row?.contains(target) &&
+        !panel.current?.contains(target)
       )
         setPosition(null);
     };
@@ -189,7 +222,8 @@ export function CatalogueQuickLook({
       }
     };
     const scroll = (event: Event) => {
-      if (!panel.current?.contains(event.target as Node)) setPosition(null);
+      if (!(event.target instanceof Node) || !panel.current?.contains(event.target))
+        setPosition(null);
     };
     document.addEventListener("pointerdown", dismiss);
     document.addEventListener("keydown", key, true);

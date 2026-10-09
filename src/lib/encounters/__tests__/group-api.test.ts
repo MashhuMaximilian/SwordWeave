@@ -99,3 +99,26 @@ describe("private encounter group proposals", () => {
     expect(mocks.pin).not.toHaveBeenCalled();
   });
 });
+
+describe('resolved shuffle allowances',()=>{
+ const bossId='33333333-3333-4333-8333-333333333333';
+ function roster(regularBudget:number,bossBudget:number) {
+  mocks.rows=[{id,version:4,budget:25,role:'Support'},{id:bossId,version:2,budget:100,role:'Solo'}];
+  mocks.pin.mockImplementation(async (_owner:string,key:string)=>({summary:{templateId:key,version:key===bossId?2:4,name:key===bossId?'Boss':'Support',budget:key===bossId?bossBudget:regularBudget,itemBu:key===bossId?2:7,maximum:30}}));
+ }
+ it('resolves a boss plus regular creatures with separate, quantity-multiplied equipment',async()=>{
+  roster(25,100);
+  const data=await(await POST(request({budget:25,count:4,mode:'perCreature',bossBudget:100,itemBudget:23}))).json();
+  expect(data.groups[0]).toMatchObject({count:4,creatureBu:175,itemBu:23,boss:{templateId:bossId,version:2}});
+  expect(data.groups[0].entries).toContainEqual({templateId:bossId,version:2,quantity:1});
+ });
+ it('rejects a stale regular creature cap even when the resolved total still fits',async()=>{
+  roster(50,25);
+  await expect(POST(request({budget:25,count:4,mode:'perCreature',bossBudget:100}))).rejects.toThrow('Could not find a complete group');
+ });
+ it('validates boss and budget mode before looking up pins',async()=>{
+  await expect(POST(request({budget:25,count:4,mode:'other'}))).rejects.toThrow();
+  await expect(POST(request({budget:25,count:4,bossBudget:0}))).rejects.toThrow();
+  expect(mocks.pin).not.toHaveBeenCalled();
+ });
+});

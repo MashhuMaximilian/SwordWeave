@@ -261,3 +261,9 @@ html:not(.dark) body[data-ui="v12"] .sw-fab .sw-fab__workspace-grid [data-fab-ac
 body[data-ui="v12"] .sw-fab .sw-account-identity .sw-fab__account-avatar{width:100%;height:100%;object-fit:cover}
 body[data-ui="v12"] .sw-fab .sw-account-menu :is(a,button):is(:hover,:focus-visible) svg{stroke:#16180f!important}
 body[data-ui="v12"] .sw-fab [data-fab-menu]:has(.sw-account-menu){max-height:calc(100dvh - 100px - env(safe-area-inset-bottom,0px))!important}
+
+/* Player quick access uses both columns without leaving an empty monster slot. */
+.sw-fab__pair--single {grid-template-columns:minmax(0,1fr)}
+body[data-ui="v12"] .sw-fab a.sw-fab__creators[data-fab-action] {border:1px solid transparent!important;border-radius:11px;background:linear-gradient(125deg,#59492c,#19232a 60%) padding-box,var(--fab-edge) border-box!important;color:#ffe1a0!important;font:600 13px var(--font-system)!important;gap:8px!important}
+html:not(.dark) body[data-ui="v12"] .sw-fab a.sw-fab__creators[data-fab-action] {background:linear-gradient(125deg,#f0e3c2,#dae5de 65%) padding-box,var(--fab-edge) border-box!important;color:#302a15!important}
+body[data-ui="v12"] .sw-fab a.sw-fab__creators[data-fab-action]:is(:hover,:focus-visible) {background:var(--fab-gold)!important;color:#17140f!important}

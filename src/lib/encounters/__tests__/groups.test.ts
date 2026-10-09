@@ -107,3 +107,29 @@ describe("encounter group shuffling", () => {
       ).toThrow();
   });
 });
+
+describe('per-creature limits and bosses',()=>{
+ it('never exceeds regular per-creature caps, including repeated quantities',()=>{
+  for(let seed=0;seed<100;seed++){
+   const rows=shuffleEncounterEntries(candidates,50,4,seeded(seed),{mode:'perCreature',bossBudget:null});
+   expect(rows.reduce((n,e)=>n+e.quantity,0)).toBe(4);
+   for(const row of rows)expect(candidates.find(c=>c.id===row.templateId)!.budget).toBeLessThanOrEqual(50);
+  }
+ });
+ it('includes exactly one separately capped boss within the requested count',()=>{
+  for(let seed=0;seed<100;seed++){
+   const rows=shuffleEncounterEntries(candidates,25,4,seeded(seed),{mode:'perCreature',bossBudget:100});
+   expect(rows[0]).toEqual({templateId:'c',version:7,quantity:1});
+   expect(rows.reduce((n,e)=>n+e.quantity,0)).toBe(4);
+   expect(rows.slice(1)).toEqual([{templateId:'a',version:3,quantity:3}]);
+  }
+ });
+ it('counts the boss inside a shared total rather than adding its allowance twice',()=>{
+  const rows=shuffleEncounterEntries(candidates,175,4,seeded(1),{mode:'total',bossBudget:100});
+  expect(rows).toEqual([{templateId:'c',version:7,quantity:1},{templateId:'a',version:3,quantity:3}]);
+ });
+ it('supports a single boss and rejects a roster with no affordable regular member',()=>{
+  expect(shuffleEncounterEntries(candidates,25,1,seeded(1),{mode:'perCreature',bossBudget:100})).toEqual([{templateId:'c',version:7,quantity:1}]);
+  expect(shuffleEncounterEntries(candidates.slice(2),25,4,seeded(1),{mode:'perCreature',bossBudget:100})).toEqual([]);
+ });
+});

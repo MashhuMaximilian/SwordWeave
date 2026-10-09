@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { Check, Plus, ArrowUpRight } from "lucide-react";
+import { Check, Plus, ArrowUpRight, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { CatalogueQuickLook } from "@/components/library/catalogue-quick-look";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
@@ -24,6 +24,7 @@ export function EncounterPartyDirectory({
   search,
   pending,
   onSearch,
+  onRefresh,
   onToggle,
 }: {
   characters: PartyDirectoryCharacter[];
@@ -31,18 +32,30 @@ export function EncounterPartyDirectory({
   search: string;
   pending: boolean;
   onSearch: (search: string) => void;
+  onRefresh: () => void;
   onToggle: (id: string) => void;
 }) {
   const [view, setView] = useState<LibraryView>("GRID");
   return (
     <div className="sw-encounter-party-directory">
-      <ColumnSearchBar
-        search={search}
-        onSearchChange={onSearch}
-        placeholder="Search owned or shared characters…"
-        view={view}
-        onViewChange={setView}
-      />
+      <div className="sw-encounter-directory-tools">
+        <ColumnSearchBar
+          search={search}
+          onSearchChange={onSearch}
+          placeholder="Search owned or shared characters…"
+          view={view}
+          onViewChange={setView}
+        />
+        <button
+          type="button"
+          className="sw-metal-button sw-encounter-icon-action"
+          disabled={pending}
+          onClick={onRefresh}
+          aria-label="Refresh character directory"
+        >
+          <RefreshCw size={16} />
+        </button>
+      </div>
       <div className="sw-encounter-catalogue-heading">
         <small>
           {selected.length} linked · link sheets without changing them
@@ -126,6 +139,8 @@ export function EncounterPartyDirectory({
               </button>
               <Link
                 href={`/characters/${character.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="sw-metal-button"
                 aria-label={`Open ${character.name} sheet`}
               >
