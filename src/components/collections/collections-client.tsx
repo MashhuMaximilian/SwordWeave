@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useUser, useClerk } from "@clerk/nextjs";
 import { LibraryCatalogueCard, LibraryCatalogueSurface } from "@/components/library/library-catalogue-card";
 import { useRouter } from "next/navigation";
+import { CatalogueQuickLook } from "@/components/library/catalogue-quick-look";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
 import { PHONE_RECORD_TYPES } from "@/components/library/phone-type-choices";
 import type { LibraryItem } from "@/lib/publishing/library-query";
@@ -36,7 +37,7 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false, startC
     [current, setCurrent] = useState<Collection | null>(null),
     [entries, setEntries] = useState<LibraryItem[]>([]),
     [creating, setCreating] = useState(startCreating),
-    [entryView, setEntryView] = useState<"GRID" | "LIST">("LIST"),
+    [entryView, setEntryView] = useState<"GRID" | "LIST">("GRID"),
     [page, setPage] = useState(0),
     [search, setSearch] = useState(""),
     [filtersOpen, setFiltersOpen] = useState(false),
@@ -358,7 +359,7 @@ function CollectionTree({ rows, parentId = null, seen = [] }: { rows: Collection
   if (!children.length) return null;
   return <ul className="sw-collections-tree">{children.map(c => {
     const hasChildren = rows.some(child => child.parent_id === c.id && !seen.includes(child.id));
-    const heading = <><Link href={`/collections/${c.id}`} className="sw-collections-tree-link"><span className="v12-entry-glyph sw-collections-branch-glyph" aria-hidden="true"><Folder size={18} /></span><strong>{c.name}</strong></Link><span className="sw-collections-tree-visibility">{c.visibility.replaceAll("_", " ").toLowerCase()}{c.followed ? " · saved" : ""}</span></>;
+    const heading = <><Link href={`/collections/${c.id}`} data-catalogue-row="true" className="sw-collections-tree-link"><CatalogueQuickLook name={c.name}><p>{c.visibility.replaceAll("_", " ").toLowerCase()} collection{c.followed ? " · saved" : ""}</p><p>Explore its entries and child branches.</p></CatalogueQuickLook><span className="v12-entry-glyph sw-collections-branch-glyph" aria-hidden="true"><Folder size={18} /></span><strong>{c.name}</strong></Link><span className="sw-collections-tree-visibility">{c.visibility.replaceAll("_", " ").toLowerCase()}{c.followed ? " · saved" : ""}</span></>;
     return <li key={c.id} className="sw-collections-tree-node" data-library-surface="atelier">{hasChildren ? <details open><summary><span className="sw-collections-tree-toggle" aria-hidden="true">›</span>{heading}</summary><CollectionTree rows={rows} parentId={c.id} seen={[...seen, c.id]} /></details> : <div className="sw-collections-tree-leaf"><span className="sw-collections-tree-toggle" aria-hidden="true">·</span>{heading}</div>}</li>;
   })}</ul>;
 }

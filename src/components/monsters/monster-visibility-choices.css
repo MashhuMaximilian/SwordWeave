@@ -1,0 +1,14 @@
+
+.monster-visibility-choices {border:0;padding:0;margin:12px 0;min-width:0;}
+.monster-visibility-choices legend {font:600 13px/1.4 var(--font-system);margin-bottom:8px;}
+.monster-visibility-choices > div {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+.monster-visibility-choices label {min-width:0;display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px!important;}
+.monster-visibility-choices label span {display:grid;gap:3px;}
+.monster-visibility-choices label strong {font-size:12px;}
+.monster-visibility-choices label small {font-size:10px;}
+.monster-visibility-choices input {position:absolute;opacity:0;width:1px;height:1px;}
+.monster-visibility-choices label:focus-within {outline:2px solid var(--primary);outline-offset:3px;}
+.monster-visibility-choices label:is(.is-selected,:hover,:focus-within) {background:var(--sw-metal-gold)!important;color:#17140f!important;}
+.monster-visibility-choices label:is(.is-selected,:hover,:focus-within) :is(strong,small,svg) {color:#17140f!important;}
+.monster-visibility-choices > small {display:block;margin-top:8px;color:var(--muted-foreground);font-size:12px;}
+@media(max-width:500px) {.monster-visibility-choices > div {grid-template-columns:1fr;}.monster-visibility-choices label span {display:flex;flex-wrap:wrap;gap:8px;}}

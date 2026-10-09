@@ -67,7 +67,7 @@ export interface LibraryToolbarState {
 export const EMPTY_LIBRARY_TOOLBAR_STATE: LibraryToolbarState = {
   search: "",
   sort: "ENGAGEMENT",
-  view: "LIST",
+  view: "GRID",
   typeFilter: "ALL",
   category: "",
   author: "",

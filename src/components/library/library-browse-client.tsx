@@ -36,7 +36,7 @@ import type {
   PrimitiveFamilyTier,
 } from "@/lib/publishing/library-query";
 import type { LibraryEngagement } from "@/components/library/library-table";
-import { EMPTY_LIBRARY_TOOLBAR_STATE, type LibraryToolbarState } from "@/components/library/library-toolbar";
+import { type LibraryToolbarState } from "@/components/library/library-toolbar";
 import {
   LibraryMarketRail,
   libraryFamilyLabel,
@@ -402,19 +402,6 @@ export function LibraryBrowseClient({
             </div>}
             <span>{discovery.total.toLocaleString()} records</span>
           </div>
-          <div className="flex flex-wrap items-center gap-1.5 px-2 py-2" aria-label="Active filters">
-            {([
-              ["search", "Search"], ["category", "Family"], ["tier", "Tier"], ["author", "Author"],
-              ["minBu", "Minimum BU"], ["maxBu", "Maximum BU"], ["mechanicTarget", "Result"],
-              ["recipient", "Recipient"], ["conditionMode", "Condition"], ["definitionKind", "Definition"],
-              ["minMagnitude", "Minimum value"], ["maxMagnitude", "Maximum value"], ["tags", "Tags"],
-              ["fromDate", "From"], ["toDate", "Until"], ["minLikes", "Minimum likes"], ["minForks", "Minimum forks"],
-            ] as const).filter(([key]) => Boolean(state[key])).map(([key, label]) => <button key={key} type="button" className="rounded-full border border-border px-2 py-1 text-xs hover:border-primary" onClick={() => onStateChange({...state,[key]: ""})} aria-label={`Remove ${label.toLowerCase()} filter`}>{label}: {String(state[key])} <span aria-hidden="true">×</span></button>)}
-            {state.origin && state.origin !== "all" ? <button type="button" className="rounded-full border border-border px-2 py-1 text-xs" onClick={() => onStateChange({...state,origin:"all"})}>Source: {state.origin} ×</button> : null}
-            {state.mirrorableOnly ? <button type="button" className="rounded-full border border-border px-2 py-1 text-xs" onClick={() => onStateChange({...state,mirrorableOnly:false})}>Mirrorable ×</button> : null}
-            {state.hasForks ? <button type="button" className="rounded-full border border-border px-2 py-1 text-xs" onClick={() => onStateChange({...state,hasForks:false})}>Has forks ×</button> : null}
-            <button type="button" className="rounded border border-border px-2 py-1 text-xs hover:border-primary" onClick={() => onStateChange({...EMPTY_LIBRARY_TOOLBAR_STATE,typeFilter:state.typeFilter,view:state.view,sort:state.sort})}>Clear filters</button>
-          </div>
           <button type="button" className="phone-library-quick-filter" aria-expanded={phoneQuickFiltersOpen} onClick={()=>setPhoneQuickFiltersOpen(value=>!value)}>Tier & origin{state.tier ? ` · Tier ${state.tier}` : ""}{state.origin && state.origin !== "all" ? ` · ${state.origin}` : ""} <span aria-hidden="true">{phoneQuickFiltersOpen ? "−" : "+"}</span></button>
           <div className={`v12-browse-controls${phoneQuickFiltersOpen ? " phone-filters-open" : ""}`}>
             {isPrimitiveMode ? <div className="v12-tier-tabs" aria-label="Exact entry tiers">{["", "1", "2", "3", "4", "5"].map(tier => <button key={tier} type="button" aria-pressed={(state.tier ?? "") === tier} onClick={() => onStateChange({ ...state, tier })}>{tier ? `Tier ${["", "I", "II", "III", "IV", "V"][Number(tier)]}` : "All tiers"}</button>)}</div> : null}
@@ -473,7 +460,7 @@ export function LibraryBrowseClient({
                 </div>
                 {selectedItem.targetType === "MONSTER" ? <MonsterTemplatePreview key={selectedItem.id} id={selectedItem.targetId} compact /> : null}
                 {selectedItem.mechanicalDescription ? <div className="v12-rule" data-readable-rule>
-                  <Markdown>{selectedItem.mechanicalDescription}</Markdown>
+                  <Markdown copyRole="mechanical">{selectedItem.mechanicalDescription}</Markdown>
                 </div> : null}
                 <dl className="v12-inspector-facts">
                   <div><dt>Source</dt><dd>{libraryOrigin(selectedItem) === "system" ? "SYSTEM" : selectedItem.authorUsername ?? "Community"}</dd></div>

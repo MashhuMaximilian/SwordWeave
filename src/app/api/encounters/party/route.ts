@@ -14,6 +14,7 @@ export const GET = (r: Request) =>
           Number(new URL(r.url).searchParams.get("offset")) || 0,
         ),
       ),
+      (new URL(r.url).searchParams.get("q") ?? "").slice(0, 200),
     ),
   }));
 export const POST = (r: Request) =>

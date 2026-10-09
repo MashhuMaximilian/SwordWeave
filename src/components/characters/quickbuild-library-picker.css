@@ -41,7 +41,7 @@ body[data-ui="v12"] .sw-quickpick-results[data-library-view="LIST"] [data-librar
 body[data-ui="v12"] .sw-quickpick-results[data-library-view="LIST"] [data-library-row-id][class*="border-[#c3974e]"]{background:linear-gradient(100deg,color-mix(in srgb,var(--v12-brass) 12%,transparent),transparent);box-shadow:inset 3px 0 var(--v12-gold-hi)}
 .sw-quickpick-results[data-library-view="LIST"] [data-library-row-id]:hover h3{color:var(--v12-gold-hi,var(--primary))}
 .sw-quickpick-results .sw-entity-medallion{width:44px;height:44px;padding:6px;align-self:center}
-.sw-quickpick-results [data-library-row-id] > svg:last-child{margin-top:3px;color:var(--v12-brass-hi,var(--primary))}
+.sw-quickpick-results [data-library-row-id] > svg:last-of-type{margin-top:3px;color:var(--v12-brass-hi,var(--primary))}
 .sw-quickpick-tools [role="group"]{display:flex;gap:4px}
 @media(max-width:767px){
   .sw-quickpick-results[data-library-view="LIST"] [data-library-row-id]{gap:10px;padding:12px 4px;min-height:96px}
@@ -49,3 +49,6 @@ body[data-ui="v12"] .sw-quickpick-results[data-library-view="LIST"] [data-librar
   .sw-quickpick-results[data-library-view="LIST"] [data-library-row-id] > div:first-child{width:42px}
   .sw-quickpick-results .sw-entity-medallion{width:40px;height:40px;padding:5px}
 }
+
+/* Shared compact toolbar keeps filter and layout actions at the same touch size. */
+.sw-quickpick-tools :is(.sw-catalogue-filter-toggle,.sw-catalogue-view-toggle){width:44px;min-width:44px;height:44px;padding:0;display:grid;place-items:center;border-radius:9px}

@@ -1,3 +1,4 @@
+import { CatalogueQuickLook } from "@/components/library/catalogue-quick-look";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { characters } from "@/db/schema";
@@ -87,7 +88,8 @@ export function RosterCharacterCard({
   const portrait = character.portraitUrl;
 
   return (
-    <article className="v12-roster-card group">
+    <article className="v12-roster-card group" data-catalogue-row="true">
+      <CatalogueQuickLook name={character.name}><p>Level {character.level} · {sheet.resolvedSize} · {character.lineageName} {character.manifestName}</p><p>Progression pool {sheet.buBalance.progressionPool} BU · {sheet.buBalance.itemBuSpent} Item BU</p><p>Vitality {sheet.vitality.current ?? sheet.vitality.max}/{sheet.vitality.max}</p><p>Physical {sheet.attributes.physical} · Mental {sheet.attributes.mental} · Magical {sheet.attributes.magical}</p></CatalogueQuickLook>
       <div className="v12-roster-card-head">
         <div className="v12-roster-avatar-frame">
           <div className="v12-roster-avatar-crop">
@@ -180,7 +182,7 @@ export function RosterCharacterCard({
       {/* Actions */}
       <div className="v12-roster-card-actions">
         {actions ?? <Link
-          href={`/characters/${character.id}`}
+          data-quick-look-opener href={`/characters/${character.id}`}
           className="v12-roster-open"
         >
           Open sheet <ArrowRight aria-hidden="true" />

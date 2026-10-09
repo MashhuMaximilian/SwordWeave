@@ -49,7 +49,7 @@ export function ColumnSearchBar({
 
   return (
     <div className="flex items-center gap-2">
-      <div className="v12-library-search-field relative flex-1">
+      <div className="v12-library-search-field relative min-w-0 flex-1">
         <Search className="v12-library-search-icon pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <input
           type="search"
@@ -66,15 +66,10 @@ export function ColumnSearchBar({
           onClick={onOpenFilters}
           title="Open filters"
           aria-label="Open filters"
-          className={cn(
-            "relative inline-flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium transition-colors",
-            hasActiveFilters
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-border bg-card text-foreground hover:border-primary",
-          )}
+          className={cn("sw-metal-button sw-catalogue-filter-toggle", hasActiveFilters && "is-filtered")}
         >
-          <SlidersHorizontal className="size-3.5" />
-          Filters
+          <SlidersHorizontal size={18} aria-hidden="true" />
+          {hasActiveFilters && <span className="sw-catalogue-filter-dot" aria-label="Filters applied" />}
         </button>
       ) : null}
     </div>

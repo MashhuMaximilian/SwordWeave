@@ -1,4 +1,6 @@
 "use client";
+import { CatalogueQuickLook } from "@/components/library/catalogue-quick-look";
+import { Markdown } from "@/components/ui/markdown";
 import { ForgeProgressRail, ForgeWorkbench, QuickbuildSection } from "./forge-section";
 import { useUser } from "@clerk/nextjs";
 import { CreationAtelierAction } from "./creation-atelier-action";
@@ -1960,6 +1962,7 @@ function QuickBuildForm({
                         setPreview({ kind: "heritage", id: selected.id })
                       }
                     >
+                      <CatalogueQuickLook name={selected.name}><p>{selected.cost} BU · {label}</p><Markdown copyRole="narrative">{selected.description || ""}</Markdown>{selected.rules?.map((rule, i) => <div className="sw-catalogue-peek-rule" key={i}><Markdown copyRole={rule.mechanical ? "mechanical" : "narrative"}>{rule.text}</Markdown></div>)}</CatalogueQuickLook>
                       {selected.imageUrl ? (
                         <img src={selected.imageUrl} alt="" loading="lazy" />
                       ) : (
@@ -3824,10 +3827,12 @@ export function MirrorOptionCard({
       type="button"
       className={active ? "is-active" : ""}
       aria-pressed={active}
+      data-preview-trigger="true"
       data-selection-card="drawback"
       disabled={disabled}
       onClick={onSelect}
     >
+      <CatalogueQuickLook name={item.name}><Markdown copyRole="narrative">{item.narrativeRule}</Markdown><div className="sw-catalogue-peek-rule"><Markdown copyRole="mechanical">{mechanicalCopy}</Markdown><p>Mirrored drawback · {credit} BU credit</p><p>{mirrorConsequence(item)}</p></div></CatalogueQuickLook>
       <span className="sw-mirror-choices__icon">
         {item.iconSource ? (
           <IconDisplay
@@ -4174,10 +4179,12 @@ export function PrimitiveSelectCard({
     <button
       type="button"
       className={`sw-access-entry${selected ? " is-selected" : ""}`}
+      data-preview-trigger="true"
       data-selection-card="starting-access"
       onClick={onToggle}
       aria-pressed={selected}
     >
+      <CatalogueQuickLook name={item.name}><small>{item.buCost} BU · {item.costTier || item.category.replaceAll("_", " ")}</small><Markdown copyRole="narrative">{item.narrativeRule}</Markdown><div className="sw-catalogue-peek-rule"><Markdown copyRole="mechanical">{item.mechanicalOutputText}</Markdown></div></CatalogueQuickLook>
       <span className="sw-access-entry__icon">
         {item.iconSource ? (
           <IconDisplay

@@ -55,7 +55,7 @@ async function owned(owner: string, id: string, lock = false) {
   if (!row) throw new EncounterError("Encounter not found.", 404);
   return row;
 }
-async function pinSummary(owner: string, templateId: string, version: number) {
+export async function pinSummary(owner: string, templateId: string, version: number) {
   const template = await visibleMonster(templateId, owner);
   if (!template)
     throw new EncounterError("A creature is no longer accessible.");
@@ -446,6 +446,7 @@ export async function partyCharacters(
   owner: string,
   ids?: string[],
   offset = 0,
+  search = "",
 ) {
   if (ids) {
     const result = [];
@@ -473,10 +474,10 @@ export async function partyCharacters(
     return result;
   }
   return db
-    .select({ id: characters.id, name: characters.name })
+    .select({ id: characters.id, name: characters.name, level: characters.level, size: characters.size, portraitUrl: characters.portraitUrl, portraitFrame: characters.portraitFrame, physical: characters.attrPhysical, mental: characters.attrMental, magical: characters.attrMagical, shared: sql<boolean>`NOT (${characters.userId}=${owner} OR EXISTS(SELECT 1 FROM users u WHERE u.id::text=${characters.userId} AND u.clerk_user_id=${owner}))` })
     .from(characters)
     .where(
-      sql`(${characters.userId}=${owner} OR EXISTS(SELECT 1 FROM users u WHERE u.id::text=${characters.userId} AND u.clerk_user_id=${owner}) OR EXISTS(SELECT 1 FROM character_shares cs JOIN users u ON u.id=cs.shared_with_user_id WHERE cs.character_id=${characters.id} AND cs.revoked_at IS NULL AND u.clerk_user_id=${owner}))`,
+      sql`(${characters.userId}=${owner} OR EXISTS(SELECT 1 FROM users u WHERE u.id::text=${characters.userId} AND u.clerk_user_id=${owner}) OR EXISTS(SELECT 1 FROM character_shares cs JOIN users u ON u.id=cs.shared_with_user_id WHERE cs.character_id=${characters.id} AND cs.revoked_at IS NULL AND u.clerk_user_id=${owner})) AND ${characters.name} ILIKE ${"%" + search + "%"}`,
     )
     .orderBy(characters.name)
     .limit(50)

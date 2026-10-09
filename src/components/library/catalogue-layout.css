@@ -33,3 +33,18 @@ html:root body[data-ui="v12"] .sw-catalogue-grid-card .v12-composition-mechanic 
  .sw-catalogue-row-end {flex-direction:column;gap:2px;}
  .sw-catalogue-quick-look {width:36px;height:36px;}
 }
+
+/* The row itself opens quick details. Filters and view switches share one compact footprint. */
+html:root body .sw-catalogue-filter-toggle, html:root body .sw-catalogue-view-toggle {width:44px;height:44px;min-width:44px;min-height:44px;padding:0;display:inline-flex;align-items:center;justify-content:center;position:relative;flex-shrink:0;}
+.sw-catalogue-filter-dot {position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:currentColor;}
+.sw-catalogue-peek {max-height:min(400px,calc(100dvh - 24px));overscroll-behavior:contain;touch-action:pan-y;}
+html:root body[data-ui="v12"] .sw-catalogue-peek :is([data-copy="mechanical"], [data-copy="mechanical"] *) {color:var(--sw-text-mechanical,#d57843)!important;}
+html:root body[data-ui="v12"] .sw-source-record:not(:hover):not([aria-current="true"]) [data-copy="mechanical"], html:root body[data-ui="v12"] .sw-source-record:not(:hover):not([aria-current="true"]) [data-copy="mechanical"] * {color:var(--sw-text-mechanical,#d57843)!important;}
+
+html:root body[data-ui="v12"][data-ui="v12"] :is(.v12-entry-row,.sw-source-record):not(:hover):not(:focus-visible):not(.is-selected):not([aria-current="true"]) :is(.v12-entry-mechanical,[data-copy="mechanical"],[data-copy="mechanical"] *) {color:var(--sw-text-mechanical)!important;}
+html:root body[data-ui="v12"][data-ui="v12"] .sw-catalogue-peek :is([data-copy="mechanical"], [data-copy="mechanical"] *) {color:var(--sw-text-mechanical)!important;}
+
+html:root body[data-ui="v12"] .v12-library-browser .v12-rule :is([data-copy="mechanical"], [data-copy="mechanical"] *) {color:var(--sw-text-mechanical)!important;}
+html:root body[data-ui="v12"] .sw-catalogue-peek > strong {padding-right:28px;}
+.sw-catalogue-peek-close {position:absolute;top:8px;right:8px;display:grid;place-items:center;border:0;background:transparent;color:var(--foreground);width:32px;height:32px;cursor:pointer;}
+.sw-catalogue-peek-close:focus-visible {outline:2px solid var(--primary);outline-offset:2px;}

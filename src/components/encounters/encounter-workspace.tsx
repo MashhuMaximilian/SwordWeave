@@ -13,6 +13,7 @@ import {
   ArrowLeft,
   ChevronRight,
   Users,
+  SlidersHorizontal,
 } from "lucide-react";
 import { useAccount } from "@/components/account/account-provider";
 import { EntityTypeIcon } from "@/components/icons/entity-type-icon";
@@ -30,6 +31,12 @@ import {
   ForgeProgressRail,
   ForgeWorkbench,
 } from "@/components/characters/forge-section";
+import { EncounterGroupPicker } from "./encounter-group-picker";
+import {
+  EncounterPartyDirectory,
+  type PartyDirectoryCharacter,
+} from "./encounter-party-directory";
+import { MonsterQuickDetails } from "@/components/monsters/monster-quick-details";
 import { CatalogueQuickLook } from "@/components/library/catalogue-quick-look";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
 import { useFilterSlot } from "@/components/layout/right-filter-panel";
@@ -115,10 +122,13 @@ function AccountWorkspace({
     [conflict, setConflict] = useState(false),
     [recovery, setRecovery] = useState<EncounterDefinition | null>(null);
   const [stage, setStage] = useState(id ? 2 : 0);
-  const [catalogueView, setCatalogueView] = useState<LibraryView>("LIST");
+  const [catalogueView, setCatalogueView] = useState<LibraryView>("GRID");
   const [selectionOpen, setSelectionOpen] = useState(false);
-  const [archiveView, setArchiveView] = useState<LibraryView>("LIST");
+  const [archiveView, setArchiveView] = useState<LibraryView>("GRID");
   const [archiveSearch, setArchiveSearch] = useState("");
+  const [oppositionMode, setOppositionMode] = useState<"groups" | "manual">(
+    "groups",
+  );
   const picker = editing && stage === 2;
   const [preview, setPreview] = useState<{
       id: string;
@@ -134,7 +144,11 @@ function AccountWorkspace({
     [role, setRole] = useState(""),
     [min, setMin] = useState(""),
     [max, setMax] = useState("");
-  const [party, setParty] = useState<{ id: string; name: string }[]>([]),
+  const [partySearch, setPartySearch] = useState("");
+  const [partyPending, setPartyPending] = useState(false);
+  const partyRequest = useRef<AbortController | null>(null);
+  useEffect(() => () => partyRequest.current?.abort(), []);
+  const [party, setParty] = useState<PartyDirectoryCharacter[]>([]),
     [partyOffset, setPartyOffset] = useState(0),
     [partyMore, setPartyMore] = useState(false),
     [partySummary, setPartySummary] = useState<
@@ -209,7 +223,7 @@ function AccountWorkspace({
       }
   }, [ready, editing, cacheKey, draft, recovery]);
   useEffect(() => {
-    if (!userId || !picker) return;
+    if (!userId || !picker || oppositionMode !== "manual") return;
     const controller = new AbortController();
     const timer = setTimeout(() => {
       setCatalogueLoading(true);
@@ -244,7 +258,7 @@ function AccountWorkspace({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [userId, picker, q, env, role, min, max, offset]);
+  }, [userId, picker, oppositionMode, q, env, role, min, max, offset]);
   let appraisal = appraiseEncounter(empty, []);
   let appraisalError = "";
   try {
@@ -380,22 +394,30 @@ function AccountWorkspace({
       setBusy(false);
     }
   }
-  async function loadParty(more = false) {
+  async function loadParty(more = false, search = partySearch) {
     const nextOffset = more ? partyOffset : 0;
-    setBusy(true);
+    partyRequest.current?.abort();
+    const controller = new AbortController();
+    partyRequest.current = controller;
+    setPartyPending(true);
     try {
-      const data = await api<{ characters: { id: string; name: string }[] }>(
-        `/api/encounters/party?offset=${nextOffset}`,
+      const response = await fetch(
+        `/api/encounters/party?offset=${nextOffset}&q=${encodeURIComponent(search)}`,
+        { signal: controller.signal, cache: "no-store" },
       );
+      const data = await response.json();
+      if (!response.ok)
+        throw new Error(data.error || "Could not load characters.");
+      if (controller.signal.aborted) return;
       setParty((p) =>
         nextOffset ? [...p, ...data.characters] : data.characters,
       );
       setPartyOffset(nextOffset + 50);
       setPartyMore(data.characters.length === 50);
     } catch (e) {
-      setError((e as Error).message);
+      if (!controller.signal.aborted) setError((e as Error).message);
     } finally {
-      setBusy(false);
+      if (!controller.signal.aborted) setPartyPending(false);
     }
   }
   async function calculate() {
@@ -419,32 +441,34 @@ function AccountWorkspace({
       !picker ? null : (
         <div className="sw-encounters sw-encounter-filters">
           <h2>Creature filters</h2>{" "}
-          <div className="sw-encounter-fields">
-            <label>
-              Minimum BU
-              <input
-                type="number"
-                min="0"
-                value={min}
-                onChange={(e) => {
-                  setMin(e.target.value);
-                  setOffset(0);
-                }}
-              />
-            </label>
-            <label>
-              Maximum BU
-              <input
-                type="number"
-                min="0"
-                value={max}
-                onChange={(e) => {
-                  setMax(e.target.value);
-                  setOffset(0);
-                }}
-              />
-            </label>
-          </div>
+          {oppositionMode === "manual" && (
+            <div className="sw-encounter-fields">
+              <label>
+                Minimum BU
+                <input
+                  type="number"
+                  min="0"
+                  value={min}
+                  onChange={(e) => {
+                    setMin(e.target.value);
+                    setOffset(0);
+                  }}
+                />
+              </label>
+              <label>
+                Maximum BU
+                <input
+                  type="number"
+                  min="0"
+                  value={max}
+                  onChange={(e) => {
+                    setMax(e.target.value);
+                    setOffset(0);
+                  }}
+                />
+              </label>
+            </div>
+          )}
           <div className="sw-encounter-fields">
             <label>
               Environment
@@ -511,7 +535,7 @@ function AccountWorkspace({
           </button>
         </div>
       ),
-    [picker, min, max, env, role],
+    [picker, oppositionMode, min, max, env, role],
   );
   useFilterSlot(filterContent);
   const chapters = [
@@ -702,7 +726,7 @@ function AccountWorkspace({
                 <h2>{chapters[stage]!.title}</h2>
                 <p>
                   {stage === 2
-                    ? "Preview a creature, add it, then adjust its quantity. Each creature becomes an independent play copy when the encounter starts."
+                    ? "Shuffle a suggested group or choose creatures yourself. Preview, tune quantities, and keep equipment BU separate."
                     : chapters[stage]!.hint}
                 </p>
               </header>
@@ -843,24 +867,26 @@ function AccountWorkspace({
                       ? "Refresh character list"
                       : "Choose characters"}
                   </button>
-                  {party.map((c) => (
-                    <label className="sw-encounter-check" key={c.id}>
-                      <input
-                        type="checkbox"
-                        checked={draft.characterIds.includes(c.id)}
-                        onChange={(e) => {
-                          patch({
-                            characterIds: e.target.checked
-                              ? [...draft.characterIds, c.id]
-                              : draft.characterIds.filter((id) => id !== c.id),
-                          });
-                          setPartySummary(null);
-                        }}
-                      />
-                      {c.name}
-                      <Link href={`/characters/${c.id}`}>Open sheet ↗</Link>
-                    </label>
-                  ))}
+                  <EncounterPartyDirectory
+                    characters={party}
+                    selected={draft.characterIds}
+                    search={partySearch}
+                    pending={partyPending || busy}
+                    onSearch={(value) => {
+                      setPartySearch(value);
+                      void loadParty(false, value);
+                    }}
+                    onToggle={(characterId) => {
+                      patch({
+                        characterIds: draft.characterIds.includes(characterId)
+                          ? draft.characterIds.filter(
+                              (id) => id !== characterId,
+                            )
+                          : [...draft.characterIds, characterId],
+                      });
+                      setPartySummary(null);
+                    }}
+                  />
                   {draft.characterIds
                     .filter((id) => !party.some((c) => c.id === id))
                     .map((id) => (
@@ -935,6 +961,53 @@ function AccountWorkspace({
               className={`sw-encounter-chapter sw-encounter-selection-workspace${preview ? " is-previewing" : ""}${selectionOpen ? " is-selected-view" : ""}`}
               hidden={stage !== 2}
             >
+              <div
+                className="sw-encounter-opposition-modes"
+                role="group"
+                aria-label="Choose opposition mode"
+              >
+                <button
+                  type="button"
+                  className="sw-metal-button"
+                  aria-pressed={oppositionMode === "groups"}
+                  onClick={() => {
+                    setOppositionMode("groups");
+                    setPreview(null);
+                    setSelectionOpen(false);
+                  }}
+                >
+                  Suggested groups
+                </button>
+                <button
+                  type="button"
+                  className="sw-metal-button"
+                  aria-pressed={oppositionMode === "manual"}
+                  onClick={() => {
+                    setOppositionMode("manual");
+                    setPreview(null);
+                    setSelectionOpen(false);
+                  }}
+                >
+                  Choose creatures
+                </button>
+                {oppositionMode === "groups" && (
+                  <button
+                    type="button"
+                    className="sw-metal-button sw-catalogue-filter-toggle sw-encounter-group-filters"
+                    title="Environment & role filters"
+                    aria-label="Open creature filters"
+                    onClick={() => setFilterPanelOpen(true)}
+                  >
+                    <SlidersHorizontal size={18} />
+                    {(env || role) && (
+                      <span
+                        className="sw-catalogue-filter-dot"
+                        aria-label="Filters applied"
+                      />
+                    )}
+                  </button>
+                )}
+              </div>
               <div className="sw-encounter-catalogue-pane">
                 <button
                   type="button"
@@ -943,121 +1016,154 @@ function AccountWorkspace({
                 >
                   Selected creatures <b>{appraisal.count}</b>
                 </button>
-                <ColumnSearchBar
-                  search={q}
-                  onSearchChange={(value) => {
-                    setQ(value);
-                    setOffset(0);
-                  }}
-                  onOpenFilters={() => setFilterPanelOpen(true)}
-                  hasActiveFilters={!!(min || max || env || role)}
-                  view={catalogueView}
-                  onViewChange={setCatalogueView}
-                  placeholder="Search creatures…"
-                />
-                <div className="sw-encounter-catalogue-heading">
-                  <p className="v12-kicker">Creature catalogue</p>
-                  <small>Click to preview · + to add</small>
+                <div hidden={oppositionMode !== "groups"}>
+                  <EncounterGroupPicker
+                    selected={draft.entries}
+                    partyBu={draft.partyBu}
+                    partySize={draft.partySize}
+                    environment={env}
+                    role={role}
+                    disabled={busy}
+                    onChoose={(group) => {
+                      patch({ entries: group.entries });
+                      setCreatures(group.creatures);
+                      setPreview(null);
+                    }}
+                    onPreview={(creature) => {
+                      setPreview({
+                        id: creature.templateId,
+                        version: creature.version,
+                        entry: {
+                          id: creature.templateId,
+                          version: creature.version,
+                          name: creature.name,
+                          budget: creature.budget,
+                        },
+                      });
+                      setSelectionOpen(true);
+                    }}
+                  />
                 </div>
-                <div
-                  className={`sw-encounter-catalogue ${catalogueView === "GRID" ? "is-grid" : "is-list"}`}
-                >
-                  {catalogue.map((monster) => {
-                    const quantity =
-                      draft.entries.find(
-                        (e) =>
-                          e.templateId === monster.id &&
-                          e.version === monster.version,
-                      )?.quantity ?? 0;
-                    return (
-                      <article
-                        key={monster.id}
-                        data-preview-trigger="true"
-                        className={`sw-encounter-catalogue-row${preview?.id === monster.id ? " is-selected" : ""}`}
-                      >
-                        <button
-                          type="button"
-                          className="sw-encounter-catalogue-opener"
-                          aria-label={`Preview ${monster.name}`}
-                          onClick={() =>
-                            setPreview({
-                              id: monster.id,
-                              version: monster.version,
-                              entry: monster,
-                            })
-                          }
-                        >
-                          <span className="v12-entry-glyph">
-                            <EntityTypeIcon type="MONSTER" size={24} />
-                          </span>
-                          <span className="sw-encounter-catalogue-copy">
-                            <strong>{monster.name}</strong>
-                            {monster.concept && (
-                              <span className="sw-catalogue-row-summary">
-                                {monster.concept
-                                  .split("**Encounter use:")[0]
-                                  ?.replace(/[*_`]/g, "")}
-                              </span>
-                            )}
-                            <small>
-                              {monster.catalogue?.environment ?? "Creature"} ·{" "}
-                              {monster.catalogue?.role ?? "Versatile"}
-                              {quantity ? ` · ${quantity} selected` : ""}
-                            </small>
-                          </span>
-                        </button>
-                        <div className="sw-encounter-catalogue-end">
-                          <b>{monster.budget} BU</b>
-                          <div>
-                            <CatalogueQuickLook name={monster.name}>
-                              <Markdown>{monster.concept ?? ""}</Markdown>
-                              <p>
-                                {monster.catalogue?.tactics ||
-                                  "Open the preview for this creature’s abilities and equipment."}
-                              </p>
-                            </CatalogueQuickLook>
+                {oppositionMode === "manual" && (
+                  <>
+                    <ColumnSearchBar
+                      search={q}
+                      onSearchChange={(value) => {
+                        setQ(value);
+                        setOffset(0);
+                      }}
+                      onOpenFilters={() => setFilterPanelOpen(true)}
+                      hasActiveFilters={!!(min || max || env || role)}
+                      view={catalogueView}
+                      onViewChange={setCatalogueView}
+                      placeholder="Search creatures…"
+                    />
+                    <div className="sw-encounter-catalogue-heading">
+                      <p className="v12-kicker">Creature catalogue</p>
+                      <small>Click to preview · + to add</small>
+                    </div>
+                    <div
+                      className={`sw-encounter-catalogue ${catalogueView === "GRID" ? "is-grid" : "is-list"}`}
+                    >
+                      {catalogue.map((monster) => {
+                        const quantity =
+                          draft.entries.find(
+                            (e) =>
+                              e.templateId === monster.id &&
+                              e.version === monster.version,
+                          )?.quantity ?? 0;
+                        return (
+                          <article
+                            key={monster.id}
+                            data-preview-trigger="true"
+                            className={`sw-encounter-catalogue-row${preview?.id === monster.id ? " is-selected" : ""}`}
+                          >
                             <button
                               type="button"
-                              className="sw-metal-button sw-encounter-icon-action"
-                              aria-label={`Add ${monster.name}`}
-                              title={`Add ${monster.name}`}
-                              disabled={busy || quantity >= 200}
-                              onClick={() => void add(monster)}
+                              className="sw-encounter-catalogue-opener"
+                              aria-label={`Preview ${monster.name}`}
+                              onClick={() =>
+                                setPreview({
+                                  id: monster.id,
+                                  version: monster.version,
+                                  entry: monster,
+                                })
+                              }
                             >
-                              <Plus size={18} />
+                              <span className="v12-entry-glyph">
+                                <EntityTypeIcon type="MONSTER" size={24} />
+                              </span>
+                              <span className="sw-encounter-catalogue-copy">
+                                <strong>{monster.name}</strong>
+                                {monster.concept && (
+                                  <span className="sw-catalogue-row-summary">
+                                    {monster.concept
+                                      .split("**Encounter use:")[0]
+                                      ?.replace(/[*_`]/g, "")}
+                                  </span>
+                                )}
+                                <small>
+                                  {monster.catalogue?.environment ?? "Creature"}{" "}
+                                  · {monster.catalogue?.role ?? "Versatile"}
+                                  {quantity ? ` · ${quantity} selected` : ""}
+                                </small>
+                              </span>
                             </button>
-                          </div>
-                        </div>
-                      </article>
-                    );
-                  })}
-                  {catalogueLoading ? (
-                    <p role="status">Loading creatures…</p>
-                  ) : (
-                    !catalogue.length && <p>No matching creatures.</p>
-                  )}
-                </div>
-                <nav
-                  className="sw-encounter-actions"
-                  aria-label="Creature pages"
-                >
-                  <button
-                    type="button"
-                    className="sw-metal-button"
-                    disabled={!offset || catalogueLoading}
-                    onClick={() => setOffset(Math.max(0, offset - 24))}
-                  >
-                    Previous
-                  </button>
-                  <button
-                    type="button"
-                    className="sw-metal-button"
-                    disabled={!hasMore || catalogueLoading}
-                    onClick={() => setOffset(offset + 24)}
-                  >
-                    More creatures
-                  </button>
-                </nav>
+                            <div className="sw-encounter-catalogue-end">
+                              <b>{monster.budget} BU</b>
+                              <div>
+                                <CatalogueQuickLook name={monster.name}>
+                                  <MonsterQuickDetails
+                                    id={monster.id}
+                                    version={monster.version}
+                                    concept={monster.concept}
+                                    tactics={monster.catalogue?.tactics}
+                                  />
+                                </CatalogueQuickLook>
+                                <button
+                                  type="button"
+                                  className="sw-metal-button sw-encounter-icon-action"
+                                  aria-label={`Add ${monster.name}`}
+                                  title={`Add ${monster.name}`}
+                                  disabled={busy || quantity >= 200}
+                                  onClick={() => void add(monster)}
+                                >
+                                  <Plus size={18} />
+                                </button>
+                              </div>
+                            </div>
+                          </article>
+                        );
+                      })}
+                      {catalogueLoading ? (
+                        <p role="status">Loading creatures…</p>
+                      ) : (
+                        !catalogue.length && <p>No matching creatures.</p>
+                      )}
+                    </div>
+                    <nav
+                      className="sw-encounter-actions"
+                      aria-label="Creature pages"
+                    >
+                      <button
+                        type="button"
+                        className="sw-metal-button"
+                        disabled={!offset || catalogueLoading}
+                        onClick={() => setOffset(Math.max(0, offset - 24))}
+                      >
+                        Previous
+                      </button>
+                      <button
+                        type="button"
+                        className="sw-metal-button"
+                        disabled={!hasMore || catalogueLoading}
+                        onClick={() => setOffset(offset + 24)}
+                      >
+                        More creatures
+                      </button>
+                    </nav>
+                  </>
+                )}
               </div>
               <aside
                 className="sw-encounter-selection-pane"

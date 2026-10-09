@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { DetailModal } from "@/components/ui/detail-modal";
 import { EntityPreview } from "@/components/preview/entity-preview";
 import { LibraryTable } from "@/components/library/library-table";
+import { ColumnSearchBar } from "@/components/library/column-search-bar";
 import { InfiniteLibraryResults } from "@/components/library/infinite-library-results";
 import { useInfiniteLibrary } from "@/lib/hooks/use-infinite-library";
 import { loadEntityPreview, previewKind } from "./workspace/workspace-entity-preview";
@@ -99,7 +100,7 @@ export function QuickbuildLibraryPicker({ kind, heritageKind = "LINEAGE", select
   const dialogContent = useQuickbuildDialogFocus(true);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("BU");
-  const [view, setView] = useState<LibraryView>("LIST");
+  const [view, setView] = useState<LibraryView>("GRID");
   const [origin, setOrigin] = useState("all");
   const [filters, setFilters] = useState(EMPTY_DISCOVERY_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -121,11 +122,7 @@ export function QuickbuildLibraryPicker({ kind, heritageKind = "LINEAGE", select
     <div ref={dialogContent} className="sw-quickpick" data-mobile-preview={mobilePreview}>
       <section className="sw-quickpick-catalogue" aria-label={`${label} library`}>
         <div className="sw-quickpick-tools">
-          <input type="search" aria-label={`Search ${label} library`} value={search} onChange={event => setSearch(event.target.value)} placeholder={`Search ${label}s…`} />
-          <div className="sw-quickpick-tool-row">
-            <button type="button" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(!filtersOpen)}>Filters & sorting</button>
-            <div role="group" aria-label="Library layout"><button type="button" aria-pressed={view === "LIST"} onClick={() => setView("LIST")}>List</button><button type="button" aria-pressed={view === "GRID"} onClick={() => setView("GRID")}>Grid</button></div>
-          </div>
+          <ColumnSearchBar search={search} onSearchChange={setSearch} placeholder={`Search ${label}s…`} onOpenFilters={() => setFiltersOpen(!filtersOpen)} hasActiveFilters={origin !== "all" || sort !== "BU" || Object.values(filters).some(Boolean)} view={view} onViewChange={setView} />
           {filtersOpen && <div className="sw-quickpick-filters"><LibraryDiscoveryFilters value={filters} onChange={setFilters} primitive={false} sort={sort} onSortChange={setSort} /><label className="sw-discovery-field"><span>Source</span><select value={origin} onChange={event => setOrigin(event.target.value)}><option value="all">All public sources</option><option value="system">System / SRD</option><option value="community">Community</option></select></label>{budget !== undefined && Number.isFinite(budget) && budget >= 0 && <button type="button" onClick={() => setFilters(previous => ({ ...previous, maxBu: String(budget) }))}>Within {budget} BU</button>}<button type="button" onClick={() => { setSearch(""); setFilters(EMPTY_DISCOVERY_FILTERS); setOrigin("all"); setSort("BU"); }}>Clear filters</button></div>}
           <p className="sw-quickpick-count" aria-live="polite">{results.loading && !results.items.length ? "Finding entries…" : `${results.total} matching entries`}</p>
         </div>

@@ -4,6 +4,7 @@ import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
 import { Plus, Swords, ArrowUpRight } from "lucide-react";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
+import { CatalogueQuickLook } from "@/components/library/catalogue-quick-look";
 import type { LibraryView } from "@/lib/preferences/library-prefs";
 import "./encounters.css";
 
@@ -27,7 +28,7 @@ function AccountEncounterArchive({
 }) {
   const [rows, setRows] = useState<{ id: string; name: string }[]>([]);
   const [search, setSearch] = useState("");
-  const [view, setView] = useState<LibraryView>("LIST");
+  const [view, setView] = useState<LibraryView>("GRID");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -90,10 +91,15 @@ function AccountEncounterArchive({
         >
           {visible.map((row) => (
             <Link
+              data-catalogue-row="true"
               className="sw-encounter-list-row"
               key={row.id}
               href={`/encounters/${row.id}`}
             >
+              <CatalogueQuickLook name={row.name}>
+                <p>Private encounter · Preparation & runs</p>
+                <p>Open to review the party budgets, selected creatures, and saved runs.</p>
+              </CatalogueQuickLook>
               <Swords size={22} />
               <span>
                 <strong>{row.name}</strong>

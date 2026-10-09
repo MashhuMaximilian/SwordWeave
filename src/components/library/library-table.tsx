@@ -1,4 +1,5 @@
 "use client";
+import { LibraryQuickDetails } from "./library-quick-details";
 import { LibraryCatalogueCard } from "./library-catalogue-card";
 import { heritageKindLabel, isHeritageKind } from "@/lib/heritage/labels";
 import { libraryHeritageArt } from "@/lib/heritage/lineage-art";
@@ -401,7 +402,7 @@ function ListItem({
         aria-current={selected ? "true" : undefined}
         className={cn(baseClass, "w-full cursor-pointer text-left")}
       >
-        {inner}
+        {inner}<LibraryQuickDetails item={item}/>
       </div>
     );
   }
@@ -414,7 +415,7 @@ function ListItem({
       data-library-surface={surface}
       className={baseClass}
     >
-      {inner}
+      {inner}<LibraryQuickDetails item={item}/>
     </Link>
   );
 }
@@ -613,13 +614,14 @@ function GridCard({
             : isAtelier ? "border-border hover:border-[#8f672e] hover:bg-black/15" : "border-border hover:border-primary",
         )}
       >
-        {inner}
+        {inner}<LibraryQuickDetails item={item}/>
       </div>
     );
   }
 
   return (
     <article
+      data-preview-trigger="true"
       data-library-row-id={item.id}
       data-library-kind={item.targetType}
       data-library-surface={surface}
@@ -631,7 +633,7 @@ function GridCard({
           : isAtelier ? "border-border hover:border-[#8f672e] hover:bg-black/15" : "border-border hover:border-primary",
       )}
     >
-      {inner}
+      {inner}<LibraryQuickDetails item={item}/>
     </article>
   );
 }
