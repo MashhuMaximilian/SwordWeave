@@ -20,7 +20,10 @@
 // =============================================================================
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
+import { CatalogueViewToggle } from "@/components/library/catalogue-view-toggle";
+import type { LibraryView } from "@/lib/preferences/library-prefs";
+import "./character-roster-views.css";
 import { cn } from "@/lib/utils";
 
 export type CharacterTab = "mine" | "shared" | "public";
@@ -50,6 +53,7 @@ export function CharacterListTabs({
   initialTab = "mine",
   mineEmptyState,
 }: CharacterListTabsProps) {
+  const [view, setView] = useState<LibraryView>("GRID");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -76,7 +80,7 @@ export function CharacterListTabs({
 
   return (
     <div className="v12-roster-tabs-shell">
-      <TabStrip
+      <div className="sw-roster-toolbar"><TabStrip
         active={activeTab}
         counts={{
           mine: null, // unknown until server renders
@@ -84,9 +88,9 @@ export function CharacterListTabs({
           public: publicCount,
         }}
         onChange={setTab}
-      />
+      /><CatalogueViewToggle view={view} onChange={setView}/></div>
 
-      <div className="v12-roster-tab-content">
+      <div className={`v12-roster-tab-content sw-roster-${view.toLowerCase()}`}>
         {activeTab === "mine" && (
           <div>
             {mineContent ?? mineEmptyState}

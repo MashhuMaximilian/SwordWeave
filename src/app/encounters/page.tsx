@@ -1,4 +1,5 @@
 import { EncounterWorkspace } from "@/components/encounters/encounter-workspace";
-export default function Page() {
-  return <EncounterWorkspace />;
+export default async function Page({ searchParams }: { searchParams: Promise<{ new?: string }> }) {
+  const params = await searchParams;
+  return <EncounterWorkspace startNew={params.new === "1"} />;
 }

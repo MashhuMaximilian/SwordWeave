@@ -24,7 +24,10 @@ import { EntityTypeIcon } from "@/components/icons/entity-type-icon";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LayoutGrid, List } from "lucide-react";
+import { Swords } from "lucide-react";
+import { CatalogueViewToggle } from "@/components/library/catalogue-view-toggle";
+import { EncounterArchive } from "@/components/encounters/encounter-archive";
+import { MonsterTemplatePreview } from "@/components/monsters/monster-template-preview";
 import { useModalStack } from "@/components/ui/modal-stack";
 import { CollectionsClient } from "@/components/collections/collections-client";
 import "./creations-tabs.css";
@@ -50,13 +53,14 @@ type TypeFilter =
   | "character"
   | "build"
   | "monster";
-type CreationTab = "mechanics" | "heritages" | "characters" | "monsters" | "collections";
+type CreationTab = "mechanics" | "heritages" | "characters" | "monsters" | "collections" | "encounters";
 const TAB_TYPES: Record<CreationTab, TypeFilter[]> = {
   mechanics: ["primitive", "effect", "capability", "item"],
   heritages: ["template"],
   characters: ["character", "build"],
   monsters: ["monster"],
   collections: [],
+  encounters: [],
 };
 
 type StatusFilter = "all" | "draft";
@@ -73,6 +77,7 @@ type VisibilityFilter = "all" | "public" | "followers" | "private";
 interface CreationsClientProps {
   items: LibraryItem[];
   counts: Record<Exclude<TypeFilter, "all">, number>;
+  initialEncounterCount: number;
   initialType: string;
   initialStatus: string;
   engagement: LibraryEngagement;
@@ -109,6 +114,7 @@ export function CreationsClient({
   items: initialItems,
   counts,
   initialType,
+  initialEncounterCount,
   initialStatus,
   engagement: initialEngagement,
   currentUserInternalId,
@@ -118,8 +124,9 @@ export function CreationsClient({
     (TYPE_CHIPS.find((c) => c.key === initialType)?.key ?? "all") as TypeFilter,
   );
   const [tab, setTab] = useState<CreationTab>(
-    initialType === "template" ? "heritages" : initialType === "monster" ? "monsters" : ["character", "build"].includes(initialType) ? "characters" : "mechanics",
+    initialType === "encounter" ? "encounters" : initialType === "template" ? "heritages" : initialType === "monster" ? "monsters" : ["character", "build"].includes(initialType) ? "characters" : "mechanics",
   );
+  const [encounterCount, setEncounterCount] = useState(initialEncounterCount);
   const tabListRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const list = tabListRef.current;
@@ -352,7 +359,7 @@ export function CreationsClient({
     ),
     [tab, type, status, kind, visibility, items, counts],
   );
-  useFilterSlot(filterSlot);
+  useFilterSlot(tab === "encounters" || tab === "collections" ? null : filterSlot);
 
   useEffect(()=>{
     const load=async()=>{
@@ -424,6 +431,7 @@ export function CreationsClient({
       description: "Your monster and NPC templates",
       count: counts.monster,
     },
+    encounters: { description: "Private encounter preparations and saved runs", count: encounterCount },
     collections: {
       description: "Organize your creations into collections",
       count: collectionRows.length,
@@ -436,6 +444,7 @@ export function CreationsClient({
     characters: "CHARACTER",
     monsters: "MONSTER",
     collections: "COLLECTION",
+    encounters: "ENCOUNTER",
   } satisfies Record<CreationTab, string>;
 
   const mechanicIndexLabel: Record<TypeFilter, string> = {
@@ -453,20 +462,20 @@ export function CreationsClient({
   return (
     <div className="v12-creations-browser">
       <div ref={tabListRef} role="tablist" aria-label="My creations" className="v12-creations-tabs v12-creations-tabs--with-collections">
-        {([['mechanics', 'Mechanics'], ['heritages', 'Heritages'], ['characters', 'Characters'], ['monsters', 'Monsters'], ['collections', 'Collections']] as const).filter(([key])=>isGameMaster||key!=="monsters").map(([key, label]) => {
+        {([['mechanics', 'Mechanics'], ['heritages', 'Heritages'], ['characters', 'Characters'], ['monsters', 'Monsters'], ['encounters', 'Encounters'], ['collections', 'Collections']] as const).filter(([key])=>isGameMaster||!["monsters","encounters"].includes(key)).map(([key, label]) => {
           const iconType = tabIcon[key];
           return (
             <button key={key} type="button" role="tab" aria-selected={tab === key}
               onClick={() => { setTab(key); setType('all'); }}
               className={cn('v12-creations-tab', tab === key ? 'is-active' : '')}>
-              <EntityTypeIcon type={iconType}/>
+              {key === "encounters" ? <Swords size={20}/> : <EntityTypeIcon type={iconType}/>}
               <span>{label}</span>
               <b>{tabMeta[key].count}</b>
             </button>
           );
         })}
       </div>
-      {tab === "collections" ? (
+      {tab === "encounters" ? <div role="tabpanel" aria-label="Encounters"><EncounterArchive onCount={setEncounterCount} /></div> : tab === "collections" ? (
         <div role="tabpanel" aria-label="Collections" className="v12-creations-collections-panel">
           <CollectionsClient embedded />
         </div>
@@ -506,39 +515,7 @@ export function CreationsClient({
               hasActiveFilters={hasActiveFilters}
             />
           </div>
-          {/* P5R-6: GRID / LIST toggle. Local state only; resets when
-              the user navigates away. Two buttons side-by-side; the active
-              one shows the primary colour, the other is muted. */}
-          <div
-            className="v12-creations-view-toggle"
-            role="group"
-            aria-label="View mode"
-          >
-            <button
-              type="button"
-              onClick={() => setView("GRID")}
-              className={cn(
-                "v12-creations-view-button",
-                view === "GRID" ? "is-active" : "",
-              )}
-              title="Mosaic view"
-              aria-pressed={view === "GRID"}
-            >
-              <LayoutGrid className="size-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setView("LIST")}
-              className={cn(
-                "v12-creations-view-button",
-                view === "LIST" ? "is-active" : "",
-              )}
-              title="List view"
-              aria-pressed={view === "LIST"}
-            >
-              <List className="size-3.5" />
-            </button>
-          </div>
+          <CatalogueViewToggle view={view} onChange={setView} />
         </div>
       </div>
 
@@ -573,7 +550,7 @@ export function CreationsClient({
             engagement={initialEngagement}
             currentUserInternalId={currentUserInternalId}
             onSelect={(item) => {
-              if(item.targetType==="MONSTER"){router.push(`/monsters/${item.targetId}`);return;}
+              if(item.targetType==="MONSTER"){if(stack.canPush)stack.push({key:`creation:${item.id}`,label:item.name,category:"Monster",content:<MonsterTemplatePreview id={item.targetId} compact/>});return;}
               if (!stack.canPush) return;
               const isDraft = item.publishedAt === null;
               stack.push({

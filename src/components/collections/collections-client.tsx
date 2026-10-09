@@ -36,7 +36,7 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false, startC
     [current, setCurrent] = useState<Collection | null>(null),
     [entries, setEntries] = useState<LibraryItem[]>([]),
     [creating, setCreating] = useState(startCreating),
-    [entryView, setEntryView] = useState<"GRID" | "LIST">("GRID"),
+    [entryView, setEntryView] = useState<"GRID" | "LIST">("LIST"),
     [page, setPage] = useState(0),
     [search, setSearch] = useState(""),
     [filtersOpen, setFiltersOpen] = useState(false),
@@ -143,7 +143,7 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false, startC
         </p>
       )}
       <div className="sw-collections-search">
-        <ColumnSearchBar search={search} onSearchChange={changeSearch} onOpenFilters={() => setFiltersOpen(open => !open)} hasActiveFilters={activeFilters} placeholder={collectionId ? "Search collected entries…" : "Search collections…"} />
+        <ColumnSearchBar search={search} onSearchChange={changeSearch} onOpenFilters={() => setFiltersOpen(open => !open)} hasActiveFilters={activeFilters} placeholder={collectionId ? "Search collected entries…" : "Search collections…"} view={entryView} onViewChange={setEntryView} />
         {filtersOpen && <div className="sw-collections-filters sw-discovery-filters sw-discovery-filters__basics">
           {collectionId ? <>
             <label className="sw-discovery-field"><span>Entry type</span><select value={entryType} onChange={event => { setEntryType(event.target.value); setPage(0); }}>{[...PHONE_RECORD_TYPES].sort((a,b) => Number(b.value === "ALL") - Number(a.value === "ALL")).map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
@@ -158,8 +158,8 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false, startC
       </div>
       {!collectionId && (
         <>
-          {indexRows.some(c => c.system_kind) && <section className="sw-collections-section"><p className="sw-collections-eyebrow">Automatic collections</p><div className="sw-collections-grid v12-creation-grid">{indexRows.filter(c => c.system_kind).map(c => <LibraryCatalogueSurface key={c.id} title={c.name} onSelect={() => router.push(`/collections/${c.id}`)} glyph={c.system_kind?.includes("FORK") ? <GitFork size={24} /> : c.system_kind === "ORIGINAL" ? <Hammer size={24} /> : <Bookmark size={24} />} badge={<span className="v12-tag">{c.visibility.replaceAll("_", " ").toLowerCase()}</span>}><p className="v12-entry-summary">{c.system_kind?.includes("FORK") ? "Forks of existing entries" : c.system_kind === "ORIGINAL" ? "Entries you authored" : "Entries you saved"}</p></LibraryCatalogueSurface>)}</div></section>}
-          <section className="sw-collections-section"><div className="sw-collections-section-heading"><h2>Collection branches</h2>{user && <a href="#create-collection" className="sw-metal-button sw-metal-button--primary sw-collections-button" onClick={() => {setParent("");setCreating(true);}}><Plus size={14} /> Create collection</a>}</div><CollectionTree rows={indexRows.filter(c => !c.system_kind)} />{!rows.some(c => !c.system_kind) && !search && !activeFilters && <EmptyState compact icon={FolderTree} title="Start a collection branch" description="Create a root for a campaign, theme, or project. Add child collections to organize its entries." />}</section>
+          {indexRows.some(c => c.system_kind) && <section className="sw-collections-section"><p className="sw-collections-eyebrow">Automatic collections</p><div className={entryView === "LIST" ? "sw-catalogue-list" : "sw-collections-grid v12-creation-grid"}>{indexRows.filter(c => c.system_kind).map(c => <LibraryCatalogueSurface className={entryView === "LIST" ? "sw-catalogue-row" : ""} key={c.id} title={c.name} onSelect={() => router.push(`/collections/${c.id}`)} glyph={c.system_kind?.includes("FORK") ? <GitFork size={24} /> : c.system_kind === "ORIGINAL" ? <Hammer size={24} /> : <Bookmark size={24} />} badge={<span className="v12-tag">{c.visibility.replaceAll("_", " ").toLowerCase()}</span>}><p className="v12-entry-summary">{c.system_kind?.includes("FORK") ? "Forks of existing entries" : c.system_kind === "ORIGINAL" ? "Entries you authored" : "Entries you saved"}</p></LibraryCatalogueSurface>)}</div></section>}
+          <section className="sw-collections-section"><div className="sw-collections-section-heading"><h2>Collection branches</h2>{user && <a href="#create-collection" className="sw-metal-button sw-metal-button--primary sw-collections-button" onClick={() => {setParent("");setCreating(true);}}><Plus size={14} /> Create collection</a>}</div><div className={entryView === "GRID" ? "sw-collections-branch-grid" : ""}><CollectionTree rows={indexRows.filter(c => !c.system_kind)} /></div>{!rows.some(c => !c.system_kind) && !search && !activeFilters && <EmptyState compact icon={FolderTree} title="Start a collection branch" description="Create a root for a campaign, theme, or project. Add child collections to organize its entries." />}</section>
           {!indexRows.length && (search || activeFilters) && <EmptyState compact icon={FolderTree} title="No matching collections" description="Try another name or clear the collection filters." />}
           {!user && (
             <button
@@ -246,9 +246,9 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false, startC
               </fieldset>}
             </div></details>
           )}
-          <div className="sw-collections-section-heading"><h2>Collected entries</h2><div className="sw-collections-actions" aria-label="Entry layout">{(["GRID", "LIST"] as const).map(view => <button key={view} type="button" className="sw-metal-button sw-collections-button" aria-pressed={entryView === view} onClick={() => setEntryView(view)}>{view === "GRID" ? "Cards" : "List"}</button>)}</div></div>
+          <div className="sw-collections-section-heading"><h2>Collected entries</h2><small>Choose an entry to open its full preview.</small></div>
           <div className={`sw-collections-catalogue ${entryView === "GRID" ? "v12-creation-grid" : "v12-cluster-list"}`}>
-            {loading ? <p className="sw-collections-intro" role="status">Loading collected entries…</p> : entries.length ? <section className={`v12-catalogue-collection ${entryView === "LIST" ? "is-list" : "is-mosaic"}`}>{entries.map(item => <LibraryCatalogueCard key={item.id} item={item} currentUserInternalId={null} onSelect={selected => {
+            {loading ? <p className="sw-collections-intro" role="status">Loading collected entries…</p> : entries.length ? <section className={`v12-catalogue-collection ${entryView === "LIST" ? "is-list sw-catalogue-list" : "is-mosaic"}`}>{entries.map(item => <LibraryCatalogueCard key={item.id} item={item} view={entryView} currentUserInternalId={null} onSelect={selected => {
               if (stack.canPush) stack.push({ key: `collection-entry:${selected.targetType}:${selected.targetId}`, label: selected.name, category: selected.targetType, content: <CollectionEntryPreview targetType={selected.targetType} targetId={selected.targetId} /> });
             }} />)}</section> : <EmptyState compact icon={BookOpen} title={search || activeFilters ? "No matching entries" : "No collected entries yet"} description={search || activeFilters ? "Try another search or clear the entry filters." : "Save an entry from the Library or My Creations and choose this collection. Only entries you can access appear here."} />}
           </div>

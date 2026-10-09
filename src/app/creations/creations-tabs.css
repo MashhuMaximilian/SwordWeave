@@ -1,15 +1,17 @@
 body[data-ui="v12"] .v12-creations-tabs.v12-creations-tabs--with-collections {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
 }
 
 @media (max-width: 767px) {
   body[data-ui="v12"] .v12-creations-tabs.v12-creations-tabs--with-collections {
-    grid-template-columns: repeat(5, minmax(142px, 1fr));
+    display:flex;
     overflow-x: auto;
     padding-bottom: 10px;
     scroll-snap-type: x proximity;
   }
 }
+
+@media (max-width:767px) { body[data-ui="v12"] .v12-creations-tabs--with-collections > button { flex:0 0 auto;min-width:140px; } }
 
 .v12-creations-collections-panel {
   min-width: 0;

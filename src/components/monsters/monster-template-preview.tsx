@@ -26,12 +26,12 @@ type PreviewData = {
 const signed = (value: number) => value >= 0 ? `+${value}` : String(value);
 
 /** A template is read-only here. Playing creates an independent, pinned copy. */
-export function MonsterTemplatePreview({ id, version, compact = false, actions, actionPlacement = "bottom" }: { id: string; version?:number; compact?: boolean; actions?: PreviewActionProps; actionPlacement?: "top" | "bottom" }) {
+export function MonsterTemplatePreview({ id, version, compact = false, actions, actionPlacement = "bottom", hideActions = false }: { id: string; version?:number; compact?: boolean; actions?: PreviewActionProps; actionPlacement?: "top" | "bottom"; hideActions?: boolean }) {
   const { userId, isLoaded } = useAuth();
-  return <AccountPreview key={`${userId ?? "anonymous"}:${id}`} id={id} {...(version?{version}:{})} compact={compact} {...(actions?{actions}:{})} actionPlacement={actionPlacement} ready={isLoaded} />;
+  return <AccountPreview key={`${userId ?? "anonymous"}:${id}`} id={id} {...(version?{version}:{})} compact={compact} {...(actions?{actions}:{})} actionPlacement={actionPlacement} hideActions={hideActions} ready={isLoaded} />;
 }
 
-function AccountPreview({ id, version, compact, ready, actions, actionPlacement }: { id: string; version?:number; compact: boolean; ready: boolean; actions?: PreviewActionProps; actionPlacement: "top" | "bottom" }) {
+function AccountPreview({ id, version, compact, ready, actions, actionPlacement, hideActions }: { id: string; version?:number; compact: boolean; ready: boolean; actions?: PreviewActionProps; actionPlacement: "top" | "bottom"; hideActions: boolean }) {
   const { isSignedIn } = useAuth();
   const {isGameMaster}=useAccount();
   const { redirectToSignIn } = useClerk();
@@ -85,7 +85,7 @@ function AccountPreview({ id, version, compact, ready, actions, actionPlacement 
   const slots = data.slots ?? definition.resolvedSlots ?? [];
   const artwork = monsterArtwork({ name: monster.name, imageUrl: definition.imageUrl, sourceOrigin: definition.sourceOrigin });
   return <section className={`sw-creature-preview ${compact ? "is-compact" : ""}`} aria-label={`${monster.name} mini sheet`}>
-    {actions && actionPlacement === "top" && <PreviewActions {...actions}/>}
+    {!hideActions && actions && actionPlacement === "top" && <PreviewActions {...actions}/>}
     <header className="sw-creature-identity">
       <span className="sw-creature-emblem">{artwork ? <img src={artwork} alt={`${monster.name} portrait`} style={portraitFrameStyle(definition.portraitFrame)} /> : <IconDisplay iconSource="GAME_ICONS" iconKey="lorc/gluttonous-smile" iconColor="#64c7c1" size={44} />}</span>
       <div><p className="v12-kicker">Creature record · {definition.size.toLowerCase()}</p><h2>{monster.name}</h2><p>{sheet.availableBudget} BU · {sheet.mirrorCredit} weakness credit · Rank {sheet.rank.toFixed(2)} · {sheet.itemBu} item BU</p></div>
@@ -94,7 +94,7 @@ function AccountPreview({ id, version, compact, ready, actions, actionPlacement 
     <MonsterSheetPreview definition={definition} sheet={sheet} slots={slots} compact={compact}/>
 
     {error && <p role="alert">{error}</p>}
-    {actions ? (actionPlacement === "bottom" && <PreviewActions {...actions}/>) : <footer className="sw-creature-preview-actions">
+    {hideActions ? null : actions ? (actionPlacement === "bottom" && <PreviewActions {...actions}/>) : <footer className="sw-creature-preview-actions">
       {isGameMaster&&<button type="button" className="v12-metal-button v12-metal-button--primary" onClick={() => isSignedIn ? setCopyOpen(value => !value) : void redirectToSignIn({ redirectUrl: `/monsters/${id}` })}>Bring to the table <ArrowRight size={16}/></button>}
       <Link className="v12-metal-button" href={`/monsters/${id}${data.canEdit ? "?edit=1" : ""}`}>{data.canEdit ? "Edit creature" : "Open source"}</Link>
       {isGameMaster&&<button type="button" className="v12-metal-button" disabled={pending} onClick={() => void forkCreature()}>Fork creature</button>}

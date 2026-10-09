@@ -4,9 +4,8 @@
 
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Grid3x3, List } from "lucide-react";
+import { CatalogueViewToggle } from "./catalogue-view-toggle";
 import type { LibrarySort } from "@/lib/publishing/library-query";
 import type { LibraryView } from "@/lib/preferences/library-prefs";
 
@@ -66,9 +65,6 @@ export function LibrarySortControl({
       writeCookie(sort,currentView);
       router.push(sortUrls[sort] ?? sortUrls.ALPHABETICAL);
     }}>{SORT_OPTIONS.filter(option=>!!sortUrls[option.key]).map(option=><option key={option.key} value={option.key}>{option.label}</option>)}</select></label>
-    <div className="sw-library-sort-view" aria-label="Result layout">
-      <Link href={viewUrls.LIST} aria-current={currentView==="LIST"?"true":undefined} onClick={()=>writeCookie(currentSort,"LIST")}><List size={15}/>List</Link>
-      <Link href={viewUrls.GRID} aria-current={currentView==="GRID"?"true":undefined} onClick={()=>writeCookie(currentSort,"GRID")}><Grid3x3 size={15}/>Grid</Link>
-    </div>
+    <CatalogueViewToggle view={currentView} onChange={view => { writeCookie(currentSort, view); router.push(viewUrls[view]); }} />
   </div>;
 }

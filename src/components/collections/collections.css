@@ -91,3 +91,6 @@ body[data-ui="v12"] .sw-collections-tree :is(summary,.sw-collections-tree-leaf):
   body[data-ui="v12"] .sw-collections-tree :is(summary,.sw-collections-tree-leaf):hover .v12-entry-glyph { background:#fff3c6!important;border-color:#806029!important; }
 }
 @media(max-width:600px) { body[data-ui="v12"] .sw-collections-grid.v12-creation-grid { grid-template-columns:1fr; }.sw-collections-filters .sw-discovery-field { min-width:100%; } }
+
+.sw-collections-branch-grid > .sw-collections-tree {display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;}
+.sw-collections-branch-grid > .sw-collections-tree > li {border:1px solid var(--border);border-radius:6px;padding:8px;}

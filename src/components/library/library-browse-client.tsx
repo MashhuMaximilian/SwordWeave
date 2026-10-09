@@ -168,7 +168,7 @@ export function LibraryBrowseClient({
       if (next.minLikes) params.set("minLikes", next.minLikes);
       if (next.hasForks) params.set("hasForks", "1");
       if (next.sort !== "ENGAGEMENT") params.set("sort", next.sort);
-      if (next.view !== "GRID") params.set("view", next.view);
+      params.set("view", next.view);
       // Tag filter — comma-separated. Only emit the param when the
       // active type is ITEM (other types ignore the tag filter
       // server-side, and emitting it for those would be confusing).
@@ -324,6 +324,7 @@ export function LibraryBrowseClient({
           }
           onOpenFilters={() => setFilterPanelOpen(true)}
           hasActiveFilters={hasActiveFilters}
+          {...(!isPrimitiveMode ? { view: state.view, onViewChange: (view: LibraryToolbarState["view"]) => onStateChange({ ...state, view }) } : {})}
         />
       </div>
       <div
@@ -421,9 +422,9 @@ export function LibraryBrowseClient({
           </div>
           <InfiniteLibraryResults key={queryString} {...discovery} render={(visibleItems) => <>
           {visibleItems.length ? (
-            <div className={isPrimitiveMode ? "v12-cluster-list" : "v12-creation-grid"}>
-              {[{ id: isPrimitiveMode ? "primitives" : "creations", entries: visibleItems }].map(({ id, entries }) => <section className={`v12-entry-cluster${isPrimitiveMode ? " is-flat" : ""}`} key={id}>{entries.map((item) => (
-                <LibraryCatalogueCard key={item.id} item={item} selected={selectedItem?.id === item.id} onSelect={onRowSelect} engagement={engagement} currentUserInternalId={currentUserInternalId}>
+            <div className={isPrimitiveMode ? "v12-cluster-list" : state.view === "LIST" ? "sw-catalogue-list" : "v12-creation-grid"}>
+              {[{ id: isPrimitiveMode ? "primitives" : "creations", entries: visibleItems }].map(({ id, entries }) => <section className={`v12-entry-cluster${isPrimitiveMode ? " is-flat" : state.view === "LIST" ? " sw-catalogue-list" : ""}`} key={id}>{entries.map((item) => (
+                <LibraryCatalogueCard key={item.id} item={item} view={isPrimitiveMode ? undefined : state.view} selected={selectedItem?.id === item.id} onSelect={onRowSelect} engagement={engagement} currentUserInternalId={currentUserInternalId}>
                   {item.compositionPaths?.length ? <CompositionMechanics paths={item.compositionPaths} compact onPrimitive={(path)=>setNestedPreview({targetType:"PRIMITIVE",targetId:String(path.primitiveId),name:path.primitiveName})} /> : undefined}
                 </LibraryCatalogueCard>
               ))}</section>)}

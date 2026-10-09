@@ -12,6 +12,8 @@
 import { Search, SlidersHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { CatalogueViewToggle } from "./catalogue-view-toggle";
+import type { LibraryView } from "@/lib/preferences/library-prefs";
 
 interface ColumnSearchBarProps {
   search: string;
@@ -19,6 +21,8 @@ interface ColumnSearchBarProps {
   onOpenFilters?: () => void;
   hasActiveFilters?: boolean;
   placeholder?: string;
+  view?: LibraryView;
+  onViewChange?: (view: LibraryView) => void;
 }
 
 export function ColumnSearchBar({
@@ -27,6 +31,8 @@ export function ColumnSearchBar({
   onOpenFilters,
   hasActiveFilters = false,
   placeholder = "Search…",
+  view,
+  onViewChange,
 }: ColumnSearchBarProps) {
   const [draft, setDraft] = useState(search);
   const [lastCommittedSearch, setLastCommittedSearch] = useState(search);
@@ -53,6 +59,7 @@ export function ColumnSearchBar({
           className="w-full rounded-md border border-input bg-background py-2 pl-9 pr-3 text-sm outline-none focus:border-primary"
         />
       </div>
+      {view && onViewChange ? <CatalogueViewToggle view={view} onChange={onViewChange} /> : null}
       {onOpenFilters ? (
         <button
           type="button"

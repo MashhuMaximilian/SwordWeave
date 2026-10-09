@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PublicCollectionResults } from "@/components/collections/public-collection-results";
 import { ArrowLeft, ArrowRight, FolderTree, Search } from "lucide-react";
 import { publicCollectionDirectory, type CollectionDirectoryQuery } from "@/lib/collections/public-directory";
 import "./public-collections.css";
@@ -30,17 +31,7 @@ export default async function PublicCollectionsPage({ searchParams }: {
       <button className="sw-metal-button sw-collections-directory-action">Search</button>
       {active && <Link href="/library/collections" className="sw-collections-directory-clear">Clear filters</Link>}
     </form>
-    {collections.length ? <section className="sw-collections-directory-grid" aria-label="Public collections">
-      {collections.map(collection => <article key={collection.id} className="sw-collections-directory-card">
-        <Link href={`/collections/${collection.id}`} className="sw-collections-directory-open">
-          <span className="sw-collections-directory-eyebrow"><FolderTree size={18} aria-hidden="true" /> {collection.origin === "system" ? "System collection" : "Community collection"}</span>
-          <h2>{collection.name}</h2>
-          <span className="sw-collections-directory-author">Curated by {collection.authorName}</span>
-          <span className="sw-collections-directory-card-action">Explore collection <ArrowRight size={17} aria-hidden="true" /></span>
-        </Link>
-        {collection.authorUsername && collection.origin === "community" && <Link className="sw-collections-directory-curator" href={`/u/${encodeURIComponent(collection.authorUsername)}`}>View curator</Link>}
-      </article>)}
-    </section> : <section className="sw-collections-directory-empty">
+    {collections.length ? <PublicCollectionResults collections={collections} /> : <section className="sw-collections-directory-empty">
       <FolderTree size={32} aria-hidden="true" /><h2>{active ? "No matching collections" : "The shared shelves are ready"}</h2>
       <p>{active ? "Try another name or origin, or clear the filters." : "Make a collection public and it will appear here for other tables to discover."}</p>
       <Link href={active ? "/library/collections" : "/collections"} className="sw-metal-button sw-collections-directory-action">{active ? "Clear filters" : "Create a collection"}</Link>

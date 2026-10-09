@@ -22,6 +22,7 @@ export const GET = (request: Request) =>
         name: monsters.name,
         version: monsters.version,
         budget: sql<number>`(${monsters.definition}->>'budget')::double precision`,
+        concept: sql<string>`left(${monsters.definition}->>'concept', 1000)`,
         catalogue: sql<NonNullable<
           import("@/lib/monsters/model").MonsterDefinition["catalogue"]
         > | null>`${monsters.definition}->'catalogue'`,

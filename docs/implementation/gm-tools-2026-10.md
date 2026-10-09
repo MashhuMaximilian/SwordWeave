@@ -12,9 +12,8 @@ are the default. Owned/shared characters are optional budget references: review
 calculated contributions before applying them, and refresh explicitly. Editing
 calculated totals creates a labelled manual override.
 
-Monster entries retain immutable version pins and quantities. “Use current
-version” explicitly updates a pin after resolving the current accessible
-template. Equipment is appraised separately; mirror credit is not another
+Monster entries retain immutable version pins and quantities. Adding a template
+pins its chosen accessible version; preparation has no version-update button. Equipment is appraised separately; mirror credit is not another
 creature's budget. Comparable BU does not promise equal difficulty.
 
 Starting creates independent private play copies in one transaction. A start
@@ -91,3 +90,19 @@ discuss a character concept, receive canonical or newly authored component
 options validated against the rules, and save the completed character to their
 account with a sheet link. Existing session synchronization remains the gameplay
 foundation for multiple devices.
+
+## Catalogue and preparation refinement · 9 October
+
+- List/grid is one compact toolbar toggle, outside filter panels. Atelier,
+  the primitive market and living sheets keep their existing presentation.
+- List rows show name, a one-line summary, BU, source and engagement counts;
+  authored quick details open on hover, keyboard focus or touch. Full mechanics
+  load in the preview. Grid summaries clamp long mechanical paragraphs.
+- Collections, the character roster and My Creations use the same view control.
+  GM accounts have an Encounters archive tab with real encounter links.
+- Preparation uses the shared forge progress rail: Scene, Party, Opposition,
+  Review. Opposition has a list/grid catalogue and a separate full creature
+  preview/selected roster. Adding leaves the catalogue open. Narrow views switch
+  between catalogue, selection and preview before columns become squeezed.
+- The existing bestiary icons remain in use. Individual artwork for the new
+  monsters is the next, separate task after approving these UI refinements.

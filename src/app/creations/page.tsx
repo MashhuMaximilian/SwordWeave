@@ -1,5 +1,6 @@
 import {GMOnly} from "@/components/account/account-provider";
 import { EntityTypeIcon } from "@/components/icons/entity-type-icon";
+import { encounters } from "@/db/schema/encounters";
 import { monsters } from "@/db/schema/monsters";
 import { monsterLibraryColumns,monsterRowsToLibraryItems } from "@/lib/publishing/monster-library-item";
 import { redirect } from "next/navigation";
@@ -62,7 +63,7 @@ export default async function CreationsPage({
   // "My creations" = rows the user authored. We pull all entity types in
   // parallel and let the client filter by type/status. Drafts = private
   // (isPublic=false); Published = public.
-  const [primitiveRows, effectRows, capabilityRows, templateRows, itemRows, characterRows, buildRows,monsterRows] =
+  const [primitiveRows, effectRows, capabilityRows, templateRows, itemRows, characterRows, buildRows,monsterRows,encounterCount] =
     await Promise.all([
 
       db.query.primitives.findMany({
@@ -103,6 +104,7 @@ export default async function CreationsPage({
         orderBy: [desc(builds.level), asc(builds.name)],
       }),
       db.select(monsterLibraryColumns).from(monsters).where(eq(monsters.userId,ownerClerkId)).orderBy(asc(monsters.name)),
+      db.$count(encounters, eq(encounters.ownerId, userId)),
     ]);
 
   // Look up publication rows for every (targetType, targetId) the user
@@ -273,6 +275,7 @@ export default async function CreationsPage({
       <CreationsClient
         items={allItems}
         counts={counts}
+        initialEncounterCount={encounterCount}
         initialType={params.type ?? "all"}
         initialStatus={statusFilter}
         engagement={engagement}

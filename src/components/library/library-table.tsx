@@ -160,7 +160,7 @@ export function LibraryTable({
     );
   }
 
-  if (surface === "catalogue") return <><section className={`v12-catalogue-collection v12-creation-grid ${view === "LIST" ? "is-list" : "is-mosaic"}`}>{shownItems.map(item => <LibraryCatalogueCard key={item.id} item={item} engagement={engagement} currentUserInternalId={currentUserInternalId} selected={selectedKey === item.id} onSelect={item => onSelect?.(item)}/>)}</section>{loadingTail}{pagination}</>;
+  if (surface === "catalogue") return <><section className={`v12-catalogue-collection ${view === "LIST" ? "is-list sw-catalogue-list" : "v12-creation-grid is-mosaic"}`}>{shownItems.map(item => <LibraryCatalogueCard key={item.id} item={item} view={view} engagement={engagement} currentUserInternalId={currentUserInternalId} selected={selectedKey === item.id} onSelect={item => onSelect?.(item)}/>)}</section>{loadingTail}{pagination}</>;
 
   if (view === "LIST" || surface === "atelier") {
     return (

@@ -1357,18 +1357,6 @@ function LegacyCharacterWorkspace({
               ) : (
                 <>
                   {(selected || items) && <div className="flex flex-wrap gap-2">
-                    <div className="flex gap-1" aria-label="Card layout">
-                      {(["grid", "list"] as const).map((value) => (
-                        <button
-                          key={value}
-                          className={`${button} ${layout === value ? "bg-primary/15 text-primary" : ""}`}
-                          aria-pressed={layout === value}
-                          onClick={() => setLayout(value)}
-                        >
-                          {value === "grid" ? "Grid" : "List"}
-                        </button>
-                      ))}
-                    </div>
                     <label className="flex min-w-40 flex-1 items-center gap-2 rounded border border-border bg-card px-3">
                       <Search className="size-4" />
                       <input

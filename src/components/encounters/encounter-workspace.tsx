@@ -1,8 +1,19 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
-import { Plus, ArrowUpRight, Heart, Shield, Swords } from "lucide-react";
+import {
+  Plus,
+  ArrowUpRight,
+  Heart,
+  Shield,
+  Swords,
+  Eye,
+  X,
+  ArrowLeft,
+  ChevronRight,
+  Users,
+} from "lucide-react";
 import { useAccount } from "@/components/account/account-provider";
 import { EntityTypeIcon } from "@/components/icons/entity-type-icon";
 import { MonsterTemplatePreview } from "@/components/monsters/monster-template-preview";
@@ -13,7 +24,17 @@ import {
   type CreatureSummary,
 } from "@/lib/encounters/model";
 import { ZodError } from "zod";
+import { Markdown } from "@/components/ui/markdown";
 import { browserUuid } from "@/lib/browser-uuid";
+import {
+  ForgeProgressRail,
+  ForgeWorkbench,
+} from "@/components/characters/forge-section";
+import { CatalogueQuickLook } from "@/components/library/catalogue-quick-look";
+import { ColumnSearchBar } from "@/components/library/column-search-bar";
+import { useFilterSlot } from "@/components/layout/right-filter-panel";
+import { useGlobalControls } from "@/components/layout/global-controls";
+import type { LibraryView } from "@/lib/preferences/library-prefs";
 import "./encounters.css";
 type Saved = {
   id: string;
@@ -27,6 +48,7 @@ type Pick = {
   name: string;
   version: number;
   budget: number;
+  concept?: string;
   catalogue?: { environment: string; role: string; tactics: string } | null;
 };
 const empty: EncounterDefinition = {
@@ -57,20 +79,33 @@ async function api<T>(url: string, method = "GET", data?: unknown): Promise<T> {
     });
   return body;
 }
-export function EncounterWorkspace({ id }: { id?: string }) {
+export function EncounterWorkspace({
+  id,
+  startNew = false,
+}: {
+  id?: string;
+  startNew?: boolean;
+}) {
   const { userId } = useAuth();
   return (
     <AccountWorkspace
       key={`${userId ?? "anonymous"}:${id ?? "new"}`}
+      startNew={startNew}
       {...(id ? { id } : {})}
     />
   );
 }
-function AccountWorkspace({ id }: { id?: string }) {
+function AccountWorkspace({
+  id,
+  startNew,
+}: {
+  id?: string;
+  startNew: boolean;
+}) {
   const { userId, isLoaded } = useAuth();
   const { isGameMaster, setGameMaster } = useAccount();
   const [list, setList] = useState<{ id: string; name: string }[]>([]),
-    [editing, setEditing] = useState(!!id),
+    [editing, setEditing] = useState(!!id || startNew),
     [saved, setSaved] = useState<Saved | null>(null),
     [draft, setDraft] = useState<EncounterDefinition>(empty),
     [creatures, setCreatures] = useState<CreatureSummary[]>([]),
@@ -79,12 +114,19 @@ function AccountWorkspace({ id }: { id?: string }) {
     [ready, setReady] = useState(false),
     [conflict, setConflict] = useState(false),
     [recovery, setRecovery] = useState<EncounterDefinition | null>(null);
-  const [picker, setPicker] = useState(false),
-    [preview, setPreview] = useState<{ id: string; version: number } | null>(
-      null,
-    ),
+  const [stage, setStage] = useState(id ? 2 : 0);
+  const [catalogueView, setCatalogueView] = useState<LibraryView>("LIST");
+  const [selectionOpen, setSelectionOpen] = useState(false);
+  const [archiveView, setArchiveView] = useState<LibraryView>("LIST");
+  const [archiveSearch, setArchiveSearch] = useState("");
+  const picker = editing && stage === 2;
+  const [preview, setPreview] = useState<{
+      id: string;
+      version: number;
+      entry?: Pick;
+    } | null>(null),
     [catalogue, setCatalogue] = useState<Pick[]>([]),
-    [catalogueLoading, setCatalogueLoading] = useState(false),
+    [catalogueLoading, setCatalogueLoading] = useState(true),
     [offset, setOffset] = useState(0),
     [hasMore, setHasMore] = useState(false),
     [q, setQ] = useState(""),
@@ -134,7 +176,11 @@ function AccountWorkspace({ id }: { id?: string }) {
             if (
               recovered.success &&
               JSON.stringify(recovered.data) !==
-                JSON.stringify("definition" in data ? encounterDefinitionSchema.parse(data.definition) : empty)
+                JSON.stringify(
+                  "definition" in data
+                    ? encounterDefinitionSchema.parse(data.definition)
+                    : empty,
+                )
             )
               setRecovery(recovered.data);
           }
@@ -204,7 +250,8 @@ function AccountWorkspace({ id }: { id?: string }) {
   try {
     appraisal = appraiseEncounter(draft, creatures);
   } catch (e) {
-    appraisalError = e instanceof Error ? e.message : "Could not calculate budgets.";
+    appraisalError =
+      e instanceof Error ? e.message : "Could not calculate budgets.";
     appraisal.missing = true;
   }
   const dirty =
@@ -327,59 +374,6 @@ function AccountWorkspace({ id }: { id?: string }) {
           ...data.monster.definition.catalogue,
         },
       ]);
-      setPicker(false);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function updatePin(index: number) {
-    if (busy) return;
-    setBusy(true);
-    setError("");
-    try {
-      const entry = draft.entries[index]!;
-      const data = await api<{
-        monster: {
-          version: number;
-          definition: {
-            name: string;
-            budget: number;
-            catalogue?: Pick["catalogue"];
-          };
-        };
-        sheet: { itemBu: number; maximum: number };
-      }>(`/api/monsters/${entry.templateId}`);
-      const version = data.monster.version;
-      if (
-        draft.entries.some(
-          (e, i) =>
-            i !== index &&
-            e.templateId === entry.templateId &&
-            e.version === version,
-        )
-      )
-        throw new Error(
-          "This version is already present. Adjust its quantity instead.",
-        );
-      patch({
-        entries: draft.entries.map((e, i) =>
-          i === index ? { ...e, version } : e,
-        ),
-      });
-      setCreatures((c) => [
-        ...c,
-        {
-          templateId: entry.templateId,
-          version,
-          name: data.monster.definition.name,
-          budget: data.monster.definition.budget,
-          itemBu: data.sheet.itemBu,
-          maximum: data.sheet.maximum,
-          ...data.monster.definition.catalogue,
-        },
-      ]);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -419,6 +413,113 @@ function AccountWorkspace({ id }: { id?: string }) {
       setBusy(false);
     }
   }
+  const { setFilterPanelOpen } = useGlobalControls();
+  const filterContent = useMemo(
+    () =>
+      !picker ? null : (
+        <div className="sw-encounters sw-encounter-filters">
+          <h2>Creature filters</h2>{" "}
+          <div className="sw-encounter-fields">
+            <label>
+              Minimum BU
+              <input
+                type="number"
+                min="0"
+                value={min}
+                onChange={(e) => {
+                  setMin(e.target.value);
+                  setOffset(0);
+                }}
+              />
+            </label>
+            <label>
+              Maximum BU
+              <input
+                type="number"
+                min="0"
+                value={max}
+                onChange={(e) => {
+                  setMax(e.target.value);
+                  setOffset(0);
+                }}
+              />
+            </label>
+          </div>
+          <div className="sw-encounter-fields">
+            <label>
+              Environment
+              <select
+                value={env}
+                onChange={(e) => {
+                  setEnv(e.target.value);
+                  setOffset(0);
+                }}
+              >
+                <option value="">All environments</option>
+                {[
+                  "Wilderness",
+                  "Subterranean",
+                  "Urban",
+                  "Aquatic",
+                  "Aerial",
+                  "Undead",
+                  "Constructs",
+                  "Arcane anomalies",
+                  "Infernal",
+                  "Ancient guardians",
+                ].map((v) => (
+                  <option key={v}>{v}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Role
+              <select
+                value={role}
+                onChange={(e) => {
+                  setRole(e.target.value);
+                  setOffset(0);
+                }}
+              >
+                <option value="">All roles</option>
+                {[
+                  "Melee",
+                  "Ranged",
+                  "Defender",
+                  "Ambusher",
+                  "Controller",
+                  "Support",
+                  "Solo",
+                ].map((v) => (
+                  <option key={v}>{v}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <button
+            type="button"
+            className="sw-metal-button"
+            onClick={() => {
+              setMin("");
+              setMax("");
+              setEnv("");
+              setRole("");
+              setOffset(0);
+            }}
+          >
+            Clear filters
+          </button>
+        </div>
+      ),
+    [picker, min, max, env, role],
+  );
+  useFilterSlot(filterContent);
+  const chapters = [
+    { title: "The scene", hint: "Name & encounter note", icon: Swords },
+    { title: "The party", hint: "Creature & item budgets", icon: Users },
+    { title: "The opposition", hint: "Choose your creatures", icon: Plus },
+    { title: "Review & run", hint: "Compare, save & play", icon: Shield },
+  ];
   if (!isLoaded) return <main className="sw-encounters">Loading account…</main>;
   if (!userId)
     return (
@@ -430,7 +531,21 @@ function AccountWorkspace({ id }: { id?: string }) {
         </Link>
       </main>
     );
-  if (!ready) return <main className="sw-encounters"><h1>Encounter Builder</h1><p role="status">{error || "Loading encounter preparation…"}</p>{error && <button className="sw-metal-button" onClick={() => window.location.reload()}>Retry</button>}</main>;
+  if (!ready)
+    return (
+      <main className="sw-encounters">
+        <h1>Encounter Builder</h1>
+        <p role="status">{error || "Loading encounter preparation…"}</p>
+        {error && (
+          <button
+            className="sw-metal-button"
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </button>
+        )}
+      </main>
+    );
   return (
     <main className="sw-encounters">
       <header className="sw-encounter-heading">
@@ -451,6 +566,7 @@ function AccountWorkspace({ id }: { id?: string }) {
             className="sw-metal-button"
             onClick={() => {
               setEditing(true);
+              setStage(0);
               setReady(true);
               setDraft(empty);
               setSaved(null);
@@ -497,20 +613,38 @@ function AccountWorkspace({ id }: { id?: string }) {
         </div>
       )}
       {!editing ? (
-        <section className="sw-encounter-list">
-          {list.map((e) => (
-            <Link
-              className="sw-encounter-list-row"
-              key={e.id}
-              href={`/encounters/${e.id}`}
-            >
-              <Swords size={20} />
-              <strong>{e.name}</strong>
-              <ArrowUpRight size={18} />
-            </Link>
-          ))}
-          {ready && !list.length && (
-            <p>
+        <section aria-label="Saved encounters">
+          <ColumnSearchBar
+            search={archiveSearch}
+            onSearchChange={setArchiveSearch}
+            view={archiveView}
+            onViewChange={setArchiveView}
+            placeholder="Search encounters…"
+          />
+          <div
+            className={`sw-encounter-archive-results ${archiveView === "GRID" ? "is-grid" : "is-list"}`}
+          >
+            {list
+              .filter((e) =>
+                e.name.toLowerCase().includes(archiveSearch.toLowerCase()),
+              )
+              .map((e) => (
+                <Link
+                  className="sw-encounter-list-row"
+                  key={e.id}
+                  href={`/encounters/${e.id}`}
+                >
+                  <Swords size={20} />
+                  <span>
+                    <strong>{e.name}</strong>
+                    <small>Private encounter · Preparation & runs</small>
+                  </span>
+                  <ArrowUpRight size={16} />
+                </Link>
+              ))}
+          </div>
+          {!list.length && (
+            <p className="sw-encounter-help">
               No encounters yet. Start with a name, a party budget and a few
               creatures.
             </p>
@@ -519,564 +653,681 @@ function AccountWorkspace({ id }: { id?: string }) {
       ) : (
         <fieldset
           disabled={busy}
-          className={`sw-encounter-preparation${picker ? " is-picking" : ""}`}
+          className="sw-encounter-forge sw-character-forge"
         >
-          <section className="sw-encounter-editor">
-            <div className="sw-encounter-panel">
-              <h2>The scene</h2>
-              <label>
-                Name
-                <input
-                  maxLength={200}
-                  value={draft.name}
-                  onChange={(e) => patch({ name: e.target.value })}
-                  placeholder="The lantern bridge"
-                />
-              </label>
-              <label>
-                Encounter note
-                <textarea
-                  maxLength={5000}
-                  rows={2}
-                  value={draft.note}
-                  onChange={(e) => patch({ note: e.target.value })}
-                  placeholder="What brings the party here?"
-                />
-              </label>
+          <ForgeProgressRail label="Encounter preparation progress">
+            <div className="sw-character-forge__rail-title">
+              <span>Table instrument</span>
+              <strong>{draft.name || "New encounter"}</strong>
             </div>
-            <div className="sw-encounter-panel">
-              <h2>
-                Party budget{" "}
-                <small>
-                  {draft.budgetSource === "characters"
-                    ? "From linked characters"
-                    : draft.budgetSource === "override"
-                      ? "Manual override"
-                      : "Manual"}
-                </small>
-              </h2>
-              <div className="sw-encounter-fields">
-                {(
-                  [
-                    ["partyBu", "Party BU"],
-                    ["partyItemBu", "Party Item BU"],
-                    ["partySize", "Party size (optional)"],
-                  ] as const
-                ).map(([key, label]) => (
-                  <label key={key}>
-                    {label}
-                    <input
-                      type="number"
-                      min={key === "partySize" ? 1 : 0}
-                      step="1"
-                      value={draft[key] ?? ""}
-                      onChange={(e) => {
-                        if (
-                          e.target.value !== "" &&
-                          !Number.isSafeInteger(Number(e.target.value))
-                        )
-                          return;
-                        patch({
-                          [key]:
-                            e.target.value === ""
-                              ? null
-                              : Number(e.target.value),
-                          budgetSource:
-                            draft.budgetSource === "characters"
-                              ? "override"
-                              : draft.budgetSource,
-                        });
-                      }}
-                    />
-                  </label>
-                ))}
-              </div>
-              <p className="sw-encounter-help">
-                Enter the party&apos;s totals. Leave unknown budgets blank;
-                enter 0 for no equipment.
-              </p>
-              <details>
-                <summary>Use owned or shared characters instead</summary>
+            <nav>
+              {chapters.map((chapter, index) => (
                 <button
-                  disabled={busy}
-                  className="sw-metal-button"
-                  onClick={() => void loadParty()}
+                  type="button"
+                  key={chapter.title}
+                  aria-current={stage === index ? "step" : undefined}
+                  className={stage === index ? "is-active" : ""}
+                  onClick={() => setStage(index)}
                 >
-                  {party.length
-                    ? "Refresh character list"
-                    : "Choose characters"}
+                  <span className="sw-character-forge__step-icon">
+                    <chapter.icon size={20} />
+                  </span>
+                  <span>
+                    <b>{chapter.title}</b>
+                    <small>{chapter.hint}</small>
+                  </span>
+                  <em>{String(index + 1).padStart(2, "0")}</em>
                 </button>
-                {party.map((c) => (
-                  <label className="sw-encounter-check" key={c.id}>
-                    <input
-                      type="checkbox"
-                      checked={draft.characterIds.includes(c.id)}
-                      onChange={(e) => {
-                        patch({
-                          characterIds: e.target.checked
-                            ? [...draft.characterIds, c.id]
-                            : draft.characterIds.filter((id) => id !== c.id),
-                        });
-                        setPartySummary(null);
-                      }}
-                    />
-                    {c.name}
-                    <Link href={`/characters/${c.id}`}>Open sheet ↗</Link>
-                  </label>
-                ))}
-                {draft.characterIds
-                  .filter((id) => !party.some((c) => c.id === id))
-                  .map((id) => (
-                    <div key={id}>
-                      Linked character{" "}
-                      <button
-                        className="sw-metal-button"
-                        onClick={() => {
-                          patch({
-                            characterIds: draft.characterIds.filter(
-                              (c) => c !== id,
-                            ),
-                          });
-                          setPartySummary(null);
-                        }}
-                      >
-                        Remove link
-                      </button>
-                    </div>
-                  ))}
-                {partyMore && (
+              ))}
+            </nav>
+            <div className="sw-encounter-rail-budget">
+              <span>Selected creatures</span>
+              <strong>{appraisal.count}</strong>
+              <span>Enemy BU / Item BU</span>
+              <b>
+                {appraisal.enemyBu} / {appraisal.enemyItemBu}
+              </b>
+              <span>Party BU / Item BU</span>
+              <b>
+                {draft.partyBu ?? "—"} / {draft.partyItemBu ?? "—"}
+              </b>
+            </div>
+          </ForgeProgressRail>
+          <ForgeWorkbench
+            header={
+              <header className="sw-encounter-workbench-heading">
+                <p className="v12-kicker">
+                  {String(stage + 1).padStart(2, "0")} · Encounter preparation
+                </p>
+                <h2>{chapters[stage]!.title}</h2>
+                <p>
+                  {stage === 2
+                    ? "Preview a creature, add it, then adjust its quantity. Each creature becomes an independent play copy when the encounter starts."
+                    : chapters[stage]!.hint}
+                </p>
+              </header>
+            }
+            footer={
+              <footer className="sw-encounter-workbench-footer">
+                <div className="sw-encounter-step-actions">
+                  <button
+                    type="button"
+                    className="sw-metal-button"
+                    disabled={stage === 0 || busy}
+                    onClick={() => setStage(stage - 1)}
+                  >
+                    <ArrowLeft size={16} />
+                    Back
+                  </button>
+                  {stage < 3 && (
+                    <button
+                      type="button"
+                      className="sw-metal-button"
+                      onClick={() => setStage(stage + 1)}
+                    >
+                      Next
+                      <ChevronRight size={16} />
+                    </button>
+                  )}
+                </div>{" "}
+                <div className="sw-encounter-actions">
                   <button
                     className="sw-metal-button"
-                    disabled={busy}
-                    onClick={() => void loadParty(true)}
+                    disabled={busy || !draft.name.trim() || !ready}
+                    onClick={() => void save()}
                   >
-                    More characters
+                    {busy ? "Working…" : dirty ? "Save encounter" : "Saved"}
                   </button>
-                )}
-                <button
-                  disabled={busy || !draft.characterIds.length}
-                  className="sw-metal-button"
-                  onClick={() => void calculate()}
-                >
-                  Calculate / refresh selected totals
-                </button>
-                {partySummary && (
-                  <div className="sw-encounter-party-review">
-                    {partySummary.map((c) => (
-                      <p key={c.id}>
-                        {c.unavailable
-                          ? "Character no longer accessible"
-                          : `${c.name}: ${c.partyBu} BU + ${c.partyItemBu} Item BU`}
-                      </p>
-                    ))}
-                    <button
-                      className="sw-metal-button"
-                      disabled={partySummary.some((c) => c.unavailable)}
-                      onClick={() =>
-                        patch({
-                          partyBu: partySummary.reduce(
-                            (n, c) => n + (c.partyBu ?? 0),
-                            0,
-                          ),
-                          partyItemBu: partySummary.reduce(
-                            (n, c) => n + (c.partyItemBu ?? 0),
-                            0,
-                          ),
-                          partySize: partySummary.length,
-                          budgetSource: "characters",
-                        })
-                      }
-                    >
-                      Use these totals
-                    </button>
-                  </div>
-                )}
-              </details>
-            </div>
-            <div className="sw-encounter-panel">
-              <div className="sw-encounter-section-heading">
-                <h2>Opposition</h2>
-                <button
-                  className="sw-metal-button"
-                  disabled={busy}
-                  onClick={() => setPicker(!picker)}
-                >
-                  <Plus size={18} />
-                  {picker ? "Close picker" : "Add creatures"}
-                </button>
-              </div>
-              {draft.entries.map((entry, index) => {
-                const c = creatures.find(
-                  (c) =>
-                    c.templateId === entry.templateId &&
-                    c.version === entry.version,
-                );
-                return (
-                  <div
-                    key={`${entry.templateId}:${entry.version}`}
-                    className="sw-encounter-entry"
+                  <button
+                    className="sw-metal-button"
+                    disabled={
+                      busy ||
+                      dirty ||
+                      !draft.entries.length ||
+                      appraisal.missing
+                    }
+                    onClick={() => void start()}
                   >
-                    <EntityTypeIcon type="MONSTER" />
-                    <div>
-                      <strong>{c?.name ?? "Creature"}</strong>
-                      <small>
-                        {c?.unavailable
-                          ? "Access unavailable"
-                          : `${c?.budget ?? "…"} BU + ${c?.itemBu ?? "…"} Item BU · v${entry.version}`}
-                      </small>
-                    </div>
-                    <label>
-                      Quantity
+                    {saved?.runs.length ? "Start new run" : "Start encounter"}
+                  </button>
+                  {dirty && <small>Save preparation before starting.</small>}
+                </div>
+              </footer>
+            }
+          >
+            <section className="sw-encounter-chapter" hidden={stage !== 0}>
+              {" "}
+              <div className="sw-encounter-panel">
+                <label>
+                  Name
+                  <input
+                    maxLength={200}
+                    value={draft.name}
+                    onChange={(e) => patch({ name: e.target.value })}
+                    placeholder="The lantern bridge"
+                  />
+                </label>
+                <label>
+                  Encounter note
+                  <textarea
+                    maxLength={5000}
+                    rows={2}
+                    value={draft.note}
+                    onChange={(e) => patch({ note: e.target.value })}
+                    placeholder="What brings the party here?"
+                  />
+                </label>
+              </div>
+            </section>
+            <section className="sw-encounter-chapter" hidden={stage !== 1}>
+              {" "}
+              <div className="sw-encounter-panel">
+                <h2>
+                  Party budget{" "}
+                  <small>
+                    {draft.budgetSource === "characters"
+                      ? "From linked characters"
+                      : draft.budgetSource === "override"
+                        ? "Manual override"
+                        : "Manual"}
+                  </small>
+                </h2>
+                <div className="sw-encounter-fields">
+                  {(
+                    [
+                      ["partyBu", "Party BU"],
+                      ["partyItemBu", "Party Item BU"],
+                      ["partySize", "Party size (optional)"],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <label key={key}>
+                      {label}
                       <input
                         type="number"
-                        min={1}
-                        max={200}
-                        value={entry.quantity}
+                        min={key === "partySize" ? 1 : 0}
+                        step="1"
+                        value={draft[key] ?? ""}
                         onChange={(e) => {
-                          const quantity = Number(e.target.value);
                           if (
-                            Number.isSafeInteger(quantity) &&
-                            quantity >= 1 &&
-                            quantity <= 200
+                            e.target.value !== "" &&
+                            !Number.isSafeInteger(Number(e.target.value))
                           )
-                            patch({
-                              entries: draft.entries.map((x, i) =>
-                                i === index ? { ...x, quantity } : x,
-                              ),
-                            });
+                            return;
+                          patch({
+                            [key]:
+                              e.target.value === ""
+                                ? null
+                                : Number(e.target.value),
+                            budgetSource:
+                              draft.budgetSource === "characters"
+                                ? "override"
+                                : draft.budgetSource,
+                          });
                         }}
                       />
                     </label>
-                    <button
-                      className="sw-metal-button"
-                      onClick={() =>
-                        patch({
-                          entries: draft.entries.filter((_, i) => i !== index),
-                        })
-                      }
-                    >
-                      Remove
-                    </button>
-                    {!c?.unavailable && (
-                      <button
-                        className="sw-metal-button"
-                        onClick={() => {
-                          setPreview({
-                            id: entry.templateId,
-                            version: entry.version,
-                          });
-                          setPicker(true);
-                        }}
-                      >
-                        Preview
-                      </button>
-                    )}
-                    <button
-                      className="sw-metal-button sw-encounter-update-pin"
-                      disabled={busy}
-                      onClick={() => void updatePin(index)}
-                    >
-                      Use current version
-                    </button>
-                    {c?.tactics && (
-                      <p className="sw-encounter-tactics">{c.tactics}</p>
-                    )}
-                  </div>
-                );
-              })}
-              {!draft.entries.length && (
+                  ))}
+                </div>
                 <p className="sw-encounter-help">
-                  Add a template, then choose how many creatures will appear.
+                  Enter the party&apos;s totals. Leave unknown budgets blank;
+                  enter 0 for no equipment.
                 </p>
-              )}
-            </div>
-            <div className="sw-encounter-panel">
-              <h2>Encounter appraisal</h2>
-              {appraisalError && <p role="alert">{appraisalError}</p>}
-              <div className="sw-encounter-budget-grid">
-                <div>
-                  <Swords size={18} />
-                  <small>Enemy BU</small>
-                  <strong>
-                    {appraisal.missing ? "Incomplete" : appraisal.enemyBu}
-                  </strong>
-                </div>
-                <div>
-                  <Shield size={18} />
-                  <small>Enemy Item BU</small>
-                  <strong>
-                    {appraisal.missing ? "Incomplete" : appraisal.enemyItemBu}
-                  </strong>
-                </div>
-                <div>
-                  <Heart size={18} />
-                  <small>Party BU</small>
-                  <strong>{draft.partyBu ?? "—"}</strong>
-                </div>
-                <div>
-                  <Shield size={18} />
-                  <small>Party Item BU</small>
-                  <strong>{draft.partyItemBu ?? "—"}</strong>
-                </div>
-              </div>
-              {appraisal.partyTotal !== null && !appraisal.missing && (
-                <p>
-                  Enemy total {appraisal.enemyTotal} · Party total{" "}
-                  {appraisal.partyTotal} · Difference {appraisal.difference}{" "}
-                  {appraisal.ratio !== null
-                    ? `· Ratio ${appraisal.ratio.toFixed(2)}`
-                    : ""}
-                </p>
-              )}
-              <p>
-                {appraisal.count} enemies
-                {draft.partySize !== null
-                  ? ` against ${draft.partySize} party members`
-                  : ""}
-                .{" "}
-                {appraisal.largestShare >= 0.5
-                  ? "At least half the creature budget is concentrated in one enemy."
-                  : ""}
-              </p>
-              <p className="sw-encounter-help">
-                Comparable BU totals do not guarantee comparable difficulty.
-                Numbers, positioning, control and coordinated abilities matter.
-              </p>
-            </div>
-            <div className="sw-encounter-actions">
-              <button
-                className="sw-metal-button"
-                disabled={busy || !draft.name.trim() || !ready}
-                onClick={() => void save()}
-              >
-                {busy
-                  ? "Working…"
-                  : dirty
-                    ? "Save encounter"
-                    : "Saved · Save again"}
-              </button>
-              <button
-                className="sw-metal-button"
-                disabled={
-                  busy || dirty || !draft.entries.length || appraisal.missing
-                }
-                onClick={() => void start()}
-              >
-                {saved?.runs.length ? "Start new run" : "Start encounter"}
-              </button>
-              {dirty && <small>Save preparation before starting.</small>}
-            </div>
-            {conflict && (
-              <div className="sw-encounter-actions">
-                <button
-                  className="sw-metal-button"
-                  onClick={() => void reload()}
-                >
-                  Reload saved encounter
-                </button>
-                <button
-                  className="sw-metal-button"
-                  onClick={() => void reload(true)}
-                >
-                  Keep local draft for reapply
-                </button>
-              </div>
-            )}
-            {saved && (
-              <details className="sw-encounter-panel">
-                <summary>Previous runs & management</summary>
-                {saved.runs.map((r) => (
-                  <Link
-                    key={r.id}
-                    className="sw-encounter-list-row"
-                    href={`/encounters/runs/${r.id}`}
-                  >
-                    Resume {r.name}
-                    <small>{new Date(r.createdAt).toLocaleDateString()}</small>
-                  </Link>
-                ))}
                 <details>
-                  <summary>Delete preparation</summary>
-                  <p>Runs and playable creatures are preserved.</p>
+                  <summary>Use owned or shared characters instead</summary>
                   <button
                     disabled={busy}
                     className="sw-metal-button"
-                    onClick={async () => {
-                      setBusy(true);
-                      try {
-                        await api(`/api/encounters/${saved.id}`, "DELETE");
-                        if (cacheKey) localStorage.removeItem(cacheKey);
-                        window.location.assign("/encounters");
-                      } catch (e) {
-                        setError((e as Error).message);
-                        setBusy(false);
-                      }
-                    }}
+                    onClick={() => void loadParty()}
                   >
-                    Confirm deletion
+                    {party.length
+                      ? "Refresh character list"
+                      : "Choose characters"}
                   </button>
+                  {party.map((c) => (
+                    <label className="sw-encounter-check" key={c.id}>
+                      <input
+                        type="checkbox"
+                        checked={draft.characterIds.includes(c.id)}
+                        onChange={(e) => {
+                          patch({
+                            characterIds: e.target.checked
+                              ? [...draft.characterIds, c.id]
+                              : draft.characterIds.filter((id) => id !== c.id),
+                          });
+                          setPartySummary(null);
+                        }}
+                      />
+                      {c.name}
+                      <Link href={`/characters/${c.id}`}>Open sheet ↗</Link>
+                    </label>
+                  ))}
+                  {draft.characterIds
+                    .filter((id) => !party.some((c) => c.id === id))
+                    .map((id) => (
+                      <div key={id}>
+                        Linked character{" "}
+                        <button
+                          className="sw-metal-button"
+                          onClick={() => {
+                            patch({
+                              characterIds: draft.characterIds.filter(
+                                (c) => c !== id,
+                              ),
+                            });
+                            setPartySummary(null);
+                          }}
+                        >
+                          Remove link
+                        </button>
+                      </div>
+                    ))}
+                  {partyMore && (
+                    <button
+                      className="sw-metal-button"
+                      disabled={busy}
+                      onClick={() => void loadParty(true)}
+                    >
+                      More characters
+                    </button>
+                  )}
+                  <button
+                    disabled={busy || !draft.characterIds.length}
+                    className="sw-metal-button"
+                    onClick={() => void calculate()}
+                  >
+                    Calculate / refresh selected totals
+                  </button>
+                  {partySummary && (
+                    <div className="sw-encounter-party-review">
+                      {partySummary.map((c) => (
+                        <p key={c.id}>
+                          {c.unavailable
+                            ? "Character no longer accessible"
+                            : `${c.name}: ${c.partyBu} BU + ${c.partyItemBu} Item BU`}
+                        </p>
+                      ))}
+                      <button
+                        className="sw-metal-button"
+                        disabled={partySummary.some((c) => c.unavailable)}
+                        onClick={() =>
+                          patch({
+                            partyBu: partySummary.reduce(
+                              (n, c) => n + (c.partyBu ?? 0),
+                              0,
+                            ),
+                            partyItemBu: partySummary.reduce(
+                              (n, c) => n + (c.partyItemBu ?? 0),
+                              0,
+                            ),
+                            partySize: partySummary.length,
+                            budgetSource: "characters",
+                          })
+                        }
+                      >
+                        Use these totals
+                      </button>
+                    </div>
+                  )}
                 </details>
-              </details>
-            )}
-          </section>
-          {picker && (
-            <aside className="sw-encounter-picker">
-              <div className="sw-encounter-section-heading">
-                <h2>Choose a creature</h2>
+              </div>
+            </section>
+            <section
+              className={`sw-encounter-chapter sw-encounter-selection-workspace${preview ? " is-previewing" : ""}${selectionOpen ? " is-selected-view" : ""}`}
+              hidden={stage !== 2}
+            >
+              <div className="sw-encounter-catalogue-pane">
                 <button
-                  className="sw-metal-button"
+                  type="button"
+                  className="sw-metal-button sw-encounter-mobile-selection"
+                  onClick={() => setSelectionOpen(true)}
+                >
+                  Selected creatures <b>{appraisal.count}</b>
+                </button>
+                <ColumnSearchBar
+                  search={q}
+                  onSearchChange={(value) => {
+                    setQ(value);
+                    setOffset(0);
+                  }}
+                  onOpenFilters={() => setFilterPanelOpen(true)}
+                  hasActiveFilters={!!(min || max || env || role)}
+                  view={catalogueView}
+                  onViewChange={setCatalogueView}
+                  placeholder="Search creatures…"
+                />
+                <div className="sw-encounter-catalogue-heading">
+                  <p className="v12-kicker">Creature catalogue</p>
+                  <small>Click to preview · + to add</small>
+                </div>
+                <div
+                  className={`sw-encounter-catalogue ${catalogueView === "GRID" ? "is-grid" : "is-list"}`}
+                >
+                  {catalogue.map((monster) => {
+                    const quantity =
+                      draft.entries.find(
+                        (e) =>
+                          e.templateId === monster.id &&
+                          e.version === monster.version,
+                      )?.quantity ?? 0;
+                    return (
+                      <article
+                        key={monster.id}
+                        data-preview-trigger="true"
+                        className={`sw-encounter-catalogue-row${preview?.id === monster.id ? " is-selected" : ""}`}
+                      >
+                        <button
+                          type="button"
+                          className="sw-encounter-catalogue-opener"
+                          aria-label={`Preview ${monster.name}`}
+                          onClick={() =>
+                            setPreview({
+                              id: monster.id,
+                              version: monster.version,
+                              entry: monster,
+                            })
+                          }
+                        >
+                          <span className="v12-entry-glyph">
+                            <EntityTypeIcon type="MONSTER" size={24} />
+                          </span>
+                          <span className="sw-encounter-catalogue-copy">
+                            <strong>{monster.name}</strong>
+                            {monster.concept && (
+                              <span className="sw-catalogue-row-summary">
+                                {monster.concept
+                                  .split("**Encounter use:")[0]
+                                  ?.replace(/[*_`]/g, "")}
+                              </span>
+                            )}
+                            <small>
+                              {monster.catalogue?.environment ?? "Creature"} ·{" "}
+                              {monster.catalogue?.role ?? "Versatile"}
+                              {quantity ? ` · ${quantity} selected` : ""}
+                            </small>
+                          </span>
+                        </button>
+                        <div className="sw-encounter-catalogue-end">
+                          <b>{monster.budget} BU</b>
+                          <div>
+                            <CatalogueQuickLook name={monster.name}>
+                              <Markdown>{monster.concept ?? ""}</Markdown>
+                              <p>
+                                {monster.catalogue?.tactics ||
+                                  "Open the preview for this creature’s abilities and equipment."}
+                              </p>
+                            </CatalogueQuickLook>
+                            <button
+                              type="button"
+                              className="sw-metal-button sw-encounter-icon-action"
+                              aria-label={`Add ${monster.name}`}
+                              title={`Add ${monster.name}`}
+                              disabled={busy || quantity >= 200}
+                              onClick={() => void add(monster)}
+                            >
+                              <Plus size={18} />
+                            </button>
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
+                  {catalogueLoading ? (
+                    <p role="status">Loading creatures…</p>
+                  ) : (
+                    !catalogue.length && <p>No matching creatures.</p>
+                  )}
+                </div>
+                <nav
+                  className="sw-encounter-actions"
+                  aria-label="Creature pages"
+                >
+                  <button
+                    type="button"
+                    className="sw-metal-button"
+                    disabled={!offset || catalogueLoading}
+                    onClick={() => setOffset(Math.max(0, offset - 24))}
+                  >
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    className="sw-metal-button"
+                    disabled={!hasMore || catalogueLoading}
+                    onClick={() => setOffset(offset + 24)}
+                  >
+                    More creatures
+                  </button>
+                </nav>
+              </div>
+              <aside
+                className="sw-encounter-selection-pane"
+                aria-label={preview ? "Creature preview" : "Selected creatures"}
+              >
+                <button
+                  type="button"
+                  className="sw-metal-button sw-encounter-mobile-browse"
                   onClick={() => {
-                    setPicker(false);
+                    setSelectionOpen(false);
                     setPreview(null);
                   }}
                 >
-                  Close
+                  <ArrowLeft size={16} />
+                  Browse creatures
                 </button>
-              </div>
-              <label>
-                Search
-                <input
-                  placeholder="Name…"
-                  value={q}
-                  onChange={(e) => {
-                    setQ(e.target.value);
-                    setOffset(0);
-                  }}
-                />
-              </label>
-              <div className="sw-encounter-fields">
-                <label>
-                  Minimum BU
-                  <input
-                    type="number"
-                    min="0"
-                    value={min}
-                    onChange={(e) => {
-                      setMin(e.target.value);
-                      setOffset(0);
-                    }}
-                  />
-                </label>
-                <label>
-                  Maximum BU
-                  <input
-                    type="number"
-                    min="0"
-                    value={max}
-                    onChange={(e) => {
-                      setMax(e.target.value);
-                      setOffset(0);
-                    }}
-                  />
-                </label>
-              </div>
-              <div className="sw-encounter-fields">
-                <label>
-                  Environment
-                  <select
-                    value={env}
-                    onChange={(e) => {
-                      setEnv(e.target.value);
-                      setOffset(0);
+                <div className="sw-encounter-selection-tabs">
+                  <button
+                    type="button"
+                    className="sw-metal-button"
+                    aria-pressed={!preview}
+                    onClick={() => {
+                      setPreview(null);
+                      setSelectionOpen(true);
                     }}
                   >
-                    <option value="">All environments</option>
-                    {[
-                      "Wilderness",
-                      "Subterranean",
-                      "Urban",
-                      "Aquatic",
-                      "Aerial",
-                      "Undead",
-                      "Constructs",
-                      "Arcane anomalies",
-                      "Infernal",
-                      "Ancient guardians",
-                    ].map((v) => (
-                      <option key={v}>{v}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Role
-                  <select
-                    value={role}
-                    onChange={(e) => {
-                      setRole(e.target.value);
-                      setOffset(0);
-                    }}
-                  >
-                    <option value="">All roles</option>
-                    {[
-                      "Melee",
-                      "Ranged",
-                      "Defender",
-                      "Ambusher",
-                      "Controller",
-                      "Support",
-                      "Solo",
-                    ].map((v) => (
-                      <option key={v}>{v}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <div className="sw-encounter-catalogue">
-                {catalogue.map((m) => (
-                  <div key={m.id} className="sw-encounter-catalogue-row">
+                    Selected creatures <b>{appraisal.count}</b>
+                  </button>
+                  <span>{preview ? "Creature preview" : "Your encounter"}</span>
+                </div>
+                {preview ? (
+                  <div className="sw-encounter-preview">
                     <button
-                      onClick={() =>
-                        setPreview({ id: m.id, version: m.version })
-                      }
-                    >
-                      <EntityTypeIcon type="MONSTER" />
-                      <span>
-                        <strong>{m.name}</strong>
-                        <small>
-                          {m.budget} BU · {m.catalogue?.role ?? "Creature"}
-                        </small>
-                      </span>
-                    </button>
-                    <button
-                      aria-label={`Add ${m.name}`}
-                      className="sw-metal-button"
+                      type="button"
+                      className="sw-metal-button sw-encounter-add-preview"
                       disabled={busy}
-                      onClick={() => void add(m)}
+                      onClick={() => {
+                        const found =
+                          preview.entry ??
+                          catalogue.find(
+                            (m) =>
+                              m.id === preview.id &&
+                              m.version === preview.version,
+                          );
+                        const selected = creatures.find(
+                          (c) =>
+                            c.templateId === preview.id &&
+                            c.version === preview.version,
+                        );
+                        if (found) void add(found);
+                        else if (selected)
+                          void add({
+                            id: preview.id,
+                            version: preview.version,
+                            name: selected.name ?? "Creature",
+                            budget: selected.budget ?? 0,
+                          });
+                      }}
                     >
-                      <Plus size={18} />
+                      <Plus size={16} />
+                      Add to encounter
                     </button>
+                    <MonsterTemplatePreview
+                      key={`${preview.id}:${preview.version}`}
+                      id={preview.id}
+                      version={preview.version}
+                      compact
+                      hideActions
+                    />
                   </div>
-                ))}
-                {catalogueLoading ? <p role="status">Loading creatures…</p> : !catalogue.length && <p>No matching creatures.</p>}
+                ) : (
+                  <div className="sw-encounter-selected">
+                    {" "}
+                    {draft.entries.map((entry, index) => {
+                      const c = creatures.find(
+                        (c) =>
+                          c.templateId === entry.templateId &&
+                          c.version === entry.version,
+                      );
+                      return (
+                        <div
+                          key={`${entry.templateId}:${entry.version}`}
+                          className="sw-encounter-entry"
+                        >
+                          <EntityTypeIcon type="MONSTER" />
+                          <div>
+                            <strong>{c?.name ?? "Creature"}</strong>
+                            <small>
+                              {c?.unavailable
+                                ? "Access unavailable"
+                                : `${c?.budget ?? "…"} BU + ${c?.itemBu ?? "…"} Item BU · v${entry.version}`}
+                            </small>
+                          </div>
+                          <label>
+                            Quantity
+                            <input
+                              type="number"
+                              aria-label={`Quantity for ${c?.name ?? "creature"}`}
+                              min={1}
+                              max={200}
+                              value={entry.quantity}
+                              onChange={(e) => {
+                                const quantity = Number(e.target.value);
+                                if (
+                                  Number.isSafeInteger(quantity) &&
+                                  quantity >= 1 &&
+                                  quantity <= 200
+                                )
+                                  patch({
+                                    entries: draft.entries.map((x, i) =>
+                                      i === index ? { ...x, quantity } : x,
+                                    ),
+                                  });
+                              }}
+                            />
+                          </label>
+                          <button
+                            className="sw-metal-button sw-encounter-icon-action"
+                            aria-label={`Remove ${c?.name ?? "creature"}`}
+                            title="Remove creature"
+                            onClick={() =>
+                              patch({
+                                entries: draft.entries.filter(
+                                  (_, i) => i !== index,
+                                ),
+                              })
+                            }
+                          >
+                            <X size={16} />
+                          </button>
+                          {!c?.unavailable && (
+                            <button
+                              className="sw-metal-button sw-encounter-icon-action"
+                              aria-label={`Preview ${c?.name ?? "creature"}`}
+                              title="Preview creature"
+                              onClick={() => {
+                                setPreview({
+                                  id: entry.templateId,
+                                  version: entry.version,
+                                });
+                              }}
+                            >
+                              <Eye size={16} />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {!draft.entries.length && (
+                      <p className="sw-encounter-help">
+                        Add a template, then choose how many creatures will
+                        appear.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </aside>
+            </section>
+            <section className="sw-encounter-chapter" hidden={stage !== 3}>
+              {" "}
+              <div className="sw-encounter-panel">
+                <h2>Encounter appraisal</h2>
+                {appraisalError && <p role="alert">{appraisalError}</p>}
+                <div className="sw-encounter-budget-grid">
+                  <div>
+                    <Swords size={18} />
+                    <small>Enemy BU</small>
+                    <strong>
+                      {appraisal.missing ? "Incomplete" : appraisal.enemyBu}
+                    </strong>
+                  </div>
+                  <div>
+                    <Shield size={18} />
+                    <small>Enemy Item BU</small>
+                    <strong>
+                      {appraisal.missing ? "Incomplete" : appraisal.enemyItemBu}
+                    </strong>
+                  </div>
+                  <div>
+                    <Heart size={18} />
+                    <small>Party BU</small>
+                    <strong>{draft.partyBu ?? "—"}</strong>
+                  </div>
+                  <div>
+                    <Shield size={18} />
+                    <small>Party Item BU</small>
+                    <strong>{draft.partyItemBu ?? "—"}</strong>
+                  </div>
+                </div>
+                {appraisal.partyTotal !== null && !appraisal.missing && (
+                  <p>
+                    Enemy total {appraisal.enemyTotal} · Party total{" "}
+                    {appraisal.partyTotal} · Difference {appraisal.difference}{" "}
+                    {appraisal.ratio !== null
+                      ? `· Ratio ${appraisal.ratio.toFixed(2)}`
+                      : ""}
+                  </p>
+                )}
+                <p>
+                  {appraisal.count} enemies
+                  {draft.partySize !== null
+                    ? ` against ${draft.partySize} party members`
+                    : ""}
+                  .{" "}
+                  {appraisal.largestShare >= 0.5
+                    ? "At least half the creature budget is concentrated in one enemy."
+                    : ""}
+                </p>
+                <p className="sw-encounter-help">
+                  Comparable BU totals do not guarantee comparable difficulty.
+                  Numbers, positioning, control and coordinated abilities
+                  matter.
+                </p>
               </div>
-              <div className="sw-encounter-actions">
-                <button
-                  className="sw-metal-button"
-                  disabled={!offset}
-                  onClick={() => setOffset(Math.max(0, offset - 24))}
-                >
-                  Previous
-                </button>
-                <button
-                  className="sw-metal-button"
-                  disabled={!hasMore}
-                  onClick={() => setOffset(offset + 24)}
-                >
-                  More creatures
-                </button>
-              </div>
-              {preview && (
-                <div className="sw-encounter-preview">
-                  <MonsterTemplatePreview
-                    key={`${preview.id}:${preview.version}`}
-                    id={preview.id}
-                    version={preview.version}
-                    compact
-                  />
+              {conflict && (
+                <div className="sw-encounter-actions">
+                  <button
+                    className="sw-metal-button"
+                    onClick={() => void reload()}
+                  >
+                    Reload saved encounter
+                  </button>
+                  <button
+                    className="sw-metal-button"
+                    onClick={() => void reload(true)}
+                  >
+                    Keep local draft for reapply
+                  </button>
                 </div>
               )}
-            </aside>
-          )}
+              {saved && (
+                <details className="sw-encounter-panel">
+                  <summary>Previous runs & management</summary>
+                  {saved.runs.map((r) => (
+                    <Link
+                      key={r.id}
+                      className="sw-encounter-list-row"
+                      href={`/encounters/runs/${r.id}`}
+                    >
+                      Resume {r.name}
+                      <small>
+                        {new Date(r.createdAt).toLocaleDateString()}
+                      </small>
+                    </Link>
+                  ))}
+                  <details>
+                    <summary>Delete preparation</summary>
+                    <p>Runs and playable creatures are preserved.</p>
+                    <button
+                      disabled={busy}
+                      className="sw-metal-button"
+                      onClick={async () => {
+                        setBusy(true);
+                        try {
+                          await api(`/api/encounters/${saved.id}`, "DELETE");
+                          if (cacheKey) localStorage.removeItem(cacheKey);
+                          window.location.assign("/encounters");
+                        } catch (e) {
+                          setError((e as Error).message);
+                          setBusy(false);
+                        }
+                      }}
+                    >
+                      Confirm deletion
+                    </button>
+                  </details>
+                </details>
+              )}
+            </section>
+          </ForgeWorkbench>
         </fieldset>
       )}
     </main>
