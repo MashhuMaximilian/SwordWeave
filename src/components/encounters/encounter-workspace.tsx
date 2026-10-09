@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   Plus,
   ArrowUpRight,
-  Heart,
   Shield,
   Swords,
   Eye,
@@ -30,6 +29,7 @@ import {
   ForgeProgressRail,
   ForgeWorkbench,
 } from "@/components/characters/forge-section";
+import { EncounterReview } from "./encounter-review";
 import { EncounterBudgetReadout } from "./encounter-budget-readout";
 import { EncounterGroupPicker } from "./encounter-group-picker";
 import {
@@ -139,6 +139,9 @@ function AccountWorkspace({
     [hasMore, setHasMore] = useState(false),
     [q, setQ] = useState("");
   const [partySearch, setPartySearch] = useState("");
+  const catalogueEnd = useRef<HTMLDivElement>(null);
+  const [catalogueError, setCatalogueError] = useState("");
+  const [catalogueRetry, setCatalogueRetry] = useState(0);
   const [partyPending, setPartyPending] = useState(false);
   const partyRequest = useRef<AbortController | null>(null);
   useEffect(() => () => partyRequest.current?.abort(), []);
@@ -221,6 +224,7 @@ function AccountWorkspace({
     const controller = new AbortController();
     const timer = setTimeout(() => {
       setCatalogueLoading(true);
+      setCatalogueError("");
       const p = new URLSearchParams({
         q,
         offset: String(offset),
@@ -234,11 +238,25 @@ function AccountWorkspace({
           return r.json();
         })
         .then((r) => {
-          setCatalogue(r.monsters);
+          setCatalogue((previous) =>
+            offset
+              ? [
+                  ...new Map(
+                    [...previous, ...r.monsters].map((monster: Pick) => [
+                      monster.id,
+                      monster,
+                    ]),
+                  ).values(),
+                ]
+              : r.monsters,
+          );
           setHasMore(r.hasMore);
         })
         .catch((e) => {
-          if (e.name !== "AbortError") setError(e.message);
+          if (e.name !== "AbortError") {
+            setCatalogueError(e.message);
+            setHasMore(false);
+          }
         })
         .finally(() => {
           if (!controller.signal.aborted) setCatalogueLoading(false);
@@ -248,7 +266,28 @@ function AccountWorkspace({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [userId, picker, oppositionMode, q, offset]);
+  }, [userId, picker, oppositionMode, q, offset, catalogueRetry]);
+  useEffect(() => {
+    if (
+      !picker ||
+      oppositionMode !== "manual" ||
+      !hasMore ||
+      catalogueLoading ||
+      !catalogueEnd.current
+    )
+      return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          setCatalogueLoading(true);
+          setOffset((value) => value + 24);
+        }
+      },
+      { root: catalogueEnd.current.parentElement, rootMargin: "400px 0px" },
+    );
+    observer.observe(catalogueEnd.current);
+    return () => observer.disconnect();
+  }, [picker, oppositionMode, hasMore, catalogueLoading]);
   let appraisal = appraiseEncounter(empty, []);
   let appraisalError = "";
   try {
@@ -402,8 +441,8 @@ function AccountWorkspace({
       setParty((p) =>
         nextOffset ? [...p, ...data.characters] : data.characters,
       );
-      setPartyOffset(nextOffset + 50);
-      setPartyMore(data.characters.length === 50);
+      setPartyOffset(nextOffset + 20);
+      setPartyMore(data.characters.length === 20);
     } catch (e) {
       if (!controller.signal.aborted) setError((e as Error).message);
     } finally {
@@ -625,16 +664,38 @@ function AccountWorkspace({
               ))}
             </nav>
             <div className="sw-encounter-rail-budget">
-              <span>Selected creatures</span>
-              <strong>{appraisal.count}</strong>
-              <span>Enemy BU / Item BU</span>
-              <b>
-                {appraisal.enemyBu} / {appraisal.enemyItemBu}
-              </b>
-              <span>Party BU / Item BU</span>
-              <b>
-                {draft.partyBu ?? "—"} / {draft.partyItemBu ?? "—"}
-              </b>
+              <span className="v12-kicker">Encounter snapshot</span>
+              <div className="sw-encounter-rail-count">
+                <strong>{appraisal.count}</strong>
+                <span>
+                  creatures
+                  <br />
+                  {draft.characterIds.length} linked characters
+                </span>
+              </div>
+              <div className="sw-encounter-rail-totals">
+                <div>
+                  <span>Opposition</span>
+                  <b>
+                    {appraisal.missing ? "…" : appraisal.enemyBu}
+                    <small> BU</small>
+                  </b>
+                  <small>
+                    + {appraisal.missing ? "…" : appraisal.enemyItemBu} Item BU
+                  </small>
+                </div>
+                <div>
+                  <span>Party</span>
+                  <b>
+                    {draft.partyBu ?? "—"}
+                    <small> BU</small>
+                  </b>
+                  <small>+ {draft.partyItemBu ?? "—"} Item BU</small>
+                </div>
+              </div>
+              <p className="sw-encounter-rail-status">
+                {dirty ? "Unsaved preparation" : "Preparation saved"}
+              </p>
             </div>
           </ForgeProgressRail>
           <ForgeWorkbench
@@ -953,6 +1014,9 @@ function AccountWorkspace({
                       onSearchChange={(value) => {
                         setQ(value);
                         setOffset(0);
+                        setCatalogue([]);
+                        setHasMore(false);
+                        setCatalogueLoading(true);
                       }}
                       view={catalogueView}
                       onViewChange={setCatalogueView}
@@ -1040,28 +1104,35 @@ function AccountWorkspace({
                       ) : (
                         !catalogue.length && <p>No matching creatures.</p>
                       )}
+                      <div
+                        ref={catalogueEnd}
+                        className="sw-encounter-catalogue-end-marker"
+                        role="status"
+                      >
+                        {catalogueError ? (
+                          <p role="alert">
+                            {catalogueError}{" "}
+                            <button
+                              className="sw-metal-button"
+                              type="button"
+                              onClick={() =>
+                                setCatalogueRetry((value) => value + 1)
+                              }
+                            >
+                              Retry
+                            </button>
+                          </p>
+                        ) : catalogueLoading ? (
+                          "Finding creatures…"
+                        ) : hasMore ? (
+                          "Scroll for more creatures"
+                        ) : catalogue.length ? (
+                          "All matching creatures shown"
+                        ) : (
+                          ""
+                        )}
+                      </div>
                     </div>
-                    <nav
-                      className="sw-encounter-actions"
-                      aria-label="Creature pages"
-                    >
-                      <button
-                        type="button"
-                        className="sw-metal-button"
-                        disabled={!offset || catalogueLoading}
-                        onClick={() => setOffset(Math.max(0, offset - 24))}
-                      >
-                        Previous
-                      </button>
-                      <button
-                        type="button"
-                        className="sw-metal-button"
-                        disabled={!hasMore || catalogueLoading}
-                        onClick={() => setOffset(offset + 24)}
-                      >
-                        More creatures
-                      </button>
-                    </nav>
                   </>
                 )}
               </div>
@@ -1273,60 +1344,19 @@ function AccountWorkspace({
             </section>
             <section className="sw-encounter-chapter" hidden={stage !== 3}>
               {" "}
-              <div className="sw-encounter-panel">
-                <h2>Encounter appraisal</h2>
-                {appraisalError && <p role="alert">{appraisalError}</p>}
-                <div className="sw-encounter-budget-grid">
-                  <div>
-                    <Swords size={18} />
-                    <small>Enemy BU</small>
-                    <strong>
-                      {appraisal.missing ? "Incomplete" : appraisal.enemyBu}
-                    </strong>
-                  </div>
-                  <div>
-                    <Shield size={18} />
-                    <small>Enemy Item BU</small>
-                    <strong>
-                      {appraisal.missing ? "Incomplete" : appraisal.enemyItemBu}
-                    </strong>
-                  </div>
-                  <div>
-                    <Heart size={18} />
-                    <small>Party BU</small>
-                    <strong>{draft.partyBu ?? "—"}</strong>
-                  </div>
-                  <div>
-                    <Shield size={18} />
-                    <small>Party Item BU</small>
-                    <strong>{draft.partyItemBu ?? "—"}</strong>
-                  </div>
-                </div>
-                {appraisal.partyTotal !== null && !appraisal.missing && (
-                  <p>
-                    Enemy total {appraisal.enemyTotal} · Party total{" "}
-                    {appraisal.partyTotal} · Difference {appraisal.difference}{" "}
-                    {appraisal.ratio !== null
-                      ? `· Ratio ${appraisal.ratio.toFixed(2)}`
-                      : ""}
-                  </p>
-                )}
-                <p>
-                  {appraisal.count} enemies
-                  {draft.partySize !== null
-                    ? ` against ${draft.partySize} party members`
-                    : ""}
-                  .{" "}
-                  {appraisal.largestShare >= 0.5
-                    ? "At least half the creature budget is concentrated in one enemy."
-                    : ""}
-                </p>
-                <p className="sw-encounter-help">
-                  Comparable BU totals do not guarantee comparable difficulty.
-                  Numbers, positioning, control and coordinated abilities
-                  matter.
-                </p>
-              </div>
+              {appraisalError && <p role="alert">{appraisalError}</p>}
+              <EncounterReview
+                draft={draft}
+                creatures={creatures}
+                appraisal={appraisal}
+                dirty={dirty}
+                onEdit={setStage}
+                onPreview={(id, version) => {
+                  setPreview({ id, version });
+                  setSelectionOpen(true);
+                  setStage(2);
+                }}
+              />
               {conflict && (
                 <div className="sw-encounter-actions">
                   <button

@@ -26,6 +26,8 @@ import { resolveMonsterPlay } from "@/lib/monsters/play";
 import { readPlayState, mutatePlayState } from "@/lib/play-state/service";
 import { canResolveCharacter } from "@/lib/character/can-resolve-character";
 import { readDraftSheet } from "@/lib/character/workspace/draft-sheet";
+import { readWorkspace } from "@/lib/character/workspace/read";
+import { partyMechanics } from "./party-mechanics";
 export class EncounterError extends Error {
   constructor(
     message: string,
@@ -442,44 +444,41 @@ async function characterIsShared(owner: string, id: string) {
   );
   return result.rows.length > 0;
 }
-export async function partyCharacters(
-  owner: string,
-  ids?: string[],
-  offset = 0,
-  search = "",
-) {
+async function partyCharacterSummary(owner: string, id: string) {
+  try {
+    const access = await canResolveCharacter(owner, id);
+    if (access.permission !== "OWNER" && !(await characterIsShared(owner, id))) return { id, unavailable: true as const };
+    const graph = await readWorkspace(id);
+    const sheet = await readDraftSheet(id, graph);
+    return { id, name: access.character.name, partyBu: sheet.buBalance.progressionPool,
+      partyItemBu: sheet.buBalance.itemBuSpent, ...partyMechanics(graph) };
+  } catch { return { id, unavailable: true as const }; }
+}
+export async function partyCharacters(owner: string, ids?: string[], offset = 0, search = "") {
   if (ids) {
     const result = [];
-    for (const id of ids) {
-      try {
-        const access = await canResolveCharacter(owner, id);
-        if (
-          access.permission !== "OWNER" &&
-          !(await characterIsShared(owner, id))
-        ) {
-          result.push({ id, unavailable: true });
-          continue;
-        }
-        const sheet = await readDraftSheet(id);
-        result.push({
-          id,
-          name: access.character.name,
-          partyBu: sheet.buBalance.progressionPool,
-          partyItemBu: sheet.buBalance.itemBuSpent,
-        });
-      } catch {
-        result.push({ id, unavailable: true });
-      }
-    }
+    for (const id of ids) result.push(await partyCharacterSummary(owner, id));
     return result;
   }
-  return db
+  const rows = await db
     .select({ id: characters.id, name: characters.name, level: characters.level, size: characters.size, portraitUrl: characters.portraitUrl, portraitFrame: characters.portraitFrame, physical: characters.attrPhysical, mental: characters.attrMental, magical: characters.attrMagical, shared: sql<boolean>`NOT (${characters.userId}=${owner} OR EXISTS(SELECT 1 FROM users u WHERE u.id::text=${characters.userId} AND u.clerk_user_id=${owner}))` })
     .from(characters)
     .where(
       sql`(${characters.userId}=${owner} OR EXISTS(SELECT 1 FROM users u WHERE u.id::text=${characters.userId} AND u.clerk_user_id=${owner}) OR EXISTS(SELECT 1 FROM character_shares cs JOIN users u ON u.id=cs.shared_with_user_id WHERE cs.character_id=${characters.id} AND cs.revoked_at IS NULL AND u.clerk_user_id=${owner})) AND ${characters.name} ILIKE ${"%" + search + "%"}`,
     )
     .orderBy(characters.name)
-    .limit(50)
+    .limit(20)
     .offset(offset);
+  const result = [];
+  for (let start = 0; start < rows.length; start += 4) {
+    const batch = await Promise.all(rows.slice(start, start + 4).map(async row => {
+      const summary = await partyCharacterSummary(owner, row.id);
+      return summary && !summary.unavailable ? { ...row, ...summary } : {
+        id: row.id, name: "Character unavailable", level: 0, size: "", portraitUrl: null,
+        portraitFrame: null, physical: 0, mental: 0, magical: 0, shared: false, unavailable: true,
+      };
+    }));
+    result.push(...batch);
+  }
+  return result;
 }

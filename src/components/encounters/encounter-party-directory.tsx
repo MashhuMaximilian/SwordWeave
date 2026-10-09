@@ -17,6 +17,12 @@ export type PartyDirectoryCharacter = {
   mental: number;
   magical: number;
   shared: boolean;
+  partyBu?: number;
+  partyItemBu?: number;
+  domains?: string[];
+  verbTiers?: string[];
+  diceTypes?: string[];
+  unavailable?: boolean;
 };
 export function EncounterPartyDirectory({
   characters,
@@ -80,9 +86,35 @@ export function EncounterPartyDirectory({
                 Base Physical {character.physical} · Mental {character.mental} ·
                 Magical {character.magical}
               </p>
+              <p className="sw-party-budget-detail">
+                <strong>{character.partyBu ?? "—"} BU</strong> ·{" "}
+                <strong>{character.partyItemBu ?? "—"} Item BU</strong>
+              </p>
+              {(
+                [
+                  ["Domains owned", character.domains],
+                  ["Verb tiers", character.verbTiers],
+                  ["Dice types", character.diceTypes],
+                ] as const
+              ).map(([label, rules]) => (
+                <section className="sw-party-mechanics" key={label}>
+                  <h4>{label}</h4>
+                  {rules?.length ? (
+                    <ul>
+                      {rules.map((rule) => (
+                        <li key={rule}>{rule}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>
+                      {character.unavailable ? "Unavailable" : "None owned"}
+                    </p>
+                  )}
+                </section>
+              ))}
               <p>
-                Link the character, then calculate to review their current
-                progression BU and separate Item BU before applying totals.
+                Current sheet snapshot. Refresh the directory to update; linked
+                totals change only when you calculate and apply them.
               </p>
             </CatalogueQuickLook>
             <div className="v12-roster-avatar-frame">
@@ -104,6 +136,7 @@ export function EncounterPartyDirectory({
               data-quick-look-opener
               className="sw-encounter-party-link"
               disabled={
+                character.unavailable ||
                 pending ||
                 (!selected.includes(character.id) && selected.length >= 30)
               }
@@ -117,13 +150,19 @@ export function EncounterPartyDirectory({
               </small>
               <small>
                 {character.shared ? "Shared with you" : "Your character"}
+                {selected.includes(character.id) ? " · Linked" : ""}
               </small>
+              <span className="sw-party-budget">
+                <b>{character.partyBu ?? "—"} BU</b>
+                <b>{character.partyItemBu ?? "—"} Item BU</b>
+              </span>
             </button>
             <div className="sw-encounter-party-record-actions">
               <button
                 type="button"
                 className="sw-metal-button sw-encounter-icon-action"
                 disabled={
+                  character.unavailable ||
                   pending ||
                   (!selected.includes(character.id) && selected.length >= 30)
                 }
