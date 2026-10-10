@@ -49,6 +49,7 @@ import "./source-catalogue.css";
 import "@/components/library/catalogue-layout.css";
 import "@/components/characters/character-roster-views.css";
 import "./selection-controls.css";
+import "./compact-mobile.css";
 
 // Retain the previous typefaces behind the data-ui switch so setting
 // NEXT_PUBLIC_SW_UI_VERSION=legacy is a complete visual rollback.

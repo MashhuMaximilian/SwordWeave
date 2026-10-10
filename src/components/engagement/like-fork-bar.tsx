@@ -461,7 +461,8 @@ export function LikeForkBar(props: LikeForkBarProps) {
     <>
     <div
       onClick={(e) => e.stopPropagation()}
-      className={`flex items-center gap-1 ${props.compact ? "overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : "flex-wrap"} ${props.className ?? ""}`}
+      className={`sw-engagement-bar flex items-center gap-1 ${props.compact ? "overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : "flex-wrap"} ${props.className ?? ""}`}
+      data-compact={props.compact ? "true" : "false"}
       role="group"
       aria-label="Engagement"
     >
