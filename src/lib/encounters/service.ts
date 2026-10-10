@@ -28,6 +28,9 @@ import { canResolveCharacter } from "@/lib/character/can-resolve-character";
 import { readDraftSheet } from "@/lib/character/workspace/draft-sheet";
 import { readWorkspace } from "@/lib/character/workspace/read";
 import { partyMechanics } from "./party-mechanics";
+import { validateRunReferences, validateRunLimits } from "./run-state";
+import { monsterArtwork } from "@/lib/monsters/art";
+import { evaluateCondition } from "@/lib/engine/condition-evaluator";
 export class EncounterError extends Error {
   constructor(
     message: string,
@@ -367,12 +370,13 @@ export async function getRun(owner: string, id: string, sessionOnly = false) {
         bundle = { definition, slots };
         definitions.set(key, bundle);
       }
-      const sheet = resolveMonsterPlay(
+      const resolved = resolveMonsterPlay(
         bundle.definition,
         bundle.slots,
         states.find((s) => s.subjectId === copy.id)?.overrides ?? {},
         copy.currentVitality,
-      ).sheet;
+      );
+      const { sheet, occurrences, context } = resolved;
       summaries.push({
         ...member,
         currentVitality: sheet.currentVitality,
@@ -380,6 +384,29 @@ export async function getRun(owner: string, id: string, sessionOnly = false) {
         budget: bundle.definition.budget,
         itemBu: sheet.itemBu,
         tactics: bundle.definition.catalogue?.tactics,
+        role: bundle.definition.catalogue?.role,
+        artwork: monsterArtwork(bundle.definition),
+        attributes: sheet.attributes,
+        attack: sheet.resolved.totals["attack_bonus"] ?? 0,
+        saveDc: sheet.resolved.totals["save_dc"] ?? 0,
+        speed: sheet.resolved.totals["speed"] ?? 0,
+        consequences: occurrences
+          .filter(
+            (c) =>
+              c.status !== "resolved" &&
+              (c.manualOverride ??
+                (c.source === "sheet-auto"
+                  ? evaluateCondition(
+                      c.modifiers[0]?.condition as never,
+                      context,
+                    )
+                  : c.active)),
+          )
+          .map((c) => ({
+            id: c.id,
+            title: c.title,
+            recovery: c.recovery ?? "",
+          })),
       });
     }
     const partyLinks = [];
@@ -411,28 +438,36 @@ export async function getRun(owner: string, id: string, sessionOnly = false) {
 export async function mutateRun(owner: string, id: string, raw: unknown) {
   const mutation = runMutationSchema.parse(raw);
   return withDatabaseTransaction(async () => {
-    await ownedRun(owner, id, true);
+    const run = await ownedRun(owner, id, true);
     const actorFields = mutation.changes.filter((c) =>
       c.field.startsWith("actor:"),
     );
-    if (actorFields.length) {
+    if (
+      actorFields.length ||
+      mutation.changes.some((c) => c.field.startsWith("party:"))
+    ) {
       const members = await db
         .select({ id: encounterRunCopies.id })
         .from(encounterRunCopies)
         .where(eq(encounterRunCopies.runId, id));
-      if (
-        actorFields.some(
-          (c) => !members.some((m) => c.field === `actor:${m.id}`),
-        )
-      )
-        throw new EncounterError("Creature does not belong to this run.");
+      try {
+        validateRunReferences(
+          mutation.changes.map((c) => c.field),
+          members.map((m) => m.id),
+          run.party.characterIds,
+        );
+      } catch (e) {
+        throw new EncounterError((e as Error).message);
+      }
     }
     return {
       state: await mutatePlayState(
         "ENCOUNTER_RUN",
         id,
         mutation,
-        undefined,
+        async (next) => {
+          validateRunLimits(next.overrides);
+        },
         (value) => runMutationSchema.parse(value),
       ),
     };

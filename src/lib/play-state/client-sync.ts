@@ -63,6 +63,8 @@ function effective(s: Session): PlayState {
   return { ...s.snapshot.state, overrides };
 }
 export function getEffectivePlayState(kind: SubjectKind, id: string): PlayState { const s = activeSession(kind, id); return s ? effective(s) : emptyPlayState(); }
+/** Lightweight controls use the same authoritative maximum as their sheet session. */
+export function getPlaySessionMaximum(kind: SubjectKind, id: string): number | undefined { return activeSession(kind, id)?.max; }
 function install(s: Session) {
   if (s.kind !== "CHARACTER") return;
   s.applying = true;

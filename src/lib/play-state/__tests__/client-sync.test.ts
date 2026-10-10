@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { connectPlayState, getEffectivePlayState, getPlaySession, queuePlayChanges, resolvePlayConflict, retryPlaySync, setPlaySessionAccount, playFieldStorageKey, getPlaySessionComparison } from "../client-sync";
+import { connectPlayState, getEffectivePlayState, getPlaySession, queuePlayChanges, resolvePlayConflict, retryPlaySync, setPlaySessionAccount, playFieldStorageKey, getPlaySessionComparison, getPlaySessionMaximum } from "../client-sync";
 import { emptyPlayState } from "../model";
 function browser(values = new Map<string, string>()) {
   const online = { onLine: true };
@@ -9,6 +9,19 @@ function browser(values = new Map<string, string>()) {
 }
 afterEach(() => { setPlaySessionAccount(null); vi.unstubAllGlobals(); });
 describe("coordinated session client", () => {
+  it("keeps authoritative monster Vitality maximum offline and isolates it by account", async () => {
+    const { online } = browser();
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ state: emptyPlayState(), max: 42 })));
+    let disconnect = connectPlayState("MONSTER_PLAY_COPY", "maximum-test", undefined, undefined, { accountId: "account-a" });
+    await vi.waitFor(() => expect(getPlaySession("MONSTER_PLAY_COPY", "maximum-test").status).toBe("saved"));
+    expect(getPlaySessionMaximum("MONSTER_PLAY_COPY", "maximum-test")).toBe(42);
+    disconnect(); online.onLine = false;
+    disconnect = connectPlayState("MONSTER_PLAY_COPY", "maximum-test", undefined, undefined, { accountId: "account-a" });
+    expect(getPlaySessionMaximum("MONSTER_PLAY_COPY", "maximum-test")).toBe(42);
+    const other = connectPlayState("MONSTER_PLAY_COPY", "maximum-test", undefined, undefined, { accountId: "account-b" });
+    try { expect(getPlaySessionMaximum("MONSTER_PLAY_COPY", "maximum-test")).toBeUndefined(); }
+    finally { disconnect(); other(); }
+  });
   it("restores encounter markers offline and uses the separate run endpoint", async()=>{
     const {values,online}=browser();let server=emptyPlayState();const writes:unknown[]=[];vi.stubGlobal("fetch",vi.fn(async(url,init)=>{expect(url).toBe("/api/encounters/runs/run?session=1");if(init?.body){expect(init.method).toBe("PATCH");const op=JSON.parse(init.body);writes.push(op);server={revision:1,overrides:{phase:"Heavy"},fieldRevisions:{phase:1}};}return Response.json({state:server});}));
     let disconnect=connectPlayState("ENCOUNTER_RUN","run","/api/encounters/runs/run?session=1",[],{accountId:"gm-account",method:"PATCH"});

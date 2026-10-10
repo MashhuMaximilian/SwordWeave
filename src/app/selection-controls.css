@@ -1,0 +1,62 @@
+/* Shared engraved selects. The browser retains keyboard, touch and form behavior. */
+html:root body[data-ui="v12"] select:not([multiple]):not([size]) {
+  border:1px solid transparent!important;
+  border-radius:6px!important;
+  background-color:var(--sw-surface-deep)!important;
+  color:var(--foreground)!important;
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--v12-silver) 65%,transparent),inset 0 1px 5px rgb(0 0 0 / 12%)!important;
+  font-family:var(--font-system);
+  line-height:1.4;
+  cursor:pointer;
+  transition:box-shadow .15s ease;
+}
+html:root body[data-ui="v12"] select:not([multiple]):not([size]):not(:disabled):is(:hover,:focus-visible,:open) {
+  background-color:var(--sw-surface-raised)!important;
+  box-shadow:inset 0 0 0 1px var(--sw-text-gold),inset 0 1px color-mix(in srgb,var(--v12-silver-hi) 20%,transparent)!important;
+}
+html:root body[data-ui="v12"] select:focus-visible {outline:2px solid var(--sw-focus)!important;outline-offset:3px!important}
+html:root body[data-ui="v12"] select:disabled {opacity:.5;cursor:not-allowed}
+html:root body[data-ui="v12"] :is([role="listbox"],[role="menu"]):not(nav) {
+  border:1px solid transparent;
+  border-radius:8px;
+  background:var(--sw-surface-fill,var(--popover)) padding-box,var(--v12-instrument-edge) border-box;
+  color:var(--foreground);
+  box-shadow:var(--v12-shadow);
+}
+html:root body[data-ui="v12"] :is([role="option"],[role="menuitem"]):not(:disabled):is(:hover,:focus-visible,[aria-selected="true"]) {
+  background:var(--sw-metal-gold)!important;color:#17140f!important;
+}
+html:root body[data-ui="v12"] :is([role="option"],[role="menuitem"]):not(:disabled):is(:hover,:focus-visible,[aria-selected="true"]) :is(span,small,strong,svg) {color:inherit!important}
+@supports (appearance:base-select) {
+  html:root body[data-ui="v12"] select:not([multiple]):not([size]),
+  html:root body[data-ui="v12"] select:not([multiple]):not([size])::picker(select) {appearance:base-select!important;-webkit-appearance:base-select!important}
+  html:root body[data-ui="v12"] select:not([multiple]):not([size]) {
+    background-image:none!important;padding-right:12px!important;gap:10px;
+  }
+  html:root body[data-ui="v12"] select:not([multiple]):not([size])::picker-icon {
+    color:var(--sw-text-gold);margin-left:auto;transition:rotate .15s ease;
+  }
+  html:root body[data-ui="v12"] select:open::picker-icon {rotate:180deg}
+  html:root body[data-ui="v12"] select::picker(select) {
+    padding:5px;max-height:min(360px,65dvh);overflow:auto;
+    border:1px solid transparent;border-radius:8px;
+    background:var(--sw-surface-fill,var(--popover)) padding-box,var(--v12-instrument-edge) border-box;
+    box-shadow:var(--v12-shadow);color:var(--foreground);font:500 13px/1.4 var(--font-system);
+  }
+  html:root body[data-ui="v12"] select option {
+    min-height:36px;display:flex;align-items:center;gap:10px;padding:8px 10px;
+    border-radius:4px;background:transparent!important;color:var(--foreground)!important;
+  }
+  html:root body[data-ui="v12"] select option:is(:hover,:focus,:checked) {
+    background:var(--sw-metal-gold)!important;color:#17140f!important;
+  }
+  html:root body[data-ui="v12"] select option:disabled {opacity:.5;background:transparent!important;color:var(--muted-foreground)!important}
+  html:root body[data-ui="v12"] select option::checkmark {color:inherit;order:2;margin-left:auto}
+  html:root body[data-ui="v12"] select optgroup {padding:5px 0;font-weight:600}
+}
+@media(pointer:coarse) {
+  html:root body[data-ui="v12"] select::picker(select) option {min-height:44px}
+}
+@media(prefers-reduced-motion:reduce) {
+  html:root body[data-ui="v12"] select,html:root body[data-ui="v12"] select::picker-icon {transition:none}
+}

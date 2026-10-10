@@ -1,4 +1,11 @@
 import { z } from "zod";
+import {
+  actorMarkerSchema,
+  guestMarkerSchema,
+  objectiveSchema,
+  clockSchema,
+  journalSchema,
+} from "./run-state";
 const units = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 export const phases = ["Council", "Fast", "Measured", "Heavy"] as const;
 export const encounterDefinitionSchema = z
@@ -115,7 +122,9 @@ export const runMutationSchema = z
           .object({
             field: z
               .string()
-              .regex(/^(round|phase|completed|actor:[a-f0-9-]{36})$/),
+              .regex(
+                /^(round|phase|completed|notes|(?:actor|party|guest|objective|clock|log):[a-f0-9-]{36})$/,
+              ),
             value: z.unknown().nullable(),
           })
           .strict(),
@@ -140,15 +149,20 @@ export const runMutationSchema = z
         valid = z.enum(phases).safeParse(change.value).success;
       else if (change.field === "completed")
         valid = z.boolean().safeParse(change.value).success;
+      else if (change.field === "notes")
+        valid = z.string().max(10000).safeParse(change.value).success;
       else if (change.value !== null)
-        valid = z
-          .object({
-            intent: z.string().max(2000),
-            track: z.enum(["Unassigned", "Fast", "Measured", "Heavy"]),
-            resolved: z.boolean(),
-          })
-          .strict()
-          .safeParse(change.value).success;
+        valid = (
+          change.field.startsWith("guest:")
+            ? guestMarkerSchema
+            : change.field.startsWith("objective:")
+              ? objectiveSchema
+              : change.field.startsWith("clock:")
+                ? clockSchema
+                : change.field.startsWith("log:")
+                  ? journalSchema
+                  : actorMarkerSchema
+        ).safeParse(change.value).success;
       if (!valid)
         c.addIssue({ code: "custom", message: "Invalid encounter marker." });
     }

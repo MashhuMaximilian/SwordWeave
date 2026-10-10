@@ -789,4 +789,10 @@ html:root body[data-ui="v12"][data-ui="v12"] .sw-encounters :is(.sw-encounter-pa
 @media(max-width:1199px) {.sw-encounter-review-columns {grid-template-columns:minmax(0,1fr)}}
 @media(max-width:600px) {.sw-encounter-review {padding:12px}.sw-encounter-review-hero h2 {font-size:22px}.sw-encounter-review-brief {padding:12px}.sw-encounter-review-hero > .sw-encounter-text-action {padding:0!important}.sw-encounter-party-records.is-list .sw-encounter-party-record {grid-template-columns:38px minmax(0,1fr)}.sw-encounter-party-records.is-list .sw-encounter-party-record-actions {grid-column:2;justify-content:space-between}}
 .sw-encounter-catalogue-end-marker {grid-column:1/-1;width:100%}
+/* Preserve air beside portraits even where a narrower breakpoint enlarges them. */
+html:root body[data-ui="v12"] .sw-encounters .sw-encounter-party-record {column-gap:16px;grid-template-columns:48px minmax(0,1fr)}
+html:root body[data-ui="v12"] .sw-encounters .sw-encounter-party-record .v12-roster-avatar-frame {width:48px!important;height:48px!important;min-width:48px!important;min-height:48px!important}
+html:root body[data-ui="v12"] .sw-encounters .sw-encounter-party-records.is-list .sw-encounter-party-record {grid-template-columns:48px minmax(0,1fr) auto}
+@media(max-width:600px) {html:root body[data-ui="v12"] .sw-encounters .sw-encounter-party-record {grid-template-columns:38px minmax(0,1fr);column-gap:14px}html:root body[data-ui="v12"] .sw-encounters .sw-encounter-party-records.is-list .sw-encounter-party-record {grid-template-columns:38px minmax(0,1fr)}}
+@media(max-width:600px) {html:root body[data-ui="v12"] .sw-encounters .sw-encounter-party-record .v12-roster-avatar-frame {width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important}}
 html:root body[data-ui="v12"] .sw-encounters .sw-encounter-text-action {display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
