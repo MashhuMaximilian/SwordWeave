@@ -55,7 +55,7 @@ html:root body[data-ui="v12"] :is([role="option"],[role="menuitem"]):not(:disabl
   html:root body[data-ui="v12"] select optgroup {padding:5px 0;font-weight:600}
 }
 @media(pointer:coarse) {
-  html:root body[data-ui="v12"] select::picker(select) option {min-height:44px}
+  html:root body[data-ui="v12"] select option {min-height:44px}
 }
 @media(prefers-reduced-motion:reduce) {
   html:root body[data-ui="v12"] select,html:root body[data-ui="v12"] select::picker-icon {transition:none}
