@@ -123,8 +123,8 @@ export async function setReaction(input: ReactionInput): Promise<ReactionResult>
       });
 
     return {
-      liked: kind === "LIKE",
-      disliked: kind === "DISLIKE",
+      liked: kind === "LIKE" && existing?.kind !== kind,
+      disliked: kind === "DISLIKE" && existing?.kind !== kind,
       likesCount: Number(agg?.likesCount ?? 0),
       dislikesCount: Number(agg?.dislikesCount ?? 0),
     };
