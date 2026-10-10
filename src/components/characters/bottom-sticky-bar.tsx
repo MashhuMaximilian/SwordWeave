@@ -324,7 +324,7 @@ function AxisMarkers({
   return (
     <span
       className="ml-1 flex items-center gap-0.5 text-xs"
-      title={markers.join(" ")}
+      title={[markers.join(" "), netAdv === 0 ? "" : `Roll ${Math.abs(netAdv) + 1} dice; keep the ${netAdv > 0 ? "highest" : "lowest"}.`].filter(Boolean).join(" · ")}
     >
       {markers.map((m, i) => {
         // Color rules (Phase 8.I POST A9):
@@ -2906,7 +2906,7 @@ function EncumbranceFormulaModal({
               <div><span>Available</span><strong>{encumbrance.equipSlotsAvailable}</strong></div>
               <div><span>Used</span><strong>{encumbrance.equipSlotsUsed}</strong></div>
               <div><span>From primitives</span><strong>{fmt(encumbrance.equipSlotsAvailable - 6)}</strong></div>
-              <p>Two-handed items use at least two slots depending on bulk. Equipped items also contribute to Load.</p>
+              <p>Ordinary equipped items use one slot; two-handed items use two. The table can agree a higher authored requirement for unusual gear. Item size does not automatically multiply it. Primitives can extend available slots. Equipped items also contribute to Load.</p>
             </div>
           </section>
 

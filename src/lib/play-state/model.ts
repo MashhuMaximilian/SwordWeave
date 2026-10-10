@@ -4,7 +4,7 @@ export type SubjectKind = "CHARACTER" | "MONSTER_PLAY_COPY" | "ENCOUNTER_RUN";
 export type PlayOverrides = Record<string, unknown>;
 export type PlayState = { revision: number; overrides: PlayOverrides; fieldRevisions: Record<string, number> };
 export const emptyPlayState = (): PlayState => ({ revision: 0, overrides: {}, fieldRevisions: {} });
-const field = z.string().max(240).regex(/^(currentVitality|baselineVitality|(?:cap|eff|consequence):[a-zA-Z0-9_-]{1,200}|itemcap:[a-zA-Z0-9_-]{1,100}:[a-zA-Z0-9_-]{1,100})$/);
+const field = z.string().max(240).regex(/^(currentVitality|baselineVitality|shortRestRecoveryUsed|(?:cap|eff|consequence):[a-zA-Z0-9_-]{1,200}|itemcap:[a-zA-Z0-9_-]{1,100}:[a-zA-Z0-9_-]{1,100})$/);
 export const playMutationSchema = z.object({
   opId: z.uuid(), source: z.enum(["manual", "long_rest", "short_rest"]).optional(), baseRevision: z.number().int().min(0).max(2147483646),
   changes: z.array(z.object({ field, value: z.unknown().nullable() }).strict()).min(1).max(64),
@@ -12,7 +12,7 @@ export const playMutationSchema = z.object({
   if (new Set(value.changes.map(c => c.field)).size !== value.changes.length) ctx.addIssue({ code: "custom", message: "Duplicate fields." });
   if (JSON.stringify(value).length > 131072) ctx.addIssue({ code: "custom", message: "Session operation exceeds 128KB." });
   for (const c of value.changes) {
-    if ((c.field === "currentVitality" || c.field === "baselineVitality") && c.value !== null && !(typeof c.value === "number" && Number.isSafeInteger(c.value) && c.value >= 0)) ctx.addIssue({ code: "custom", message: "Invalid vitality." });
+    if ((c.field === "currentVitality" || c.field === "baselineVitality" || c.field === "shortRestRecoveryUsed") && c.value !== null && !(typeof c.value === "number" && Number.isSafeInteger(c.value) && c.value >= 0)) ctx.addIssue({ code: "custom", message: "Invalid vitality or recovery allowance." });
     if (/^(cap|eff|itemcap):/.test(c.field) && c.value !== null && c.value !== true) ctx.addIssue({ code: "custom", message: "Toggle overrides must be true or cleared." });
   }
 });

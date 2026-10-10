@@ -27,9 +27,10 @@ import { EditableNumberInput } from "@/components/ui/editable-number-input";
 import { useEffect, useRef, useState } from "react";
 import { queuePlayChanges, getEffectivePlayState, getPlaySessionAccountId, subscribePlaySession } from "@/lib/play-state/client-sync";
 import { usePlaySession } from "@/lib/hooks/use-play-session";
-import { Heart, Minus, Plus, BedDouble, Coffee } from "lucide-react";
+import { Heart, Minus, Plus } from "lucide-react";
 import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { RestRecoveryActions } from "./rest-recovery-actions";
 
 
 export interface VitalityTrackerProps {
@@ -131,24 +132,6 @@ export function VitalityTracker({
     } catch (error) { showToast(error instanceof Error ? error.message : "Unable to queue vitality.", "error"); }
   }
 
-  async function submitRest(restType: "long" | "short") {
-    if (readOnly || !sessionReady || !accountId || getPlaySessionAccountId() !== accountId || mutationPending.current) return;
-    try {
-      const next = restType === "long" ? max : Math.min(max, optimisticCurrent + Math.ceil(max / 2));
-      const state = getEffectivePlayState("CHARACTER", characterId);
-      const changes: import("@/lib/play-state/model").PlayMutation["changes"] = [{ field: "currentVitality", value: next }];
-      for (const [field, value] of Object.entries(state.overrides)) {
-        if (!field.startsWith("consequence:") || !value || typeof value !== "object") continue;
-        const condition = value as import("@/lib/character/consequences/types").ConsequenceOccurrence;
-        if (condition.active && condition.durationTier === (restType === "long" ? "long_rest" : "short_rest")) changes.push({ field, value: { ...condition, active: false } });
-      }
-      if (changes.length > 64) throw new Error("This rest changes too many Consequences. Resolve some Consequences before resting.");
-      queuePlayChanges("CHARACTER", characterId, changes, restType === "long" ? "long_rest" : "short_rest");
-      setOptimisticCurrent(next); onCurrentChange?.(next);
-      showToast(`${restType === "long" ? "Long" : "Short"} rest saved locally.`, "success");
-    } catch (error) { showToast(error instanceof Error ? error.message : "Unable to queue rest.", "error"); }
-  }
-
   // Phase 8.3g v3 (Mashu 2026-07-28): compact mode now
   // means "buttons + dialogs only" — the top label /
   // number / bar are SKIPPED. They're rendered separately
@@ -241,38 +224,12 @@ export function VitalityTracker({
           <Plus className="size-3" />
           Heal
         </button>
-        <button
-          type="button"
-          onClick={() => submitRest("long")}
-          disabled={
-            readOnly || !sessionReady || pending || restPending !== null || optimisticCurrent === max
-          }
-          className={cn(
-            "v12-vitality-command is-rest inline-flex flex-1 items-center justify-center gap-1 whitespace-nowrap font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70",
-            compact ? "px-1 py-0.5 text-xs gap-0.5" : "px-2 py-1 text-xs",
-          )}
-          aria-label="Long rest"
-          title="Long rest: restore to full vitality"
-        >
-          <BedDouble className="size-3" />
-          {restPending === "long" ? "Resting…" : "Long rest"}
-        </button>
-        <button
-          type="button"
-          onClick={() => submitRest("short")}
-          disabled={
-            readOnly || !sessionReady || pending || restPending !== null || optimisticCurrent === max
-          }
-          className={cn(
-            "v12-vitality-command is-rest inline-flex flex-1 items-center justify-center gap-1 whitespace-nowrap font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70",
-            compact ? "px-1 py-0.5 text-xs gap-0.5" : "px-2 py-1 text-xs",
-          )}
-          aria-label="Short rest"
-          title="Short rest: restore 50% of max vitality"
-        >
-          <Coffee className="size-3" />
-          {restPending === "short" ? "Resting…" : "Short rest"}
-        </button>
+        <RestRecoveryActions
+          subjectKind="CHARACTER" subjectId={characterId} maximum={max} current={optimisticCurrent}
+          accountId={accountId} disabled={readOnly || !sessionReady || pending}
+          buttonClassName={cn("v12-vitality-command is-rest inline-flex flex-1 items-center justify-center gap-1 whitespace-nowrap font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70", compact ? "px-1 py-0.5 text-xs gap-0.5" : "px-2 py-1 text-xs")}
+          onCurrentChange={next => { setOptimisticCurrent(next); onCurrentChange?.(next); }}
+        />
       </div>
 
       {dialogOpen && (

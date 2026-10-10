@@ -221,6 +221,16 @@ export async function resolvePlayConflict(kind: SubjectKind, id: string, choice:
   const desired = effective(s).overrides;
   const queuedFields = new Set(s.queue.flatMap(operation => operation.changes.map(c => c.field)));
   const conflictingFields = new Set(s.snapshot.conflicts);
+  // Rest healing, recovery spending/reset and rest-bound Consequences form one
+  // decision. Keeping just a nonconflicting pool field could spend recovery
+  // without healing after another device changes Vitality.
+  if (choice === "server") {
+    for (const operation of s.queue) {
+      if ((operation.source === "short_rest" || operation.source === "long_rest" || operation.changes.some(change => change.field === "shortRestRecoveryUsed")) && operation.changes.some(change => conflictingFields.has(change.field))) {
+        for (const change of operation.changes) conflictingFields.add(change.field);
+      }
+    }
+  }
   const result = await request(s); if (!active(s)) return;
   localStorage.setItem(`sw:session-recovery:${sessionKey(s.accountId, kind, id)}:${Date.now()}`, JSON.stringify({ state: s.snapshot.state, queue: s.queue, acknowledged: s.acknowledged, legacy: s.legacy }));
   s.snapshot = { ...s.snapshot, state: result.state, buildRefs: result.buildRefs ?? s.snapshot.buildRefs, ready: true }; s.acknowledged = [...new Set([...s.acknowledged, ...s.queue.map(op => op.opId)])].slice(-256); s.queue = []; s.legacy = null;

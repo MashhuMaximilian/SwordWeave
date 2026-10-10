@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { connectPlayState, getEffectivePlayState, getPlaySession, queuePlayChanges, resolvePlayConflict, retryPlaySync, setPlaySessionAccount, playFieldStorageKey, getPlaySessionComparison, getPlaySessionMaximum } from "../client-sync";
-import { emptyPlayState } from "../model";
+import { applyPlayMutation, emptyPlayState } from "../model";
+import { restRecoveryChanges } from "../rest-recovery";
 function browser(values = new Map<string, string>()) {
   const online = { onLine: true };
   vi.stubGlobal("navigator", online); vi.stubGlobal("window", new EventTarget()); vi.stubGlobal("document", Object.assign(new EventTarget(), { visibilityState: "visible" }));
@@ -48,6 +49,48 @@ describe("coordinated session client", () => {
       online.onLine = true; retryPlaySync("CHARACTER", "offline-test");
       await vi.waitFor(() => expect(getPlaySession("CHARACTER", "offline-test").pending).toBe(0));
       expect(sent).toEqual([saved.queue[0].opId]);
+    } finally { disconnect(); }
+  });
+  it("persists paired short-rest healing and spending through offline reload/reconnect", async () => {
+    const { online, values } = browser(); let server = emptyPlayState();
+    vi.stubGlobal("fetch", vi.fn(async (_url, init) => {
+      if (init?.body) server = applyPlayMutation(server, JSON.parse(init.body));
+      return Response.json({ state: server });
+    }));
+    let disconnect = connectPlayState("CHARACTER", "offline-rest", undefined, undefined, { accountId: "account-a" });
+    await vi.waitFor(() => expect(getPlaySession("CHARACTER", "offline-rest").status).toBe("saved"));
+    online.onLine = false;
+    queuePlayChanges("CHARACTER", "offline-rest", restRecoveryChanges("short", 20, 17, {}, 3), "short_rest");
+    const cached = JSON.parse(values.get("sw:session:account-a:CHARACTER:offline-rest")!);
+    expect(cached.queue).toHaveLength(1);
+    disconnect(); disconnect = connectPlayState("CHARACTER", "offline-rest", undefined, undefined, { accountId: "account-a" });
+    try {
+      expect(getEffectivePlayState("CHARACTER", "offline-rest").overrides).toEqual({ currentVitality: 20, shortRestRecoveryUsed: 3 });
+      online.onLine = true; retryPlaySync("CHARACTER", "offline-rest");
+      await vi.waitFor(() => expect(getPlaySession("CHARACTER", "offline-rest").pending).toBe(0));
+      expect(server.overrides).toEqual({ currentVitality: 20, shortRestRecoveryUsed: 3 });
+    } finally { disconnect(); }
+  });
+  it.each(["short_rest", "manual"] as const)("discards a complete conflicted %s rest when choosing the saved session", async source => {
+    browser(); let conflict = false;
+    const remote = { revision: 1, overrides: { currentVitality: 5 }, fieldRevisions: { currentVitality: 1 } };
+    const writes: unknown[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (_url, init) => {
+      if (!init?.body) return Response.json({ state: conflict ? remote : emptyPlayState() });
+      if (!conflict) { conflict = true; return Response.json({ error: "Vitality changed", state: remote, conflicts: ["currentVitality"] }, { status: 409 }); }
+      const operation = JSON.parse(init.body); writes.push(operation);
+      return Response.json({ state: applyPlayMutation(remote, operation) });
+    }));
+    const disconnect = connectPlayState("CHARACTER", "rest-conflict", undefined, undefined, { accountId: "account-a" });
+    try {
+      await vi.waitFor(() => expect(getPlaySession("CHARACTER", "rest-conflict").status).toBe("saved"));
+      queuePlayChanges("CHARACTER", "rest-conflict", restRecoveryChanges("short", 20, 10, {}), source);
+      await vi.waitFor(() => expect(getPlaySession("CHARACTER", "rest-conflict").status).toBe("conflict"));
+      queuePlayChanges("CHARACTER", "rest-conflict", [{ field: "cap:independent", value: true }]);
+      await resolvePlayConflict("CHARACTER", "rest-conflict", "server");
+      await vi.waitFor(() => expect(getPlaySession("CHARACTER", "rest-conflict").status).toBe("saved"));
+      expect(writes).toMatchObject([{ changes: [{ field: "cap:independent", value: true }] }]);
+      expect(getEffectivePlayState("CHARACTER", "rest-conflict").overrides).toEqual({ currentVitality: 5, "cap:independent": true });
     } finally { disconnect(); }
   });
   it("keeps independent queued changes when choosing server for a same-field conflict", async () => {

@@ -3,6 +3,7 @@
 // Shared quick-access navigation, contextual workspaces and account utilities.
 
 import {AccountMenu} from "@/components/account/account-menu";
+import { ReleaseBadge } from "@/components/layout/release-badge";
 import {useAccount} from "@/components/account/account-provider";
 import {
   Plus,
@@ -182,7 +183,7 @@ export function FabSpeedDial({
     {open && <div className="sw-fab__menu" data-fab-menu id="sw-quick-access" role="region" aria-label="Quick access" style={{ maxHeight: `calc(var(--sw-visible-height, 100dvh) - ${bottomOffset + 82}px - env(safe-area-inset-bottom, 0px))` }}>
 
       {accountOpen ? <AccountMenu back={()=>{setAccountOpen(false);requestAnimationFrame(()=>containerRef.current?.querySelector<HTMLButtonElement>('[data-fab-action="account"]')?.focus());}} close={()=>setOpen(false)} onLink={followLink}/> : <>
-      <header className="sw-fab__heading"><Link href="/" className="sw-fab__brand" aria-label="SwordWeave home" onClick={event => followLink(event, "/")}><span className="sw-public-nav__brandmark" aria-hidden="true"/><span className="sw-public-nav__wordmark"><span>Sword</span><span>·</span><span>Weave</span></span></Link><span>Quick access</span></header>
+      <header className="sw-fab__heading"><Link href="/" className="sw-fab__brand" aria-label="SwordWeave home" onClick={event => followLink(event, "/")}><span className="sw-public-nav__brandmark" aria-hidden="true"/><span className="sw-public-nav__wordmark"><span>Sword</span><span>·</span><span>Weave</span></span><ReleaseBadge /></Link><span>Quick access</span></header>
       <div className="sw-fab__navigation">
         <section className="sw-fab__section"><h3>Browse & make</h3><div className="sw-fab__pair">{destination("library", "Public entries", true)}{destination("atelier", "Build & edit", true)}</div></section>
         <section className="sw-fab__section"><h3>Play sheets</h3><div className={cn("sw-fab__pair", !isGameMaster && creationMode !== "buttons" && "sw-fab__pair--single")}>{destination("builds")}{isGameMaster ? destination("monsters") : creationMode === "buttons" ? <Link className="sw-fab__creators" href="/characters/new" data-fab-action="create-character" onClick={event => followLink(event, "/characters/new")}><FabIcon iconKey="lorc/cultist" alt=""/><span>Create character</span></Link> : null}</div></section>

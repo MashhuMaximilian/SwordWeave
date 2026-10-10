@@ -89,12 +89,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
             const prev = typeof previous.overrides["currentVitality"] === "number" ? previous.overrides["currentVitality"] as number : max;
             const current = typeof next.overrides["currentVitality"] === "number" ? next.overrides["currentVitality"] as number : max;
             await appendCharacterLog(id, "vitality_change", { prev, next: current, delta: current - prev, source: mutation.source ?? "manual" });
-            if (mutation.source === "long_rest" || mutation.source === "short_rest") await appendCharacterLog(id, "rest", { restType: mutation.source === "long_rest" ? "long" : "short", vitalityRestored: current - prev });
           }
           if (change.field.startsWith("cap:") || change.field.startsWith("itemcap:")) {
             const capabilityId = change.field.split(":").at(-1)!;
             await appendCharacterLog(id, "capability_toggle", { capabilityId, capabilityName: graph.nodes.find(n => n.kind === "capability" && n.id === capabilityId)?.name ?? "Capability", active: change.field.startsWith("itemcap:") ? change.value === true : change.value === null });
           }
+        }
+        if (mutation.source === "long_rest" || mutation.source === "short_rest") {
+          const prev = typeof previous.overrides["currentVitality"] === "number" ? previous.overrides["currentVitality"] as number : max;
+          const current = typeof next.overrides["currentVitality"] === "number" ? next.overrides["currentVitality"] as number : max;
+          await appendCharacterLog(id, "rest", { restType: mutation.source === "long_rest" ? "long" : "short", vitalityRestored: current - prev });
         }
       });
     });

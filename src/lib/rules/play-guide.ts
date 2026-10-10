@@ -377,7 +377,8 @@ export const PLAY_GUIDE: GuideTopic[] = [
       },
       {
         "title": "Roll bias",
-        "body": "Baseline advantage rolls two resolution dice and keeps the higher; disadvantage keeps the lower. These change the roll behavior, not its static bonus. Read the authored scope and the sheet’s bias counters when several rules apply; do not assume each icon is another numerical +1."
+        "body": "Applicable advantage and disadvantage sources stack unless an authored stacking rule says otherwise. Cancel opposing stacks one-for-one. With N remaining advantage stacks, roll N + 1 resolution dice and keep the highest; with N remaining disadvantage stacks, keep the lowest. With no remaining bias, roll one die. The sheet displays the net stack count. These change roll behavior, not the static bonus.",
+        "example": "Two advantages and one disadvantage leave one advantage: roll 2d20 and keep the highest. Two advantages with no disadvantage mean 3d20, keeping the highest."
       },
       {
         "title": "One DC",
@@ -436,6 +437,15 @@ export const PLAY_GUIDE: GuideTopic[] = [
       {
         "title": "4. Carry consequences into the next round",
         "body": "Finish triggered reactions, apply outcomes and ongoing effects, and review duration and maintenance. Begin a new Council Phase. Reaction Slots reset, and everyone declares intent for the changed situation."
+      },
+      {
+        "title": "Movement across the round",
+        "body": "Your speed is the ordinary movement allowance for the whole round. Spend it all at once or divide it across tracks and valid reactions. Movement can accompany an intent or occur independently when the situation permits; a reaction’s trigger and scope still apply. To move farther, use an appropriate speed primitive or agree an exertion cost or consequence with the DM. Judge the actual route, timing and interference so the encounter makes narrative and cinematic sense.",
+        "example": "With 30 ft of movement, use 10 ft during Fast and the remaining 20 ft during Heavy. Movement as part of a reaction spends from the same allowance rather than providing another 30 ft."
+      },
+      {
+        "title": "Optional guidance: catching someone unprepared",
+        "body": "There is no universal surprise mechanic. When the fiction supports an ambush, the table may let the prepared side resolve a full round before the surprised side responds. What anyone notices, the situation, or an agreed d20 check can change that ruling. This is a suggested treatment, not an automatic free round whenever someone claims surprise."
       },
       {
         "title": "One complete party round",
@@ -555,13 +565,18 @@ export const PLAY_GUIDE: GuideTopic[] = [
         "body": "A range primitive and dice-type primitive establish access. Owning d10 and Very Far range lets you propose a use that needs those permissions; it does not make a 4d10 Very Far blast cost the same effort as a 1d4 Touch use. Dice count, area, targets, duration and other table-selected scaling do not each require a new primitive by default, but still increase the composed action’s CV and may increase Strain. Extra behaviors or effects can require additional primitives."
       },
       {
+        "title": "Locate what you target",
+        "body": "To target a particular creature or object, establish its location through an applicable sense: ordinary vision, blindsight, tremorsense or another granted sensory method. Range permission alone does not reveal a target. Without a sensory location, you may instead propose targeting a known spot or area; the table checks access, uncertainty and the outcome. An authored working such as scrying, broad weather control or affecting any qualifying target within range can establish a different targeting method. Agree that scope and its consequences explicitly.",
+        "example": "You cannot see a hidden foe, but can locate them through granted tremorsense. Alternatively, aim an area effect at the doorway where you think they are; choosing that spot does not guarantee they are inside it."
+      },
+      {
         "title": "Choose the expression that fits the moment",
         "body": "Say the output, reach, targets, area, duration and timing you want now. The DM checks access and evaluates the whole intent. You can start from a saved capability and scale it, combine owned pieces differently, or acquire a missing primitive using spare BU when agreed. Rushing work, linking several dependent outcomes or making a broad effect selectively spare allies can add pressure.",
         "example": "“I have Fire access, the relevant verb, d10 and Very Far. I want four dice of output against that cluster.” The table agrees the cluster size and resolution. “I also want it to heal allies” is another behavior to check, not something granted by raising the dice count."
       },
       {
         "title": "Tier guidelines help compare designs",
-        "body": "Primitive tiers are broad authoring guides. Compare what a piece enables, how broadly it applies, its conditions, and its influence on play. A more limited or conditional fork can be priced differently. Authors ultimately choose their prices; a tier or BU total does not guarantee that an action will be equally easy in every scene.",
+        "body": "Primitive tiers and the Library/builder prices are broad authoring guides. Compare what a piece enables, how broadly it applies, its conditions, stacking behavior and influence on play. Authors choose the BU price; the DM can accept it or ask for a cheaper or more expensive version before use at their table. A suggested price or BU total does not guarantee that an action will be equally easy in every scene.",
         "details": [
           {
             "title": "Minor · roughly 1–2 BU",
@@ -632,12 +647,12 @@ export const PLAY_GUIDE: GuideTopic[] = [
       },
       {
         "title": "Maintenance can make the attempt easier",
-        "body": "Sustaining a smaller effect can be less demanding upfront than forcing a huge result in one instant. You trade ongoing attention, payments and vulnerability to interruption for a different expression of the action. Upkeep is therefore part of evaluating the design, not always an extra charge on an otherwise identical blast.",
+        "body": "Maintaining a working generally spreads out its pressure or makes it cheaper upfront than forcing a greater result through the same capability in one round. Its upkeep can be Vitality, a numerical penalty, a restriction, lost access until an agreed condition, a sustained task or a narrative consequence. These can combine or change with the situation. Agree what applies, when it applies and how it ends; there is no universal discount or damage conversion.",
         "example": "A sudden large fireburst, a maintained fire field, and a smaller maintained field with lower output can have different initial costs and upkeep. Agree the whole construction; there is no universal discount."
       },
       {
         "title": "Pay to keep it active",
-        "body": "Upkeep exists when the capability specifies maintenance. The GM sets the actual upkeep cost for the current situation. Pay at the start of your turn to continue; if you do not pay, the maintained effect ends. Keep this payment point explicit within your table’s shared round.",
+        "body": "Upkeep exists when the capability specifies maintenance. The GM and players agree the actual requirement and its continuation point within the shared round, such as Council. Meet that requirement to continue; if you cannot, the maintained effect ends. A recurring payment can be due again next round, while a restriction or lost access follows its own agreed ending condition.",
         "example": "Maintaining invisibility among distracted commoners may be easier than sustaining it in a court watched by trained mages."
       },
       {
@@ -645,12 +660,8 @@ export const PLAY_GUIDE: GuideTopic[] = [
         "body": "Multiple effects inside one capability remain one execution with one upkeep track and one Strain evaluation. You can maintain several capabilities; their costs accumulate. There is no default single-concentration limit."
       },
       {
-        "title": "Damage creates maintenance pressure",
-        "rules": [
-          "When upkeep is paid in Vitality, total damage during the turn reaching or exceeding that upkeep cost calls for immediately re-paying it to maintain the capability."
-        ],
-        "body": "This numerical comparison applies to upkeep measured in Vitality. Other upkeep can be a resource, a condition, a sustained task or a narrative consequence; damage is not automatically comparable to any of those. Agree how maintenance can be disrupted and what continuing would require when you establish the capability. A hit may threaten maintenance, but does not universally end it or demand a D&D-style concentration save. If the agreed payment or requirement cannot be met, the maintained effect ends.",
-        "example": "A field costs 4 Vitality in upkeep. Taking 2 damage and then 3 in the same turn reaches the threshold: re-pay 4 Vitality or let it end.",
+        "title": "Vitality upkeep: alpha rule under review",
+        "body": "Additional repayment triggered by incoming damage, including its counting window and reset/excess policy, is awaiting the creator’s decision. The earlier proposal compared damage with Vitality upkeep; it is not a settled alpha procedure. Do not apply it automatically or convert damage into non-Vitality upkeep. Agree how maintenance can be disrupted and what continuing requires when establishing the capability. A hit may threaten its actual requirements, but does not universally end it or demand a concentration save.",
         "details": [
           {
             "title": "When upkeep is not Vitality",
@@ -668,7 +679,7 @@ export const PLAY_GUIDE: GuideTopic[] = [
           },
           {
             "title": "An attempt that does not stop the action",
-            "body": "You shoot at the gate-maker, but miss; the working continues. Or you hit, but the gate did not depend on stillness and no agreed disruption rule was met. Damage alone is not a universal cancellation button. If upkeep applies, use the damage-pressure rule as well."
+            "body": "You shoot at the gate-maker, but miss; the working continues. Or you hit, but the gate did not depend on stillness and no agreed disruption rule was met. Damage alone is not a universal cancellation button. If upkeep applies, use its explicitly agreed maintenance requirements."
           },
           {
             "title": "A completed action has no remaining casting window",
@@ -753,6 +764,15 @@ export const PLAY_GUIDE: GuideTopic[] = [
         "body": "The character collapses, unconscious and incapacitated. The GM sets a contextual rescue clock: roughly a minute is guidance, not a guaranteed ten safe rounds. Severe wounds and hostile environments can shorten it. Allies can attempt Fieldcraft stabilization or a creative use of their available primitives."
       },
       {
+        "title": "Rest is agreed recovery",
+        "body": "A short rest is a short pause, perhaps 15 or 30 minutes. A long rest is overnight sleep or an equivalent meaningful recovery period, not a mandatory eight-hour timer. DM and players agree whether the situation earns short-rest or long-rest effects; elapsed time does not apply them automatically. Default short-rest recovery is half maximum Vitality rounded up, as a finite allowance between long rests. Only points actually restored consume that allowance; unused points remain for another agreed short rest. A completed long rest normally restores Vitality to maximum and refreshes the short-rest allowance. The table may agree partial recovery, such as 70% after poor sleep. Injuries, curses and other consequences follow their stated recovery requirements.",
+        "example": "Maximum Vitality 13 gives a short-rest allowance of 7. At 10/13, restore 3 to reach full and retain 4 for later short rests after further damage. The allowance refreshes when you finish a long rest."
+      },
+      {
+        "title": "Stabilization, healing and waking",
+        "body": "Successful Fieldcraft stabilization or an appropriate use of owned primitives halts the rescue countdown. Stabilization alone does not restore Vitality or automatically wake the character. Healing above zero ends the dying state and restores consciousness unless another consequence prevents it. A stabilized character can recover through assisted rest; someone still actively dying needs rescue first. Injuries and other lingering consequences retain their own recovery conditions."
+      },
+      {
         "title": "Massive damage",
         "rules": [
           "A single execution dealing at least twice maximum Vitality, or taking current Vitality to −maximum Vitality, can cause immediate death under the massive-damage rule."
@@ -792,9 +812,10 @@ export const PLAY_GUIDE: GuideTopic[] = [
         "title": "Equipped slots",
         "rules": [
           "Base equipment capacity: 6 universal slots.",
-          "A two-handed item uses at least 2 slots; its authored slot cost can be higher."
+          "An ordinary equipped item uses 1 slot; a two-handed item uses 2. An agreed authored requirement can be higher.",
+          "Primitives can extend the available equipment slots."
         ],
-        "body": "Equipped slots describe what you have in use. Load describes what you carry. Equipping something does not remove its Load, and storing it does not necessarily remove it from your inventory."
+        "body": "Equipped slots describe what you have in use. Load describes what you carry. Size alone does not automatically multiply slot requirements. For a small character using an unusually large sword, the DM may permit it with a consequence or an explicit 3–4-slot requirement. Equipping something does not remove its Load, and storing it does not necessarily remove it from your inventory."
       },
       {
         "title": "Tiny objects and pouches",

@@ -74,13 +74,8 @@ export interface EncumbranceItem {
   readonly size: CharacterSize;
   readonly loadValue: number;
   readonly slotCount: number;
-  // Phase 8.5 / Session H6 round 4 (Mashu 2026-08-03):
-  // isTwoHanded is the inline source of the 2H slot
-  // baseline (2 slots). Without it the engine can't
-  // distinguish a 1H LARGE weapon (slot baseline 1, *2 size
-  // = 2 slots) from a 2H LARGE weapon (slot baseline 2,
-  // *2 size = 4 slots). Optional so legacy callers without
-  // the field still compile; defaults to false.
+  // Two-handed equipment has a two-slot baseline. Higher authored slot
+  // requirements describe agreed bulk or other restrictions explicitly.
   readonly isTwoHanded?: boolean;
   readonly capacityBonus: number;
   readonly ignoreLoadBonus: number;
@@ -165,89 +160,16 @@ export function computeLoad(items: ReadonlyArray<EncumbranceItem>): number {
 }
 
 /**
- * Compute total equip slots used.
- *
- * Phase 8.5 / Session H6 round 4 (Mashu 2026-08-03):
- * size-aware slot accounting. The slot count for an
- * equipped item is the max of its stored slotCount
- * (user-editable on the item) and the size-derived
- * baseline:
- *
- *   2H items: baseline 2 slots (regardless of size)
- *   1H items: baseline 1 slot
- *
- * Then multiplied by a size multiplier:
- *   TINY=1, SMALL=1, MEDIUM=1, LARGE=2, HUGE=4, GARGANTUAN=4
- *
- * So a 2H LARGE weapon = max(2, slotCost) * 2 = 4 slots.
- * A 1H SMALL dagger = max(1, slotCost) * 1 = 1 slot.
- * A 2H HUGE maul = max(2, slotCost) * 4 = 8 slots.
- *
- * The user's expectation (the Claymore is 2H LARGE so it
- * should take 4 slots; the previous round was 1 slot):
- * the size multiplier was missing. Now applied.
- *
- * @param items Items with equipped state, slotCount,
- *              size, and quantity
+ * Equipped items use one slot, or two when two-handed, unless their
+ * authored slot requirement is higher. Item size affects Load, not an
+ * automatic slot multiplier. Unusual gear can have a table-agreed slot cost.
  */
 export function computeEquipSlotsUsed(items: ReadonlyArray<EncumbranceItem>): number {
   return items
     .filter((i) => i.equipped)
-    .reduce((t, i) => {
-      // Size multiplier — the LARGE / HUGE / GARGANTUAN
-      // categories occupy more than 1 base slot.
-      const SIZE_SLOT_MULT: Record<CharacterSize, number> = {
-        TINY: 1,
-        SMALL: 1,
-        MEDIUM: 1,
-        LARGE: 2,
-        HUGE: 4,
-        GARGANTUAN: 4,
-      };
-      const mult = SIZE_SLOT_MULT[i.size] ?? 1;
-      // Phase 8.5 H6 round 5 (Mashu 2026-08-03):
-      // size-aware slot accounting with the user's
-      // stored slotCost as the authoritative number when
-      // it's >= the 2H baseline.
-      //
-      // Per the user's spec (round 5 message.txt):
-      // - 2H items use AT LEAST 2 slots (the baseline).
-      // - The user can set slotCost in the builder form;
-      //   when slotCost > 2H baseline, the stored value
-      //   wins (e.g. Claymore 2H with stored slotCost=3
-      //   = 3 equipped slots).
-      // - The size of the item is a multiplier on top of the
-      //   baseline (LARGE = 2x, HUGE = 4x, GARGANTUAN = 4x).
-      //
-      // Final: slots = max(stored_slotCost, 2H_baseline)
-      //              * size_mult * quantity
-      //
-      // Example: Claymore 2H LARGE, stored=3:
-      //   max(3, 2) = 3, * 2 (LARGE) * 1 = 6 slots.
-      // But the user said the Claymore should be 3, not 6.
-      // So the size multiplier is ONLY for size >= MEDIUM
-      // when the stored slotCost is the 2H baseline (2).
-      // If stored > 2H baseline, the stored value IS the
-      // slot count and the size multiplier does NOT apply.
-      //
-      // Simpler: slots = max(stored_slotCost, 2H_baseline)
-      // * quantity. The size multiplier is ignored when
-      // stored > 2H baseline.
-      //
-      // Round 5's reconciliation: the user explicitly set
-      // slotCost=3 on the Claymore. They want 3 slots, not 6.
-      // The size multiplier cancels out when the stored
-      // value is the authoritative one. Translation: the
-      // 2H baseline is 2; the user's stored value (3)
-      // wins over the size multiplier. Final = 3 slots.
-      const baseline = i.isTwoHanded === true ? 2 : 1;
-      const effective = Math.max(baseline, i.slotCount);
-      // If stored > 2H baseline, the stored value is
-      // authoritative (no size multiplier — the user
-      // already paid the size into the stored value).
-      // If stored == 2H baseline, size multiplier applies.
-      const finalMult = i.slotCount > baseline ? 1 : mult;
-      return t + effective * i.quantity * finalMult;
+    .reduce((total, item) => {
+      const baseline = item.isTwoHanded === true ? 2 : 1;
+      return total + Math.max(baseline, item.slotCount) * item.quantity;
     }, 0);
 }
 

@@ -1,0 +1,16 @@
+.sw-public-site .sw-public-nav__logo .sw-release-badge,
+body[data-ui="v12"] .sw-fab .sw-fab__brand .sw-release-badge {
+  flex: none;
+  align-self: center;
+  white-space: nowrap;
+  color: var(--fab-muted, var(--sw-text-muted, var(--muted-foreground)));
+  font: 500 9px/1.2 var(--font-v12-system, sans-serif) !important;
+  letter-spacing: .025em;
+  text-transform: none;
+}
+@media (max-width: 359px) {
+  .sw-public-site .sw-public-nav__logo .sw-release-badge,
+  body[data-ui="v12"] .sw-fab .sw-fab__brand .sw-release-badge {
+    font-size: 8px !important;
+  }
+}

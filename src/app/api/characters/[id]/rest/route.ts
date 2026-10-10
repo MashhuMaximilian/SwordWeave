@@ -2,6 +2,8 @@ import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
 import { readDraftSheet } from "@/lib/character/workspace/draft-sheet";
 import { vitalityRuntimeUpdate } from "@/lib/character/vitality-update";
 import { withCharacterMutation } from "@/lib/character/mutation-transaction";
+import { readPlayState, reconcilePlayState } from "@/lib/play-state/service";
+import { restRecoveryAllowance, restRecoveryChanges } from "@/lib/play-state/rest-recovery";
 /**
  * POST /api/characters/[id]/rest
  *
@@ -17,6 +19,9 @@ import { withCharacterMutation } from "@/lib/character/mutation-transaction";
  *     user clarified: "short rest restores 50% max
  *     vitality: current vitality + half max vitality up to
  *     max vitality."
+ *   - Only actual recovery spends the allowance between long rests.
+ *     Unused recovery carries into another agreed short rest.
+ *   - Long rest resets this allowance, even when recovery is partial.
  *
  * Both:
  *   - Logged as a 'rest' event
@@ -24,6 +29,7 @@ import { withCharacterMutation } from "@/lib/character/mutation-transaction";
  *
  * Body:
  *   restType: "long" | "short"
+ *   recoveryAmount?: nonnegative integer agreed by the table; defaults to available recovery
  *
  * Auth: required (character owner).
  */
@@ -70,20 +76,12 @@ async function handlePOST(
     const { max, graph } = await loadCharacterMaxVitality(id);
     // Phase 8.I i2.7f: null currentVitality = at full HP.
     const prev = clampVitality(current.currentVitality ?? max, max);
-    let next: number;
-    let delta: number;
-
-    if (restType === "long") {
-      next = max;
-      delta = max - prev;
-    } else {
-      // Short (Phase 8.3g v2, Mashu 2026-07-28): +50% of MAX,
-      // not 50% of missing. e.g. max=268, current=200 →
-      // restore = 134, next = min(200+134, 268) = 268.
-      const restore = Math.ceil(max / 2);
-      delta = restore;
-      next = clampVitality(prev + restore, max);
-    }
+    const state = await readPlayState("CHARACTER", id);
+    const requestedAmount = (body as Record<string, unknown>)["recoveryAmount"];
+    if (requestedAmount !== undefined && (typeof requestedAmount !== "number" || !Number.isSafeInteger(requestedAmount))) throw new Error("recoveryAmount must be an integer.");
+    const recoveryChanges = restRecoveryChanges(restType, max, prev, state.overrides, requestedAmount as number | undefined);
+    const next = recoveryChanges[0]!.value as number;
+    const delta = next - prev;
 
     if (next !== prev) {
       await db
@@ -91,6 +89,8 @@ async function handlePOST(
         .set({ currentVitality: next, updatedAt: new Date() })
         .where(eq(characters.id, id));
     }
+
+    const restState = await reconcilePlayState("CHARACTER", id, Object.fromEntries(recoveryChanges.map(change => [change.field, change.value])));
 
     // Two log entries: one for the rest itself, one for the
     // underlying vitality change so the history panel can show
@@ -117,6 +117,7 @@ async function handlePOST(
       runtime: vitalityRuntimeUpdate(await readDraftSheet(id, graph)),
       restType,
       vitalityRestored: next - prev,
+      shortRestRecovery: restRecoveryAllowance(max, restState.overrides),
     });
   } catch (error) {
     // PLAN Eilxina Part C (Mashu 2026-09-09): CharacterAccessDenied → 403.

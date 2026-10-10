@@ -1,5 +1,7 @@
 "use client";
 
+import { ReleaseBadge } from "@/components/layout/release-badge";
+
 // =============================================================================
 // PublicNav — sticky editorial nav for the front-facing public pages.
 //
@@ -111,6 +113,7 @@ export function PublicNav() {
             <span className="sw-public-nav__wordmark"><span className="font-display text-foreground">Sword</span>
             <span className="text-primary">·</span>
             <span className="font-display text-foreground">Weave</span></span>
+            <ReleaseBadge />
           </Link>
 
           {/* Desktop links */}

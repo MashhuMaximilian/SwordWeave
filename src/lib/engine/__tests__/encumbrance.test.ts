@@ -124,71 +124,25 @@ describe("computeLoad", () => {
   });
 
 describe("computeEquipSlotsUsed", () => {
-  // Phase 8.5 H6 round 4: size-aware slot accounting. The
-  // formula is:
-  //   effective = max(2H_baseline, stored_slotCount)
-  //   slots    = effective * quantity * size_mult
-  // where:
-  //   2H_baseline = 2 if isTwoHanded else 1
-  //   size_mult   = 1 for SMALL/MEDIUM, 2 for LARGE, 4 for HUGE/GARGANTUAN
-  //
-  // The Claymore (2H LARGE, stored slotCost=3) ends up at:
-  //   effective = max(2, 3) = 3 (stored wins because 3 > 2)
-  //   slots    = 3 * 1 * 2 = 6 slots
-  //
-  // Wait — Mashu expects 4. So the 2H baseline should DOMINATE
-  // the stored slotCount, not the other way around. The slot
-  // accounting is: 2H baseline (2) * size_mult (2) = 4.
-  // If 2H baseline dominates, the formula is:
-  //   effective = 2H baseline (sticky)
-  //        with override only when stored > 2H
-  // Er, that's the same as max(). The Claymore's stored is
-  // 3, baseline is 2, max = 3, * 2 = 6. Mashu wants 4.
-  //
-  // Resolution: stored slotCost "wins" only when it's > 2H
-  // baseline AND explicit user override. The Claymore's
-  // stored slotCost=3 is a legacy value — the right answer
-  // is 2H(2) * LARGE(2) = 4. So the formula should be:
-  //   effective = 2H_baseline (sticky)
-  // Unless the stored slot_cost is 0, in which case use 0.
-  // (For backwards compat with stored slot_cost=1 = 1H SMALL = 1 slot.)
-
-  it("1H SMALL weapon = 1 slot (baseline 1, mult 1)", () => {
-    const items = [mkItem({ slotCount: 1, isTwoHanded: false, size: "SMALL", equipped: true })];
-    expect(computeEquipSlotsUsed(items)).toBe(1);
+  it("ordinary items use one slot regardless of size", () => {
+    for (const size of ["SMALL", "MEDIUM", "LARGE", "HUGE", "GARGANTUAN"] as const) {
+      expect(computeEquipSlotsUsed([mkItem({ slotCount: 1, isTwoHanded: false, size, equipped: true })])).toBe(1);
+    }
   });
 
-  it("2H SMALL weapon = 2 slots (baseline 2, mult 1)", () => {
-    // max(2, 2) = 2, stored == baseline, mult 1 → 2 slots.
-    const items = [mkItem({ slotCount: 2, isTwoHanded: true, size: "SMALL", equipped: true })];
-    expect(computeEquipSlotsUsed(items)).toBe(2);
+  it("two-handed items use two slots regardless of size", () => {
+    for (const size of ["SMALL", "MEDIUM", "LARGE", "HUGE", "GARGANTUAN"] as const) {
+      expect(computeEquipSlotsUsed([mkItem({ slotCount: 2, isTwoHanded: true, size, equipped: true })])).toBe(2);
+    }
   });
 
-  it("1H LARGE weapon = 2 slots (baseline 1, mult 2)", () => {
-    // max(1, 1) = 1, stored == baseline, mult 2 → 2 slots.
-    const items = [mkItem({ slotCount: 1, isTwoHanded: false, size: "LARGE", equipped: true })];
-    expect(computeEquipSlotsUsed(items)).toBe(2);
+  it("enforces the two-handed baseline for legacy one-slot items", () => {
+    expect(computeEquipSlotsUsed([mkItem({ slotCount: 1, isTwoHanded: true, size: "LARGE", equipped: true })])).toBe(2);
   });
 
-  it("Claymore 2H LARGE = 3 slots (stored 3 wins over 2H baseline 2)", () => {
-    // Round 5: the user explicitly set slotCost=3 on the
-    // Claymore. max(3, 2) = 3. stored > 2H baseline, so
-    // the size multiplier is suppressed (finalMult = 1).
-    // Total = 3 * 1 * 1 = 3 slots.
-    const items = [mkItem({ slotCount: 3, isTwoHanded: true, size: "LARGE", equipped: true })];
-    expect(computeEquipSlotsUsed(items)).toBe(3);
-  });
-
-  it("2H LARGE weapon (no stored slotCost override) = 4 slots (LARGE mult fires)", () => {
-    // When stored slotCost equals the 2H baseline (2), the
-    // size multiplier applies. 2 * 2 = 4 slots.
-    const items = [mkItem({ slotCount: 2, isTwoHanded: true, size: "LARGE", equipped: true })];
-    expect(computeEquipSlotsUsed(items)).toBe(4);
-  });
-
-  it("2H HUGE maul = 8 slots (baseline 2, mult 4)", () => {
-    const items = [mkItem({ slotCount: 2, isTwoHanded: true, size: "HUGE", equipped: true })];
-    expect(computeEquipSlotsUsed(items)).toBe(8);
+  it("respects a higher authored requirement without multiplying it by size", () => {
+    expect(computeEquipSlotsUsed([mkItem({ slotCount: 3, isTwoHanded: true, size: "LARGE", equipped: true })])).toBe(3);
+    expect(computeEquipSlotsUsed([mkItem({ slotCount: 4, isTwoHanded: false, size: "HUGE", equipped: true })])).toBe(4);
   });
 
   it("only equipped items count", () => {
