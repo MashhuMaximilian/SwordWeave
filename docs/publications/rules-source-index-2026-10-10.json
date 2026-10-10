@@ -1,0 +1,713 @@
+{
+  "date": "2026-10-10",
+  "revision": "3fa371530dbe5713a2d0412eb88aae7118e0af0e",
+  "scope": "Full-system publication audit; source coverage is not a guarantee that every historical example is valid.",
+  "notion": [
+    {
+      "id": "37eed8479ccd81fa8150d0b31e22ff1f",
+      "title": "\u2694\ufe0f SwordWeave TTRPG",
+      "url": "https://app.notion.com/p/37eed8479ccd81fa8150d0b31e22ff1f?pvs=204",
+      "page_last_edited_at": "2026-08-06T20:58:18.559Z",
+      "returned_snapshot_as_of": "2026-09-24T13:49:04.553Z",
+      "sha256": "28666c84caf1a95ed3c09f90173a36b57515dcd0dc2df2145e136659dd9a24f0",
+      "characters": 8239,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "38eed8479ccd8099bd14d387ad922488",
+      "title": "temporary notes",
+      "url": "https://app.notion.com/p/38eed8479ccd8099bd14d387ad922488?pvs=204",
+      "page_last_edited_at": "2026-07-03T10:03:00.107Z",
+      "returned_snapshot_as_of": "2026-07-03T10:03:29.298Z",
+      "sha256": "56700cdd3e2c6a26949e9ada9cb31c9d7b73757de8dc11b525256361aa00148a",
+      "characters": 1247,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37fed8479ccd8194ad4ffb085e3ffe89",
+      "title": "\ud83e\uddea BU System \u2014 Canonical Rules & Structure",
+      "url": "https://app.notion.com/p/37fed8479ccd8194ad4ffb085e3ffe89?pvs=204",
+      "page_last_edited_at": "2026-07-02T13:29:19.941Z",
+      "returned_snapshot_as_of": "2026-07-02T13:29:19.941Z",
+      "sha256": "0c8b735e75c40b492e6b16f7aae0fcca065e7b10caa5b3aba76172227a5c27a0",
+      "characters": 4049,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37eed8479ccd8155b917c373194dbdf4",
+      "title": "\ud83e\udde9 BU Market of Primitive components \u2014 Complete System",
+      "url": "https://app.notion.com/p/37eed8479ccd8155b917c373194dbdf4?pvs=204",
+      "page_last_edited_at": "2026-07-03T16:01:33.413Z",
+      "returned_snapshot_as_of": "2026-07-03T16:01:33.413Z",
+      "sha256": "f0e8bae8371949fa83ecf4393475ec6044a3d3a00087df6275c5106165e80888",
+      "characters": 99450,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37fed8479ccd810dbd98e4c942a98553",
+      "title": "\ud83e\udde0 Capability Composition Map (Canonical)",
+      "url": "https://app.notion.com/p/37fed8479ccd810dbd98e4c942a98553?pvs=204",
+      "page_last_edited_at": "2026-08-05T09:31:17.747Z",
+      "returned_snapshot_as_of": "2026-08-05T09:31:17.747Z",
+      "sha256": "c9ebf53ab9496b87fd0130201dc280d1395e6a4e34c077d43ee1900cfe5d96c8",
+      "characters": 31974,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37eed8479ccd81a4bd1ae21e1a0e1354",
+      "title": "Evaluation Layer Canon v2",
+      "url": "https://app.notion.com/p/37eed8479ccd81a4bd1ae21e1a0e1354?pvs=204",
+      "page_last_edited_at": "2026-06-14T13:03:41.424Z",
+      "returned_snapshot_as_of": "2026-06-14T13:03:48.760Z",
+      "sha256": "ddd5b72a02cac11d7ac30275fa8c0bb967a372c752a3291e7d3d79dd1a4f55fe",
+      "characters": 1384,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "392ed8479ccd80f5b55ffe9863ab815d",
+      "title": "The Combat Rhythm",
+      "url": "https://app.notion.com/p/392ed8479ccd80f5b55ffe9863ab815d?pvs=204",
+      "page_last_edited_at": "2026-07-03T18:39:26.083Z",
+      "returned_snapshot_as_of": "2026-07-03T18:39:31.365Z",
+      "sha256": "321636611e75f293580451e68671f8a6aa7993f210104609be5d829767a9520d",
+      "characters": 9454,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37eed8479ccd813dbd56e0acc4a43e88",
+      "title": "TTRPG System Canonical Core Architecture v2",
+      "url": "https://app.notion.com/p/37eed8479ccd813dbd56e0acc4a43e88?pvs=204",
+      "page_last_edited_at": "2026-07-03T13:07:36.971Z",
+      "returned_snapshot_as_of": "2026-07-03T13:07:36.971Z",
+      "sha256": "902cfaba5ed8233f99c9de7fc3bb01c428e98dadb85cd5edb2a427afc0024a66",
+      "characters": 1397,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37eed8479ccd81bc88ccf2adc8b57dcf",
+      "title": "Character + Skills + Progression Unified",
+      "url": "https://app.notion.com/p/37eed8479ccd81bc88ccf2adc8b57dcf?pvs=204",
+      "page_last_edited_at": "2026-07-03T18:07:16.166Z",
+      "returned_snapshot_as_of": "2026-07-03T18:07:16.166Z",
+      "sha256": "964b0277805cd6219566cddf0a5da9f65736d94dfbb570a1a8c9c9bee83e9924",
+      "characters": 1439,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37eed8479ccd8118bf5ee637178b62e5",
+      "title": "\u2694\ufe0f Action Economy System (Canonical)",
+      "url": "https://app.notion.com/p/37eed8479ccd8118bf5ee637178b62e5?pvs=204",
+      "page_last_edited_at": "2026-07-03T18:33:36.604Z",
+      "returned_snapshot_as_of": "2026-07-03T18:33:36.604Z",
+      "sha256": "a64ae20c5e68150bd229dcaea1d682383257916d35f1195c8d395e620a268a94",
+      "characters": 10950,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37fed8479ccd81aa9467d9779c45f40a",
+      "title": "\ud83e\udde0 Capability Upkeep & Interruption (Canonical)",
+      "url": "https://app.notion.com/p/37fed8479ccd81aa9467d9779c45f40a?pvs=204",
+      "page_last_edited_at": "2026-09-21T08:07:55.564Z",
+      "returned_snapshot_as_of": "2026-09-21T08:07:55.564Z",
+      "sha256": "5083db69e08ff7ff6393cdac39bd5a2381378044012cdbb14d391d820b245d8f",
+      "characters": 6704,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37eed8479ccd81d693dbf6ca9b4ac4c4",
+      "title": "Vitality System",
+      "url": "https://app.notion.com/p/37eed8479ccd81d693dbf6ca9b4ac4c4?pvs=204",
+      "page_last_edited_at": "2026-07-03T18:01:38.849Z",
+      "returned_snapshot_as_of": "2026-07-03T18:01:38.849Z",
+      "sha256": "02f11ef9bed232a77f2b67c976231f551ea53e3225ca0fb636095e94a7b70997",
+      "characters": 1977,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37fed8479ccd81f29b0fd784bf16d815",
+      "title": "Magic Engine (Canonical Integration Layer)",
+      "url": "https://app.notion.com/p/37fed8479ccd81f29b0fd784bf16d815?pvs=204",
+      "page_last_edited_at": "2026-07-03T16:03:08.402Z",
+      "returned_snapshot_as_of": "2026-07-03T16:03:08.402Z",
+      "sha256": "472475e7d21c4fdf447d36ba34a56acd5824a9084e7ab4524ac0ad15e86a31a6",
+      "characters": 4563,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "380ed8479ccd8114afb0c77a0dd0b3ed",
+      "title": "Encumbrance System (Canonical)",
+      "url": "https://app.notion.com/p/380ed8479ccd8114afb0c77a0dd0b3ed?pvs=204",
+      "page_last_edited_at": "2026-07-29T12:18:15.505Z",
+      "returned_snapshot_as_of": "2026-07-29T12:18:18.911Z",
+      "sha256": "0c49e93038ba4442ab4fd04e9195b721210a6bafeea2748b8d09693c30d12318",
+      "characters": 3968,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "380ed8479ccd817ba960d5117f7272a5",
+      "title": "Loot System (Canonical)",
+      "url": "https://app.notion.com/p/380ed8479ccd817ba960d5117f7272a5?pvs=204",
+      "page_last_edited_at": "2026-07-03T19:10:58.556Z",
+      "returned_snapshot_as_of": "2026-07-03T19:10:58.556Z",
+      "sha256": "319ed47e4c5c9bd1b389b1f9ec9dd5033109c642b99f31eb4bd976eaa9ea52c7",
+      "characters": 3472,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "390ed8479ccd80118106cd4b8f28a9bf",
+      "title": "\ud83d\udcd6 Tactical Subsystems: Cover, Manifestation, & Vitality Collapse",
+      "url": "https://app.notion.com/p/390ed8479ccd80118106cd4b8f28a9bf?pvs=204",
+      "page_last_edited_at": "2026-07-03T13:07:41.397Z",
+      "returned_snapshot_as_of": "2026-07-03T13:07:41.397Z",
+      "sha256": "43f2183ec38ff798cd5c96c157536d45c2aa1a27fa630f14c92e979702c5221c",
+      "characters": 7387,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "380ed8479ccd81f69dcbf3888f5e384b",
+      "title": "Damage & Resistance System (Canonical)",
+      "url": "https://app.notion.com/p/380ed8479ccd81f69dcbf3888f5e384b?pvs=204",
+      "page_last_edited_at": "2026-07-03T16:02:15.870Z",
+      "returned_snapshot_as_of": "2026-07-03T16:02:15.870Z",
+      "sha256": "d253c9eb45337c61cbe2e902c00c7f4b39e18884b21a6f280b6af1d8db4724eb",
+      "characters": 7362,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "380ed8479ccd81759841fd2be03fedc8",
+      "title": "Scaling & Quickening (Canonical BU System)",
+      "url": "https://app.notion.com/p/380ed8479ccd81759841fd2be03fedc8?pvs=204",
+      "page_last_edited_at": "2026-07-03T13:07:36.971Z",
+      "returned_snapshot_as_of": "2026-07-03T13:07:36.971Z",
+      "sha256": "fb592f30399e25956bf3cddaacd3bc876ca51ca32084e50dc6e5196e5af1a83a",
+      "characters": 2989,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "391ed8479ccd801081f0c0f3fba1bf9d",
+      "title": "\ud83e\uddee System Mathematics & Global Formulas",
+      "url": "https://app.notion.com/p/391ed8479ccd801081f0c0f3fba1bf9d?pvs=204",
+      "page_last_edited_at": "2026-07-03T17:24:54.732Z",
+      "returned_snapshot_as_of": "2026-07-03T17:24:54.732Z",
+      "sha256": "981ed32b9d446907e229ff458bcb63803d5ba3e941b9e1d4286d152d9b26d275",
+      "characters": 7728,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "38eed8479ccd80599b4fda864af3714f",
+      "title": "\ud83c\udfaf DC CONSTRUCTION TABLE",
+      "url": "https://app.notion.com/p/38eed8479ccd80599b4fda864af3714f?pvs=204",
+      "page_last_edited_at": "2026-07-03T13:07:36.971Z",
+      "returned_snapshot_as_of": "2026-07-03T13:07:36.971Z",
+      "sha256": "ab88d875f9b9a8888af551ec38d0faa6cbde01e0e83325c53c4e0f4a19d24c3e",
+      "characters": 5572,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "38eed8479ccd803b9544f1d0ce3d97cf",
+      "title": "Practice/skill System Overview",
+      "url": "https://app.notion.com/p/38eed8479ccd803b9544f1d0ce3d97cf?pvs=204",
+      "page_last_edited_at": "2026-07-03T17:27:46.030Z",
+      "returned_snapshot_as_of": "2026-07-03T17:27:58.914Z",
+      "sha256": "53dbba550c8b59e5097449387b1680b4f93790ec68162a5bf663094e9ab5bb09",
+      "characters": 22684,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37fed8479ccd80fba08bc88bb715658a",
+      "title": "Leveling & Progression Canon v1",
+      "url": "https://app.notion.com/p/37fed8479ccd80fba08bc88bb715658a?pvs=204",
+      "page_last_edited_at": "2026-09-24T13:49:04.553Z",
+      "returned_snapshot_as_of": "2026-09-24T13:49:04.553Z",
+      "sha256": "c389e5120dfb28bf4d3a28efb0a314c75141ca976e8705db84f2325c44a3aace",
+      "characters": 6435,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37eed8479ccd819a836cf0d5f5457d3b",
+      "title": "\ud83c\udfae Character Creation Flow (Playable System v1)",
+      "url": "https://app.notion.com/p/37eed8479ccd819a836cf0d5f5457d3b?pvs=204",
+      "page_last_edited_at": "2026-07-04T09:09:06.894Z",
+      "returned_snapshot_as_of": "2026-07-04T09:09:06.894Z",
+      "sha256": "28882b3ed423aabc59348148ed73ada4e81864650bec8f0edc16fdd510aa8689",
+      "characters": 5100,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37fed8479ccd811b9b1cc3a97723dc6e",
+      "title": "\ud83c\udfae Player Loop \u2014 Core Gameplay Flow",
+      "url": "https://app.notion.com/p/37fed8479ccd811b9b1cc3a97723dc6e?pvs=204",
+      "page_last_edited_at": "2026-07-03T18:49:04.372Z",
+      "returned_snapshot_as_of": "2026-07-03T18:49:04.372Z",
+      "sha256": "2819a838f6a94c21154ea8fa42cad8be67f99bca21dec062d83a334f230ffdd9",
+      "characters": 7263,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37fed8479ccd814fabaed703f85d7af2",
+      "title": "\u2694\ufe0f Combat Engine \u2014 Resolution Pipeline (Canonical Consolidation)",
+      "url": "https://app.notion.com/p/37fed8479ccd814fabaed703f85d7af2?pvs=204",
+      "page_last_edited_at": "2026-07-03T18:48:43.554Z",
+      "returned_snapshot_as_of": "2026-07-03T18:48:43.555Z",
+      "sha256": "1ca9de3a3a113eed8c84109a8ef763d56ce26e35fcfab23d814abb8a8cde1638",
+      "characters": 7927,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37fed8479ccd8173bebffcc843786473",
+      "title": "Canonical System Hierarchy \u2014 Core Rules of the Engine",
+      "url": "https://app.notion.com/p/37fed8479ccd8173bebffcc843786473?pvs=204",
+      "page_last_edited_at": "2026-07-03T13:10:01.173Z",
+      "returned_snapshot_as_of": "2026-07-03T13:10:01.173Z",
+      "sha256": "a979e2b743f12a55ce445a13e367fa544347a51a5e0988c68ee25ce48684ad1e",
+      "characters": 3274,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "380ed8479ccd819580fef865db5d66a3",
+      "title": "Monster System Canonical (Phase 5 \u2014 BU Capability Entity Rules)",
+      "url": "https://app.notion.com/p/380ed8479ccd819580fef865db5d66a3?pvs=204",
+      "page_last_edited_at": "2026-06-29T13:46:35.324Z",
+      "returned_snapshot_as_of": "2026-06-29T13:46:35.324Z",
+      "sha256": "545b86fd9d81c51b4d540a9876ee6eba88ea5423fb93f8c9a9fdc0835f34a752",
+      "characters": 2207,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "380ed8479ccd81dd96d3d3b5d843424f",
+      "title": "Monster Capability Cards (v1 \u2014 Runtime DM Format)",
+      "url": "https://app.notion.com/p/380ed8479ccd81dd96d3d3b5d843424f?pvs=204",
+      "page_last_edited_at": "2026-07-03T19:10:35.526Z",
+      "returned_snapshot_as_of": "2026-07-03T19:10:35.527Z",
+      "sha256": "3fc865c4a187c637c4b8e646f7aaad95a11cee843f5bb016b3bcf9a9970835a2",
+      "characters": 2688,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "380ed8479ccd8185a70dd471fa881655",
+      "title": "Monster Creation Guide (Phase 5 \u2014 DM Workflow Canon)",
+      "url": "https://app.notion.com/p/380ed8479ccd8185a70dd471fa881655?pvs=204",
+      "page_last_edited_at": "2026-07-03T18:09:11.334Z",
+      "returned_snapshot_as_of": "2026-07-03T18:09:11.334Z",
+      "sha256": "d028177c3c5e9dd246b7ff0162e808190acedb7f915831bdac6e8adc0ad2e440",
+      "characters": 2355,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "380ed8479ccd81649120e4cb3a34d560",
+      "title": "Monster Card Template (Canonical \u2014 Phase 5)",
+      "url": "https://app.notion.com/p/380ed8479ccd81649120e4cb3a34d560?pvs=204",
+      "page_last_edited_at": "2026-07-03T19:10:17.301Z",
+      "returned_snapshot_as_of": "2026-07-03T19:10:17.301Z",
+      "sha256": "5e25198fee50b5eb04f0fcd4d3dd2c582e3cc44be20fbfbe74ff125f7e32bccd",
+      "characters": 2001,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "380ed8479ccd81ce81b8c12bdb39f260",
+      "title": "Monster Archetype Library (Canonical Phase 5)",
+      "url": "https://app.notion.com/p/380ed8479ccd81ce81b8c12bdb39f260?pvs=204",
+      "page_last_edited_at": "2026-06-29T13:46:35.324Z",
+      "returned_snapshot_as_of": "2026-06-29T13:46:35.324Z",
+      "sha256": "742fc9ea18ff67a554b41f75302d11730db39d7cabef98f1445ee52b6270ac75",
+      "characters": 10880,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "380ed8479ccd818e8618d5caebf26332",
+      "title": "Item System Canonical (Phase 5 \u2014 BU Equipment & Capability Layer)",
+      "url": "https://app.notion.com/p/380ed8479ccd818e8618d5caebf26332?pvs=204",
+      "page_last_edited_at": "2026-07-03T18:09:12.977Z",
+      "returned_snapshot_as_of": "2026-07-03T18:09:12.977Z",
+      "sha256": "63d5eb606fa31232d47dcd08ac56215909d9e9aaa9758469e3a667d9bfed19d9",
+      "characters": 3337,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "380ed8479ccd8148a1b2e27a5de070d5",
+      "title": "Item Card Template (Canonical \u2014 Phase 5)",
+      "url": "https://app.notion.com/p/380ed8479ccd8148a1b2e27a5de070d5?pvs=204",
+      "page_last_edited_at": "2026-07-03T19:10:21.738Z",
+      "returned_snapshot_as_of": "2026-07-03T19:10:21.738Z",
+      "sha256": "ce89d98aa343d52687a1621d02898e3e7b4e56ea3185051c2d3d3aac068393a2",
+      "characters": 3342,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37fed8479ccd812083a5d8cfa2972271",
+      "title": "\ud83d\udcca DM Dashboard \u2014 Runtime Decision Interface",
+      "url": "https://app.notion.com/p/37fed8479ccd812083a5d8cfa2972271?pvs=204",
+      "page_last_edited_at": "2026-07-03T18:49:30.461Z",
+      "returned_snapshot_as_of": "2026-07-03T18:49:30.461Z",
+      "sha256": "4a3af29f7818e03803a7f55b0d79a86b643b8f077d1856105e7c0b328d4b5d92",
+      "characters": 4592,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37eed8479ccd8161ae81f3b621e19c42",
+      "title": "\ud83e\udde0 Abuse & Edge Case Tests (B)",
+      "url": "https://app.notion.com/p/37eed8479ccd8161ae81f3b621e19c42?pvs=204",
+      "page_last_edited_at": "2026-06-14T07:04:29.059Z",
+      "returned_snapshot_as_of": "2026-06-14T07:04:29.059Z",
+      "sha256": "faf059fdf4fcc78d0c7fc468badbe6538c4089fd3bc94867ec3b13fe0c8e934c",
+      "characters": 1144,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37fed8479ccd81e09e90fc981bf9c790",
+      "title": "\ud83c\udf9b\ufe0f DM Numerical Dashboard (Core Economy & Progression)",
+      "url": "https://app.notion.com/p/37fed8479ccd81e09e90fc981bf9c790?pvs=204",
+      "page_last_edited_at": "2026-06-14T15:20:10.029Z",
+      "returned_snapshot_as_of": "2026-06-14T15:20:10.029Z",
+      "sha256": "b914c798c580022555c85b6c81d93fc2eb875ac5034492a43586715859743dd4",
+      "characters": 2779,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37eed8479ccd81d8a9c8c767a63e2d9e",
+      "title": "DM Quick Reference (Final Canon)",
+      "url": "https://app.notion.com/p/37eed8479ccd81d8a9c8c767a63e2d9e?pvs=204",
+      "page_last_edited_at": "2026-07-03T18:04:50.012Z",
+      "returned_snapshot_as_of": "2026-07-03T18:04:50.013Z",
+      "sha256": "2ea4cc4d669f5df696c8dc1ad0c0044467ab6f89d152eb0b9372569b14eb5ebc",
+      "characters": 1535,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37eed8479ccd81bd8f2ad389875405c2",
+      "title": "\ud83e\udde0 DM Complexity Cheat Sheet \u2014 Quick Judgment Guide",
+      "url": "https://app.notion.com/p/37eed8479ccd81bd8f2ad389875405c2?pvs=204",
+      "page_last_edited_at": "2026-06-14T15:17:18.785Z",
+      "returned_snapshot_as_of": "2026-06-14T15:17:27.033Z",
+      "sha256": "05e2d38e5cc0c8a7b1b6ac0c6337ecd3ea3e5597097845e781f205c480ae798a",
+      "characters": 3210,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37eed8479ccd813dab39dd57511a0c48",
+      "title": "\ud83c\udfb2 DM Quick Cost Cheat Sheet",
+      "url": "https://app.notion.com/p/37eed8479ccd813dab39dd57511a0c48?pvs=204",
+      "page_last_edited_at": "2026-07-03T18:49:52.357Z",
+      "returned_snapshot_as_of": "2026-07-03T18:49:52.357Z",
+      "sha256": "8aa0bbd12b1f13a4a75c9c9305dec3f131e08f6a59ab36d1ebc453e551f9c27f",
+      "characters": 5204,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37eed8479ccd810c8597e65d9719f149",
+      "title": "\ud83e\udded \ud83e\udded DM Clarity + Interpretation Framework",
+      "url": "https://app.notion.com/p/37eed8479ccd810c8597e65d9719f149?pvs=204",
+      "page_last_edited_at": "2026-06-14T07:04:58.044Z",
+      "returned_snapshot_as_of": "2026-06-14T07:04:58.044Z",
+      "sha256": "a0027d5e4cb16d1404cfa27f4e13b117cfc06f6e16b8a76993a4544d31a79c94",
+      "characters": 2881,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37fed8479ccd819bbe74d22bdfcbbc83",
+      "title": "\ud83c\udf0d Lexicon \u2014 Domains (Canonical)",
+      "url": "https://app.notion.com/p/37fed8479ccd819bbe74d22bdfcbbc83?pvs=204",
+      "page_last_edited_at": "2026-07-03T19:08:58.844Z",
+      "returned_snapshot_as_of": "2026-07-03T19:08:58.845Z",
+      "sha256": "37f11875d9e52c847adc720431d505b474811498204a4b556bb0fd5289b0d90d",
+      "characters": 4770,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37fed8479ccd81a6ac10f0bf634d1423",
+      "title": "\ud83e\udde0 Lexicon \u2014 Verbs (Canonical)",
+      "url": "https://app.notion.com/p/37fed8479ccd81a6ac10f0bf634d1423?pvs=204",
+      "page_last_edited_at": "2026-07-03T19:09:13.469Z",
+      "returned_snapshot_as_of": "2026-07-03T19:09:13.470Z",
+      "sha256": "da3f4c3813cfce40f4619fec8573344bfe0080d9b0e7cb0134976dd8ce9c25e6",
+      "characters": 11765,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37eed8479ccd81128d88f48f6199e967",
+      "title": "\ud83e\udde0 System Lexicon (Canonical)",
+      "url": "https://app.notion.com/p/37eed8479ccd81128d88f48f6199e967?pvs=204",
+      "page_last_edited_at": "2026-07-03T13:10:20.129Z",
+      "returned_snapshot_as_of": "2026-07-03T13:10:20.129Z",
+      "sha256": "e1caf37d008fe4bf8f670da6b816fe92295835598f52c9aa132894ae481a248e",
+      "characters": 9351,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37fed8479ccd81d5850cf4349fd22dec",
+      "title": " Lexicon Expansion Structure schema (Canonical)",
+      "url": "https://app.notion.com/p/37fed8479ccd81d5850cf4349fd22dec?pvs=204",
+      "page_last_edited_at": "2026-07-03T13:10:20.129Z",
+      "returned_snapshot_as_of": "2026-07-03T13:10:20.129Z",
+      "sha256": "0d89ba4e438d474d32b7ad03393436f5f67b30857d333684e49b7f2f32bc9593",
+      "characters": 2594,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37fed8479ccd816d8a0be0db8693e78e",
+      "title": "\u2694\ufe0f Archetype Bundles \u2014 Capability Group System",
+      "url": "https://app.notion.com/p/37fed8479ccd816d8a0be0db8693e78e?pvs=204",
+      "page_last_edited_at": "2026-07-03T13:10:20.129Z",
+      "returned_snapshot_as_of": "2026-07-03T13:10:20.129Z",
+      "sha256": "90ed9892e87706096b6e8bd0242b73cad483501220ac9db8aa83c0f770c81e25",
+      "characters": 3502,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "37eed8479ccd812ba8b4f59488cfe3ac",
+      "title": "\ud83e\uddec Starter Archetypes (C)",
+      "url": "https://app.notion.com/p/37eed8479ccd812ba8b4f59488cfe3ac?pvs=204",
+      "page_last_edited_at": "2026-07-03T13:10:20.129Z",
+      "returned_snapshot_as_of": "2026-07-03T13:10:20.129Z",
+      "sha256": "97c46c0f197ccee9e816ae6fc564ef0fba395e081970cbbe987df1ea81ed8d8a",
+      "characters": 2200,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "38eed8479ccd80909bc1d206ed4afe8a",
+      "title": "SWORDWEAVE BLUEPRINT LEDGER: COMPILED CAPABILITIES & DESIGN MATH",
+      "url": "https://app.notion.com/p/38eed8479ccd80909bc1d206ed4afe8a?pvs=204",
+      "page_last_edited_at": "2026-07-03T19:09:05.064Z",
+      "returned_snapshot_as_of": "2026-07-03T19:09:05.064Z",
+      "sha256": "f8a8a615a413e63ac82774a5a95f68a0f6b9def84d626c182bb9cf0039f8a23a",
+      "characters": 27617,
+      "verification": {
+        "state": "unverified"
+      }
+    },
+    {
+      "id": "39ced8479ccd801196e5dabccd4c9697",
+      "title": "\u2694\ufe0f SWORDWEAVE BLUEPRINT LEDGER: COMPILED DESIGNS",
+      "url": "https://app.notion.com/p/39ced8479ccd801196e5dabccd4c9697?pvs=204",
+      "page_last_edited_at": "2026-07-13T08:03:06.772Z",
+      "returned_snapshot_as_of": "2026-07-13T08:03:06.772Z",
+      "sha256": "2c8b7d97b77b30bdb0ff649d072a792bb4638829c7833993bda5a09a53868e18",
+      "characters": 8389,
+      "verification": {
+        "state": "unverified"
+      }
+    }
+  ],
+  "pdf": [
+    {
+      "key": "phb",
+      "path": "/Users/max/Desktop/Downloads/Swordweave Light Player's Handbook TTRPG.pdf",
+      "pages": 36,
+      "characters": 98462,
+      "sha256": "5d7566491c97b722825782f51a23628de17799cacd20b2838bfdb666e4f45ffa"
+    },
+    {
+      "key": "gm",
+      "path": "/Users/max/Desktop/Downloads/Dungeon Master's Guide_ SwordWeave.pdf",
+      "pages": 31,
+      "characters": 67675,
+      "sha256": "19ea17b023417622120f6e542bce1e67f19cd58c1a5c8b3cea66860a013c2924"
+    }
+  ],
+  "platform": [
+    {
+      "path": "src/lib/rules/play-guide.ts",
+      "sha256": "e51531291eca851bded10b4c782b868f770077a65ccba47ee9ec27cf7f0835f5"
+    },
+    {
+      "path": "src/components/sandbox/author-chapters.tsx",
+      "sha256": "eca1d40dcd177d720eb2a6044e46bff6af549ec930b0358ebbe6a058017a8eb1"
+    },
+    {
+      "path": "src/lib/capabilities/table-guidance.ts",
+      "sha256": "a83a57747674952691465b007c0af4938926aa52d9dc24fa4513c220488f478d"
+    },
+    {
+      "path": "src/components/characters/bottom-sticky-bar.tsx",
+      "sha256": "c378c17d73cde804b1811389b94ff783b3937d76e92e1bc89dc33a0c167a46cb"
+    },
+    {
+      "path": "src/components/characters/sheet-identity-header.tsx",
+      "sha256": "b78a1f692c530cbe5e0efbce96da84b39adbcd8bbf3b409734136e4595c72798"
+    },
+    {
+      "path": "src/components/characters/workspace/character-foundation-editor.tsx",
+      "sha256": "a6979edb62b64ae8c4565a121631dd3504398dc055d3ae8c44851b5451fb9137"
+    },
+    {
+      "path": "src/components/characters/workspace/character-build-workspace.tsx",
+      "sha256": "1308c6803e18738547b5a16d038695179d56b100cee5cd125db02708762b3c48"
+    },
+    {
+      "path": "src/components/characters/new-character-form.tsx",
+      "sha256": "9852b1db7cc23d390fbc5c05138187193e39c243e8f6a216b090377072ab6391"
+    },
+    {
+      "path": "src/components/character-modal/tabbed-character-form.tsx",
+      "sha256": "1ec1e3975107e0569c754114fb9845f9ecd8181c0906f1f23cc191d148285dc0"
+    },
+    {
+      "path": "src/lib/character/creation-budget.ts",
+      "sha256": "a24976ebf553cb67ba4077b1bd352c52f0c12d3d0081feb9c13caf477841edf3"
+    },
+    {
+      "path": "src/lib/character/creation-primitives.ts",
+      "sha256": "347586918864ee967825afd63e29c44df5590fc0b1979ddb90169cff21536676"
+    },
+    {
+      "path": "src/lib/engine/bu.ts",
+      "sha256": "79ad93206c8cb4fec35429bdf917b9f66d4aea2a1c5882262eac0e22a846fbff"
+    },
+    {
+      "path": "src/lib/engine/practices.ts",
+      "sha256": "16c6e9d1e46e7e43a0eaaaf60650af7ddae1c09b7e4efa6642f2779258c273c0"
+    },
+    {
+      "path": "src/lib/engine/practice-grants.ts",
+      "sha256": "4c3fc753fa5ad4ec076cf5879341de9bf229921c09e2f0baba2941d28d026150"
+    },
+    {
+      "path": "src/lib/engine/sheet.ts",
+      "sha256": "ea2e2b547ada358ac31056fa0e50ee0bacbff185547de1beb75556d765caf12d"
+    },
+    {
+      "path": "src/lib/engine/stats.ts",
+      "sha256": "8f1b9e16bda8e1dadccfb294154dda9158e9e0de3f7f2b4cb8cc298a74701488"
+    },
+    {
+      "path": "src/lib/engine/encumbrance.ts",
+      "sha256": "d189f819b2847f8ae6bcf738a8ed3b3a8ea9242ba10920c5d2a8f76588167c35"
+    },
+    {
+      "path": "src/lib/engine/resolve-modifiers.ts",
+      "sha256": "f35afdd257877647e925dd8fb7d1a95f1ce5ddbd685c60ffebdfab7cfaee8607"
+    },
+    {
+      "path": "src/lib/engine/damage-resolver.ts",
+      "sha256": "a9ac69cda50bebe98ad30b829f85c1370a3869814ccd1d4ccff496dd2cca14ee"
+    },
+    {
+      "path": "src/lib/primitives/canonical-market.ts",
+      "sha256": "799ab7dca79617550710603dbfa47f8ac4f812c6651bb69701165fc0853cbbbf"
+    },
+    {
+      "path": "src/lib/monsters/resolve.ts",
+      "sha256": "278a751492e985ecf980c954a42e8878d693f80f05c1747f2c49cc734bdbe2df"
+    },
+    {
+      "path": "src/lib/encounters/model.ts",
+      "sha256": "88b7a28a28fc275a5564de545d5604baf2b4c3cd4fa1ef1bce79847207d7a4c4"
+    },
+    {
+      "path": "src/lib/encounters/run-state.ts",
+      "sha256": "a0484195236668be73ac56810f1e157b0c84367821c8f5e67ccd8df766fe3239"
+    },
+    {
+      "path": "src/lib/encounters/party-mechanics.ts",
+      "sha256": "a077d0990951db1bb7aac87cabaf11c020ce2f3bbf8d1958848cdcfddc46aff3"
+    },
+    {
+      "path": "src/lib/encounters/service.ts",
+      "sha256": "aacb9380f017dbce2025c8802a60206d5dc763959d7dd009bd41a13150b2e3ea"
+    },
+    {
+      "path": "src/lib/play-state/model.ts",
+      "sha256": "1102eb87d63956753b2e66e4f4a791b46ff2cafb9b58a2b6ed64ee989ee081c8"
+    },
+    {
+      "path": "src/lib/play-state/client-sync.ts",
+      "sha256": "5d04df07cb75f68cd5e0f90a68240a34259a7d5f3b641d6f2c477e9638621912"
+    },
+    {
+      "path": "src/lib/collections/service.ts",
+      "sha256": "6b8e89fe0653ce4da0f22178a83aacdf27bbe26e07c67281968f4434bb5a9ee9"
+    }
+  ]
+}

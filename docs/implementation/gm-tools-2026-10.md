@@ -84,6 +84,8 @@ so an authored source label cannot impersonate the system catalogue.
 
 ## Later phases
 
+Current update, 10 October: the three free books are now the active editorial priority. See [Current and deferred work](../next-work.md) for publication gates, the future native bookstore, creator sales and printed/retail distribution. The paragraph below records the earlier release's deferred scope.
+
 Campaign notes, maps, VTT features and handbooks remain deferred. General entity
 JSON interoperability belongs with the ChatGPT app/MCP phase: signed-in users
 discuss a character concept, receive canonical or newly authored component

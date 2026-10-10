@@ -1,0 +1,132 @@
+{
+  "title": "SwordWeave - publication proof",
+  "version": "Editorial proof 0.1 - 10 October 2026",
+  "rulesRevision": "3fa371530dbe5713a2d0412eb88aae7118e0af0e",
+  "status": "Sample writing and design for review. Not a complete rulebook or a new rules release.",
+  "pages": [
+    {
+      "id": "begin",
+      "book": "Player's Handbook",
+      "title": "Begin a shared story",
+      "deck": "Imagine someone. Give them a purpose. Discover what happens when their intentions meet the world.",
+      "cover": true,
+      "blocks": [
+        {"type": "p", "text": "SwordWeave is a tabletop roleplaying game built through conversation. Each player portrays a character. The Game Master describes the world, portrays its other inhabitants and helps the group resolve uncertainty."},
+        {"type": "p", "text": "Your character's purchased rules establish what they can do. Your choices give those possibilities a direction. You can combine what you own into a new action instead of waiting for a saved ability to describe your exact idea."},
+        {"type": "quote", "text": "Start with what you want to accomplish. The rules help the table understand how it could happen."},
+        {"type": "note", "title": "About this sample", "text": "Eight pages demonstrate the proposed player, GM and reference treatments. The complete books will share an approved rules register. Unresolved publication questions remain in the accompanying reconciliation notes."}
+      ],
+      "ruleIds": ["SW-PLAY-01", "SW-BUILD-01"]
+    },
+    {
+      "id": "first-scene",
+      "book": "Player's Handbook",
+      "title": "Your first scene",
+      "deck": "Ask about the situation. Describe a result you want. Agree the attempt before you roll.",
+      "blocks": [
+        {"type": "dialogue", "rows": [["GM", "Smoke leaks beneath the inn's door. Someone is trapped upstairs."], ["Player", "Is there a window I can reach? I want to get them out."], ["GM", "There is a ledge beneath it, but the ladder is broken."]]},
+        {"type": "h", "text": "Make the attempt understandable"},
+        {"type": "p", "text": "The player asks what is visible and proposes a route. An ordinary action may need no special primitive. An unusual working needs the appropriate owned access. The GM considers its scope, the opposition and the scene, then explains any difficulty, cost and consequences."},
+        {"type": "p", "text": "You can accept those stakes, reduce the scope or propose another approach. A straightforward, uncontested action may simply happen. Roll when the result needs resolving."},
+        {"type": "callout", "title": "A complete check", "text": "The GM asks for a check using your displayed +5 bonus against DC 12. You roll 9: 9 + 5 = 14. That meets the threshold. Apply the agreed success, costs and consequences; describe the changed situation."},
+        {"type": "h", "text": "Read the dice"},
+        {"type": "p", "text": "d20 means one twenty-sided die. 1d4 means one four-sided die. 4d10 means roll four ten-sided dice and add their results. DC is the number a roll must meet or beat."},
+        {"type": "note", "title": "Use the displayed total once", "text": "A sheet's practice bonus may already contain the attribute and training. Adding them again would count the same contribution twice."}
+      ],
+      "ruleIds": ["SW-PLAY-01", "SW-ROLL-01"]
+    },
+    {
+      "id": "first-character",
+      "book": "Player's Handbook",
+      "title": "Make Mira",
+      "deck": "A curious courier who reshapes water and is searching for her missing teacher.",
+      "blocks": [
+        {"type": "p", "text": "At level 1, Mira has 25 BU. Her Physical 3, Mental 3 and Magical 4 total 10. She chooses Magical as her proficient attribute. Her ancestry, courier upbringing and water-shaping identity describe her; any extra abilities still need actual purchased rules."},
+        {"type": "table", "headers": ["Purchase", "What it supplies", "BU"], "rows": [["Verb Access II", "Reshape existing states", "8"], ["Water Domain I", "Work within grounded Water scope", "4"], ["Near Range", "Reach up to 30 ft", "4"], ["Heavy Die Block", "Owned d8 output permission", "4"], ["Knowledge proficiency", "Training in Knowledge", "4"], ["Purchased total", "No repeated ingredients", "24"], ["Remaining", "25 - 24", "1"]]},
+        {"type": "p", "text": "This ledger supplies the required verb and domain foundation. Mira can save a water-shaping capability or improvise using the same access. The die permission does not by itself grant every kind of damage or healing; the whole construction must support the proposed outcome."},
+        {"type": "callout", "title": "Check the starting numbers", "text": "PB 2. Base Vitality: (10 + 2) x 1 = 12. With Magical selected and no other modifiers, DC: 5 + 2 + 4 = 11. Trained Knowledge uses Mental 3 + PB 2 = +5."},
+        {"type": "note", "title": "Items stay separate", "text": "The table may provide a separate item allowance. Item BU does not consume this 25-BU foundation. No item cost or mirror credit is included in this example."}
+      ],
+      "ruleIds": ["SW-BUILD-03", "SW-BU-01", "SW-ROLL-01", "SW-ROLL-03", "SW-VIT-01"]
+    },
+    {
+      "id": "construction",
+      "book": "Player's Handbook",
+      "title": "Pieces you keep",
+      "deck": "Purchase a primitive once. Use it wherever the construction and the fiction support it.",
+      "blocks": [
+        {"type": "table", "headers": ["Piece", "Purpose"], "rows": [["Primitive", "A purchased rule: a number, permission, resource or descriptive ability."], ["Effect", "An outcome or applied state, potentially containing its own primitives."], ["Capability", "A convenient saved construction: a maneuver, gift, technique, passive feature or augment."], ["Heritage", "A lineage, upbringing or manifest that organizes your character's foundation."]]},
+        {"type": "h", "text": "Compose from owned access"},
+        {"type": "p", "text": "Mira's saved water-working gives her something easy to find during play. It does not forbid a different proposal using the same access. Describe that proposal, check whether it adds a new behavior, and agree its scope and cost."},
+        {"type": "callout", "title": "Reuse changes the purchase ledger", "text": "You own primitive X worth 10 BU. A 40-BU capability includes that same X and 30 BU of new ingredients. Acquiring the new ingredients costs 30 BU, not 40. This does not make the action effortless at runtime."},
+        {"type": "h", "text": "Read the rule's boundaries"},
+        {"type": "p", "text": "A numerical rule identifies its result, operation, value, recipient, condition and stacking behavior. A descriptive permission can be useful without a numerical modifier. Names alone do not grant abilities or impose a standard condition package."},
+        {"type": "note", "title": "Owned access and chosen scale", "text": "Range and dice type establish permissions. Dice count, targets, area and duration describe the proposed use and its pressure. New behaviors may need additional access; simply choosing more dice does not grant them."}
+      ],
+      "ruleIds": ["SW-BUILD-01", "SW-BUILD-02", "SW-SCALE-01", "SW-COND-01"]
+    },
+    {
+      "id": "rhythm",
+      "book": "Player's Handbook",
+      "title": "One shared round",
+      "deck": "The party must cross a failing bridge before a guard rings the alarm.",
+      "blocks": [
+        {"type": "timeline", "rows": [["Council", "Declare and coordinate", "Mira will pin the guard's alarm arm. Sol will form a supported path. Neri will move their injured friend once it is ready. The GM describes the opposition's visible intent."], ["Fast", "Complexity 0-1", "The rush and the guard's reach for the bell collide. Timing matters: resolve a Reaction Clash. Suppose the guard wins and rings it. Mira may still pin the guard if that remains possible."], ["Measured", "Complexity 2-3", "Sol's constructed path resolves after the simple rush. Damage to a support changes the scene; the table checks whether the planned scope still works. Neri's rescue follows the agreed dependency."], ["Heavy", "Complexity 4+", "An elaborate working resolves after the earlier changes, if its user can still complete it. Finish triggered reactions and record the resulting costs, duration and consequences."]]},
+        {"type": "p", "text": "A new Council begins with the changed situation: the party is across, but the alarm has sounded. Reaction Slots reset and everyone declares new intent."},
+        {"type": "callout", "title": "React when the fiction opens a window", "text": "If someone slips, a character with an available Reaction Slot may catch them when position and permissions allow it. Default reactions are immediate and narrow: complexity 0-1, self/touch or one target."},
+        {"type": "note", "title": "Track measures timing", "text": "Complexity measures what must happen before the action manifests. There is no default initiative roll. Allies in a track coordinate their order; use a clash or contest when opposing intents actually require one."}
+      ],
+      "ruleIds": ["SW-COMBAT-01", "SW-COMBAT-02", "SW-COMBAT-03"]
+    },
+    {
+      "id": "gm-ruling",
+      "book": "Game Master's Guide",
+      "title": "Make the stakes clear",
+      "deck": "Give the player enough information to choose the attempt they actually want to make.",
+      "blocks": [
+        {"type": "h", "text": "Start with the proposed result"},
+        {"type": "p", "text": "A player wants to hold a short ice path over a broken crossing. Ask where the water comes from, what the path supports, how far it reaches and how long it must remain. Verify the relevant verb, domain and other access before assigning effort."},
+        {"type": "table", "headers": ["Consider", "What changes the ruling"], "rows": [["Scale", "One narrow crossing versus a route for a crowd."], ["Impact", "A foothold versus support for a loaded wagon."], ["Complexity", "A stable path versus one that moves and excludes enemies."], ["Scene and urgency", "Calm preparation versus a collapsing support under attack."]]},
+        {"type": "p", "text": "Judge Strain from the actual attempt. Grades 0-6 describe pressure; they do not prescribe a fixed Vitality bill. Offer a smaller scope, more preparation or a different consequence when that would make a useful choice."},
+        {"type": "callout", "title": "Example of an agreed cost", "text": "For this scene, the table agrees a narrow maintained path costs 2 Vitality initially and 2 at its agreed upkeep point. These figures are a scene ruling, not a universal price for ice, paths or a Strain grade."},
+        {"type": "h", "text": "Separate timing, duration and maintenance"},
+        {"type": "p", "text": "State when the path resolves, how long it can last and whether it needs upkeep. One capability with several effects remains one execution and one upkeep track. Multiple maintained capabilities can coexist; their costs accumulate."},
+        {"type": "note", "title": "Agree interference before it matters", "text": "For Vitality upkeep, cumulative turn damage reaching the upkeep amount requires immediate re-payment or the effect ends. Other maintenance uses its actual requirement. Make the payment point explicit within the shared round; a hit does not universally cancel every working."}
+      ],
+      "ruleIds": ["SW-STRAIN-01", "SW-STRAIN-02", "SW-UPKEEP-01", "SW-UPKEEP-02", "SW-UPKEEP-03"]
+    },
+    {
+      "id": "monster-example",
+      "book": "Game Master's Guide",
+      "title": "Sinkhole Maw",
+      "deck": "A tunneling predator has prepared an unstable hunting ground.",
+      "blocks": [
+        {"type": "monster", "image": "output/monster-art-2026-10/sinkhole-maw-master.png", "rows": [["Creature budget", "250 BU"], ["Environment", "Subterranean"], ["Role / size", "Solo / Huge"], ["Focus", "Physical"], ["Ability reference", "Gravity Anchor Trap"], ["Trait reference", "Burrowing Speed +30"]]},
+        {"type": "h", "text": "Give the scene a purpose"},
+        {"type": "p", "text": "The party might need to reach the far tunnel, retrieve someone from a breach or get a caravan through. Decide what success looks like before reducing the encounter to a fight until one side reaches zero Vitality."},
+        {"type": "h", "text": "Use the creature's actual construction"},
+        {"type": "p", "text": "The existing catalogue recommends using the anchor trap to keep prey near a breach, then approaching physically. Read the pinned ability's real targeting and resolution. Its name does not authorize automatic capture or extra unpurchased outcomes."},
+        {"type": "callout", "title": "Appraise the budgets separately", "text": "One Maw contributes 250 base creature BU; two contribute 500. Resolve and add their separate Item BU where present. Spent/remaining creature BU and mirror credit are different figures. Comparable totals do not guarantee comparable difficulty."},
+        {"type": "note", "title": "Catalogue excerpt", "text": "This page demonstrates a creature-reference layout using existing identity and artwork. It is not a full resolved statblock; final bestiary entries will include their versioned rules and validated figures."}
+      ],
+      "ruleIds": ["SW-ENCOUNTER-01"]
+    },
+    {
+      "id": "reference",
+      "book": "System Reference Document",
+      "title": "Resolution reference",
+      "deck": "Definitions and formulas for a versioned, reusable rules document.",
+      "blocks": [
+        {"type": "h", "text": "SW-ROLL-03 / Character DC"},
+        {"type": "p", "text": "A character has one DC. Use the eligible proficient attribute selected for its scaling, including active attribute modifiers. Apply direct DC modifiers separately. Physical, Mental and Magical saving throws remain separate numbers."},
+        {"type": "mechanical", "text": "DC = 5 + PB + selected modified attribute + direct DC modifiers"},
+        {"type": "table", "headers": ["Reference", "Baseline"], "rows": [["SW-ROLL-01 / Check", "d20 + relevant attribute + PB if trained + applicable modifiers"], ["SW-ROLL-04 / Save", "d20 + relevant attribute + PB if proficient + applicable save modifiers"], ["SW-VIT-01 / Vitality", "(10 + current PB) x level, then active maximum-Vitality modifiers"], ["SW-ROLL-02 / Base PB", "2 + floor((level - 1) / 4), before active PB modifiers"], ["SW-ROLL-05 / Rounding", "Round up whenever rounding is required"]]},
+        {"type": "callout", "title": "Worked example", "text": "At level 5, PB is 3. Physical selected at +2 gives DC 10. An active +3 Physical makes the selected value +5 and DC 13. A direct +1 DC produces 14. No separate Mental or Magical DC is created."},
+        {"type": "h", "text": "Read a rule with its scope"},
+        {"type": "p", "text": "Conditions determine when a contribution applies. Stacking determines how contributions combine. A displayed total must not be added twice. A specific authored rule can modify the baseline within its stated scope."},
+        {"type": "note", "title": "Release information", "text": "Rule IDs in this proof are editorial identifiers. The complete SRD will identify its approved rules version, licensed text boundary, attribution instructions, glossary and changes. This proof does not replace the existing license."}
+      ],
+      "ruleIds": ["SW-ROLL-01", "SW-ROLL-02", "SW-ROLL-03", "SW-ROLL-04", "SW-ROLL-05", "SW-VIT-01"]
+    }
+  ]
+}
