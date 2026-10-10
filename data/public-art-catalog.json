@@ -1904,6 +1904,531 @@
       "key": "images/lineages/whispercolony-graphic-v1.webp",
       "bytes": 128984,
       "sha256": "6cca964be94fb590080282c450bb9cb9d44c754674ea7ca165b12d95c5dd5d37"
+    },
+    {
+      "key": "images/monsters/abyssal-survey-squid-graphic-v1.webp",
+      "bytes": 294234,
+      "sha256": "7e0c45357ec428ff4a41012e205ebc0f1ea044f9b8895f6904ad67c70da1385a"
+    },
+    {
+      "key": "images/monsters/airshare-nautilus-graphic-v1.webp",
+      "bytes": 292120,
+      "sha256": "f772ba52357164c838b457275440a0cb482087d6fb310126a266b3096fa3a517"
+    },
+    {
+      "key": "images/monsters/amber-vault-hermit-graphic-v1.webp",
+      "bytes": 317950,
+      "sha256": "9cd7a5d3455350fb0b9e4ab03abd25c9b01f2226a0eafcc0def55ff51cfabb90"
+    },
+    {
+      "key": "images/monsters/antlered-routekeeper-graphic-v1.webp",
+      "bytes": 316660,
+      "sha256": "3a740d4a3d073a9c7fcba0b500f4295107f6d83771efc6b5d0fb9a8449e9e5b3"
+    },
+    {
+      "key": "images/monsters/ash-veil-collector-graphic-v1.webp",
+      "bytes": 289954,
+      "sha256": "87c78fe437e2280797a5b434fc8917f35b7c4fcd1ae1b749fe400da0f7509c8a"
+    },
+    {
+      "key": "images/monsters/ashwake-mourner-graphic-v1.webp",
+      "bytes": 310014,
+      "sha256": "36b9dbdd3383a096a6f6b2dade2818ba1dbd4818c979b3cd9189d60f65774bf5"
+    },
+    {
+      "key": "images/monsters/basalt-door-eater-graphic-v1.webp",
+      "bytes": 351844,
+      "sha256": "83da3d56c2638e1cdfd7108577ae960fbb555ccf05a5ddd65c2d376c2586d768"
+    },
+    {
+      "key": "images/monsters/bellwatch-hound-graphic-v1.webp",
+      "bytes": 302616,
+      "sha256": "e3b7dec5c5b9a92b4b20b2656050a068473fe486fe70b0f44809640da890cc89"
+    },
+    {
+      "key": "images/monsters/brass-oathkeeper-graphic-v1.webp",
+      "bytes": 344582,
+      "sha256": "88f7f13f702b4a60dfbe5253a596b4dab7eec151681b23189c7781e92ff96d2c"
+    },
+    {
+      "key": "images/monsters/briar-covenant-tender-graphic-v1.webp",
+      "bytes": 369566,
+      "sha256": "e8419de48e02af09c1d5ece12fba186d4b59f66e25df5d37d868f93e020eebd5"
+    },
+    {
+      "key": "images/monsters/brineveil-siren-graphic-v1.webp",
+      "bytes": 327526,
+      "sha256": "9e34aa8ad6094450381794a1033a5c295ee9d33b0016b16e477a5419dcd8f46a"
+    },
+    {
+      "key": "images/monsters/bronze-path-archer-graphic-v1.webp",
+      "bytes": 297232,
+      "sha256": "50567e4df64099c6294c63fa1a03e116483676f181134712167d97cab76f517b"
+    },
+    {
+      "key": "images/monsters/candlebone-porter-graphic-v1.webp",
+      "bytes": 352416,
+      "sha256": "80c5eb3e331a61d15ad8b03d4142d75908b2da4e374cd0dbb67d38fad0004f2d"
+    },
+    {
+      "key": "images/monsters/cavern-choir-bat-graphic-v1.webp",
+      "bytes": 321124,
+      "sha256": "2f35e05dcac4d6d2ba3609aa333c091581380f7fd7c5e4d85dcb7e70638ac038"
+    },
+    {
+      "key": "images/monsters/chainphrase-advocate-graphic-v1.webp",
+      "bytes": 324904,
+      "sha256": "f882350a42ffa4cafea624b80c2b93f4de343315721d00963d177b98e52bfab8"
+    },
+    {
+      "key": "images/monsters/cinder-contractling-graphic-v1.webp",
+      "bytes": 339078,
+      "sha256": "406ce07fb9d14fe4f2f75a7e11ac356a6944394e61e7543fa741a7bc9264a129"
+    },
+    {
+      "key": "images/monsters/cinderbrush-spitter-graphic-v1.webp",
+      "bytes": 378232,
+      "sha256": "030f7cc5756630f7dfd9e1b58c384c74b6f7260f609021285058a282be6f8f00"
+    },
+    {
+      "key": "images/monsters/cinderwing-courier-graphic-v1.webp",
+      "bytes": 384606,
+      "sha256": "92465c939a2a167f148cf7b061c796bb114503d4dd77717a8072f4d89efe797d"
+    },
+    {
+      "key": "images/monsters/cloudglass-harrier-graphic-v1.webp",
+      "bytes": 350302,
+      "sha256": "24b01e528328c8ae45bc207e237c0289533381b60ef918bcbe31afa21221f04e"
+    },
+    {
+      "key": "images/monsters/copperpin-raptor-graphic-v1.webp",
+      "bytes": 339168,
+      "sha256": "3f06c8a65fe04f6b26df73b0e3850b5f67ca007e4ea12c2b4242c17da3dab03b"
+    },
+    {
+      "key": "images/monsters/counterlift-atlas-graphic-v1.webp",
+      "bytes": 360962,
+      "sha256": "c013d08257be65147c5b14f45a347bb2ab50804b1ddda694c0932d2fd08f9720"
+    },
+    {
+      "key": "images/monsters/counterweight-custodian-graphic-v1.webp",
+      "bytes": 328170,
+      "sha256": "8ce514ec495be3acdad7ae05d29494c310ec091ccb6fc0f50f08004e5c9a4c27"
+    },
+    {
+      "key": "images/monsters/crown-of-the-kiln-graphic-v1.webp",
+      "bytes": 338714,
+      "sha256": "1cacc9c3e8e9e0ad3a4f1500d9595d773de3b1bfef394ffb2e964366a9da6c76"
+    },
+    {
+      "key": "images/monsters/currentglass-ray-graphic-v1.webp",
+      "bytes": 385874,
+      "sha256": "bb4f66989375348627778ce4d0d4bcf93c11b6755a340fdc667f8c30459d12fa"
+    },
+    {
+      "key": "images/monsters/deeprail-rivet-rat-graphic-v1.webp",
+      "bytes": 307342,
+      "sha256": "c5f637d32037f97508dc961c3c73284aec1df36fc763032887604c8bbf29f471"
+    },
+    {
+      "key": "images/monsters/drowned-rope-hunter-graphic-v1.webp",
+      "bytes": 345142,
+      "sha256": "99fd794ad96d88cc247be6ba0f57aafac0d6602bf67f9cebc3968b69cd13019a"
+    },
+    {
+      "key": "images/monsters/emberfield-tender-graphic-v1.webp",
+      "bytes": 304090,
+      "sha256": "fd47e3f1ffb927b529a5efb77b895a2a5767aa18d9d2110a048ffd373e6da1ce"
+    },
+    {
+      "key": "images/monsters/equinox-gate-titan-graphic-v1.webp",
+      "bytes": 399828,
+      "sha256": "3b26e8928eb9e4469973dace45238555a882444e8258c6b01c39fee00684c6ee"
+    },
+    {
+      "key": "images/monsters/faultglass-scorpion-graphic-v1.webp",
+      "bytes": 333606,
+      "sha256": "f436dda28f21913149e1293c7bf2bd98d84936bd96b059e0be2f779935bec9fc"
+    },
+    {
+      "key": "images/monsters/floodroot-behemoth-graphic-v1.webp",
+      "bytes": 355132,
+      "sha256": "f0b5f0a7d0affc6dfe6fa12b1210ee201e89bc61790d5b63e1c0d97e5f7c9c97"
+    },
+    {
+      "key": "images/monsters/foldglass-intruder-graphic-v1.webp",
+      "bytes": 314998,
+      "sha256": "18949390bc8c12cf69f6660ff54a6eff8f5e884a57ef7df01f17802466afc88b"
+    },
+    {
+      "key": "images/monsters/funeral-bell-chorus-graphic-v1.webp",
+      "bytes": 358644,
+      "sha256": "9ec7f7a3c912ba8438f8eb9f41a36d1cfa92c138d09a0fb4bdbcc80c6bf1f2b0"
+    },
+    {
+      "key": "images/monsters/furnacejaw-runner-graphic-v1.webp",
+      "bytes": 362588,
+      "sha256": "c6bfeda16c8699e185c51ecc06a277ef207e8ed2458d8ade53d835119f2a25d6"
+    },
+    {
+      "key": "images/monsters/gateplate-sentinel-graphic-v1.webp",
+      "bytes": 364212,
+      "sha256": "55c7b369b21710e3cfe0380d938321013367486832e3864db19c372d9642dd17"
+    },
+    {
+      "key": "images/monsters/gilded-recovery-hand-graphic-v1.webp",
+      "bytes": 336694,
+      "sha256": "4dd60cf572e385e151ecc308eb6e5f8e1e63aabed8f143ef79490469904b3211"
+    },
+    {
+      "key": "images/monsters/glasswork-verdict-engine-graphic-v1.webp",
+      "bytes": 317772,
+      "sha256": "587b285de5c59aa862708a437a6bcffcf803696fcc3fb8c484a0007458cb68d3"
+    },
+    {
+      "key": "images/monsters/gravechalk-scout-graphic-v1.webp",
+      "bytes": 317396,
+      "sha256": "e2a1bf8f54586b2b62a0aafdce003f2e7ce9ac7dcdcb5f559e398a41e7aeaffc"
+    },
+    {
+      "key": "images/monsters/gustling-kite-graphic-v1.webp",
+      "bytes": 260318,
+      "sha256": "aa396e8e0a2242394e72e6c9f00b7cf20d097b016175b8e329c6036cb1512583"
+    },
+    {
+      "key": "images/monsters/gutterglass-sneak-graphic-v1.webp",
+      "bytes": 317050,
+      "sha256": "0ce5309790885b18caafc27946d299e1a116219489aa503001524fef9c1dcccb"
+    },
+    {
+      "key": "images/monsters/hollowbark-listener-graphic-v1.webp",
+      "bytes": 344730,
+      "sha256": "7ac1c9a06f50b92472897b12f7facfa47be36a9a83e76e2da2d9e24709ec46e2"
+    },
+    {
+      "key": "images/monsters/inkblink-remnant-graphic-v1.webp",
+      "bytes": 260790,
+      "sha256": "1e44a9791015543e1712ffdff4cd27f8acb4590559a7cd413816cc1c7601cdd2"
+    },
+    {
+      "key": "images/monsters/lamplighter-rescue-moth-graphic-v1.webp",
+      "bytes": 332264,
+      "sha256": "53916d13d9fd18572dc6db282dc0df4758a42ea4b6470e56e890ef45cedccb9f"
+    },
+    {
+      "key": "images/monsters/lanternblind-mole-graphic-v1.webp",
+      "bytes": 286652,
+      "sha256": "e784e9858e2c4477a56a82b04203d386c2578c7875c751104fdbe1e948ec186d"
+    },
+    {
+      "key": "images/monsters/lanternjaw-goblin-graphic-v1.webp",
+      "bytes": 385728,
+      "sha256": "8b16c1a7a88d912a028a0576955521171f7e2589bf6f98039ffee43fca425ea8"
+    },
+    {
+      "key": "images/monsters/latchjaw-maintenance-unit-graphic-v1.webp",
+      "bytes": 319824,
+      "sha256": "05299058b464bae307cba13f4a44eb7e5959603152dfc3a928714bf3b3c7a9d0"
+    },
+    {
+      "key": "images/monsters/ledger-eater-imp-graphic-v1.webp",
+      "bytes": 342792,
+      "sha256": "793e6859a785473ed5afbca0cb934b4fd16a9b058770a8b0b3bc162a8a147c1b"
+    },
+    {
+      "key": "images/monsters/magnet-maw-collector-graphic-v1.webp",
+      "bytes": 389760,
+      "sha256": "65606620c557b98326cc8c291aabb335d5de839b3fc65983184199cf0514fc73"
+    },
+    {
+      "key": "images/monsters/memorywake-medium-graphic-v1.webp",
+      "bytes": 287256,
+      "sha256": "0bb26ac1062f8d0f184fce268aa4cead5f25ac3a17211caecf31dffedcb8e8be"
+    },
+    {
+      "key": "images/monsters/mnemonic-surgeon-graphic-v1.webp",
+      "bytes": 277026,
+      "sha256": "4f822e4e2838bffbd3da128b39508ea3236f8aa840b096242f20c6d7665ac876"
+    },
+    {
+      "key": "images/monsters/moonspoor-lynx-graphic-v1.webp",
+      "bytes": 297684,
+      "sha256": "20130e0062269560c457925d6679da1d9b52fb6f5388bf399dad35ff5185f893"
+    },
+    {
+      "key": "images/monsters/mossback-grazer-graphic-v1.webp",
+      "bytes": 342184,
+      "sha256": "8f7f9a94b76ad9bedae53228d9393cb08f0b70fe0d14c350362622d25a94ea40"
+    },
+    {
+      "key": "images/monsters/mossbell-gatekeeper-graphic-v1.webp",
+      "bytes": 468468,
+      "sha256": "9e5fe65fedb06949a6778bf68d725d7613b1d5e37e18b737905fb3043f4bf3cc"
+    },
+    {
+      "key": "images/monsters/night-ribbon-glider-graphic-v1.webp",
+      "bytes": 274046,
+      "sha256": "7bcce6c9ac103705f2ccb70b19bdbc59b0ef1b89cec6f8c705dd43e86dfde275"
+    },
+    {
+      "key": "images/monsters/null-choir-node-graphic-v1.webp",
+      "bytes": 323526,
+      "sha256": "ec9318b11d935ca6b28eeb51734b9e3e2d66a4eeb0d97f77c75662f0dd04c0e4"
+    },
+    {
+      "key": "images/monsters/obsidian-recall-spider-graphic-v1.webp",
+      "bytes": 321810,
+      "sha256": "23f857f70a71bfe0d8022dd1236a7b04d6677a7c8f9f99b109a43df843ca99ec"
+    },
+    {
+      "key": "images/monsters/ossuary-wallbearer-graphic-v1.webp",
+      "bytes": 346108,
+      "sha256": "062bd994d125015e0a9d1e12f89e6faeedb442074438b5e951942932cec57dc5"
+    },
+    {
+      "key": "images/monsters/pale-door-passenger-graphic-v1.webp",
+      "bytes": 318956,
+      "sha256": "03f38328dc3166ab83cebf7b139e1aeb8ce761929f11787ee67c46a35966f11a"
+    },
+    {
+      "key": "images/monsters/parallax-familiar-graphic-v1.webp",
+      "bytes": 354652,
+      "sha256": "464c332c7333127774e3ec81f9fe70a182ee10296399a900c2db1577a2ff3887"
+    },
+    {
+      "key": "images/monsters/pearl-choir-keeper-graphic-v1.webp",
+      "bytes": 361466,
+      "sha256": "55f3e62b21f5f9c37298797e2d58dc8de15001cb0452973f70365454218a662f"
+    },
+    {
+      "key": "images/monsters/prismline-surveyor-graphic-v1.webp",
+      "bytes": 319944,
+      "sha256": "dc745ae41117efec443ff321af4308c1aa21e249875ed15f3418ea34d3e5bbbe"
+    },
+    {
+      "key": "images/monsters/prismspill-doppel-graphic-v1.webp",
+      "bytes": 415044,
+      "sha256": "3e75f4fc177ac3a5d0619e5a561c8a5a7611db9a56258c0df12199fe3e604d47"
+    },
+    {
+      "key": "images/monsters/quiet-brass-pursuer-graphic-v1.webp",
+      "bytes": 307040,
+      "sha256": "6af927485f2d5d3f357440f3a27f682bce222f340aca9c4170a888f837f408cd"
+    },
+    {
+      "key": "images/monsters/rainspout-artillerist-graphic-v1.webp",
+      "bytes": 306894,
+      "sha256": "18f8b799ef383f36f27564d4e2f3b140336fa1e99d15118c0f75f59d04de457c"
+    },
+    {
+      "key": "images/monsters/red-ledger-marshal-graphic-v1.webp",
+      "bytes": 250214,
+      "sha256": "4637fdf51b240b016802f51075d8a75ed33726f6780786c694bfc12af9d90d3e"
+    },
+    {
+      "key": "images/monsters/reedglass-marsh-stalker-graphic-v1.webp",
+      "bytes": 440636,
+      "sha256": "4de1e93ced38adb0106a6c7324bd2472abc7d67836c6e7f8c4cd185df38070b1"
+    },
+    {
+      "key": "images/monsters/reefglass-needlefish-graphic-v1.webp",
+      "bytes": 305674,
+      "sha256": "812e8e4e5e445939d6f95f3a9efd1bbccf62bfc44aa3a0e880fbf6522fe82207"
+    },
+    {
+      "key": "images/monsters/resinwing-mantis-graphic-v1.webp",
+      "bytes": 368044,
+      "sha256": "870d60587d97e64d6b2c9ab74580fcb9289aa3bf660b1c2427cb24d0485a2ecf"
+    },
+    {
+      "key": "images/monsters/rivet-courier-graphic-v1.webp",
+      "bytes": 291210,
+      "sha256": "b158d1819bdedf8595f6554bb54f5e3000030a46a6fef8546550b7eee1604c68"
+    },
+    {
+      "key": "images/monsters/rootbound-aegis-graphic-v1.webp",
+      "bytes": 396412,
+      "sha256": "e28f1e6a80c9e89af17124f7a848a87086f76ae0407c113351b56da7647c91b8"
+    },
+    {
+      "key": "images/monsters/rustheart-cavalier-graphic-v1.webp",
+      "bytes": 374978,
+      "sha256": "3a2ef7da26d70e1925959d140e2916f8b4c55c545050822c53b359fd652a0bc3"
+    },
+    {
+      "key": "images/monsters/saltwound-leviathan-graphic-v1.webp",
+      "bytes": 349330,
+      "sha256": "62ae77f818060f1cba73bfcfee151decc1e7eedeb92cfc32d504bc43cca5d929"
+    },
+    {
+      "key": "images/monsters/shale-nibbler-graphic-v1.webp",
+      "bytes": 350672,
+      "sha256": "aa165a8941d7d701dd935e2e40108c1d8914d60141430a9e0735733c75ac631b"
+    },
+    {
+      "key": "images/monsters/silkgear-patchwright-graphic-v1.webp",
+      "bytes": 314136,
+      "sha256": "11f0e8dda8266533ffb10ddf9d2c049aa090f0c316cb05e1a3840986fcd10be5"
+    },
+    {
+      "key": "images/monsters/siltfin-biter-graphic-v1.webp",
+      "bytes": 337288,
+      "sha256": "c0524e60f6542c620c2263d29304da526c9ccbd350441f8e323228013ed86564"
+    },
+    {
+      "key": "images/monsters/sinkhole-maw-graphic-v1.webp",
+      "bytes": 329906,
+      "sha256": "617567f7b6b41cacde710999930541bbf68dc8b50b02721cd5ff85178ca54368"
+    },
+    {
+      "key": "images/monsters/skyhook-corsair-graphic-v1.webp",
+      "bytes": 322446,
+      "sha256": "96ced41e9b8902e97e62ca065aa50641f47b684ee00eb7ad225f4e3aaeb76724"
+    },
+    {
+      "key": "images/monsters/splintertime-custodian-graphic-v1.webp",
+      "bytes": 336826,
+      "sha256": "2b0ddb52fa4487c5378287406ff0a11b021f14ea59fa3cbeb3e765e2e76673af"
+    },
+    {
+      "key": "images/monsters/stillpoint-orb-graphic-v1.webp",
+      "bytes": 308600,
+      "sha256": "568c36ab3811d5b04e48b49b5f98fa805e900d146d44e74f4a1d7d97b85385a6"
+    },
+    {
+      "key": "images/monsters/stone-script-reader-graphic-v1.webp",
+      "bytes": 331522,
+      "sha256": "beae84dd6cf86377e5f837d633122468402f8eaea37e0d84bff681bda6750674"
+    },
+    {
+      "key": "images/monsters/stormnest-weaver-graphic-v1.webp",
+      "bytes": 341268,
+      "sha256": "9f90a502b7a1f816087b6a2aa8b86966cb722d0b7ab103f607e5d7e4a362e761"
+    },
+    {
+      "key": "images/monsters/sulfur-glass-spitter-graphic-v1.webp",
+      "bytes": 362850,
+      "sha256": "f9ba48af16dc62e479e4248d3d3a3c5c67c41ed6cdd28f02e1349dfa7ec3f216"
+    },
+    {
+      "key": "images/monsters/sunken-observatory-lion-graphic-v1.webp",
+      "bytes": 338924,
+      "sha256": "e0aa635a2389826181789de0faca8ca5c055920d1afde1c4ddc12b8802912148"
+    },
+    {
+      "key": "images/monsters/the-borrowed-horizon-graphic-v1.webp",
+      "bytes": 331522,
+      "sha256": "65cb92a37d876f234d30390178fee091bdebe4a1182b35dbbe3a2afb6550a955"
+    },
+    {
+      "key": "images/monsters/the-clockhouse-bailiff-graphic-v1.webp",
+      "bytes": 313998,
+      "sha256": "4aec6400a1ec0c1902243ce5851019fe15595acc158213bb1def4e6e56a96762"
+    },
+    {
+      "key": "images/monsters/the-first-horizon-warden-graphic-v1.webp",
+      "bytes": 315244,
+      "sha256": "0d5bc11dbcaefc2ef0a599e85f9f181d911afcdf9cf6967c025a9fbd2c756213"
+    },
+    {
+      "key": "images/monsters/the-last-debt-graphic-v1.webp",
+      "bytes": 290950,
+      "sha256": "66515db90fbf93154dad787ec4eac5398c66d7d5f4cffee4142a5c8810ea5ee3"
+    },
+    {
+      "key": "images/monsters/the-mountain-s-loose-tooth-graphic-v1.webp",
+      "bytes": 353884,
+      "sha256": "179fa8ce0aa920c7cfdad9c6394ec76a40d936fa3a4db6bbd1c6fda22ad085e8"
+    },
+    {
+      "key": "images/monsters/the-unfinished-monarch-graphic-v1.webp",
+      "bytes": 310962,
+      "sha256": "7ba20485038491cec9e00f1e0028247f298fe48ac3154fe4790d34bc60d7f1d7"
+    },
+    {
+      "key": "images/monsters/the-velvet-regent-graphic-v1.webp",
+      "bytes": 420832,
+      "sha256": "916b3f20445a95dd24c3a91036f61761e7021ec2964f12b3e0e432646757c48a"
+    },
+    {
+      "key": "images/monsters/the-walking-foundry-graphic-v1.webp",
+      "bytes": 363838,
+      "sha256": "72f3e7f424a11221eeabbe061cc25be06bc78835c0c2f8341ca2bfe923363979"
+    },
+    {
+      "key": "images/monsters/the-weather-vulture-graphic-v1.webp",
+      "bytes": 336778,
+      "sha256": "9d4b36fd6b418340842c30c801c7d1ea335a075e909623978653a9573a7bb3cc"
+    },
+    {
+      "key": "images/monsters/thornpath-jackal-graphic-v1.webp",
+      "bytes": 371202,
+      "sha256": "cc355bc0a314d00368b334221543b3135a9f93346efe9498db4f2abf9a72a0dd"
+    },
+    {
+      "key": "images/monsters/threshold-seedling-graphic-v1.webp",
+      "bytes": 325154,
+      "sha256": "0d3c85eb1ad05b6ac8a881b6770ce24349e6cb153776dc04769890b52747920e"
+    },
+    {
+      "key": "images/monsters/thunderhead-bastion-graphic-v1.webp",
+      "bytes": 301180,
+      "sha256": "b18c67794b43d27a053e83148e004481f48ff0ce2324672ee4785b8149697e37"
+    },
+    {
+      "key": "images/monsters/tidegate-crab-graphic-v1.webp",
+      "bytes": 372380,
+      "sha256": "ba3e3167073fdd3bc08981ac462c1113a03c79f13e16e18f1f482908eed12843"
+    },
+    {
+      "key": "images/monsters/tinroof-duelist-graphic-v1.webp",
+      "bytes": 312416,
+      "sha256": "be9e958741e7ba07f6648e2fd482b827a2471aeffdb7afbdb6f5bd6b7d717364"
+    },
+    {
+      "key": "images/monsters/unwritten-reflection-graphic-v1.webp",
+      "bytes": 335078,
+      "sha256": "d0eefd0e6ccf6d9ab8dffb77da8f4ff8f6c1047d96bcdbf1ce254bff3da560a6"
+    },
+    {
+      "key": "images/monsters/updraft-carapace-graphic-v1.webp",
+      "bytes": 335576,
+      "sha256": "ebc8735b75cea7d83e7d2e88b449bcb4d537254f33fa6fa6a788079d1be6dd94"
+    },
+    {
+      "key": "images/monsters/veiled-stair-keeper-graphic-v1.webp",
+      "bytes": 262384,
+      "sha256": "c7bce99f027d5c7e98f379f8ac8046c12a469066eb95703b29e235c1642d5710"
+    },
+    {
+      "key": "images/monsters/velvet-oath-broker-graphic-v1.webp",
+      "bytes": 264026,
+      "sha256": "96430a4090c41815e3e9890263311dbd179b645db1e1b763abd369a22582b98b"
+    },
+    {
+      "key": "images/monsters/verdant-pulse-matriarch-graphic-v1.webp",
+      "bytes": 381880,
+      "sha256": "fb10ab6189ccb9dc50736d8e442b68b781401592f586eac8a1ae581a29e50eca"
+    },
+    {
+      "key": "images/monsters/ward-choir-archivist-graphic-v1.webp",
+      "bytes": 337194,
+      "sha256": "034e2db32ac61ca56ab8f024a73919b17728b2d0f1f4dfaad9105a4a1df1fed2"
+    },
+    {
+      "key": "images/monsters/waxseal-witness-graphic-v1.webp",
+      "bytes": 293326,
+      "sha256": "9f17e1dabdf5faa877aa30b3fbe9feb6c2b30bdecc786606062a19223e6de12c"
+    },
+    {
+      "key": "images/monsters/wickless-beacon-graphic-v1.webp",
+      "bytes": 309418,
+      "sha256": "60093263cfddd9a625e18903862dd197433e28fb06b795a40290172910433411"
+    },
+    {
+      "key": "images/monsters/wingstitch-chirurgeon-graphic-v1.webp",
+      "bytes": 317092,
+      "sha256": "e7b292bc3cd4b8214e20c05eae549fb14564f2544785bf6567c51e370a108469"
     }
   ]
 }

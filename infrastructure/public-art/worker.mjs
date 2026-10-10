@@ -8,7 +8,7 @@ export default {
     try { key = decodeURIComponent(new URL(request.url).pathname).slice(1); }
     catch { return new Response('Invalid path', { status: 400 }); }
     // No bucket listings, writes, arbitrary folders, or private upload access.
-    if (!/^(?:images\/(characters|lineages|heritages)|art\/monsters)\/[a-zA-Z0-9_./-]+\.(png|webp)$/.test(key)
+    if (!/^images\/(characters|lineages|heritages|monsters)\/[a-zA-Z0-9_./-]+\.(png|webp)$/.test(key)
         || key.split('/').some(segment => segment === '..' || segment === '.')) {
       return new Response('Not found', { status: 404 });
     }

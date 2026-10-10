@@ -9,26 +9,28 @@ const origin = 'https://swordweave-public-art.ionmariusc97.workers.dev';
 const files = readdirSync('public/art/monsters').filter(name => name.endsWith('.webp')).sort();
 const assets = files.map(name => {
   const bytes = readFileSync(`public/art/monsters/${name}`);
-  return { key: `art/monsters/${name}`, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') };
+  return { key: `images/monsters/${name}`, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') };
 });
 if (assets.length !== 105) throw new Error(`Expected 100 new and 5 established portraits; found ${assets.length}`);
 const expected = JSON.parse(readFileSync('docs/library/system-bestiary-art-2026-10.json','utf8'));
 const manifest = Array.isArray(expected) ? expected : expected.entries;
 if (!manifest || manifest.length !== 100) throw new Error('Expected the audited 100-monster manifest');
 for (const entry of manifest) {
-  const key = entry.path.replace(/^\//,'');
+  const key = entry.path.replace(/^\/art\/monsters\//,'images/monsters/');
   const asset = assets.find(row => row.key === key);
   if (!asset || asset.sha256 !== entry.sha256) throw new Error(`Portrait audit mismatch: ${key}`);
 }
-console.log(JSON.stringify({ mode: process.argv.includes('--apply') ? 'apply' : 'dry-run', bucket, objects: assets.length, bytes: assets.reduce((total,row)=>total+row.bytes,0) }));
-if (!process.argv.includes('--apply')) process.exit(0);
+const apply = process.argv.includes('--apply');
+const verifyExisting = process.argv.includes('--verify-existing');
+console.log(JSON.stringify({ mode: apply ? 'apply' : verifyExisting ? 'verify-existing' : 'dry-run', bucket, objects: assets.length, bytes: assets.reduce((total,row)=>total+row.bytes,0) }));
+if (!apply && !verifyExisting) process.exit(0);
 function wrangler(args) {
   const result=spawnSync('pnpm',['dlx','wrangler@4.40.0',...args],{stdio:'inherit',env:process.env});
   if(result.status!==0) throw new Error(`Wrangler failed: ${args[0]}`);
 }
-wrangler(['deploy','--config','infrastructure/public-art/wrangler.jsonc']);
+if (apply) wrangler(['deploy','--config','infrastructure/public-art/wrangler.jsonc']);
 for (const asset of assets) {
-  wrangler(['r2','object','put',`${bucket}/${asset.key}`,'--file',`public/${asset.key}`,'--content-type','image/webp','--remote']);
+  if (apply) wrangler(['r2','object','put',`${bucket}/${asset.key}`,'--file',`public/art/monsters/${asset.key.split('/').at(-1)}`,'--content-type','image/webp','--remote']);
   const response=await fetch(`${origin}/${asset.key}`,{signal:AbortSignal.timeout(60000)});
   if(!response.ok)throw new Error(`CDN verification failed: ${asset.key} HTTP ${response.status}`);
   const bytes=Buffer.from(await response.arrayBuffer());

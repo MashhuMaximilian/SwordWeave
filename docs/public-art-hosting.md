@@ -61,16 +61,22 @@ may not immediately reflect cleanup. [Deployment storage](https://vercel.com/doc
 
 The 100 new system portraits were initially shipped as Vercel static WebP assets,
 not R2 objects. Their originals remain in `output/monster-art-2026-10/`.
-Cloudflare/Wrangler authentication is currently unavailable on this host; the
-transfer has **not** been applied. Existing portrait URLs keep working from the
-static deployment until the R2 transfer is verified.
+All 105 optimized WebP portraits (100 new and 5 established) are now uploaded to
+`swordweave-public-art/images/monsters/`, alongside the existing image folders.
+Total bytes: 35,004,554. Every portrait passed byte count, SHA-256 and MIME checks
+through the read-only Worker with `--verify-existing`. Uploads and Worker deployment
+used the signed-in Cloudflare dashboard; no new API token or OAuth grant was needed.
+Worker version `fc8d02e2` permits the monsters root while retaining the existing
+GET/HEAD-only access and folder allowlist.
 
-The read-only Worker source now permits `art/monsters/*.webp` and `.png` alongside
-the established catalog roots. Run `node scripts/migrate-monster-public-art.mjs`
-for its local checksum dry run (100 new portraits plus 5 established portraits).
-After signing into the existing Cloudflare account, use `--apply` to deploy the
-Worker, upload to `swordweave-public-art`, verify every object's bytes/MIME through
-the Worker, and update `data/public-art-catalog.json`. Then add the
-`/art/monsters/:path*` redirect, exclude `public/art/monsters/` from Git/Vercel,
-verify the complete catalog and publish. Never remove the static copies from the
-deployment before the remote verification succeeds.
+Existing `/art/monsters/:path*` URLs redirect to the Worker's `/images/monsters/:path*`
+objects. `/images/monsters/:path*` URLs are supported too. Saved references and database
+pins remain unchanged. Local optimized portraits and originals are preserved, while
+the optimized folder is excluded from future Git/Vercel deployments. All object
+keys/checksums are recorded in `data/public-art-catalog.json`.
+The complete catalog audit passed after the Worker update: 486/486 objects,
+including all 381 previous objects, with no checksum or content-type failures.
+
+Run `node scripts/migrate-monster-public-art.mjs` for the local checksum dry run,
+`--verify-existing` to verify dashboard uploads and update the catalog, or `--apply`
+for an authenticated Wrangler deployment/upload followed by verification.
