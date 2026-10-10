@@ -16,3 +16,16 @@ describe("collection privacy queries",()=>{
  it("reads Monster visibility without casting MONSTER into the publication enum",async()=>{mocks.execute.mockResolvedValue({rows:[]});await visibleEntries([{targetType:"MONSTER",targetId:"id"}],null);expect(query(0)).toContain("e.visibility='PUBLIC'");expect(query(0)).not.toContain("publications");});
  it("gates heritage references to their actual kind before checking publication visibility",async()=>{mocks.execute.mockResolvedValue({rows:[]});await visibleEntries([{targetType:"LINEAGE_TEMPLATE",targetId:"upbringing-id"}],"viewer");const compiled=dialect.sqlToQuery(mocks.execute.mock.calls[0]![0]);expect(compiled.sql).toContain("e.kind=");expect(compiled.params).toContain("LINEAGE");});
 });
+it("supports encounters alongside every existing target without a publication enum cast",async()=>{
+ mocks.execute.mockResolvedValue({rows:[]});
+ await visibleEntries([{targetType:"ENCOUNTER",targetId:"scene"},{targetType:"MONSTER",targetId:"beast"},{targetType:"CHARACTER",targetId:"hero"}],"viewer");
+ const statement=dialect.sqlToQuery(mocks.execute.mock.calls[0]![0]);
+ expect(statement.sql).toContain('"encounters"');expect(statement.sql).toContain("e.owner_id=");
+ expect(statement.sql).toContain("a.clerk_user_id=e.owner_id");expect(statement.sql).not.toContain("publications");
+ expect(statement.params).toContain("ENCOUNTER");expect(mocks.execute).toHaveBeenCalledTimes(3);
+});
+it("uses the encounter owner column for automatic collections and includes it in counts",async()=>{
+ mocks.execute.mockResolvedValueOnce({rows:[{id:"collection",parent_id:null,system_kind:"ORIGINAL",owner_id:"owner"}]}).mockResolvedValueOnce({rows:[]}).mockResolvedValueOnce({rows:[{total:0}]});
+ await collectionContents("11111111-1111-4111-8111-111111111111","viewer");
+ for(const i of [1,2]) {expect(query(i)).toContain('"encounters"');expect(query(i)).toContain("e.owner_id=");expect(query(i)).toContain("FOLLOWERS_ONLY");}
+});

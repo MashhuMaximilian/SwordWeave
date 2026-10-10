@@ -11,6 +11,7 @@ export const phases = ["Council", "Fast", "Measured", "Heavy"] as const;
 export const encounterDefinitionSchema = z
   .object({
     name: z.string().trim().min(1).max(200),
+    visibility: z.enum(["PUBLIC", "FOLLOWERS_ONLY", "PRIVATE"]).default("PRIVATE"),
     note: z.string().max(5000).default(""),
     partyBu: units.nullable().default(null),
     partyItemBu: units.nullable().default(null),

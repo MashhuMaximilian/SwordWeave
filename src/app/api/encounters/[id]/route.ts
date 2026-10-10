@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { encounterRequest } from "@/lib/encounters/http";
+import { encounterRequest, encounterReadRequest } from "@/lib/encounters/http";
 import {
   getEncounter,
   saveEncounter,
@@ -8,7 +8,7 @@ import {
 import { readBoundedJson } from "@/lib/http/read-bounded-json";
 type Context = { params: Promise<{ id: string }> };
 export const GET = (_: Request, c: Context) =>
-  encounterRequest(async (owner) =>
+  encounterReadRequest(async (owner) =>
     getEncounter(owner, z.uuid().parse((await c.params).id)),
   );
 export const PATCH = (r: Request, c: Context) =>

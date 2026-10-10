@@ -9,7 +9,7 @@
 // ?intent=<fork|load> (Phase 1) records HOW the user entered the sandbox.
 // ?version=N deep-links a specific published version for pre-fill.
 
-import { asc, eq, inArray, isNull, or } from "drizzle-orm";
+import { asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 
 import {
@@ -37,6 +37,7 @@ import {
 } from "@/components/sandbox/sandbox-row-mapper";
 import { resolveAuthorByClerkId } from "@/lib/auth/author-resolver";
 import {
+  visibilityCondition,
   listPrimitiveCategories,
   resolveAuthorMap,
   type LibraryItem,
@@ -128,43 +129,20 @@ export default async function AtelierSandboxPage({
     /* not logged in */
   }
 
-  // (No follow-relationship lookup here — the atelier is the
-  // editor; it only shows rows the viewer owns. Followers-only
-  // publications surface in /library/browse via the publications-
-  // table-driven visibilityCondition in library-query.ts.)
-
-  // Phase 9 follow-up: three-tier visibility filter for the editor.
-  //   - PUBLIC rows        → always visible
-  //   - System rows (user_id IS NULL) → always visible
-  //   - PRIVATE / FOLLOWERS_ONLY rows → only the author
-  //
-  // The entity `isPublic` boolean doesn't distinguish between PRIVATE
-  // and FOLLOWERS_ONLY — that tier lives on the publications table.
-  // The editor (atelier) should not grant followers visibility to
-  // followed authors' rows because:
-  //   1. You can't edit them (only the author can).
-  //   2. Granting visibility-by-follow would expose fully-private
-  //      drafts to followers — a real privacy leak.
-  //
-  // If a followed author publishes a row to FOLLOWERS_ONLY, it shows
-  // up in /library/browse via the publications-table-driven
-  // visibilityCondition in library-query.ts. The atelier is the
-  // editor; it only shows what you own.
-  const visFilter = (r: { isPublic: boolean; userId: string | null }) =>
-    r.isPublic || !r.userId || r.userId === sandboxViewerClerkId;
-
+  // Browse public, own and follower-only entries through the same gate as Library.
+  // Read access never grants authoring permission; saving others' entries creates a fork.
   // Load independent catalogs concurrently; preserve each catalog’s link dependencies.
   await Promise.all([
     (async () => {
   // PRIMITIVES
   try {
     const rows = await db.query.primitives.findMany({
-      where: or(eq(primitives.isPublic, true), isNull(primitives.userId), ...(sandboxViewerClerkId ? [eq(primitives.userId, sandboxViewerClerkId)] : [])),
+      where: visibilityCondition("PRIMITIVE", sql`${primitives.id}`, sql`${primitives.userId}`, sandboxViewerClerkId ?? undefined, sql`${primitives.isPublic}`),
       orderBy: [asc(primitives.category), asc(primitives.name)],
     });
     const classifications = await db.select({ primitiveId: primitiveMarketClassifications.primitiveId, familyKey: primitiveMarketClassifications.familyKey }).from(primitiveMarketClassifications);
     const familyByPrimitive = new Map(classifications.map((row) => [row.primitiveId, row.familyKey]));
-    primitiveRows = (rows as Array<{ id:number; isPublic: boolean; userId: string | null }>).filter(visFilter).map((row)=>({...row,familyKey:familyByPrimitive.get(row.id)??null})) as unknown[];
+    primitiveRows = (rows as Array<{ id:number; isPublic: boolean; userId: string | null }>).map((row)=>({...row,familyKey:familyByPrimitive.get(row.id)??null})) as unknown[];
   } catch (err) {
     dataLoadFailed = true;
     console.error("[atelier sandbox] primitives query failed:", err);
@@ -175,11 +153,11 @@ export default async function AtelierSandboxPage({
   // EFFECTS
   try {
     const rows = await db.query.effects.findMany({
-      where: or(eq(effects.isPublic, true), isNull(effects.userId), ...(sandboxViewerClerkId ? [eq(effects.userId, sandboxViewerClerkId)] : [])),
+      where: visibilityCondition("EFFECT", sql`${effects.id}`, sql`${effects.userId}`, sandboxViewerClerkId ?? undefined, sql`${effects.isPublic}`),
       orderBy: [asc(effects.name)],
       with: { primitiveLinks: { with: { primitive: true } } },
     });
-    effectRows = (rows as Array<{ isPublic: boolean; userId: string | null }>).filter(visFilter) as unknown[];
+    effectRows = (rows as Array<{ isPublic: boolean; userId: string | null }>) as unknown[];
   } catch (err) {
     dataLoadFailed = true;
     console.error("[atelier sandbox] effects query failed:", err);
@@ -190,7 +168,7 @@ export default async function AtelierSandboxPage({
   // CAPABILITIES
   try {
     const rows = await db.query.capabilities.findMany({
-      where: or(eq(capabilities.isPublic, true), isNull(capabilities.userId), ...(sandboxViewerClerkId ? [eq(capabilities.userId, sandboxViewerClerkId)] : [])),
+      where: visibilityCondition("CAPABILITY", sql`${capabilities.id}`, sql`${capabilities.userId}`, sandboxViewerClerkId ?? undefined, sql`${capabilities.isPublic}`),
       orderBy: [asc(capabilities.name)],
       with: {
         primitiveLinks: { with: { primitive: true } },
@@ -203,7 +181,7 @@ export default async function AtelierSandboxPage({
         },
       },
     });
-    capabilityRows = (rows as Array<{ isPublic: boolean; userId: string | null }>).filter(visFilter) as unknown[];
+    capabilityRows = (rows as Array<{ isPublic: boolean; userId: string | null }>) as unknown[];
   } catch (err) {
     dataLoadFailed = true;
     console.error("[atelier sandbox] capabilities query failed:", err);
@@ -259,7 +237,7 @@ export default async function AtelierSandboxPage({
   // HERITAGE
   try {
     const rows = await db.query.heritage.findMany({
-      where: or(eq(heritage.isPublic, true), isNull(heritage.userId), ...(sandboxViewerClerkId ? [eq(heritage.userId, sandboxViewerClerkId)] : [])),
+      where: visibilityCondition(sql`(${heritage.kind}::text || '_TEMPLATE')::publish_target_type`, sql`${heritage.id}`, sql`${heritage.userId}`, sandboxViewerClerkId ?? undefined, sql`${heritage.isPublic}`),
       orderBy: [asc(heritage.kind), asc(heritage.name)],
       with: {
         primitiveLinks: { with: { primitive: true } },
@@ -283,7 +261,7 @@ export default async function AtelierSandboxPage({
         },
       },
     });
-    heritageRows = (rows as Array<{ isPublic: boolean; userId: string | null }>).filter(visFilter) as unknown[];
+    heritageRows = (rows as Array<{ isPublic: boolean; userId: string | null }>) as unknown[];
   } catch (err) {
     dataLoadFailed = true;
     console.error("[atelier sandbox] heritage query failed:", err);
@@ -446,7 +424,7 @@ export default async function AtelierSandboxPage({
   // ITEMS
   try {
     const rows = await db.query.items.findMany({
-      where: or(eq(items.isPublic, true), isNull(items.userId), ...(sandboxViewerClerkId ? [eq(items.userId, sandboxViewerClerkId)] : [])),
+      where: visibilityCondition("ITEM", sql`${items.id}`, sql`${items.userId}`, sandboxViewerClerkId ?? undefined, sql`${items.isPublic}`),
       orderBy: [asc(items.name)],
       with: {
         primitiveLinks: { with: { primitive: true } },
@@ -470,7 +448,7 @@ export default async function AtelierSandboxPage({
         },
       },
     });
-    itemRows = (rows as Array<{ isPublic: boolean; userId: string | null }>).filter(visFilter) as unknown[];
+    itemRows = (rows as Array<{ isPublic: boolean; userId: string | null }>) as unknown[];
   } catch (err) {
     dataLoadFailed = true;
     console.error("[atelier sandbox] items query failed:", err);

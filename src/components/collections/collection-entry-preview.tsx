@@ -1,4 +1,6 @@
 "use client";
+import { CharacterCataloguePreview } from "@/components/characters/character-catalogue-preview";
+import { EncounterPreview } from "@/components/encounters/encounter-preview";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -23,6 +25,8 @@ export function CollectionEntryPreview({ targetType, targetId }: { targetType: s
     });
     return () => controller.abort();
   }, [targetType, targetId, supported]);
+  if (targetType === "CHARACTER") return <CharacterCataloguePreview id={targetId}/>;
+  if (targetType === "ENCOUNTER") return <EncounterPreview id={targetId}/>;
   if (targetType === "MONSTER") return <MonsterTemplatePreview id={targetId} compact />;
   if (!supported) return <p>Open the complete record on its <Link href={targetType === "CHARACTER" ? `/characters/${targetId}` : `/library/item/${encodeURIComponent(`${targetType}:${targetId}`)}`}>source page</Link>.</p>;
   if (error) return <p role="alert">{error}</p>;

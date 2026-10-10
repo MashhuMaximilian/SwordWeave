@@ -408,7 +408,7 @@ function ListItem({
   }
   return (
     <Link
-      href={item.targetType==="MONSTER"?`/monsters/${item.targetId}`:`/library/item/${item.id}`}
+      href={item.targetType==="ENCOUNTER"?`/encounters/${item.targetId}`:item.targetType==="CHARACTER"?`/characters/${item.targetId}`:item.targetType==="MONSTER"?`/monsters/${item.targetId}`:`/library/item/${item.id}`}
       data-library-row-id={item.id}
       data-preview-trigger="true"
       data-library-kind={item.targetType}

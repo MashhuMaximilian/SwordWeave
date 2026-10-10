@@ -1,3 +1,6 @@
+import { and,eq } from "drizzle-orm";
+import { follows } from "@/db/schema";
+import { PgDialect } from "drizzle-orm/pg-core";
 import {beforeEach,expect,it,vi} from "vitest";
 const mocks=vi.hoisted(()=>({publication:vi.fn(),user:vi.fn(),follow:vi.fn()}));
 vi.mock("@/db/client",()=>({db:{query:{publications:{findFirst:mocks.publication},users:{findFirst:mocks.user},follows:{findFirst:mocks.follow}}}}));
@@ -27,5 +30,15 @@ it("requires an actual follower for follower-only sources",async()=>{
  mocks.user.mockResolvedValue({id:"viewer-internal"});mocks.follow.mockResolvedValue(undefined);
  expect((await checkVisibility({...input,viewerId:"viewer"})).allowed).toBe(false);
  mocks.follow.mockResolvedValue({followerId:"viewer-internal"});
+ expect((await checkVisibility({...input,viewerId:"viewer"})).allowed).toBe(true);
+});
+it("resolves the follower-only author from Clerk ID before querying follows",async()=>{
+ mocks.publication.mockResolvedValue({visibility:"FOLLOWERS_ONLY"});
+ mocks.user.mockResolvedValueOnce({id:"viewer-uuid"}).mockResolvedValueOnce({id:"author-uuid"});
+ mocks.follow.mockImplementation(async({where}:{where:(table:typeof follows,operators:{and:typeof and;eq:typeof eq})=>ReturnType<typeof and>})=>{
+   const clause=where(follows,{and,eq});
+   expect(new PgDialect().sqlToQuery(clause!).params).toEqual(["viewer-uuid","author-uuid"]);
+   return {followerId:"viewer-uuid"};
+ });
  expect((await checkVisibility({...input,viewerId:"viewer"})).allowed).toBe(true);
 });

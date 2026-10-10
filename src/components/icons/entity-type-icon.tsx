@@ -11,6 +11,7 @@ export const ENTITY_TYPE_ICONS: Record<string, string> = {
   MANIFEST: "caro-asercion/tarot-11-justice", MANIFEST_TEMPLATE: "caro-asercion/tarot-11-justice",
   ITEM: "lorc/battle-gear", item: "lorc/battle-gear",
   MONSTER: "lorc/gluttonous-smile", monster: "lorc/gluttonous-smile",
+  ENCOUNTER: "lucide/swords", encounters: "lucide/swords",
   CHARACTER: "delapouite/mona-lisa", characters: "delapouite/mona-lisa",
   collections: "skoll/open-treasure-chest", COLLECTION: "skoll/open-treasure-chest",
   CREATE_CHARACTER: "lorc/cultist", CREATE_MONSTER: "delapouite/spiked-dragon-head",

@@ -30,6 +30,10 @@ import { readWorkspace } from "@/lib/character/workspace/read";
 import { partyMechanics } from "./party-mechanics";
 import { validateRunReferences, validateRunLimits } from "./run-state";
 import { monsterArtwork } from "@/lib/monsters/art";
+import { directVisibilityCondition, audienceIncludes, sharePreparation } from "./access";
+import { assertMonsterAudience } from "@/lib/monsters/visibility";
+import type { EntityKey } from "@/lib/character/workspace/model";
+import { listEncounterDirectory } from "./directory";
 import { evaluateCondition } from "@/lib/engine/condition-evaluator";
 export class EncounterError extends Error {
   constructor(
@@ -40,17 +44,7 @@ export class EncounterError extends Error {
     super(message);
   }
 }
-export const listEncounters = (owner: string) =>
-  db
-    .select({
-      id: encounters.id,
-      name: encounters.name,
-      updatedAt: encounters.updatedAt,
-    })
-    .from(encounters)
-    .where(eq(encounters.ownerId, owner))
-    .orderBy(desc(encounters.updatedAt))
-    .limit(100);
+export const listEncounters = (owner: string) => listEncounterDirectory(owner, {ownOnly:true, limit:100});
 async function owned(owner: string, id: string, lock = false) {
   const q = db
     .select()
@@ -60,7 +54,13 @@ async function owned(owner: string, id: string, lock = false) {
   if (!row) throw new EncounterError("Encounter not found.", 404);
   return row;
 }
-export async function pinSummary(owner: string, templateId: string, version: number) {
+async function readable(viewer: string | null, id: string, lock = false) {
+  const q = db.select().from(encounters).where(and(eq(encounters.id,id), directVisibilityCondition(sql`${encounters.ownerId}`,sql`${encounters.visibility}`,viewer)));
+  const [row] = await (lock ? q.for("update") : q);
+  if(!row) throw new EncounterError("Encounter not found.",404);
+  return row;
+}
+export async function pinSummary(owner: string | null, templateId: string, version: number) {
   const template = await visibleMonster(templateId, owner);
   if (!template)
     throw new EncounterError("A creature is no longer accessible.");
@@ -90,8 +90,9 @@ export async function pinSummary(owner: string, templateId: string, version: num
     } satisfies CreatureSummary,
   };
 }
-export async function getEncounter(owner: string, id: string) {
-  const row = await owned(owner, id);
+export async function getEncounter(owner: string | null, id: string) {
+  const row = await readable(owner, id);
+  const isOwner = row.ownerId === owner;
   const entries = await db
     .select()
     .from(encounterEntries)
@@ -115,14 +116,15 @@ export async function getEncounter(owner: string, id: string) {
     }
   }
   const definition: EncounterDefinition = {
-    ...row.definition,
+    ...(isOwner ? row.definition : sharePreparation(row.definition)),
+    visibility: row.visibility,
     entries: entries.map((e) => ({
       templateId: e.templateId,
       version: e.version,
       quantity: e.quantity,
     })),
   };
-  const runs = await db
+  const runs = owner ? await db
     .select({
       id: encounterRuns.id,
       name: encounterRuns.name,
@@ -133,9 +135,10 @@ export async function getEncounter(owner: string, id: string) {
       and(eq(encounterRuns.encounterId, id), eq(encounterRuns.ownerId, owner)),
     )
     .orderBy(desc(encounterRuns.createdAt))
-    .limit(100);
+    .limit(100) : [];
   return {
     id,
+    isOwner,
     revision: row.revision,
     definition,
     creatures,
@@ -164,6 +167,13 @@ export async function saveEncounter(
         entry: e,
         ...(await pinSummary(owner, e.templateId, e.version)),
       });
+    for (const p of pins) {
+      const template = await visibleMonster(p.entry.templateId, owner);
+      if (!template || !audienceIncludes(definition.visibility, owner, template))
+        throw new EncounterError("Every creature must be available to this encounter’s audience. Share its template first or keep the encounter private.");
+      const pin = p.pin.definition as PinnedDefinition;
+      await assertMonsterAudience((pin.componentPins ?? []).map(p => `${p.kind}:${p.id}` as EntityKey), owner, definition.visibility);
+    }
     appraiseEncounter(
       definition,
       pins.map((p) => p.summary),
@@ -184,6 +194,7 @@ export async function saveEncounter(
           .update(encounters)
           .set({
             name: definition.name,
+            visibility: definition.visibility,
             definition: compact,
             revision: prior.revision + 1,
             updatedAt: new Date(),
@@ -195,6 +206,7 @@ export async function saveEncounter(
           .values({
             ownerId: owner,
             name: definition.name,
+            visibility: definition.visibility,
             definition: compact,
           })
           .returning();
@@ -229,7 +241,7 @@ export async function startEncounter(
   revision: number,
 ) {
   return withDatabaseTransaction(async () => {
-    const row = await owned(owner, id, true);
+    const row = await readable(owner, id, true);
     const [existing] = await db
       .select()
       .from(encounterRuns)
@@ -268,7 +280,7 @@ export async function startEncounter(
         encounterId: id,
         name: row.name,
         startOpId: opId,
-        party: row.definition,
+        party: row.ownerId === owner ? row.definition : sharePreparation(row.definition),
       })
       .returning();
     if (!run) throw new EncounterError("Could not start encounter.");

@@ -45,7 +45,7 @@ export async function loadLibraryEngagement(
   // error to the user that prevents them from browsing the corpus at all.
   try {
     // Build (targetType, targetId, versionId) tuples for reaction lookup
-    const versioned = items.map((it) => ({
+    const versioned = items.filter(item => item.targetType !== "ENCOUNTER").map((it) => ({
       cid: it.id,
       targetType: it.targetType,
       targetId: it.targetId,
@@ -60,7 +60,7 @@ export async function loadLibraryEngagement(
     // Drizzle doesn't support tuple-IN cleanly; use OR with AND clauses.
     // For batches ≤50 this is fine; for larger batches paginate.
     const [reactionRows, followRows] = await Promise.all([
-      db
+      versioned.length ? db
       .select({
         targetType: reactions.targetType,
         targetId: reactions.targetId,
@@ -80,7 +80,7 @@ export async function loadLibraryEngagement(
             ),
           )!,
         ),
-      ),
+      ) : Promise.resolve([]),
 
       authorIds.length ? db
         .select({ clerkUserId: users.clerkUserId })

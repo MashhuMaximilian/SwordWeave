@@ -6,7 +6,9 @@ import {
   jsonb,
   uniqueIndex,
   index,
+  check,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { timestamps } from "./common";
 import { monsterVersions, monsterCopies } from "./monsters";
 import type { EncounterDefinition } from "@/lib/encounters/model";
@@ -16,13 +18,14 @@ export const encounters = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     ownerId: text("owner_id").notNull(),
     name: text("name").notNull(),
+    visibility: text("visibility").$type<"PUBLIC" | "FOLLOWERS_ONLY" | "PRIVATE">().notNull().default("PRIVATE"),
     revision: integer("revision").notNull().default(0),
     definition: jsonb("definition")
       .$type<Omit<EncounterDefinition, "entries">>()
       .notNull(),
     ...timestamps,
   },
-  (t) => [index("encounters_owner_idx").on(t.ownerId, t.updatedAt)],
+  (t) => [index("encounters_owner_idx").on(t.ownerId, t.updatedAt), index("encounters_visibility_updated_idx").on(t.visibility,t.updatedAt),check("encounters_visibility_check",sql`${t.visibility} IN ('PRIVATE','FOLLOWERS_ONLY','PUBLIC')`)],
 );
 export const encounterEntries = pgTable(
   "encounter_entries",

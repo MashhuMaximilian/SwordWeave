@@ -1,4 +1,5 @@
 import { readWorkspace } from "@/lib/character/workspace/read";
+import { checkVisibility } from "@/lib/publishing/visibility";
 import { characterSheetPermission, isPublicCharacterPreview } from "@/lib/character/public-preview-policy";
 import { characterConsequences } from "@/db/schema/workspace";
 import { effectivePrimitiveLinks } from "@/lib/character/workspace/effective-primitives";
@@ -126,10 +127,11 @@ export default async function CharacterSheetPage({
   });
   const isPublic = isPublicCharacterPreview(row.isPublic, publication);
   const resolved = userId ? await canResolveCharacterForPage(userId, id) : null;
+  const catalogueReadable = isPublic || (!resolved && (await checkVisibility({targetType:"CHARACTER",targetId:id,ownerId:row.userId,isPublic:row.isPublic,viewerId:userId})).allowed);
   // Library links are always a viewing session, even for the original author.
-  const viewerPermission = characterSheetPermission(resolved?.permission ?? null, isPublic, publicViewRequested);
+  const viewerPermission = characterSheetPermission(resolved?.permission ?? null, catalogueReadable, publicViewRequested);
   if (!viewerPermission) notFound();
-  const publicReader = isPublic && (publicViewRequested || !resolved);
+  const publicReader = catalogueReadable && (publicViewRequested || !resolved);
   const savedConsequences = viewerPermission === "VIEWER" ? await db.select({ occurrence: characterConsequences.occurrence })
     .from(characterConsequences).where(and(eq(characterConsequences.characterId, id), isNull(characterConsequences.deletedAt))) : [];
 

@@ -63,6 +63,9 @@ import {
   heritageCapabilities,
   heritagePrimitives,
 } from "@/db/schema";
+import { listEncounterDirectory } from "@/lib/encounters/directory";
+import { encounters } from "@/db/schema/encounters";
+import { directVisibilityCondition } from "@/lib/encounters/access";
 import { mechanicalDescriptionFromModifiers } from "@/lib/primitives/mechanical-rule";
 import { resolveEngagementMap as sharedResolveEngagementMap } from "@/lib/engagement/engagement-aggregates";
 import { CANONICAL_EXPRESSIONS, MARKET_FAMILIES, MARKET_TEMPLATES } from "@/lib/primitives/canonical-market";
@@ -84,6 +87,7 @@ export type LibrarySort =
   | "ALPHABETICAL_DESC";
 export type LibraryTargetType =
   | "MONSTER"
+  | "ENCOUNTER"
   | "PRIMITIVE"
   | "CAPABILITY"
   | "EFFECT"
@@ -176,6 +180,7 @@ export interface LibraryQuery {
 }
 
 export interface LibraryItem {
+  encounter?: import("@/lib/encounters/directory").EncounterDirectoryEntry;
   /** Presentation-only artwork for heritage rows. */
   imageUrl?: string | null;
   costTier?: string | null;
@@ -410,7 +415,7 @@ async function queryLibraryResult(q: LibraryQuery, complete: boolean): Promise<L
   // a shared viewer-independent cache. Enrichment precedes sort/origin filters.
   const [authorMap, engagementMap] = await Promise.all([
     resolveAuthorMap(items.map((item) => item.authorId)),
-    resolveEngagementMap(items.map((item) => item.id)),
+    resolveEngagementMap(items.filter(item => item.targetType !== "ENCOUNTER").map((item) => item.id)),
   ]);
   for (const item of items) {
     const author = item.authorId ? authorMap.get(item.authorId) : null;
@@ -463,7 +468,7 @@ async function queryLibraryResult(q: LibraryQuery, complete: boolean): Promise<L
     paged=selected.flatMap(metadata=>{const item=map.get(metadata.id);if(!item)return [];return [{...item,authorUsername:metadata.authorUsername,authorDisplayName:metadata.authorDisplayName,authorAvatarUrl:metadata.authorAvatarUrl,authorIsAdmin:metadata.authorIsAdmin,likesCount:metadata.likesCount,dislikesCount:metadata.dislikesCount,forkCount:metadata.forkCount}];});
   }
 
-  const flagCounts = await loadLibraryFlagCounts(paged);
+  const flagCounts = await loadLibraryFlagCounts(paged.filter((item): item is LibraryItem & {targetType: Exclude<LibraryTargetType,"ENCOUNTER">} => item.targetType !== "ENCOUNTER"));
   for (const item of paged) item.flagCount = flagCounts.get(item.id) ?? 0;
   return { items: paged, total, limit, offset };
 }
@@ -504,6 +509,7 @@ async function fetchLibraryBranches(q:LibraryFetchQuery):Promise<LibraryItem[]>{
     fetchJobs.push(fetchCharacters(q));
   }
   if(wantAll||q.targetType==="MONSTER")fetchJobs.push(fetchMonsters(q));
+  if(wantAll || q.targetType === "ENCOUNTER") fetchJobs.push(fetchEncounters(q));
   const branches = await Promise.all(fetchJobs);
   return branches.flat();
 
@@ -752,6 +758,27 @@ export function visibilityCondition(
   return or(isOwner, isPublic, isFollowersOnlyVisible, legacyPublic)!;
 }
 
+/** A visibility filter narrows the authorized union; it never substitutes for its access gate. */
+export function publicationVisibilityFilter(target:string|SQL,id:SQL,legacyPublic:SQL,tier:NonNullable<LibraryQuery["visibility"]>) {
+  const effective=sql`COALESCE((SELECT p.visibility::text FROM publications p WHERE p.target_type=${target} AND p.target_id=${id}::text AND p.unpublished_at IS NULL LIMIT 1), CASE WHEN EXISTS(SELECT 1 FROM publications p WHERE p.target_type=${target} AND p.target_id=${id}::text) THEN 'PRIVATE' WHEN ${legacyPublic} THEN 'PUBLIC' ELSE 'PRIVATE' END)`;
+  return sql`${effective}=${tier}`;
+}
+
+async function fetchEncounters(q: LibraryFetchQuery): Promise<LibraryItem[]> {
+  if(q.pageIds && !q.pageIds.some(id=>id.startsWith("ENCOUNTER:")))return [];
+  const gates:SQL[]=[candidateCondition(q,"ENCOUNTER",sql`${encounters.id}`),directVisibilityCondition(sql`${encounters.ownerId}`,sql`${encounters.visibility}`,q.viewerClerkId??null)];
+  if(q.collectionId)gates.push(collectionMembershipCondition(q,"ENCOUNTER",sql`${encounters.id}`,sql`${encounters.ownerId}`,sql`NULL::text`));
+  if(q.authorClerkId)gates.push(eq(encounters.ownerId,q.authorClerkId));
+  if(q.authorUsername)gates.push(sql`EXISTS(SELECT 1 FROM users u WHERE u.clerk_user_id=${encounters.ownerId} AND u.username=${q.authorUsername})`);
+  if(q.visibility)gates.push(eq(encounters.visibility,q.visibility));
+  if(q.kind==="fork")gates.push(sql`false`);
+  if(q.search)gates.push(ilike(encounters.name,`%${q.search}%`));
+  const ids=await readLibraryCandidates(db.select({id:encounters.id}).from(encounters).where(and(...gates)),q);
+  const entries=[];
+  for(let offset=0;offset<ids.length;offset+=100)entries.push(...await listEncounterDirectory(q.viewerClerkId??null,{ids:ids.slice(offset,offset+100).map(row=>row.id),limit:100}));
+  return entries.map(row=>({id:`ENCOUNTER:${row.id}`,targetType:"ENCOUNTER",targetId:row.id,name:row.name,description:row.note,mechanicalDescription:`${row.creatureCount} creatures · ${row.enemyBu} creature BU${row.enemyItemBu===null ? "" : ` + ${row.enemyItemBu} Item BU`}`,category:"Encounter",buCost:row.enemyBu,authorId:row.ownerId,authorUsername:null,authorDisplayName:null,authorAvatarUrl:null,authorIsAdmin:false,publishedAt:new Date(row.updatedAt),visibility:row.visibility,likesCount:0,dislikesCount:0,forkCount:0,tags:[],sourceOrigin:null,iconSource:"GAME_ICONS",iconKey:"lorc/crossed-swords",iconUrl:null,iconColor:"#ffffff",encounter:row}));
+}
+
 async function fetchMonsters(q:LibraryFetchQuery):Promise<LibraryItem[]> {
  const viewer=q.viewerClerkId??null;
  if(q.pageIds&&!q.pageIds.some(key=>key.startsWith("MONSTER:")))return [];
@@ -799,10 +826,8 @@ async function fetchPrimitives(q: LibraryFetchQuery): Promise<LibraryItem[]> {
       visibilityCondition("PRIMITIVE", sql`${primitives.id}`, sql`${primitives.userId}`, q.viewerClerkId, sql`${primitives.isPublic}`),
     );
     // Explicit public-only browsing remains public-only.
-    if (q.visibility) {
-      conditions.push(eq(sql`true`, q.visibility === "PUBLIC"));
-    }
   }
+  if(q.visibility) conditions.push(publicationVisibilityFilter("PRIMITIVE",sql`${primitives.id}`,sql`${primitives.isPublic}`,q.visibility));
   if (q.kind === "fork") conditions.push(like(primitives.sourceOrigin, "fork:%"));
   if (q.kind === "creation") conditions.push(or(isNull(primitives.sourceOrigin), notLike(primitives.sourceOrigin, "fork:%"))!);
 
@@ -1000,10 +1025,8 @@ async function fetchCapabilities(q: LibraryFetchQuery): Promise<LibraryItem[]> {
     conditions.push(
       visibilityCondition("CAPABILITY", sql`${capabilities.id}`, sql`${capabilities.userId}`, q.viewerClerkId, sql`${capabilities.isPublic}`),
     );
-    if (q.visibility) {
-      conditions.push(eq(sql`true`, q.visibility === "PUBLIC"));
-    }
   }
+  if(q.visibility) conditions.push(publicationVisibilityFilter("CAPABILITY",sql`${capabilities.id}`,sql`${capabilities.isPublic}`,q.visibility));
   if (q.kind === "fork") conditions.push(like(capabilities.sourceOrigin, "fork:%"));
   if (q.kind === "creation") conditions.push(or(isNull(capabilities.sourceOrigin), notLike(capabilities.sourceOrigin, "fork:%"))!);
 
@@ -1171,33 +1194,15 @@ async function fetchCharacters(q: LibraryFetchQuery): Promise<LibraryItem[]> {
       ),
     );
   } else {
-    // Public library: an active publication row with visibility=PUBLIC
-    // is the canonical "this character is public" signal. The
-    // notUnpublished helper alone is too permissive — it returns
-    // true for rows with NO publication row at all (the EXISTS
-    // subquery is vacuously false). We need both: not-unpublished
-    // AND an active PUBLIC publication row.
-    if(q.collectionId){
-      const visible=visibilityCondition("CHARACTER",sql`${characters.id}`,sql`${characters.userId}`,q.viewerClerkId,sql`${characters.isPublic}`);
-      conditions.push(q.viewerClerkId?sql`(${visible} OR EXISTS(SELECT 1 FROM character_shares cs JOIN users u ON u.id=cs.shared_with_user_id WHERE cs.character_id=${characters.id} AND cs.revoked_at IS NULL AND u.clerk_user_id=${q.viewerClerkId}))`:visible);
-    }else conditions.push(
-      sql`EXISTS (
-        SELECT 1 FROM publications
-        WHERE target_type = 'CHARACTER'
-          AND target_id = ${characters.id}::text
-          AND unpublished_at IS NULL
-          AND visibility = 'PUBLIC'
-      )`,
-    );
-    if (q.visibility) {
-      conditions.push(eq(sql`true`, q.visibility === "PUBLIC"));
-    }
+    const visible=visibilityCondition("CHARACTER",sql`${characters.id}`,sql`${characters.userId}`,q.viewerClerkId,sql`${characters.isPublic}`);
+    conditions.push(q.collectionId && q.viewerClerkId ? sql`(${visible} OR EXISTS(SELECT 1 FROM character_shares cs JOIN users u ON u.id=cs.shared_with_user_id WHERE cs.character_id=${characters.id} AND cs.revoked_at IS NULL AND u.clerk_user_id=${q.viewerClerkId}))` : visible);
   }
+  if(q.visibility) conditions.push(publicationVisibilityFilter("CHARACTER",sql`${characters.id}`,sql`${characters.isPublic}`,q.visibility));
   if (q.search) {
     conditions.push(ilike(characters.name, `%${q.search}%`));
   }
   if (q.authorUsername) {
-    // characters don't carry username directly; resolve via users join below.
+    conditions.push(sql`EXISTS(SELECT 1 FROM users u WHERE u.clerk_user_id=${characters.userId} AND u.username=${q.authorUsername})`);
   }
 
   const entityQuery = db
@@ -1279,10 +1284,8 @@ async function fetchEffects(q: LibraryFetchQuery): Promise<LibraryItem[]> {
     conditions.push(
       visibilityCondition("EFFECT", sql`${effects.id}`, sql`${effects.userId}`, q.viewerClerkId, sql`${effects.isPublic}`),
     );
-    if (q.visibility) {
-      conditions.push(eq(sql`true`, q.visibility === "PUBLIC"));
-    }
   }
+  if(q.visibility) conditions.push(publicationVisibilityFilter("EFFECT",sql`${effects.id}`,sql`${effects.isPublic}`,q.visibility));
   if (q.kind === "fork") conditions.push(like(effects.sourceOrigin, "fork:%"));
   if (q.kind === "creation") conditions.push(or(isNull(effects.sourceOrigin), notLike(effects.sourceOrigin, "fork:%"))!);
 
@@ -1415,10 +1418,8 @@ async function fetchItems(q: LibraryFetchQuery): Promise<LibraryItem[]> {
     conditions.push(
       visibilityCondition("ITEM", sql`${items.id}`, sql`${items.userId}`, q.viewerClerkId, sql`${items.isPublic}`),
     );
-    if (q.visibility) {
-      conditions.push(eq(sql`true`, q.visibility === "PUBLIC"));
-    }
   }
+  if(q.visibility) conditions.push(publicationVisibilityFilter("ITEM",sql`${items.id}`,sql`${items.isPublic}`,q.visibility));
   if (q.kind === "fork") conditions.push(like(items.sourceOrigin, "fork:%"));
   if (q.kind === "creation") conditions.push(or(isNull(items.sourceOrigin), notLike(items.sourceOrigin, "fork:%"))!);
 
@@ -1599,10 +1600,8 @@ async function fetchTemplates(q: LibraryFetchQuery): Promise<LibraryItem[]> {
     conditions.push(
       visibilityCondition(publicationType, sql`${heritage.id}`, sql`${heritage.userId}`, q.viewerClerkId, sql`${heritage.isPublic}`),
     );
-    if (q.visibility) {
-      conditions.push(eq(sql`true`, q.visibility === "PUBLIC"));
-    }
   }
+  if(q.visibility) conditions.push(publicationVisibilityFilter(publicationType,sql`${heritage.id}`,sql`${heritage.isPublic}`,q.visibility));
   if (q.kind === "fork") conditions.push(like(heritage.sourceOrigin, "fork:%"));
   if (q.kind === "creation") conditions.push(or(isNull(heritage.sourceOrigin), notLike(heritage.sourceOrigin, "fork:%"))!);
 
@@ -1810,10 +1809,8 @@ async function fetchBuilds(q: LibraryFetchQuery): Promise<LibraryItem[]> {
     conditions.push(
       visibilityCondition("BUILD_TEMPLATE", sql`${builds.id}`, sql`${builds.userId}`, q.viewerClerkId, sql`${builds.isPublic}`),
     );
-    if (q.visibility) {
-      conditions.push(eq(sql`true`, q.visibility === "PUBLIC"));
-    }
   }
+  if(q.visibility) conditions.push(publicationVisibilityFilter("BUILD_TEMPLATE",sql`${builds.id}`,sql`${builds.isPublic}`,q.visibility));
   if (q.kind === "fork") conditions.push(like(builds.sourceOrigin, "fork:%"));
   if (q.kind === "creation") conditions.push(or(isNull(builds.sourceOrigin), notLike(builds.sourceOrigin, "fork:%"))!);
 

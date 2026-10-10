@@ -11,6 +11,7 @@
 // page" to navigate to /library/item/[id] which renders the full entity.
 // =============================================================================
 
+import { EncounterPreview } from "@/components/encounters/encounter-preview";
 import Link from "next/link";
 import { ArrowRight, ExternalLink, History, User as UserIcon } from "lucide-react";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
@@ -53,6 +54,7 @@ export function LibraryPreviewPane({
     );
   }
 
+  if(item.targetType === "ENCOUNTER")return <div className="h-full overflow-auto"><EncounterPreview id={item.targetId}/></div>;
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <header className="flex items-start justify-between gap-3 border-b border-border bg-card px-4 py-3">

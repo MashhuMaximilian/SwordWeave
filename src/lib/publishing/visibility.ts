@@ -75,14 +75,18 @@ export async function checkVisibility(input: {
             where: (table, { eq: eqFn }) => eqFn(table.clerkUserId, viewerId),
             columns: { id: true },
           });
-          if (!viewerUser) {
+          const authorUser = await db.query.users.findFirst({
+            where: (table, { eq: eqFn }) => eqFn(table.clerkUserId, ownerId),
+            columns: { id: true },
+          });
+          if (!viewerUser || !authorUser) {
             return { allowed: false, reason: "followers_only" };
           }
           const following = await db.query.follows.findFirst({
             where: (table, { and: andFn, eq: eqFn }) =>
               andFn(
                 eqFn(table.followerId, viewerUser.id),
-                eqFn(table.followingId, ownerId),
+                eqFn(table.followingId, authorUser.id),
               ),
             columns: { followerId: true },
           });

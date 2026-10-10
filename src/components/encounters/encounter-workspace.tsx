@@ -58,6 +58,7 @@ type Pick = {
 };
 const empty: EncounterDefinition = {
   name: "",
+  visibility: "PRIVATE",
   note: "",
   partyBu: null,
   partyItemBu: null,
@@ -771,6 +772,13 @@ function AccountWorkspace({
                     onChange={(e) => patch({ name: e.target.value })}
                     placeholder="The lantern bridge"
                   />
+                </label>
+                <label>
+                  Visibility
+                  <select value={draft.visibility ?? "PRIVATE"} onChange={event => patch({ visibility: event.target.value as EncounterDefinition["visibility"] })}>
+                    <option value="PRIVATE">Private</option><option value="FOLLOWERS_ONLY">Followers only</option><option value="PUBLIC">Public</option>
+                  </select>
+                  <small className="sw-encounter-help">Share preparation, creature choices and budgets. Live runs and linked character sheets stay private.</small>
                 </label>
                 <label>
                   Encounter note

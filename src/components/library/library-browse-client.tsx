@@ -1,4 +1,6 @@
 "use client";
+import { CharacterCataloguePreview } from "@/components/characters/character-catalogue-preview";
+import { EncounterPreview } from "@/components/encounters/encounter-preview";
 import { CompositionMechanics } from "./composition-mechanics";
 import { LibraryCatalogueCard, LibraryEntityIcon, libraryCatalogueStatus as primitiveStatus } from "./library-catalogue-card";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
@@ -350,18 +352,18 @@ export function LibraryBrowseClient({
         ) : null}
         {isPrimitiveMode ? <div className="v12-library-resizer" role="separator" aria-label="Resize category column" aria-orientation="vertical" tabIndex={0} aria-valuemin={190} aria-valuemax={520} aria-valuenow={leftWidth} onKeyDown={event => resizeWithKeyboard("left", event)} onPointerDown={(event) => startResize("left", event)} /> : null}
         <main className="v12-library-results min-h-0">
-          <section className={`v12-family-panel${familyExpanded ? " is-expanded" : " is-collapsed"}`} aria-label={state.typeFilter === "MONSTER" ? "Creature catalogue" : "Selected market family"}>
+          <section className={`v12-family-panel${familyExpanded ? " is-expanded" : " is-collapsed"}`} aria-label={state.typeFilter === "MONSTER" ? "Creature catalogue" : state.typeFilter === "CHARACTER" ? "Character catalogue" : "Selected market family"}>
           <div className="v12-market-hero">
             <div>
-              <p className="v12-kicker">{state.typeFilter === "MONSTER" ? "Bestiary · creatures for your story" : "Lexicon category · canonical family"}</p>
+              <p className="v12-kicker">{state.typeFilter === "MONSTER" ? "Bestiary · creatures for your story" : state.typeFilter === "CHARACTER" ? "Character directory · stories & sheets" : "Lexicon category · canonical family"}</p>
               <h2>
-                {state.typeFilter === "MONSTER" ? "Monsters & NPCs" : effectiveCategoryLabel ||
+                {state.typeFilter === "MONSTER" ? "Monsters & NPCs" : state.typeFilter === "CHARACTER" ? "Characters" : effectiveCategoryLabel ||
                   (state.typeFilter === "ALL"
                     ? "The complete SwordWeave corpus"
                     : state.typeFilter.replaceAll("_", " ").toLowerCase())}
               </h2>
               <p>
-                {state.typeFilter === "MONSTER" ? "Explore creatures, inspect their practices and abilities, then bring an independent copy to your table." : isPrimitiveMode && effectiveCategory ? "The rows define canonical tiers. Creating here opens the general primitive author with this family prefilled." : "Browse exact versions, inspect provenance, and carry the chosen record into the Atelier without losing its source lineage."}
+                {state.typeFilter === "MONSTER" ? "Explore creatures, inspect their practices and abilities, then bring an independent copy to your table." : state.typeFilter === "CHARACTER" ? "Inspect a character’s origins and chosen mechanics, then open their sheet for the complete view." : isPrimitiveMode && effectiveCategory ? "The rows define canonical tiers. Creating here opens the general primitive author with this family prefilled." : "Browse exact versions, inspect provenance, and carry the chosen record into the Atelier without losing its source lineage."}
               </p>
             </div>
             {isPrimitiveMode && effectiveCategory ? (
@@ -396,9 +398,9 @@ export function LibraryBrowseClient({
           ) : null}
           </section>
           <div className="v12-results-heading">
-            {phone ? <PhoneTypeChoices label="Record type" value={state.typeFilter} options={fixedType ? PHONE_RECORD_TYPES.filter(option => option.value === fixedType) : PHONE_RECORD_TYPES.filter(option => option.value !== "MONSTER")} onChange={value=>onStateChange({...state,typeFilter:value as LibraryToolbarState["typeFilter"],category:"",tier:""})}/> : <div>
+            {phone ? <PhoneTypeChoices label="Record type" value={state.typeFilter} options={fixedType ? PHONE_RECORD_TYPES.filter(option => option.value === fixedType) : PHONE_RECORD_TYPES} onChange={value=>onStateChange({...state,typeFilter:value as LibraryToolbarState["typeFilter"],category:"",tier:""})}/> : <div>
               <p className="v12-kicker">Exact entries</p>
-              <h3>{state.typeFilter === "MONSTER" ? "Creatures of the weave" : "Canonical references and community expressions"}</h3>
+              <h3>{state.typeFilter === "MONSTER" ? "Creatures of the weave" : state.typeFilter === "CHARACTER" ? "People of the weave" : "Canonical references and community expressions"}</h3>
             </div>}
             <span>{discovery.total.toLocaleString()} records</span>
           </div>
@@ -458,6 +460,8 @@ export function LibraryBrowseClient({
                     {selectedItem.buCost ?? 0} BU
                   </span>
                 </div>
+                {selectedItem.targetType === "CHARACTER" ? <CharacterCataloguePreview id={selectedItem.targetId}/> : null}
+                {selectedItem.targetType === "ENCOUNTER" ? <EncounterPreview key={selectedItem.id} id={selectedItem.targetId}/> : null}
                 {selectedItem.targetType === "MONSTER" ? <MonsterTemplatePreview key={selectedItem.id} id={selectedItem.targetId} compact /> : null}
                 {selectedItem.mechanicalDescription ? <div className="v12-rule" data-readable-rule>
                   <Markdown copyRole="mechanical">{selectedItem.mechanicalDescription}</Markdown>
@@ -476,15 +480,15 @@ export function LibraryBrowseClient({
                   <section className="v12-inspector-section"><h3>Design meaning</h3><Markdown>{selectedItem.verboseDescription}</Markdown></section>
                 ) : null}
                 {selectedItem.targetType === "PRIMITIVE" && selectedItem.tags.length ? <section className="v12-inspector-section"><h3>Tags</h3><div className="v12-inspector-tags">{selectedItem.tags.map((tag) => <span className="v12-tag" key={tag}>{tag}</span>)}</div></section> : null}
-                {selectedItem.targetType!=="MONSTER"&&<LibraryProvenance targetType={selectedItem.targetType} targetId={selectedItem.targetId} name={selectedItem.name} author={libraryAuthorLabel(selectedItem)} />}
+                {!["MONSTER","ENCOUNTER"].includes(selectedItem.targetType)&&<LibraryProvenance targetType={selectedItem.targetType} targetId={selectedItem.targetId} name={selectedItem.name} author={libraryAuthorLabel(selectedItem)} />}
                 <div className="v12-inspector-actions pt-3">
                   <a
-                    href={selectedItem.targetType==="MONSTER"?`/monsters/${selectedItem.targetId}`:selectedItem.definitionKind === "TEMPLATE"
+                    href={selectedItem.targetType==="ENCOUNTER"?`/encounters/${selectedItem.targetId}`:selectedItem.targetType==="CHARACTER"?`/characters/${selectedItem.targetId}`:selectedItem.targetType==="MONSTER"?`/monsters/${selectedItem.targetId}`:selectedItem.definitionKind === "TEMPLATE"
                       ? `/atelier?build=primitive&new=1&specialize=${selectedItem.targetId}`
                       : `/atelier?build=${atelierBuildForTarget(selectedItem.targetType)}&edit=${selectedItem.targetId}&intent=load`}
                     className="v12-metal-button v12-metal-button--primary"
                   >
-                    {selectedItem.targetType === "MONSTER" ? "Open creature sheet" : selectedItem.definitionKind === "TEMPLATE" ? "Specialize" : "Use exact entry"}
+                    {selectedItem.targetType === "ENCOUNTER" ? "Open encounter" : selectedItem.targetType === "CHARACTER" ? "Open character sheet" : selectedItem.targetType === "MONSTER" ? "Open creature sheet" : selectedItem.definitionKind === "TEMPLATE" ? "Specialize" : "Use exact entry"}
                   </a>
                   {selectedForkTarget ? (
                     <a
@@ -495,7 +499,7 @@ export function LibraryBrowseClient({
                     </a>
                   ) : null}
                 </div>
-                <div className="v12-inspector-engagement space-y-3 py-3">
+                {selectedItem.targetType !== "ENCOUNTER" && <div className="v12-inspector-engagement space-y-3 py-3">
                   <LikeForkBar
                     targetType={selectedItem.targetType}
                     targetId={selectedItem.targetId}
@@ -509,15 +513,15 @@ export function LibraryBrowseClient({
                     currentUserId={currentUserInternalId}
                   />
                   <PreviewFlagSummary targetType={selectedItem.targetType} targetId={selectedItem.targetId} />
-                </div>
+                </div>}
                 <div className="v12-inspector-actions v12-inspector-reference-actions border-t border-border pt-3">
-                  <a href={selectedItem.targetType==="MONSTER"?`/monsters/${selectedItem.targetId}`:`/library/item/${selectedItem.id}`} className="v12-metal-button gap-1.5 text-[11px]"><ExternalLink className="size-3.5 shrink-0" />Source</a>
-                  {selectedItem.targetType!=="MONSTER"&&<ForkMapButton key={selectedItem.id}
+                  <a href={selectedItem.targetType==="ENCOUNTER"?`/encounters/${selectedItem.targetId}`:selectedItem.targetType==="CHARACTER"?`/characters/${selectedItem.targetId}`:selectedItem.targetType==="MONSTER"?`/monsters/${selectedItem.targetId}`:`/library/item/${selectedItem.id}`} className="v12-metal-button gap-1.5 text-[11px]"><ExternalLink className="size-3.5 shrink-0" />Source</a>
+                  {selectedItem.targetType !== "MONSTER" && selectedItem.targetType !== "ENCOUNTER" &&<ForkMapButton key={selectedItem.id}
                     targetType={selectedItem.targetType}
                     targetId={selectedItem.targetId}
                     targetName={selectedItem.name}
                   />}
-                  <a className="v12-metal-button gap-1.5 text-[11px]" href={selectedItem.targetType==="MONSTER"?`/monsters/${selectedItem.targetId}`:`/library/item/${selectedItem.id}/versions`}><History className="size-3.5 shrink-0" />Versions</a>
+                  <a className="v12-metal-button gap-1.5 text-[11px]" href={selectedItem.targetType==="ENCOUNTER"?`/encounters/${selectedItem.targetId}`:selectedItem.targetType==="CHARACTER"?`/characters/${selectedItem.targetId}`:selectedItem.targetType==="MONSTER"?`/monsters/${selectedItem.targetId}`:`/library/item/${selectedItem.id}/versions`}><History className="size-3.5 shrink-0" />Versions</a>
                 </div>
               </>
             ) : (
@@ -539,7 +543,7 @@ export function LibraryBrowseClient({
         size="xl"
       >
         {selectedItem ? (
-          <div className="v12-library-modal-layout">{selectedItem.targetType==="MONSTER"?<MonsterTemplatePreview key={selectedItem.id} id={selectedItem.targetId}/>:<FetchedEntityPreview key={selectedItem.id} targetType={selectedItem.targetType} targetId={selectedItem.targetId} owner={{ authorId:selectedItem.authorId, authorUsername:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorUsername, authorDisplayName:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorDisplayName, isOwner:selectedItem.authorId === currentUserInternalId, sourceOrigin:libraryOrigin(selectedItem) === "system" ? "SRD" : selectedItem.sourceOrigin }} />}</div>
+          <div className="v12-library-modal-layout">{selectedItem.targetType==="CHARACTER"?<CharacterCataloguePreview id={selectedItem.targetId}/>:selectedItem.targetType==="ENCOUNTER"?<EncounterPreview id={selectedItem.targetId}/>:selectedItem.targetType==="MONSTER"?<MonsterTemplatePreview key={selectedItem.id} id={selectedItem.targetId}/>:<FetchedEntityPreview key={selectedItem.id} targetType={selectedItem.targetType} targetId={selectedItem.targetId} owner={{ authorId:selectedItem.authorId, authorUsername:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorUsername, authorDisplayName:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorDisplayName, isOwner:selectedItem.authorId === currentUserInternalId, sourceOrigin:libraryOrigin(selectedItem) === "system" ? "SRD" : selectedItem.sourceOrigin }} />}</div>
         ) : null}
       </DetailModal>
       <DetailModal

@@ -80,6 +80,7 @@ describe("encounter group shuffling", () => {
     const result = appraiseEncounter(
       {
         name: "Group",
+        visibility:"PRIVATE",
         note: "",
         partyBu: null,
         partyItemBu: null,

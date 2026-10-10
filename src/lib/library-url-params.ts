@@ -37,6 +37,7 @@ export function parseView(value: string | undefined | null): LibraryView {
 export function parseType(value: string | undefined | null): LibraryTargetType | "ALL" {
   if (
     value === "MONSTER" ||
+    value === "ENCOUNTER" ||
     value === "PRIMITIVE" ||
     value === "CAPABILITY" ||
     value === "EFFECT" ||

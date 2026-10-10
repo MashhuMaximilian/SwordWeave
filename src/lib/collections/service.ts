@@ -18,6 +18,7 @@ export const COLLECTION_TARGETS = [
   "MANIFEST_TEMPLATE",
   "BUILD_TEMPLATE",
   "MONSTER",
+  "ENCOUNTER",
 ] as const;
 export const SYSTEM_COLLECTIONS = {
   ORIGINAL: "Original Creations",
@@ -112,8 +113,11 @@ export const collectionTargetTables: Record<string, string> = {
   MANIFEST_TEMPLATE: "heritage",
   BUILD_TEMPLATE: "builds",
   MONSTER: "monsters",
+  ENCOUNTER: "encounters",
 };
 function entryAccess(type: string, viewer: string | null) {
+  if (type === "ENCOUNTER")
+    return sql`(e.owner_id=${viewer} OR e.visibility='PUBLIC' OR (e.visibility='FOLLOWERS_ONLY' AND EXISTS(SELECT 1 FROM follows f JOIN users a ON a.id=f.following_id JOIN users v ON v.id=f.follower_id WHERE a.clerk_user_id=e.owner_id AND v.clerk_user_id=${viewer})))`;
   if (type === "MONSTER")
     return sql`(e.user_id=${viewer} OR e.visibility='PUBLIC' OR (e.visibility='FOLLOWERS_ONLY' AND EXISTS(SELECT 1 FROM follows f JOIN users a ON a.id=f.following_id JOIN users v ON v.id=f.follower_id WHERE a.clerk_user_id=e.user_id AND v.clerk_user_id=${viewer})))`;
   const visibility = visibilityCondition(
@@ -176,7 +180,7 @@ export async function collectionContents(
           ? sql`AND e.kind=${type.replace("_TEMPLATE", "")}`
           : sql``;
       const origin =
-        type === "MONSTER"
+        type === "ENCOUNTER" ? (kind === "FORKS" ? sql`false` : sql`true`) : type === "MONSTER"
           ? kind === "FORKS"
             ? sql`e.forked_from_id IS NOT NULL`
             : sql`e.forked_from_id IS NULL`
@@ -185,7 +189,7 @@ export async function collectionContents(
             : sql`(e.source_origin IS NULL OR e.source_origin NOT LIKE 'fork:%')`;
       const member =
         kind === "ORIGINAL" || kind === "FORKS"
-          ? sql`e.user_id=${collection["owner_id"]} AND ${origin}`
+          ? sql`${type === "ENCOUNTER" ? sql`e.owner_id` : sql`e.user_id`}=${collection["owner_id"]} AND ${origin}`
           : sql`EXISTS (SELECT 1 FROM collection_entries ce WHERE ce.collection_id=${id}::uuid AND ce.target_type=${type} AND ce.target_id=e.id::text)`;
       const ids = candidates
         ?.filter((c) => c.targetType === type)

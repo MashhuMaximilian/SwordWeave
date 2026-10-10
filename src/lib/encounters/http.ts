@@ -40,3 +40,9 @@ export async function encounterRequest(
     );
   }
 }
+
+export async function encounterReadRequest(work:(viewer:string|null)=>Promise<unknown>) {
+  const {userId}=await auth();
+  try {return privateJson(await work(userId));}
+  catch(error) {return privateJson({error:error instanceof EncounterError ? error.message : "Encounter could not be loaded."},{status:error instanceof EncounterError ? error.status : 400});}
+}

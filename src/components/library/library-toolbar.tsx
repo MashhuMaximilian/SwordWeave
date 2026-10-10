@@ -1,5 +1,4 @@
 "use client";
-import {useAccount} from "@/components/account/account-provider";
 import { EntityTypeIcon } from "@/components/icons/entity-type-icon";
 
 // =============================================================================
@@ -153,6 +152,8 @@ interface LibraryToolbarProps {
 const DEFAULT_TYPE_CHIPS: LibraryTypeChip[] = [
   { key: "ALL", label: "All" },
   { key: "MONSTER", label: "Monsters & NPCs" },
+  {key:"CHARACTER",label:"Characters"},
+  {key:"ENCOUNTER",label:"Encounters"},
   { key: "PRIMITIVE", label: "Primitives" },
   { key: "CAPABILITY", label: "Capabilities" },
   { key: "EFFECT", label: "Effects" },
@@ -185,7 +186,6 @@ export function LibraryToolbar({
   primitiveCategories=[],itemTags=[],activeTags=[],showAdvancedFilters=true,showVisibilityFilter=true,
   showSearch=true,searchPlaceholder="Search by name…",forceExpandFilters=false,
 }:LibraryToolbarProps) {
-  const {isGameMaster}=useAccount();
   const [collectionRows,setCollectionRows]=useState<{id:string;name:string}[]>([]);
   useEffect(()=>{fetch("/api/collections").then(r=>r.json()).then(d=>setCollectionRows(d.collections??[])).catch(()=>{});},[]);
   const [mobileFiltersOpen,setMobileFiltersOpen]=useState(forceExpandFilters);
@@ -213,7 +213,7 @@ export function LibraryToolbar({
     <div id={filterId} className={cn("sw-discovery-body",forceExpandFilters||mobileFiltersOpen?"block":"hidden md:block")}>
       <div className="sw-discovery-grid sw-discovery-primary">
         {collectionRows.length>0&&<FilterField label="Collection"><select value={state.collectionId??""} onChange={event=>update("collectionId",event.target.value)}><option value="">All entries</option>{collectionRows.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></FilterField>}
-        <FilterField label="Browse"><div className="sw-discovery-type-select"><EntityTypeIcon type={state.typeFilter}/><select value={state.typeFilter} onChange={event=>onStateChange({...state,typeFilter:event.target.value as LibraryToolbarState["typeFilter"],category:"",tier:""})}>{!availableTypes.some(type=>type.key===state.typeFilter&&(isGameMaster||type.key!=="MONSTER"))?<option value={state.typeFilter}>Current selection</option>:null}{availableTypes.filter(type=>isGameMaster||type.key!=="MONSTER").map(type=><option key={type.key} value={type.key}>{type.label}</option>)}</select></div></FilterField>
+        <FilterField label="Browse"><div className="sw-discovery-type-select"><EntityTypeIcon type={state.typeFilter}/><select value={state.typeFilter} onChange={event=>onStateChange({...state,typeFilter:event.target.value as LibraryToolbarState["typeFilter"],category:"",tier:""})}>{!availableTypes.some(type=>type.key===state.typeFilter)?<option value={state.typeFilter}>Current selection</option>:null}{availableTypes.map(type=><option key={type.key} value={type.key}>{type.label}</option>)}</select></div></FilterField>
         <FilterField label="Sort by"><select value={state.sort} onChange={event=>update("sort",event.target.value as LibrarySort)}>{SORT_OPTIONS.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></FilterField>
       </div>
       <div className="sw-discovery-grid">

@@ -491,6 +491,13 @@
       "when": 1791470679617,
       "tag": "0073_gm_encounters",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1791618983774,
+      "tag": "0074_encounter_visibility",
+      "breakpoints": true
     }
   ]
 }

@@ -1,3 +1,5 @@
+import { LibraryGroupNav } from "./library-group-nav";
+import { EncounterArchive } from "@/components/encounters/encounter-archive";
 import { EntityTypeIcon } from "@/components/icons/entity-type-icon";
 // =============================================================================
 // /library/browse — unified library browser with sort + filter + search.
@@ -75,6 +77,7 @@ export async function LibraryCatalogue({ searchParams, monsterCatalogue = false 
   const sort = parseSort(params.sort ?? null) ?? prefs.sort;
   const view = parseView(params.view ?? null) ?? prefs.view;
   const targetType = parseType(params.type ?? "PRIMITIVE");
+  if(targetType === "ENCOUNTER")return <main className="v12-library-page mx-auto w-full max-w-[1680px] px-5 py-6"><LibraryGroupNav active="ENCOUNTER"/><EncounterArchive discovery/></main>;
   const page = 0;
   const offset = page * PAGE_SIZE;
   const search = params.q ?? "";
@@ -196,33 +199,20 @@ export async function LibraryCatalogue({ searchParams, monsterCatalogue = false 
             {targetType === "MONSTER" ? "SwordWeave bestiary" : "Public knowledge instrument"}
           </p>
           <h1 className="v12-entity-title mt-2 text-4xl leading-tight tracking-wide">
-            {targetType === "MONSTER" ? "Find a creature. Give it a place in your story." : "Find a possibility. Choose an exact expression."}
+            {targetType === "MONSTER" ? "Find a creature. Give it a place in your story." : targetType === "CHARACTER" ? "Characters with stories to tell." : "Find a possibility. Choose an exact expression."}
           </h1>
           <p className="mt-2 max-w-3xl text-base leading-7 text-muted-foreground">
-            {targetType === "MONSTER" ? "Browse reusable monsters and NPCs, preview their sheets, and make a private copy for play." : "BU Market families are the Lexicon Categories. Canonical components and community expressions share one stable index."}
+            {targetType === "MONSTER" ? "Browse reusable monsters and NPCs, preview their sheets, and make a private copy for play." : targetType === "CHARACTER" ? "Browse public characters, your own sheets and characters shared by authors you follow." : "Public entries, your own creations, and follower-only expressions shared with you, in one stable index."}
           </p>
         </div>
 
       </div>
       {monsterCatalogue && <GMOnly><Link className="sw-metal-button sw-metal-button--primary" href="/monsters/new"><EntityTypeIcon type="CREATE_MONSTER"/>Create monster or NPC</Link></GMOnly>}
 
-      <nav className="v12-library-modes" aria-label="Library record groups">
-        <Link className={targetType === "PRIMITIVE" ? "is-active" : ""} href="/library/browse?type=PRIMITIVE">
-          Market primitives
-        </Link>
-        <Link className={["EFFECT", "CAPABILITY", "LINEAGE_TEMPLATE", "UPBRINGING_TEMPLATE", "MANIFEST_TEMPLATE", "ITEM"].includes(targetType) ? "is-active" : ""} href="/library/browse?type=CAPABILITY">
-          Creations
-        </Link>
-        <GMOnly><Link className={targetType === "MONSTER" ? "is-active" : ""} href="/library/browse?type=MONSTER">
-          Monsters &amp; NPCs
-        </Link></GMOnly>
-        <Link href="/creations">My collection</Link>
-        <Link href="/library/collections">Public collections</Link>
-        <Link href="/library">Library hub ↗</Link>
-      </nav>
+      <LibraryGroupNav active={targetType}/>
       </header>
 
-      {targetType !== "PRIMITIVE" && targetType !== "ALL" && targetType !== "MONSTER" ? (
+      {targetType !== "PRIMITIVE" && targetType !== "ALL" && targetType !== "MONSTER" && targetType !== "CHARACTER" ? (
         <nav className="v12-library-submodes" aria-label="Creation types">
           {[
             ["CAPABILITY", "Capabilities"],
