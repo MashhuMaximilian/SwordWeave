@@ -14,7 +14,8 @@ import {
   Users,
 } from "lucide-react";
 import { useAccount } from "@/components/account/account-provider";
-import { EntityTypeIcon } from "@/components/icons/entity-type-icon";
+import { MonsterPortrait } from "@/components/monsters/monster-portrait";
+import { monsterArtwork } from "@/lib/monsters/art";
 import { MonsterTemplatePreview } from "@/components/monsters/monster-template-preview";
 import {
   encounterDefinitionSchema,
@@ -49,6 +50,7 @@ type Saved = {
   runs: { id: string; name: string; createdAt: string }[];
 };
 type Pick = {
+  imageUrl?: string | null;
   id: string;
   name: string;
   version: number;
@@ -381,7 +383,9 @@ function AccountWorkspace({
           definition: {
             name: string;
             budget: number;
-            catalogue?: Pick["catalogue"];
+            imageUrl?: string | null;
+            sourceOrigin?: string;
+            catalogue?: NonNullable<Pick["catalogue"]>;
           };
         };
         sheet: { itemBu: number; maximum: number };
@@ -412,6 +416,7 @@ function AccountWorkspace({
           templateId: monster.id,
           version: monster.version,
           name: data.monster.definition.name,
+          imageUrl: monsterArtwork({...data.monster.definition,id:monster.id}),
           budget: data.monster.definition.budget,
           itemBu: data.sheet.itemBu,
           maximum: data.sheet.maximum,
@@ -1063,7 +1068,7 @@ function AccountWorkspace({
                               }
                             >
                               <span className="v12-entry-glyph">
-                                <EntityTypeIcon type="MONSTER" size={24} />
+                                <MonsterPortrait imageUrl={monster.imageUrl} name={monster.name} size={40} />
                               </span>
                               <span className="sw-encounter-catalogue-copy">
                                 <strong>{monster.name}</strong>
@@ -1232,7 +1237,7 @@ function AccountWorkspace({
                           className="sw-encounter-entry"
                           data-preview-trigger="true"
                         >
-                          <EntityTypeIcon type="MONSTER" />
+                          <span className="v12-entry-glyph"><MonsterPortrait imageUrl={c?.imageUrl} name={c?.name} size={40}/></span>
                           <div>
                             <button
                               type="button"

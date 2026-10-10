@@ -3,7 +3,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Shuffle, Check, Eye, Crown } from "lucide-react";
 import { CatalogueQuickLook } from "@/components/library/catalogue-quick-look";
 import { MonsterQuickDetails } from "@/components/monsters/monster-quick-details";
-import { EntityTypeIcon } from "@/components/icons/entity-type-icon";
+import { MonsterPortrait } from "@/components/monsters/monster-portrait";
 import type {
   EncounterDefinition,
   CreatureSummary,
@@ -350,7 +350,7 @@ export function EncounterGroupPicker({
                 className="sw-encounter-group-creature"
               >
                 <span className="v12-entry-glyph">
-                  <EntityTypeIcon type="MONSTER" size={20} />
+                  <MonsterPortrait imageUrl={creature.imageUrl} name={creature.name} size={32} />
                 </span>
                 <button
                   type="button"

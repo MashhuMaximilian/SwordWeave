@@ -2,6 +2,7 @@ import { sql, desc } from "drizzle-orm";
 import { db } from "@/db/client";
 import { monsters } from "@/db/schema/monsters";
 import { encounterRequest } from "@/lib/encounters/http";
+import { monsterArtwork } from "@/lib/monsters/art";
 export const GET = (request: Request) =>
   encounterRequest(async (owner) => {
     const p = new URL(request.url).searchParams;
@@ -20,6 +21,8 @@ export const GET = (request: Request) =>
       .select({
         id: monsters.id,
         name: monsters.name,
+        imageUrl: sql<string|null>`${monsters.definition}->>'imageUrl'`,
+        sourceOrigin: sql<string|null>`${monsters.definition}->>'sourceOrigin'`,
         version: monsters.version,
         budget: sql<number>`(${monsters.definition}->>'budget')::double precision`,
         concept: sql<string>`left(${monsters.definition}->>'concept', 1000)`,
@@ -34,5 +37,5 @@ export const GET = (request: Request) =>
       .orderBy(desc(monsters.updatedAt), monsters.id)
       .limit(25)
       .offset(offset);
-    return { monsters: rows.slice(0, 24), hasMore: rows.length > 24 };
+    return { monsters: rows.slice(0, 24).map(row=>({...row,imageUrl:monsterArtwork({...row,catalogue:row.catalogue??undefined})})), hasMore: rows.length > 24 };
   });

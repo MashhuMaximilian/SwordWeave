@@ -879,3 +879,12 @@ html:root body[data-ui="v12"] .sw-encounter-entry-actions .sw-metal-button svg {
 }
 
 @media(max-width:600px) {.sw-encounter-directory-card.is-list .sw-encounter-entry-bottom .sw-encounter-entry-actions:not(.has-edit) {grid-template-columns:minmax(0,1fr) 40px;}}
+
+/* Curated portraits occupy the existing inset rim without expanding the row. */
+.sw-encounter-catalogue-opener > .v12-entry-glyph,
+.sw-encounter-group-creature > .v12-entry-glyph,
+.sw-encounter-entry > .v12-entry-glyph,
+.sw-encounter-review-creature > .v12-entry-glyph {overflow:hidden;padding:0;}
+:is(.sw-encounter-catalogue-opener,.sw-encounter-group-creature,.sw-encounter-entry,.sw-encounter-review-creature) > .v12-entry-glyph > .sw-entity-image {width:100%!important;height:100%!important;max-width:100%;max-height:100%;object-fit:cover;}
+html:root body[data-ui="v12"] .sw-encounter-selected .sw-encounter-entry > .v12-entry-glyph {grid-column:1;grid-row:1;align-self:center;width:24px;height:24px;}
+.sw-encounter-review-creature > .v12-entry-glyph {width:28px;height:28px;display:grid;place-items:center;border-radius:50%;}

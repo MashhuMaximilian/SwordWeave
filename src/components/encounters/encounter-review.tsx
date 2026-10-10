@@ -8,7 +8,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { Markdown } from "@/components/ui/markdown";
-import { EntityTypeIcon } from "@/components/icons/entity-type-icon";
+import { MonsterPortrait } from "@/components/monsters/monster-portrait";
 import { EncounterBudgetReadout } from "./encounter-budget-readout";
 import type {
   EncounterDefinition,
@@ -102,7 +102,7 @@ export function EncounterReview({
                 className="sw-encounter-review-creature"
                 key={`${entry.templateId}:${entry.version}`}
               >
-                <EntityTypeIcon type="MONSTER" size={28} />
+                <span className="v12-entry-glyph"><MonsterPortrait imageUrl={c?.imageUrl} name={c?.name} size={40}/></span>
                 <div>
                   <strong>
                     <span className="sw-encounter-review-quantity">

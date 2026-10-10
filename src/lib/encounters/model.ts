@@ -55,6 +55,7 @@ export const encounterDefinitionSchema = z
   });
 export type EncounterDefinition = z.infer<typeof encounterDefinitionSchema>;
 export type CreatureSummary = {
+  imageUrl?: string | null;
   templateId: string;
   version: number;
   name: string;

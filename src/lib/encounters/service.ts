@@ -83,6 +83,7 @@ export async function pinSummary(owner: string | null, templateId: string, versi
       templateId,
       version,
       name: definition.name,
+      imageUrl: monsterArtwork(definition),
       budget: definition.budget,
       itemBu: sheet.itemBu,
       maximum: sheet.maximum,

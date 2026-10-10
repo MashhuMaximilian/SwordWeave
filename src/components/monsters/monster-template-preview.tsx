@@ -83,7 +83,7 @@ function AccountPreview({ id, version, compact, ready, actions, actionPlacement,
   const { monster, sheet } = data;
   const definition = monster.definition;
   const slots = data.slots ?? definition.resolvedSlots ?? [];
-  const artwork = monsterArtwork({ name: monster.name, imageUrl: definition.imageUrl, sourceOrigin: definition.sourceOrigin });
+  const artwork = monsterArtwork({ ...definition, id, name: monster.name });
   return <section className={`sw-creature-preview ${compact ? "is-compact" : ""}`} aria-label={`${monster.name} mini sheet`}>
     {!hideActions && actions && actionPlacement === "top" && <PreviewActions {...actions}/>}
     <header className="sw-creature-identity">
@@ -107,7 +107,7 @@ function AccountPreview({ id, version, compact, ready, actions, actionPlacement,
 export function MonsterSheetPreview({definition,sheet,slots,compact=false}:{definition:PinnedDefinition;sheet:ReturnType<typeof resolveMonster>;slots:MonsterSlot[];compact?:boolean}) {
  const [tab,setTab]=useState<"practices"|"abilities"|"story">("practices");
  const previewId=useId();
- const artwork=monsterArtwork({name:definition.name,imageUrl:definition.imageUrl,sourceOrigin:definition.sourceOrigin});
+ const artwork=monsterArtwork(definition);
  const monster={name:definition.name};
  return <section className={`sw-creature-preview ${compact?"is-compact":""}`} aria-label="Creature review sheet">
     <MonsterSheetStats showPractices={false} sheet={sheet} definition={definition} proficientAttribute={definition.proficientAttribute} baselineVitality={definition.baselineVitality ?? sheet.vitality}/>
