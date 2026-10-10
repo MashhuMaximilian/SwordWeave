@@ -1,4 +1,5 @@
 "use client";
+import {TargetEngagement} from "@/components/engagement/target-engagement";
 import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
@@ -94,6 +95,7 @@ function AccountEncounterPreview({
           latestRunId: data.runs[0]?.id ?? null,
         }}
       />
+      <TargetEngagement targetType="ENCOUNTER" targetId={id} compact={false}/>
       <div className="sw-encounter-readout-meters">
         <section>
           <Swords size={18} />

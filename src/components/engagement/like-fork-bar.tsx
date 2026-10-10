@@ -32,6 +32,8 @@ import { buildSandboxUrl } from "@/lib/publishing/fork-target";
 
 export interface LikeForkBarProps {
   targetType:
+    | "ENCOUNTER"
+    | "COLLECTION"
     | "MONSTER"
     | "PRIMITIVE"
     | "EFFECT"
@@ -212,6 +214,16 @@ export function LikeForkBar(props: LikeForkBarProps) {
     }
   };
 
+  useEffect(() => {
+    const update = (event: Event) => {
+      const detail = (event as CustomEvent<{targetType:string;targetId:string;versionId:string|null;viewerId:string|null;likes:number;dislikes:number;reaction:"LIKE"|"DISLIKE"|null}>).detail;
+      if (!detail || detail.targetType !== props.targetType || detail.targetId !== props.targetId || detail.versionId !== (props.versionId ?? null) || detail.viewerId !== props.currentUserId) return;
+      setLikes(detail.likes); setDislikes(detail.dislikes); setUserReaction(detail.reaction);
+    };
+    window.addEventListener("sw-reactions-changed", update);
+    return () => window.removeEventListener("sw-reactions-changed", update);
+  }, [props.targetType, props.targetId, props.versionId, props.currentUserId]);
+
   const handleLike = () => {
     if (!requireAuth()) return;
     const prev = { likes, dislikes, userReaction };
@@ -246,6 +258,8 @@ export function LikeForkBar(props: LikeForkBarProps) {
         const data = await res.json();
         setLikes(data.likesCount);
         setDislikes(data.dislikesCount);
+        setUserReaction(data.liked ? "LIKE" : data.disliked ? "DISLIKE" : null);
+        window.dispatchEvent(new CustomEvent("sw-reactions-changed", {detail:{targetType:props.targetType,targetId:props.targetId,versionId:props.versionId ?? null,viewerId:props.currentUserId,likes:data.likesCount,dislikes:data.dislikesCount,reaction:data.liked ? "LIKE" : data.disliked ? "DISLIKE" : null}}));
       } catch (e) {
         // Roll back
         setLikes(prev.likes);
@@ -290,6 +304,8 @@ export function LikeForkBar(props: LikeForkBarProps) {
         const data = await res.json();
         setLikes(data.likesCount);
         setDislikes(data.dislikesCount);
+        setUserReaction(data.liked ? "LIKE" : data.disliked ? "DISLIKE" : null);
+        window.dispatchEvent(new CustomEvent("sw-reactions-changed", {detail:{targetType:props.targetType,targetId:props.targetId,versionId:props.versionId ?? null,viewerId:props.currentUserId,likes:data.likesCount,dislikes:data.dislikesCount,reaction:data.liked ? "LIKE" : data.disliked ? "DISLIKE" : null}}));
       } catch (e) {
         setLikes(prev.likes);
         setDislikes(prev.dislikes);
@@ -483,7 +499,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
         <span className="tabular-nums" aria-hidden="true">{dislikes}</span>
       </button>
 
-      <button
+      {props.targetType !== "COLLECTION" && props.targetType !== "ENCOUNTER" && <button
         type="button"
         onClick={handleFork}
         disabled={pending}
@@ -494,9 +510,9 @@ export function LikeForkBar(props: LikeForkBarProps) {
         <GitFork className={iconClass} aria-hidden="true" />
         <span className="tabular-nums" aria-hidden="true">{forks}</span>
         {!props.compact && <span>fork{forks === 1 ? "" : "s"}</span>}
-      </button>
+      </button>}
 
-      {!props.compact && <SourceCollectionLink targetType={props.targetType} targetId={props.targetId} />}
+      {!props.compact && props.targetType !== "COLLECTION" && <SourceCollectionLink targetType={props.targetType} targetId={props.targetId} />}
       <BookmarkButton targetType={props.targetType} targetId={props.targetId} compact={!!props.compact} />
 
       {showFollow && props.authorUsername && (

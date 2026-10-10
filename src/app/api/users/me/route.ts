@@ -34,6 +34,7 @@ export async function GET(): Promise<Response> {
   const row = await db.query.users.findFirst({
     where: eq(users.clerkUserId, ownerIdentity.clerkUserId),
     columns: {
+      id: true,
       username: true,
       displayName: true,
       avatarUrl: true,
@@ -46,6 +47,7 @@ export async function GET(): Promise<Response> {
   }
 
   return privateJson({
+    id: row.id,
     username: row.username,
     displayName: row.displayName,
     avatarUrl: row.avatarUrl,

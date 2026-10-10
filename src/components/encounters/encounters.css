@@ -888,3 +888,12 @@ html:root body[data-ui="v12"] .sw-encounter-entry-actions .sw-metal-button svg {
 :is(.sw-encounter-catalogue-opener,.sw-encounter-group-creature,.sw-encounter-entry,.sw-encounter-review-creature) > .v12-entry-glyph > .sw-entity-image {width:100%!important;height:100%!important;max-width:100%;max-height:100%;object-fit:cover;}
 html:root body[data-ui="v12"] .sw-encounter-selected .sw-encounter-entry > .v12-entry-glyph {grid-column:1;grid-row:1;align-self:center;width:24px;height:24px;}
 .sw-encounter-review-creature > .v12-entry-glyph {width:28px;height:28px;display:grid;place-items:center;border-radius:50%;}
+.sw-encounter-rail-visibility {padding:12px 16px;border-bottom:1px solid var(--border);}
+.sw-encounter-phone-visibility {display:none;}
+@media(max-width:999px) {.sw-encounter-rail-visibility {display:none;}.sw-encounter-phone-visibility {display:block;margin-top:10px;max-width:340px;}}
+.sw-encounter-entry-engagement {padding:7px 14px;border-top:1px solid var(--border);min-width:0;}
+
+html:root body[data-ui="v12"] .sw-encounter-entry-engagement button{color:var(--foreground)!important;background:var(--sw-inset-fill)!important;background-image:none!important;min-height:30px;min-width:30px}
+html:root body[data-ui="v12"] .sw-encounter-entry-engagement button :is(span,svg){color:inherit!important}
+html:root body[data-ui="v12"] .sw-encounter-entry-engagement button:is(:hover,:focus-visible,[aria-pressed="true"]){background:var(--sw-metal-gold)!important;color:#17140f!important}
+@media(pointer:coarse){html:root body[data-ui="v12"] .sw-encounter-entry-engagement button{min-height:44px;min-width:44px}}

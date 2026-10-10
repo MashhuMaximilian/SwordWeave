@@ -11,7 +11,8 @@
 // =============================================================================
 
 import { auth } from "@clerk/nextjs/server";
-import { NextResponse, type NextRequest } from "next/server";
+import { type NextRequest } from "next/server";
+import { privateJson } from "@/lib/http/private-json";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { visibleEntries } from "@/lib/collections/service";
@@ -35,6 +36,8 @@ const TargetTypeSchema = z.enum([
   "MANIFEST_TEMPLATE",
   "BUILD_TEMPLATE",
   "MONSTER",
+  "ENCOUNTER",
+  "COLLECTION",
 ]);
 
 const ReactionSchema = z.object({
@@ -54,12 +57,12 @@ async function resolveUser(clerkUserId: string) {
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) {
-    return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
+    return privateJson({ error: "Unauthenticated" }, { status: 401 });
   }
 
   const user = await resolveUser(userId);
   if (!user) {
-    return NextResponse.json(
+    return privateJson(
       { error: "User profile not found" },
       { status: 404 },
     );
@@ -69,12 +72,12 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return privateJson({ error: "Invalid JSON" }, { status: 400 });
   }
 
   const parsed = ReactionSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
+    return privateJson(
       { error: "Invalid input", details: parsed.error.flatten() },
       { status: 400 },
     );
@@ -88,14 +91,14 @@ export async function POST(req: NextRequest) {
   // targets pass their actual version_id, which IS a UUID — and we still
   // validate that one below.)
   if (!targetId) {
-    return NextResponse.json(
+    return privateJson(
       { error: "targetId is required" },
       { status: 400 },
     );
   }
 
   if (!(await visibleEntries([{ targetType, targetId }], userId)).length) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return privateJson({ error: "Not found" }, { status: 404 });
   }
 
   const finalVersionId =
@@ -109,10 +112,10 @@ export async function POST(req: NextRequest) {
       versionId: finalVersionId,
       kind,
     });
-    return NextResponse.json({ ok: true, ...result });
+    return privateJson({ ok: true, ...result });
   } catch (err) {
     console.error("[reactions POST] error:", err);
-    return NextResponse.json(
+    return privateJson(
       { error: err instanceof Error ? err.message : "Unknown error" },
       { status: 500 },
     );
@@ -122,12 +125,12 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) {
-    return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
+    return privateJson({ error: "Unauthenticated" }, { status: 401 });
   }
 
   const user = await resolveUser(userId);
   if (!user) {
-    return NextResponse.json(
+    return privateJson(
       { error: "User profile not found" },
       { status: 404 },
     );
@@ -139,31 +142,31 @@ export async function DELETE(req: NextRequest) {
   const versionId = url.searchParams.get("versionId");
 
   if (!targetType || !targetId) {
-    return NextResponse.json(
+    return privateJson(
       { error: "targetType and targetId are required" },
       { status: 400 },
     );
   }
   const typeCheck = TargetTypeSchema.safeParse(targetType);
   if (!typeCheck.success) {
-    return NextResponse.json({ error: "Invalid targetType" }, { status: 400 });
+    return privateJson({ error: "Invalid targetType" }, { status: 400 });
   }
   // targetId can be any non-empty string (see POST comment for rationale).
   if (!targetId) {
-    return NextResponse.json(
+    return privateJson(
       { error: "targetId is required" },
       { status: 400 },
     );
   }
   if (versionId && !isUuid(versionId)) {
-    return NextResponse.json(
+    return privateJson(
       { error: "versionId must be a UUID" },
       { status: 400 },
     );
   }
 
   if (!(await visibleEntries([{ targetType: typeCheck.data, targetId }], userId)).length) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return privateJson({ error: "Not found" }, { status: 404 });
   }
 
   const finalVersionId =
@@ -177,10 +180,10 @@ export async function DELETE(req: NextRequest) {
       targetId,
       versionId: finalVersionId,
     });
-    return NextResponse.json({ ok: true, ...result });
+    return privateJson({ ok: true, ...result });
   } catch (err) {
     console.error("[reactions DELETE] error:", err);
-    return NextResponse.json(
+    return privateJson(
       { error: err instanceof Error ? err.message : "Unknown error" },
       { status: 500 },
     );

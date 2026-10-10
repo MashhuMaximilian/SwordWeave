@@ -94,3 +94,15 @@ body[data-ui="v12"] .sw-collections-tree :is(summary,.sw-collections-tree-leaf):
 
 .sw-collections-branch-grid > .sw-collections-tree {display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;}
 .sw-collections-branch-grid > .sw-collections-tree > li {border:1px solid var(--border);border-radius:6px;padding:8px;}
+.sw-collection-engagement {padding:8px 12px;min-width:0;border-top:1px solid var(--border);}
+.sw-collections-tree-node > .sw-collection-engagement {margin-left:28px;}
+.sw-engagement-loading {color:var(--muted-foreground);font-size:11px;}
+.sw-collection-preview {padding:16px;display:grid;gap:14px;}
+.sw-collection-preview h2 {font:600 22px/1.3 var(--font-system);}
+.sw-collection-preview ul {list-style:none;padding:0;}
+.sw-collection-preview li {display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);}
+
+html:root body[data-ui="v12"] .sw-collection-engagement button{color:var(--foreground)!important;background:var(--sw-inset-fill)!important;background-image:none!important;min-height:30px;min-width:30px}
+html:root body[data-ui="v12"] .sw-collection-engagement button :is(span,svg){color:inherit!important}
+html:root body[data-ui="v12"] .sw-collection-engagement button:is(:hover,:focus-visible,[aria-pressed="true"]){background:var(--sw-metal-gold)!important;color:#17140f!important}
+@media(pointer:coarse){html:root body[data-ui="v12"] .sw-collection-engagement button{min-height:44px;min-width:44px}}

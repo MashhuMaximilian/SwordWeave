@@ -1,4 +1,5 @@
 "use client";
+import { VisibilityChoices } from "@/components/library/visibility-choices";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
@@ -669,6 +670,7 @@ function AccountWorkspace({
                 </button>
               ))}
             </nav>
+            <div className="sw-encounter-rail-visibility"><VisibilityChoices value={draft.visibility ?? "PRIVATE"} onChange={visibility => patch({visibility})} hint="Share preparation. Runs and linked sheets stay private."/></div>
             <div className="sw-encounter-rail-budget">
               <span className="v12-kicker">Encounter snapshot</span>
               <div className="sw-encounter-rail-count">
@@ -711,6 +713,7 @@ function AccountWorkspace({
                   {String(stage + 1).padStart(2, "0")} · Encounter preparation
                 </p>
                 <h2>{chapters[stage]!.title}</h2>
+                <div className="sw-encounter-phone-visibility"><VisibilityChoices value={draft.visibility ?? "PRIVATE"} onChange={visibility=>patch({visibility})}/></div>
                 <p>
                   {stage === 2
                     ? "Set your limits, choose a group, or build a roster yourself."
@@ -777,13 +780,6 @@ function AccountWorkspace({
                     onChange={(e) => patch({ name: e.target.value })}
                     placeholder="The lantern bridge"
                   />
-                </label>
-                <label>
-                  Visibility
-                  <select value={draft.visibility ?? "PRIVATE"} onChange={event => patch({ visibility: event.target.value as EncounterDefinition["visibility"] })}>
-                    <option value="PRIVATE">Private</option><option value="FOLLOWERS_ONLY">Followers only</option><option value="PUBLIC">Public</option>
-                  </select>
-                  <small className="sw-encounter-help">Share preparation, creature choices and budgets. Live runs and linked character sheets stay private.</small>
                 </label>
                 <label>
                   Encounter note

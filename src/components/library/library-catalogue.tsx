@@ -1,4 +1,4 @@
-import { LibraryGroupNav } from "./library-group-nav";
+import { LibraryHeader } from "./library-header";
 import { EncounterArchive } from "@/components/encounters/encounter-archive";
 import { EntityTypeIcon } from "@/components/icons/entity-type-icon";
 // =============================================================================
@@ -77,7 +77,7 @@ export async function LibraryCatalogue({ searchParams, monsterCatalogue = false 
   const sort = parseSort(params.sort ?? null) ?? prefs.sort;
   const view = parseView(params.view ?? null) ?? prefs.view;
   const targetType = parseType(params.type ?? "PRIMITIVE");
-  if(targetType === "ENCOUNTER")return <main className="v12-library-page mx-auto w-full max-w-[1680px] px-5 py-6"><LibraryGroupNav active="ENCOUNTER"/><EncounterArchive discovery/></main>;
+  if(targetType === "ENCOUNTER")return <main className="v12-library-page mx-auto w-full max-w-[1680px] px-5 py-6"><LibraryHeader active="ENCOUNTER"/><EncounterArchive discovery/></main>;
   const page = 0;
   const offset = page * PAGE_SIZE;
   const search = params.q ?? "";
@@ -192,25 +192,8 @@ export async function LibraryCatalogue({ searchParams, monsterCatalogue = false 
 
   return (
     <><div className={`v12-library-page${monsterCatalogue?" monster-catalogue":""} mx-auto w-full max-w-[1680px] px-5 py-6`}>
-      <header className="v12-library-heading">
-      <div className="v12-library-title">
-        <div className="min-w-0">
-          <p className="v12-kicker">
-            {targetType === "MONSTER" ? "SwordWeave bestiary" : "Public knowledge instrument"}
-          </p>
-          <h1 className="v12-entity-title mt-2 text-4xl leading-tight tracking-wide">
-            {targetType === "MONSTER" ? "Find a creature. Give it a place in your story." : targetType === "CHARACTER" ? "Characters with stories to tell." : "Find a possibility. Choose an exact expression."}
-          </h1>
-          <p className="mt-2 max-w-3xl text-base leading-7 text-muted-foreground">
-            {targetType === "MONSTER" ? "Browse reusable monsters and NPCs, preview their sheets, and make a private copy for play." : targetType === "CHARACTER" ? "Browse public characters, your own sheets and characters shared by authors you follow." : "Public entries, your own creations, and follower-only expressions shared with you, in one stable index."}
-          </p>
-        </div>
+      <LibraryHeader active={targetType} action={monsterCatalogue ? <GMOnly><Link className="sw-metal-button" href="/monsters/new"><EntityTypeIcon type="CREATE_MONSTER"/>Create monster or NPC</Link></GMOnly> : undefined}/>
 
-      </div>
-      {monsterCatalogue && <GMOnly><Link className="sw-metal-button sw-metal-button--primary" href="/monsters/new"><EntityTypeIcon type="CREATE_MONSTER"/>Create monster or NPC</Link></GMOnly>}
-
-      <LibraryGroupNav active={targetType}/>
-      </header>
 
       {targetType !== "PRIMITIVE" && targetType !== "ALL" && targetType !== "MONSTER" && targetType !== "CHARACTER" ? (
         <nav className="v12-library-submodes" aria-label="Creation types">

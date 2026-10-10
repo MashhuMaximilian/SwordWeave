@@ -1,3 +1,4 @@
+import { LibraryHeader } from "@/components/library/library-header";
 import Link from "next/link";
 import { PublicCollectionResults } from "@/components/collections/public-collection-results";
 import { ArrowLeft, ArrowRight, FolderTree, Search } from "lucide-react";
@@ -17,13 +18,8 @@ export default async function PublicCollectionsPage({ searchParams }: {
     return `/library/collections?${params}`;
   }
   return <main className="sw-public-collections">
-    <Link href="/library/browse" className="sw-collections-directory-back"><ArrowLeft size={16} /> Library</Link>
-    <header className="sw-collections-directory-heading">
-      <span className="sw-collections-directory-seal" aria-hidden="true"><FolderTree /></span>
-      <div><p className="sw-collections-directory-eyebrow">The shared Library</p><h1>Public collections</h1>
-        <p>Explore groups of rules, heritages, equipment, and creatures curated by the community and SwordWeave.</p></div>
-      <Link href="/collections" className="sw-metal-button sw-collections-directory-action">Your collections <ArrowRight size={16} /></Link>
-    </header>
+    <LibraryHeader active="COLLECTION"/>
+
     <form className="sw-collections-directory-search" action="/library/collections">
       <label className="sw-collections-directory-query"><span>Find a collection</span><div><Search size={18} aria-hidden="true" /><input type="search" name="q" defaultValue={filters.q} maxLength={100} placeholder="Search collection names…" /></div></label>
       <label><span>Origin</span><select name="origin" defaultValue={filters.origin}><option value="all">All origins</option><option value="community">Community</option><option value="system">System</option></select></label>

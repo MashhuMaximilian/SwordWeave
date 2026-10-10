@@ -1,4 +1,5 @@
 "use client";
+import {TargetEngagement} from "@/components/engagement/target-engagement";
 import { useRef, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
@@ -14,7 +15,6 @@ import {
   Eye,
 } from "lucide-react";
 import { CatalogueQuickLook } from "@/components/library/catalogue-quick-look";
-import { BookmarkButton } from "@/components/collections/bookmark-button";
 import type { EncounterDirectoryEntry } from "@/lib/encounters/directory";
 import type { LibraryView } from "@/lib/preferences/library-prefs";
 import { browserUuid } from "@/lib/browser-uuid";
@@ -94,7 +94,7 @@ export function EncounterActions({
           Sign in to start
         </Link>
       )}
-      <BookmarkButton targetType="ENCOUNTER" targetId={row.id} />
+
       {row.latestRunId && (
         <Link
           className="sw-metal-button"
@@ -225,6 +225,7 @@ export function EncounterCard({
         </span>
         <EncounterActions row={row} />
       </div>
+      <div className="sw-encounter-entry-engagement"><TargetEngagement targetType="ENCOUNTER" targetId={row.id}/></div>
       {row.unavailable && (
         <p className="sw-encounter-entry-error">
           A template is no longer accessible. Review preparation before

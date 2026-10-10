@@ -1,5 +1,6 @@
 "use client";
 import { CharacterCataloguePreview } from "@/components/characters/character-catalogue-preview";
+import { CollectionPreview } from "@/components/collections/collection-preview";
 import { EncounterPreview } from "@/components/encounters/encounter-preview";
 import { CompositionMechanics } from "./composition-mechanics";
 import { LibraryCatalogueCard, LibraryEntityIcon, libraryCatalogueStatus as primitiveStatus } from "./library-catalogue-card";
@@ -444,7 +445,7 @@ export function LibraryBrowseClient({
           </div>
           <div className="v12-inspector-body">
             {selectedItem ? (
-              <>
+              selectedItem.targetType === "COLLECTION" ? <CollectionPreview id={selectedItem.targetId}/> : <>
                 <div className="v12-inspect-orbit" aria-hidden="true">
                   <span><LibraryEntityIcon item={selectedItem} size={40} /></span>
                 </div>
@@ -543,7 +544,7 @@ export function LibraryBrowseClient({
         size="xl"
       >
         {selectedItem ? (
-          <div className="v12-library-modal-layout">{selectedItem.targetType==="CHARACTER"?<CharacterCataloguePreview id={selectedItem.targetId}/>:selectedItem.targetType==="ENCOUNTER"?<EncounterPreview id={selectedItem.targetId}/>:selectedItem.targetType==="MONSTER"?<MonsterTemplatePreview key={selectedItem.id} id={selectedItem.targetId}/>:<FetchedEntityPreview key={selectedItem.id} targetType={selectedItem.targetType} targetId={selectedItem.targetId} owner={{ authorId:selectedItem.authorId, authorUsername:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorUsername, authorDisplayName:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorDisplayName, isOwner:selectedItem.authorId === currentUserInternalId, sourceOrigin:libraryOrigin(selectedItem) === "system" ? "SRD" : selectedItem.sourceOrigin }} />}</div>
+          <div className="v12-library-modal-layout">{selectedItem.targetType==="COLLECTION"?<CollectionPreview id={selectedItem.targetId}/>:selectedItem.targetType==="CHARACTER"?<CharacterCataloguePreview id={selectedItem.targetId}/>:selectedItem.targetType==="ENCOUNTER"?<EncounterPreview id={selectedItem.targetId}/>:selectedItem.targetType==="MONSTER"?<MonsterTemplatePreview key={selectedItem.id} id={selectedItem.targetId}/>:<FetchedEntityPreview key={selectedItem.id} targetType={selectedItem.targetType} targetId={selectedItem.targetId} owner={{ authorId:selectedItem.authorId, authorUsername:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorUsername, authorDisplayName:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorDisplayName, isOwner:selectedItem.authorId === currentUserInternalId, sourceOrigin:libraryOrigin(selectedItem) === "system" ? "SRD" : selectedItem.sourceOrigin }} />}</div>
         ) : null}
       </DetailModal>
       <DetailModal

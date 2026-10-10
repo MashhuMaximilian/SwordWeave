@@ -1,3 +1,4 @@
+import { collections } from "@/db/schema/collections";
 import { monsters } from "@/db/schema/monsters";
 import { monsterLibraryColumns,monsterRowsToLibraryItems } from "./monster-library-item";
 import {
@@ -88,6 +89,7 @@ export type LibrarySort =
 export type LibraryTargetType =
   | "MONSTER"
   | "ENCOUNTER"
+  | "COLLECTION"
   | "PRIMITIVE"
   | "CAPABILITY"
   | "EFFECT"
@@ -415,7 +417,7 @@ async function queryLibraryResult(q: LibraryQuery, complete: boolean): Promise<L
   // a shared viewer-independent cache. Enrichment precedes sort/origin filters.
   const [authorMap, engagementMap] = await Promise.all([
     resolveAuthorMap(items.map((item) => item.authorId)),
-    resolveEngagementMap(items.filter(item => item.targetType !== "ENCOUNTER").map((item) => item.id)),
+    resolveEngagementMap(items.map((item) => item.id)),
   ]);
   for (const item of items) {
     const author = item.authorId ? authorMap.get(item.authorId) : null;
@@ -468,7 +470,7 @@ async function queryLibraryResult(q: LibraryQuery, complete: boolean): Promise<L
     paged=selected.flatMap(metadata=>{const item=map.get(metadata.id);if(!item)return [];return [{...item,authorUsername:metadata.authorUsername,authorDisplayName:metadata.authorDisplayName,authorAvatarUrl:metadata.authorAvatarUrl,authorIsAdmin:metadata.authorIsAdmin,likesCount:metadata.likesCount,dislikesCount:metadata.dislikesCount,forkCount:metadata.forkCount}];});
   }
 
-  const flagCounts = await loadLibraryFlagCounts(paged.filter((item): item is LibraryItem & {targetType: Exclude<LibraryTargetType,"ENCOUNTER">} => item.targetType !== "ENCOUNTER"));
+  const flagCounts = await loadLibraryFlagCounts(paged);
   for (const item of paged) item.flagCount = flagCounts.get(item.id) ?? 0;
   return { items: paged, total, limit, offset };
 }
@@ -510,6 +512,7 @@ async function fetchLibraryBranches(q:LibraryFetchQuery):Promise<LibraryItem[]>{
   }
   if(wantAll||q.targetType==="MONSTER")fetchJobs.push(fetchMonsters(q));
   if(wantAll || q.targetType === "ENCOUNTER") fetchJobs.push(fetchEncounters(q));
+  if(q.targetType === "COLLECTION" || (wantAll && q.collectionId)) fetchJobs.push(fetchCollections(q));
   const branches = await Promise.all(fetchJobs);
   return branches.flat();
 
@@ -762,6 +765,18 @@ export function visibilityCondition(
 export function publicationVisibilityFilter(target:string|SQL,id:SQL,legacyPublic:SQL,tier:NonNullable<LibraryQuery["visibility"]>) {
   const effective=sql`COALESCE((SELECT p.visibility::text FROM publications p WHERE p.target_type=${target} AND p.target_id=${id}::text AND p.unpublished_at IS NULL LIMIT 1), CASE WHEN EXISTS(SELECT 1 FROM publications p WHERE p.target_type=${target} AND p.target_id=${id}::text) THEN 'PRIVATE' WHEN ${legacyPublic} THEN 'PUBLIC' ELSE 'PRIVATE' END)`;
   return sql`${effective}=${tier}`;
+}
+
+async function fetchCollections(q: LibraryFetchQuery): Promise<LibraryItem[]> {
+  const gates:SQL[]=[candidateCondition(q,"COLLECTION",sql`${collections.id}`),directVisibilityCondition(sql`${collections.ownerId}`,sql`${collections.visibility}`,q.viewerClerkId??null)];
+  if(q.collectionId) gates.push(collectionMembershipCondition(q,"COLLECTION",sql`${collections.id}`,sql`${collections.ownerId}`,sql`'collection'::text`),sql`EXISTS(SELECT 1 FROM collections container WHERE container.id::text=${q.collectionId} AND (container.system_kind IS NULL OR container.system_kind='FAVORITES'))`);
+  if(q.authorClerkId) gates.push(eq(collections.ownerId,q.authorClerkId));
+  if(q.authorUsername) gates.push(sql`EXISTS(SELECT 1 FROM users u WHERE u.clerk_user_id=${collections.ownerId} AND u.username=${q.authorUsername})`);
+  if(q.visibility) gates.push(eq(collections.visibility,q.visibility));
+  if(q.search) gates.push(ilike(collections.name,`%${q.search}%`));
+  if(q.kind === "fork") gates.push(sql`false`);
+  const rows=await readLibraryCandidates(db.select().from(collections).where(and(...gates)),q);
+  return rows.map(row=>({id:`COLLECTION:${row.id}`,targetType:"COLLECTION",targetId:row.id,name:row.name,description:"A curated collection. Open the preview to explore its accessible entries.",category:"Collection",buCost:null,authorId:row.ownerId,authorUsername:null,authorDisplayName:null,authorAvatarUrl:null,authorIsAdmin:false,publishedAt:row.createdAt,visibility:row.visibility,likesCount:0,dislikesCount:0,forkCount:0,tags:[],sourceOrigin:"collection",iconSource:"GAME_ICONS",iconKey:"delapouite/bookshelf",iconUrl:null,iconColor:"#ffffff"}));
 }
 
 async function fetchEncounters(q: LibraryFetchQuery): Promise<LibraryItem[]> {

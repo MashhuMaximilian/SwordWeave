@@ -281,9 +281,9 @@ async function getAggregateCount(
 type RawForkRow = {
   id: string;
   forkedByUserId: string;
-  forkedTargetType: ForkTargetType;
+  forkedTargetType: (typeof forks.$inferSelect)["forkedTargetType"];
   forkedTargetId: string;
-  sourceTargetType: ForkTargetType;
+  sourceTargetType: (typeof forks.$inferSelect)["sourceTargetType"];
   sourceTargetId: string;
   sourceVersionId: string;
   createdAt: Date;
@@ -308,14 +308,16 @@ async function enrichEntries(
   rows: RawForkRow[],
   _hints: { forkerClerkId: (string | null)[] },
 ): Promise<ForkEntry[]> {
-  if (rows.length === 0) return [];
+  const supported = (type: string): type is ForkTargetType => type !== "COLLECTION" && type !== "ENCOUNTER";
+  const forkRows = rows.filter((r): r is RawForkRow & {sourceTargetType: ForkTargetType;forkedTargetType: ForkTargetType} => supported(r.sourceTargetType) && supported(r.forkedTargetType));
+  if (forkRows.length === 0) return [];
 
   // Collect all source/forked target IDs grouped by type so we can batch-fetch
   // their display names. We map each target type → Set<id> from BOTH source and
   // forked sides, since either side may be missing rows in our DB (e.g. hard
   // deleted). We'll resolve whichever side has rows.
   const idsByType = new Map<string, Set<string>>();
-  for (const r of rows) {
+  for (const r of forkRows) {
     const sKey = r.sourceTargetType;
     if (!idsByType.has(sKey)) idsByType.set(sKey, new Set());
     idsByType.get(sKey)!.add(r.sourceTargetId);
@@ -331,14 +333,14 @@ async function enrichEntries(
   // Batch-fetch source author Clerk IDs (the userId text field on each
   // source content row). Indexed by "<TYPE>:<id>" for the SOURCE side only.
   const sourceIdsByType = new Map<string, Set<string>>();
-  for (const r of rows) {
+  for (const r of forkRows) {
     const sKey = r.sourceTargetType;
     if (!sourceIdsByType.has(sKey)) sourceIdsByType.set(sKey, new Set());
     sourceIdsByType.get(sKey)!.add(r.sourceTargetId);
   }
   const sourceAuthorMap = await resolveSourceAuthors(sourceIdsByType);
 
-  return rows.map((r) => {
+  return forkRows.map((r) => {
     // Skip anonymized/deleted forker's username — fall back to null
     const forkerVisible =
       !r.forkerIsAnonymized && !r.forkerDeletedAt && Boolean(r.forkerClerkId);

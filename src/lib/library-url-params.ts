@@ -38,6 +38,7 @@ export function parseType(value: string | undefined | null): LibraryTargetType |
   if (
     value === "MONSTER" ||
     value === "ENCOUNTER" ||
+    value === "COLLECTION" ||
     value === "PRIMITIVE" ||
     value === "CAPABILITY" ||
     value === "EFFECT" ||

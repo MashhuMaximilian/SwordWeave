@@ -12,7 +12,10 @@
 //   - targetId:   the row's id (number-as-string for primitives, UUID for the rest)
 // =============================================================================
 
-import { NextResponse } from "next/server";
+import { privateJson as NextResponseJson } from "@/lib/http/private-json";
+import { visibleEntries } from "@/lib/collections/service";
+import {loadLibraryFlagCounts} from "@/lib/engagement/library-flag-counts";
+import {resolveVirtualVersionId} from "@/lib/engagement/version-helpers";
 import { auth } from "@clerk/nextjs/server";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
@@ -20,6 +23,9 @@ import { forkAggregates, reactionAggregates, reactions } from "@/db/schema";
 import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 
 const VALID_TARGET_TYPES = [
+  "MONSTER",
+  "ENCOUNTER",
+  "COLLECTION",
   "PRIMITIVE",
   "CAPABILITY",
   "EFFECT",
@@ -41,14 +47,15 @@ export async function GET(request: Request) {
     !targetId ||
     !(VALID_TARGET_TYPES as readonly string[]).includes(targetType)
   ) {
-    return NextResponse.json(
+    return NextResponseJson(
       { error: "targetType and targetId are required." },
       { status: 400 },
     );
   }
 
   const { userId: clerkUserId } = await auth();
-  const [reactionTotals, forkTotals] = await Promise.all([
+  if (!(await visibleEntries([{targetType,targetId}],clerkUserId)).length) return NextResponseJson({error:"Not found"},{status:404});
+  const [reactionTotals, forkTotals, flagCounts] = await Promise.all([
     db
       .select({
         likes: sql<number>`COALESCE(SUM(${reactionAggregates.likesCount}), 0)::int`,
@@ -66,14 +73,16 @@ export async function GET(request: Request) {
         eq(forkAggregates.sourceTargetType, targetType as (typeof VALID_TARGET_TYPES)[number]),
         eq(forkAggregates.sourceTargetId, targetId),
       )),
+    loadLibraryFlagCounts([{id:`${targetType}:${targetId}`,targetType:targetType as (typeof VALID_TARGET_TYPES)[number],targetId}]),
   ]);
   const counts = {
+    flags:flagCounts.get(`${targetType}:${targetId}`)??0,
     likes: Number(reactionTotals[0]?.likes ?? 0),
     dislikes: Number(reactionTotals[0]?.dislikes ?? 0),
     forks: Number(forkTotals[0]?.forks ?? 0),
   };
   if (!clerkUserId) {
-    return NextResponse.json({
+    return NextResponseJson({
       ...counts,
       userReaction: null,
       currentUserInternalId: null,
@@ -82,7 +91,7 @@ export async function GET(request: Request) {
 
   const currentUserInternalId = await resolveUserIdByClerkId(clerkUserId);
   if (!currentUserInternalId) {
-    return NextResponse.json({
+    return NextResponseJson({
       ...counts,
       userReaction: null,
       currentUserInternalId: null,
@@ -100,13 +109,14 @@ export async function GET(request: Request) {
         eq(reactions.userId, currentUserInternalId),
         eq(reactions.targetType, targetType as (typeof VALID_TARGET_TYPES)[number]),
         eq(reactions.targetId, targetId),
+        ...(targetType === "COLLECTION" || targetType === "ENCOUNTER" ? [eq(reactions.versionId,resolveVirtualVersionId(targetType,targetId))] : []),
       ),
     )
     .limit(1);
 
   // If we have a reaction, also surface the user's internal id so the
   // LikeForkBar can decide whether to show the follow button.
-  return NextResponse.json({
+  return NextResponseJson({
     ...counts,
     userReaction: rows[0]?.kind ?? null,
     currentUserInternalId,

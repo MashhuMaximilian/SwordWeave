@@ -39,3 +39,15 @@
 .sw-collections-directory-grid.is-list .sw-collections-directory-card:is(:hover,:focus-within) {background:var(--sw-metal-gold);}
 .sw-collections-directory-grid.is-list .sw-collections-directory-card:is(:hover,:focus-within) :is(h2,span,a,svg) {color:#17140f;}
 @media(max-width:800px) { .sw-collections-directory-grid.is-list .sw-collections-directory-open {grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;} .sw-collections-directory-grid.is-list h2 {grid-column:1;grid-row:1;} .sw-collections-directory-grid.is-list .sw-collections-directory-eyebrow {grid-row:2;grid-column:1;} .sw-collections-directory-grid.is-list .sw-collections-directory-author {grid-row:3;grid-column:1;} .sw-collections-directory-grid.is-list .sw-collections-directory-card-action {grid-column:2;grid-row:1/4;} }
+/* Keep actions inside the card instead of extending a full-height link. */
+.sw-public-collections{max-width:1680px;padding:24px 20px;gap:16px}
+.sw-public-collections .sw-library-header{margin-bottom:0}
+.sw-collections-directory-card{display:flex;flex-direction:column}
+.sw-collections-directory-open{height:auto;flex:1}
+.sw-collections-directory-card:has(.sw-collections-directory-curator) .sw-collections-directory-open{padding-bottom:22px}
+.sw-collections-directory-curator{position:static;margin:0 14px 10px}
+.sw-collections-directory-card .sw-collection-engagement{padding:8px 14px;border-top:1px solid var(--border)}
+html:root body[data-ui="v12"] .sw-collections-directory-card .sw-collection-engagement button{color:var(--foreground)!important;background:var(--sw-inset-fill)!important;background-image:none!important;min-height:30px;min-width:30px}
+html:root body[data-ui="v12"] .sw-collections-directory-card .sw-collection-engagement button :is(span,svg){color:inherit!important}
+html:root body[data-ui="v12"] .sw-collections-directory-card .sw-collection-engagement button:is(:hover,:focus-visible,[aria-pressed="true"]){background:var(--sw-metal-gold)!important;color:#17140f!important}
+@media(pointer:coarse){html:root body[data-ui="v12"] .sw-collections-directory-card .sw-collection-engagement button{min-height:44px;min-width:44px}}

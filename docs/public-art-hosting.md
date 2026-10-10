@@ -56,3 +56,21 @@ recovery window. Keep the current live release and the previous release for
 rollback. Storage is measured in GB-months using daily maximums, so the dashboard
 may not immediately reflect cleanup. [Deployment storage](https://vercel.com/docs/deployment-storage),
 [retention](https://vercel.com/docs/deployment-retention).
+
+## Monster portraits — 2026-10-10 follow-up
+
+The 100 new system portraits were initially shipped as Vercel static WebP assets,
+not R2 objects. Their originals remain in `output/monster-art-2026-10/`.
+Cloudflare/Wrangler authentication is currently unavailable on this host; the
+transfer has **not** been applied. Existing portrait URLs keep working from the
+static deployment until the R2 transfer is verified.
+
+The read-only Worker source now permits `art/monsters/*.webp` and `.png` alongside
+the established catalog roots. Run `node scripts/migrate-monster-public-art.mjs`
+for its local checksum dry run (100 new portraits plus 5 established portraits).
+After signing into the existing Cloudflare account, use `--apply` to deploy the
+Worker, upload to `swordweave-public-art`, verify every object's bytes/MIME through
+the Worker, and update `data/public-art-catalog.json`. Then add the
+`/art/monsters/:path*` redirect, exclude `public/art/monsters/` from Git/Vercel,
+verify the complete catalog and publish. Never remove the static copies from the
+deployment before the remote verification succeeds.

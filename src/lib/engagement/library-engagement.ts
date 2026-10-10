@@ -45,7 +45,7 @@ export async function loadLibraryEngagement(
   // error to the user that prevents them from browsing the corpus at all.
   try {
     // Build (targetType, targetId, versionId) tuples for reaction lookup
-    const versioned = items.filter(item => item.targetType !== "ENCOUNTER").map((it) => ({
+    const versioned = items.map((it) => ({
       cid: it.id,
       targetType: it.targetType,
       targetId: it.targetId,

@@ -6,7 +6,8 @@
 // =============================================================================
 
 import { auth } from "@clerk/nextjs/server";
-import { NextResponse, type NextRequest } from "next/server";
+import { type NextRequest } from "next/server";
+import { privateJson } from "@/lib/http/private-json";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { visibleEntries } from "@/lib/collections/service";
@@ -32,6 +33,8 @@ const TargetTypeSchema = z.enum([
   "MANIFEST_TEMPLATE",
   "BUILD_TEMPLATE",
   "MONSTER",
+  "ENCOUNTER",
+  "COLLECTION",
 ]);
 
 const ReasonSchema = z.enum([
@@ -63,17 +66,17 @@ export async function GET(req: NextRequest) {
   const targetId = url.searchParams.get("targetId");
   const requestedVersionId = url.searchParams.get("versionId");
   if (!parsedType.success || !targetId) {
-    return NextResponse.json(
+    return privateJson(
       { error: "Valid targetType and targetId are required" },
       { status: 400 },
     );
   }
   if (requestedVersionId && !isUuid(requestedVersionId)) {
-    return NextResponse.json({ error: "versionId must be a UUID" }, { status: 400 });
+    return privateJson({ error: "versionId must be a UUID" }, { status: 400 });
   }
   const { userId } = await auth();
   if (!(await visibleEntries([{ targetType: parsedType.data, targetId }], userId)).length) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return privateJson({ error: "Not found" }, { status: 404 });
   }
   const versionId = requestedVersionId ?? resolveVirtualVersionId(parsedType.data, targetId);
   try {
@@ -81,25 +84,25 @@ export async function GET(req: NextRequest) {
       getFlagAggregate(parsedType.data, targetId, versionId),
       listFlagNotes(parsedType.data, targetId, versionId),
     ]);
-    return NextResponse.json({
+    return privateJson({
       distribution,
       notes: notes.map(({ id, note, reportedAt }) => ({ id, note, reportedAt })),
     });
   } catch (err) {
     console.error("[flags GET] error:", err);
-    return NextResponse.json({ error: "Failed to load flag details" }, { status: 500 });
+    return privateJson({ error: "Failed to load flag details" }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) {
-    return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
+    return privateJson({ error: "Unauthenticated" }, { status: 401 });
   }
 
   const user = await resolveUser(userId);
   if (!user) {
-    return NextResponse.json(
+    return privateJson(
       { error: "User profile not found" },
       { status: 404 },
     );
@@ -109,12 +112,12 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return privateJson({ error: "Invalid JSON" }, { status: 400 });
   }
 
   const parsed = FlagSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
+    return privateJson(
       { error: "Invalid input", details: parsed.error.flatten() },
       { status: 400 },
     );
@@ -125,14 +128,14 @@ export async function POST(req: NextRequest) {
   // targetId is allowed to be any non-empty string (see /api/reactions POST
   // for rationale). Only versionId needs to be a UUID when provided.
   if (!targetId) {
-    return NextResponse.json(
+    return privateJson(
       { error: "targetId is required" },
       { status: 400 },
     );
   }
 
   if (!(await visibleEntries([{ targetType, targetId }], userId)).length) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return privateJson({ error: "Not found" }, { status: 404 });
   }
 
   const finalVersionId =
@@ -147,10 +150,10 @@ export async function POST(req: NextRequest) {
       reason,
       ...(note ? { note } : {}),
     });
-    return NextResponse.json({ ok: true, ...result });
+    return privateJson({ ok: true, ...result });
   } catch (err) {
     console.error("[flags POST] error:", err);
-    return NextResponse.json(
+    return privateJson(
       { error: err instanceof Error ? err.message : "Unknown error" },
       { status: 500 },
     );
@@ -160,12 +163,12 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) {
-    return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
+    return privateJson({ error: "Unauthenticated" }, { status: 401 });
   }
 
   const user = await resolveUser(userId);
   if (!user) {
-    return NextResponse.json(
+    return privateJson(
       { error: "User profile not found" },
       { status: 404 },
     );
@@ -178,7 +181,7 @@ export async function DELETE(req: NextRequest) {
   const reason = url.searchParams.get("reason");
 
   if (!targetType || !targetId || !reason) {
-    return NextResponse.json(
+    return privateJson(
       { error: "targetType, targetId, and reason are required" },
       { status: 400 },
     );
@@ -187,27 +190,27 @@ export async function DELETE(req: NextRequest) {
   const typeCheck = TargetTypeSchema.safeParse(targetType);
   const reasonCheck = ReasonSchema.safeParse(reason);
   if (!typeCheck.success || !reasonCheck.success) {
-    return NextResponse.json(
+    return privateJson(
       { error: "Invalid targetType or reason" },
       { status: 400 },
     );
   }
   // targetId can be any non-empty string (see POST for rationale).
   if (!targetId) {
-    return NextResponse.json(
+    return privateJson(
       { error: "targetId is required" },
       { status: 400 },
     );
   }
   if (versionId && !isUuid(versionId)) {
-    return NextResponse.json(
+    return privateJson(
       { error: "versionId must be a UUID" },
       { status: 400 },
     );
   }
 
   if (!(await visibleEntries([{ targetType: typeCheck.data, targetId }], userId)).length) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return privateJson({ error: "Not found" }, { status: 404 });
   }
 
   const finalVersionId =
@@ -222,10 +225,10 @@ export async function DELETE(req: NextRequest) {
       versionId: finalVersionId,
       reason: reasonCheck.data,
     });
-    return NextResponse.json({ ok: true, ...result });
+    return privateJson({ ok: true, ...result });
   } catch (err) {
     console.error("[flags DELETE] error:", err);
-    return NextResponse.json(
+    return privateJson(
       { error: err instanceof Error ? err.message : "Unknown error" },
       { status: 500 },
     );

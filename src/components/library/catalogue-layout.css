@@ -62,3 +62,7 @@ html:root body[data-ui="v12"] .sw-catalogue-peek > strong {padding-right:28px;}
 .sw-character-catalogue-preview ul {padding:0;list-style:none;margin-top:10px;}
 .sw-character-catalogue-preview li {padding:8px 0;border-bottom:1px solid var(--border);}
 .sw-character-catalogue-preview li a {display:flex;align-items:center;justify-content:space-between;gap:8px;font:500 14px/1.4 var(--font-system);}
+
+.sw-catalogue-row-actions{display:flex;align-items:center;gap:5px;margin-top:5px}
+.sw-catalogue-row-actions button{min-height:28px!important;min-width:28px!important}
+@media(pointer:coarse){.sw-catalogue-row-actions button{min-height:44px!important;min-width:44px!important}}

@@ -19,6 +19,7 @@ export const COLLECTION_TARGETS = [
   "BUILD_TEMPLATE",
   "MONSTER",
   "ENCOUNTER",
+  "COLLECTION",
 ] as const;
 export const SYSTEM_COLLECTIONS = {
   ORIGINAL: "Original Creations",
@@ -114,8 +115,11 @@ export const collectionTargetTables: Record<string, string> = {
   BUILD_TEMPLATE: "builds",
   MONSTER: "monsters",
   ENCOUNTER: "encounters",
+  COLLECTION: "collections",
 };
 function entryAccess(type: string, viewer: string | null) {
+  if (type === "COLLECTION")
+    return sql`(e.owner_id=${viewer} OR e.visibility='PUBLIC' OR (e.visibility='FOLLOWERS_ONLY' AND EXISTS(SELECT 1 FROM follows f JOIN users a ON a.id=f.following_id JOIN users v ON v.id=f.follower_id WHERE a.clerk_user_id=e.owner_id AND v.clerk_user_id=${viewer})))`;
   if (type === "ENCOUNTER")
     return sql`(e.owner_id=${viewer} OR e.visibility='PUBLIC' OR (e.visibility='FOLLOWERS_ONLY' AND EXISTS(SELECT 1 FROM follows f JOIN users a ON a.id=f.following_id JOIN users v ON v.id=f.follower_id WHERE a.clerk_user_id=e.owner_id AND v.clerk_user_id=${viewer})))`;
   if (type === "MONSTER")
@@ -180,7 +184,7 @@ export async function collectionContents(
           ? sql`AND e.kind=${type.replace("_TEMPLATE", "")}`
           : sql``;
       const origin =
-        type === "ENCOUNTER" ? (kind === "FORKS" ? sql`false` : sql`true`) : type === "MONSTER"
+        type === "COLLECTION" ? sql`false` : type === "ENCOUNTER" ? (kind === "FORKS" ? sql`false` : sql`true`) : type === "MONSTER"
           ? kind === "FORKS"
             ? sql`e.forked_from_id IS NOT NULL`
             : sql`e.forked_from_id IS NULL`
@@ -189,7 +193,7 @@ export async function collectionContents(
             : sql`(e.source_origin IS NULL OR e.source_origin NOT LIKE 'fork:%')`;
       const member =
         kind === "ORIGINAL" || kind === "FORKS"
-          ? sql`${type === "ENCOUNTER" ? sql`e.owner_id` : sql`e.user_id`}=${collection["owner_id"]} AND ${origin}`
+          ? sql`${type === "ENCOUNTER" || type === "COLLECTION" ? sql`e.owner_id` : sql`e.user_id`}=${collection["owner_id"]} AND ${origin}`
           : sql`EXISTS (SELECT 1 FROM collection_entries ce WHERE ce.collection_id=${id}::uuid AND ce.target_type=${type} AND ce.target_id=e.id::text)`;
       const ids = candidates
         ?.filter((c) => c.targetType === type)
@@ -245,6 +249,16 @@ export async function saveMemberships(
   )
     throw new Error("Choose your own custom collection or favorites");
   await withDatabaseTransaction(async (tx) => {
+    if (type === "COLLECTION") {
+      // Serialize collection graph updates so concurrent saves cannot create a cycle.
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(7341291)`);
+      const links = await tx.execute(sql`WITH RECURSIVE descendants(id) AS (
+        SELECT ${targetId}::text UNION SELECT ce.target_id FROM collection_entries ce JOIN descendants d ON ce.collection_id::text=d.id WHERE ce.target_type='COLLECTION'
+      ) SELECT id FROM descendants`);
+      if(ids.some(id=>links.rows.some(row=>row["id"]===id)))throw new Error("A collection cannot contain itself or a collection that already contains it.");
+      if(ids.length) await tx.insert(collectionFollows).values({userId,collectionId:targetId}).onConflictDoNothing();
+      else await tx.delete(collectionFollows).where(and(eq(collectionFollows.userId,userId),eq(collectionFollows.collectionId,targetId)));
+    }
     const editable = owned
       .filter((c) => !c.systemKind || c.systemKind === "FAVORITES")
       .map((c) => c.id);

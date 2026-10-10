@@ -498,6 +498,13 @@
       "when": 1791618983774,
       "tag": "0074_encounter_visibility",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1791627852445,
+      "tag": "0075_collection_encounter_engagement",
+      "breakpoints": true
     }
   ]
 }

@@ -105,7 +105,8 @@ function AccountBookmarkButton({targetType, targetId, compact = true}: BookmarkP
       const editable = data.collections.filter(
         (c: Collection) =>
           (!c.system_kind || c.system_kind === "FAVORITES") &&
-          c.owner_id === session.user.id,
+          c.owner_id === session.user.id &&
+          !(targetType === "COLLECTION" && c.id === targetId),
       );
       setRows(editable);
       setSelected(

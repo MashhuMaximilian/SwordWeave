@@ -1,4 +1,5 @@
 "use client";
+import {TargetEngagement} from "@/components/engagement/target-engagement";
 import { useState } from "react";
 import Link from "next/link";
 import { FolderTree, ArrowRight } from "lucide-react";
@@ -48,6 +49,7 @@ export function PublicCollectionResults({
                 Explore collection <ArrowRight size={17} aria-hidden="true" />
               </span>
             </Link>
+            <div className="sw-collection-engagement"><TargetEngagement targetType="COLLECTION" targetId={collection.id}/></div>
             {collection.authorUsername && collection.origin === "community" && (
               <Link
                 className="sw-collections-directory-curator"

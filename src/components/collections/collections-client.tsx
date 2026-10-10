@@ -1,4 +1,6 @@
 "use client";
+import {useAccount} from "@/components/account/account-provider";
+import {TargetEngagement} from "@/components/engagement/target-engagement";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useUser, useClerk } from "@clerk/nextjs";
 import { LibraryCatalogueCard, LibraryCatalogueSurface } from "@/components/library/library-catalogue-card";
@@ -30,6 +32,7 @@ export function CollectionsClient(props: CollectionPageProps) {
 }
 function AccountCollectionsClient({collectionId, ownerId, embedded=false, startCreating=false}: CollectionPageProps) {
   const { user } = useUser();
+  const internalUserId = useAccount().profile?.id ?? null;
   const clerk = useClerk();
   const router = useRouter();
   const stack = useModalStack();
@@ -159,7 +162,7 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false, startC
       </div>
       {!collectionId && (
         <>
-          {indexRows.some(c => c.system_kind) && <section className="sw-collections-section"><p className="sw-collections-eyebrow">Automatic collections</p><div className={entryView === "LIST" ? "sw-catalogue-list" : "sw-collections-grid v12-creation-grid"}>{indexRows.filter(c => c.system_kind).map(c => <LibraryCatalogueSurface className={entryView === "LIST" ? "sw-catalogue-row" : ""} key={c.id} title={c.name} onSelect={() => router.push(`/collections/${c.id}`)} glyph={c.system_kind?.includes("FORK") ? <GitFork size={24} /> : c.system_kind === "ORIGINAL" ? <Hammer size={24} /> : <Bookmark size={24} />} badge={<span className="v12-tag">{c.visibility.replaceAll("_", " ").toLowerCase()}</span>}><p className="v12-entry-summary">{c.system_kind?.includes("FORK") ? "Forks of existing entries" : c.system_kind === "ORIGINAL" ? "Entries you authored" : "Entries you saved"}</p></LibraryCatalogueSurface>)}</div></section>}
+          {indexRows.some(c => c.system_kind) && <section className="sw-collections-section"><p className="sw-collections-eyebrow">Automatic collections</p><div className={entryView === "LIST" ? "sw-catalogue-list" : "sw-collections-grid v12-creation-grid"}>{indexRows.filter(c => c.system_kind).map(c => <LibraryCatalogueSurface className={entryView === "LIST" ? "sw-catalogue-row" : ""} key={c.id} title={c.name} onSelect={() => router.push(`/collections/${c.id}`)} glyph={c.system_kind?.includes("FORK") ? <GitFork size={24} /> : c.system_kind === "ORIGINAL" ? <Hammer size={24} /> : <Bookmark size={24} />} footer={<div onClick={event=>event.stopPropagation()} className="sw-collection-engagement"><TargetEngagement targetType="COLLECTION" targetId={c.id}/></div>} badge={<span className="v12-tag">{c.visibility.replaceAll("_", " ").toLowerCase()}</span>}><p className="v12-entry-summary">{c.system_kind?.includes("FORK") ? "Forks of existing entries" : c.system_kind === "ORIGINAL" ? "Entries you authored" : "Entries you saved"}</p></LibraryCatalogueSurface>)}</div></section>}
           <section className="sw-collections-section"><div className="sw-collections-section-heading"><h2>Collection branches</h2>{user && <a href="#create-collection" className="sw-metal-button sw-metal-button--primary sw-collections-button" onClick={() => {setParent("");setCreating(true);}}><Plus size={14} /> Create collection</a>}</div><div className={entryView === "GRID" ? "sw-collections-branch-grid" : ""}><CollectionTree rows={indexRows.filter(c => !c.system_kind)} /></div>{!rows.some(c => !c.system_kind) && !search && !activeFilters && <EmptyState compact icon={FolderTree} title="Start a collection branch" description="Create a root for a campaign, theme, or project. Add child collections to organize its entries." />}</section>
           {!indexRows.length && (search || activeFilters) && <EmptyState compact icon={FolderTree} title="No matching collections" description="Try another name or clear the collection filters." />}
           {!user && (
@@ -184,18 +187,7 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false, startC
           <nav aria-label="Collection path" className="sw-collections-path"><Link href="/collections">Collections</Link>{collectionAncestors(current, rows).map(c => <span key={c.id}><span aria-hidden="true"> / </span><Link href={`/collections/${c.id}`}>{c.name}</Link></span>)}<span aria-hidden="true"> / </span><strong>{current.name}</strong></nav>
           {children.length > 0 && <details className="sw-collections-branch-panel sw-collections-panel" open><summary>Child collections <span className="v12-tag">{children.length}</span></summary><CollectionTree rows={rows.filter(c => !c.system_kind)} parentId={current.id} /></details>}
 
-          {user && current.owner_id !== user.id && (
-            <button
-              className="sw-metal-button sw-collections-button"
-              onClick={() =>
-                void mutate(`/api/collections/${current.id}`, "PATCH", {
-                  follow: !current.followed,
-                })
-              }
-            >
-              {current.followed ? "Unsave collection" : "Save this collection"}
-            </button>
-          )}
+          <TargetEngagement targetType="COLLECTION" targetId={current.id} compact={false}/>
           {user && current.owner_id === user.id && current.system_kind && <details className="sw-collections-management"><summary>Manage collection</summary><div className="sw-collections-manage"><Visibility value={current.visibility} onChange={v=>void mutate(`/api/collections/${current.id}`,"PATCH",{visibility:v})}/></div></details>}
           {user && current.owner_id === user.id && !current.system_kind && (
             <details className="sw-collections-management"><summary>Manage collection</summary><div className="sw-collections-manage">
@@ -249,7 +241,7 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false, startC
           )}
           <div className="sw-collections-section-heading"><h2>Collected entries</h2><small>Choose an entry to open its full preview.</small></div>
           <div className={`sw-collections-catalogue ${entryView === "GRID" ? "v12-creation-grid" : "v12-cluster-list"}`}>
-            {loading ? <p className="sw-collections-intro" role="status">Loading collected entries…</p> : entries.length ? <section className={`v12-catalogue-collection ${entryView === "LIST" ? "is-list sw-catalogue-list" : "is-mosaic"}`}>{entries.map(item => <LibraryCatalogueCard key={item.id} item={item} view={entryView} currentUserInternalId={null} onSelect={selected => {
+            {loading ? <p className="sw-collections-intro" role="status">Loading collected entries…</p> : entries.length ? <section className={`v12-catalogue-collection ${entryView === "LIST" ? "is-list sw-catalogue-list" : "is-mosaic"}`}>{entries.map(item => <LibraryCatalogueCard key={item.id} item={item} view={entryView} currentUserInternalId={internalUserId} onSelect={selected => {
               if (stack.canPush) stack.push({ key: `collection-entry:${selected.targetType}:${selected.targetId}`, label: selected.name, category: selected.targetType, content: <CollectionEntryPreview targetType={selected.targetType} targetId={selected.targetId} /> });
             }} />)}</section> : <EmptyState compact icon={BookOpen} title={search || activeFilters ? "No matching entries" : "No collected entries yet"} description={search || activeFilters ? "Try another search or clear the entry filters." : "Save an entry from the Library or My Creations and choose this collection. Only entries you can access appear here."} />}
           </div>
@@ -360,6 +352,6 @@ function CollectionTree({ rows, parentId = null, seen = [] }: { rows: Collection
   return <ul className="sw-collections-tree">{children.map(c => {
     const hasChildren = rows.some(child => child.parent_id === c.id && !seen.includes(child.id));
     const heading = <><Link href={`/collections/${c.id}`} data-catalogue-row="true" className="sw-collections-tree-link"><CatalogueQuickLook name={c.name}><p>{c.visibility.replaceAll("_", " ").toLowerCase()} collection{c.followed ? " · saved" : ""}</p><p>Explore its entries and child branches.</p></CatalogueQuickLook><span className="v12-entry-glyph sw-collections-branch-glyph" aria-hidden="true"><Folder size={18} /></span><strong>{c.name}</strong></Link><span className="sw-collections-tree-visibility">{c.visibility.replaceAll("_", " ").toLowerCase()}{c.followed ? " · saved" : ""}</span></>;
-    return <li key={c.id} className="sw-collections-tree-node" data-library-surface="atelier">{hasChildren ? <details open><summary><span className="sw-collections-tree-toggle" aria-hidden="true">›</span>{heading}</summary><CollectionTree rows={rows} parentId={c.id} seen={[...seen, c.id]} /></details> : <div className="sw-collections-tree-leaf"><span className="sw-collections-tree-toggle" aria-hidden="true">·</span>{heading}</div>}</li>;
+    return <li key={c.id} className="sw-collections-tree-node" data-library-surface="atelier">{hasChildren ? <details open><summary><span className="sw-collections-tree-toggle" aria-hidden="true">›</span>{heading}</summary><CollectionTree rows={rows} parentId={c.id} seen={[...seen, c.id]} /></details> : <div className="sw-collections-tree-leaf"><span className="sw-collections-tree-toggle" aria-hidden="true">·</span>{heading}</div>}<div className="sw-collection-engagement"><TargetEngagement targetType="COLLECTION" targetId={c.id}/></div></li>;
   })}</ul>;
 }

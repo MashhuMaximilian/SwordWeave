@@ -9,13 +9,17 @@ export function LibraryGroupNav({ active }: { active: string }) {
     const selected = container?.querySelector<HTMLElement>(
       '[aria-current="page"]',
     );
-    if (container && selected && container.scrollWidth > container.clientWidth)
-      container.scrollLeft = Math.max(
+    if (!container || !selected) return;
+    const reveal = () => { if (container.scrollWidth > container.clientWidth) container.scrollLeft = Math.max(
         0,
         selected.offsetLeft -
           container.offsetLeft -
           (container.clientWidth - selected.offsetWidth) / 2,
-      );
+      ); };
+    reveal();
+    const observer = new ResizeObserver(reveal);
+    observer.observe(container);
+    return () => observer.disconnect();
   }, [active]);
   const creations = [
     "EFFECT",
@@ -59,13 +63,14 @@ export function LibraryGroupNav({ active }: { active: string }) {
         </Link>
       ))}
       <Link
+        aria-current={active === "COLLECTION" ? "page" : undefined}
         className={active === "COLLECTION" ? "is-active" : ""}
         href="/library/collections"
       >
         <EntityTypeIcon type="COLLECTION" />
         Public collections
       </Link>
-      <Link href="/library">Library hub ↗</Link>
+      <Link href="/library" aria-current={active === "HUB" ? "page" : undefined} className={active === "HUB" ? "is-active" : ""}>Library hub ↗</Link>
     </nav>
   );
 }

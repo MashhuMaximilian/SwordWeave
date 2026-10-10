@@ -9,6 +9,7 @@ import {
 } from "react";
 import { useUser } from "@clerk/nextjs";
 type Profile = {
+  id?: string | undefined;
   username: string;
   displayName: string | null;
   avatarUrl: string | null;
@@ -76,6 +77,7 @@ function AccountSession({ children }: { children: React.ReactNode }) {
   const profile =
     isLoaded && isSignedIn && user
       ? {
+          id: loaded?.id,
           username: loaded?.username ?? user.username ?? "user",
           displayName:
             loaded?.displayName ?? user.fullName ?? user.username ?? "Account",

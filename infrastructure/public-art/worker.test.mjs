@@ -20,3 +20,12 @@ test('image bytes, MIME, browser cache, HEAD and ETag behave correctly', async (
  assert.equal((await worker.fetch(new Request(url,{headers:{'If-None-Match':'"abc"'}}),makeEnv())).status,304);
  assert.equal((await worker.fetch(new Request(url),{ART:{get:async()=>null}})).status,404);
 });
+
+test('public monster portraits are readable while private and malformed keys remain blocked', async () => {
+ const response=await worker.fetch(new Request('https://art.example/art/monsters/sinkhole-maw-graphic-v1.webp'),makeEnv());
+ assert.equal(response.status,200);assert.equal(response.headers.get('Content-Type'),'image/webp');
+ for(const path of ['/art/private/a.webp','/art/monsters/private.json','/art/monsters/%2e%2e%2fsecret.webp']) {
+  let read=false;const result=await worker.fetch(new Request('https://art.example'+path),{ART:{get:()=>{read=true;}}});
+  assert.equal(result.status,404);assert.equal(read,false);
+ }
+});
