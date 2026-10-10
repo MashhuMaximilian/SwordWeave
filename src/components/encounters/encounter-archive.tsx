@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
 import { Plus, Swords } from "lucide-react";
+import { GMOnly } from "@/components/account/account-provider";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
 import { useModalStack } from "@/components/ui/modal-stack";
 import type { LibraryView } from "@/lib/preferences/library-prefs";
@@ -134,10 +135,12 @@ function AccountEncounterArchive({
               : "Inspect the opposition, fine-tune preparation, or bring fresh creature sheets to your table."}
           </p>
         </div>
-        <Link className="sw-metal-button" href="/encounters?new=1">
-          <Plus size={16} />
-          New encounter
-        </Link>
+        <GMOnly>
+          <Link className="sw-metal-button" href="/encounters?new=1">
+            <Plus size={16} />
+            New encounter
+          </Link>
+        </GMOnly>
       </header>
       <ColumnSearchBar
         search={search}
@@ -187,21 +190,27 @@ function AccountEncounterArchive({
           <h3>
             {search || filter !== "all"
               ? "No matching encounters"
-              : "Your next scene starts here"}
+              : discovery
+                ? "No encounters shared yet"
+                : "Your next scene starts here"}
           </h3>
           <p>
             {search || filter !== "all"
               ? "Try another search or show all encounters."
-              : "Set a party budget, assemble creatures, and keep preparation ready for your next session."}
+              : discovery
+                ? "Shared encounters appear here when their creators make them public or available to their followers. Your own private encounters are visible to you too."
+                : "Set a party budget, assemble creatures, and keep preparation ready for your next session."}
           </p>
           {!discovery && !search && filter === "all" && (
-            <Link
-              className="sw-metal-button sw-metal-button--primary"
-              href="/encounters?new=1"
-            >
-              <Plus size={16} />
-              Prepare an encounter
-            </Link>
+            <GMOnly>
+              <Link
+                className="sw-metal-button sw-metal-button--primary"
+                href="/encounters?new=1"
+              >
+                <Plus size={16} />
+                Prepare an encounter
+              </Link>
+            </GMOnly>
           )}
         </div>
       )}
