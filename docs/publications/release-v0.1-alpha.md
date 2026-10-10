@@ -3,7 +3,7 @@
 Confirmed by the creator on 10 October 2026. This supersedes the provisional v1.0 alpha label.
 
 - Public platform label: **v0.1 alpha**, shown compactly beside the brand in the homepage navigation and FAB.
-- PHB, Game Master's Guide and SRD manuscripts target this same rules edition. Their current drafts and eight-page design proof are not finished books or a published book release.
+- PHB, Game Master's Guide and SRD manuscripts target this same rules edition. The three complete alpha books now have responsive readers and separate light/dark PDFs. The eight-page proof remains historical design evidence.
 - PHB: complete player procedures, base primitive families/tiers, DIY construction and consequences, with teaching examples.
 - Game Master's Guide: practical adjudication, consequences, authoring/review, creatures, encounters and adventures.
 - SRD: precise shared rules and construction procedures for primitives, effects, capabilities, heritages, characters, items, creatures and encounters, with necessary base definitions and a few checked examples.
@@ -12,3 +12,5 @@ Confirmed by the creator on 10 October 2026. This supersedes the provisional v1.
 - Use the approved platform fonts, gold/silver/teal materials, interactive light/dark reader and separate light/dark PDF editions.
 
 Publish versioned errata as the alpha changes. A later stable-version number will be chosen separately; the alpha label does not imply that the manuscripts or system have completed validation.
+
+Release artifacts and checks: [manifest](release-manifest.json), [publication README](README.md). The one deferred upkeep rule remains visible. Actual human playtest completion is not claimed.

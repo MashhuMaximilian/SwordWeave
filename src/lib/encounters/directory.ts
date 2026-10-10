@@ -136,7 +136,9 @@ export async function listEncounterDirectory(
       visibility: row["visibility"] as Visibility,
       isOwner: row["owner_id"] === viewer,
       authorUsername: row["author_username"] as string | null,
-      authorDisplayName: row["author_display_name"] as string | null,
+      authorDisplayName:
+        (row["author_display_name"] as string | null) ??
+        (String(row["owner_id"]).startsWith("system:") ? "System" : null),
       authorIsAdmin: !!row["author_is_admin"],
       note: definition.note ?? "",
       updatedAt: new Date(row["updated_at"] as string).toISOString(),

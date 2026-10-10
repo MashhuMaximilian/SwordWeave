@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { BookCards } from "@/components/publications/book-cards";
+import "./books/books.css";
 import type { Metadata } from "next";
 import { ArrowRight, ArrowUpRight, BookOpen, Check, GitFork, Hammer, Layers, MessageCircle, Shield, Sparkles, Users } from "lucide-react";
 import { PublicNav } from "@/components/home/public-nav";
@@ -91,8 +93,9 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="sw-home-books" aria-labelledby="home-books-title"><div><p className="sw-public-kicker">Read, make, play · v0.1 alpha</p><h2 id="home-books-title">The books for your table</h2><p>Three free core books, with light and dark PDF editions. Learn to play, run a session, or use the open reference to create your own.</p><Link href="/books">Explore the books <ArrowRight size={16} aria-hidden="true" /></Link></div><BookCards /></section>
       <section className="sw-public-invitation"><div className="sw-public-invitation__seal" aria-hidden="true"><Sparkles /></div><p className="sw-public-kicker">Bring the idea you cannot stop thinking about.</p><h2>There is room for it<br /><em>at your table.</em></h2><p>Start with a character. A strange gift. One impossible thing.<br />Then give it rules you and your friends can play.</p><div className="sw-public-actions"><Link href="/character" className="sw-cta-primary">Begin your character <ArrowRight aria-hidden="true" /></Link><Link href="/about" className="sw-cta-ghost"><MessageCircle aria-hidden="true" /> Meet the project</Link></div></section>
-      <footer className="sw-public-footer"><Link href="/" className="sw-public-footer__brand">Sword<span>·</span>Weave</Link><p>A framework for the stories you tell together.</p><nav aria-label="Project information"><Link href="/start">Walkthrough</Link><Link href="/combat">Combat</Link><Link href="/about">About</Link><Link href="/attributions">Credits</Link></nav></footer>
+      <footer className="sw-public-footer"><Link href="/" className="sw-public-footer__brand">Sword<span>·</span>Weave</Link><p>A framework for the stories you tell together.</p><nav aria-label="Project information"><Link href="/start">Walkthrough</Link><Link href="/combat">Combat</Link><Link href="/books">Books</Link><Link href="/about">About</Link><Link href="/attributions">Credits</Link></nav></footer>
     </div>
   );
 }

@@ -29,3 +29,17 @@ test('public monster portraits are readable while private and malformed keys rem
   assert.equal(result.status,404);assert.equal(read,false);
  }
 });
+
+test('only the six released core PDFs are exposed with PDF headers', async () => {
+ for (const name of ['players-handbook','game-masters-guide','srd']) for (const theme of ['', '-dark']) {
+  const url=`https://art.example/documents/swordweave/v0.1-alpha/${name}${theme}.pdf`;
+  const response=await worker.fetch(new Request(url),makeEnv());
+  assert.equal(response.status,200);assert.equal(response.headers.get('Content-Type'),'application/pdf');
+  assert.match(response.headers.get('Content-Disposition'),/^inline; filename="swordweave-/);
+  assert.equal((await worker.fetch(new Request(url,{method:'HEAD'}),makeEnv())).headers.get('Content-Length'),'3');
+ }
+ for(const path of ['/documents/private/a.pdf','/documents/swordweave/v0.1-alpha/notes.pdf','/documents/swordweave/v0.1-alpha/srd.json','/documents/swordweave/v0.1-alpha/%2e%2e/private.pdf']) {
+  let read=false;const response=await worker.fetch(new Request('https://art.example'+path),{ART:{get:()=>{read=true;}}});
+  assert.equal(response.status,404);assert.equal(read,false);
+ }
+});

@@ -1,4 +1,4 @@
-/** Read-only facade for the public SwordWeave artwork catalog. */
+/** Read-only facade for the public artwork catalog and versioned free rulebooks. */
 export default {
   async fetch(request, env) {
     if (request.method !== 'GET' && request.method !== 'HEAD') {
@@ -8,7 +8,9 @@ export default {
     try { key = decodeURIComponent(new URL(request.url).pathname).slice(1); }
     catch { return new Response('Invalid path', { status: 400 }); }
     // No bucket listings, writes, arbitrary folders, or private upload access.
-    if (!/^images\/(characters|lineages|heritages|monsters)\/[a-zA-Z0-9_./-]+\.(png|webp)$/.test(key)
+    const isImage = /^images\/(characters|lineages|heritages|monsters)\/[a-zA-Z0-9_./-]+\.(png|webp)$/.test(key);
+    const isBook = /^documents\/swordweave\/v0\.1-alpha\/(players-handbook|game-masters-guide|srd)(-dark)?\.pdf$/.test(key);
+    if ((!isImage && !isBook)
         || key.split('/').some(segment => segment === '..' || segment === '.')) {
       return new Response('Not found', { status: 404 });
     }
@@ -16,7 +18,8 @@ export default {
     if (!object) return new Response('Not found', { status: 404 });
     const headers = new Headers();
     object.writeHttpMetadata(headers);
-    headers.set('Content-Type', key.endsWith('.webp') ? 'image/webp' : 'image/png');
+    headers.set('Content-Type', isBook ? 'application/pdf' : key.endsWith('.webp') ? 'image/webp' : 'image/png');
+    if (isBook) headers.set('Content-Disposition', `inline; filename="swordweave-${key.split('/').at(-1)}"`);
     headers.set('ETag', object.httpEtag);
     headers.set('Cache-Control', 'public, max-age=86400');
     headers.set('Access-Control-Allow-Origin', '*');

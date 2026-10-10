@@ -1,0 +1,32 @@
+[
+  {
+    "slug": "players-handbook",
+    "short": "PHB",
+    "title": "Player's Handbook",
+    "description": "Learn to create a character, compose abilities, coordinate a shared round and carry the consequences.",
+    "accent": "gold",
+    "version": "v0.1 alpha",
+    "lightPdf": "/books/v0.1-alpha/players-handbook.pdf",
+    "darkPdf": "/books/v0.1-alpha/players-handbook-dark.pdf"
+  },
+  {
+    "slug": "game-masters-guide",
+    "short": "GM Guide",
+    "title": "Game Master's Guide",
+    "description": "Run your first session, review creations, author creatures and prepare encounters with practical worksheets.",
+    "accent": "teal",
+    "version": "v0.1 alpha",
+    "lightPdf": "/books/v0.1-alpha/game-masters-guide.pdf",
+    "darkPdf": "/books/v0.1-alpha/game-masters-guide-dark.pdf"
+  },
+  {
+    "slug": "srd",
+    "short": "SRD",
+    "title": "System Reference Document",
+    "description": "A precise reference for the rules, 29 primitive families, construction procedures and compatible creation.",
+    "accent": "silver",
+    "version": "v0.1 alpha",
+    "lightPdf": "/books/v0.1-alpha/srd.pdf",
+    "darkPdf": "/books/v0.1-alpha/srd-dark.pdf"
+  }
+]

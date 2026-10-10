@@ -1,0 +1,30 @@
+{
+  "intent": {
+    "title": "From an idea to a changed scene",
+    "caption": "Agree access, scope and stakes before commitment. A player may revise the attempt; the recorded result becomes the next situation."
+  },
+  "composition": {
+    "title": "Compose without buying the same rule again",
+    "caption": "Lines are references to owned acquisitions. A primitive can be used directly or through several containers; appearances do not create extra purchases."
+  },
+  "rhythm": {
+    "title": "One shared round, coordinated together",
+    "caption": "Complexity places dependencies in the rhythm. Movement is one round allowance; a valid reaction pauses a moment without creating a new personal turn."
+  },
+  "access": {
+    "title": "Permission, expression and consequence",
+    "caption": "Increasing effort can scale an eligible use. It does not supply a missing verb, domain, behavior or sensory location."
+  },
+  "recovery": {
+    "title": "Unused short-rest recovery carries forward",
+    "caption": "Maximum 13: the allowance is ceil(13/2) = 7. Consume only actual healing; a completed long rest refreshes the allowance."
+  },
+  "consequence": {
+    "title": "A consequence should answer three questions",
+    "caption": "Record the actual change and when it applies. A familiar condition name imports no automatic package; ending and recovery are explicit."
+  },
+  "budgets": {
+    "title": "Keep the three questions separate",
+    "caption": "Appraisal multiplies chosen base creature BU and separate Item BU by quantity. Mirror credit is not another creature; execution Cost is not purchased again."
+  }
+}

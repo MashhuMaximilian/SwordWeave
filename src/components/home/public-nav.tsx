@@ -40,7 +40,7 @@ const NAV_ITEMS: readonly NavItem[] = [
   { href: "/rules", label: "Rules", group: "core" },
   { href: "/combat",   label: "Combat",     group: "core" },
   { href: "/library/browse", label: "Library",    group: "content" },
-  { href: "/creations",label: "Creations",  group: "content" },
+  { href: "/books",label: "Books", group: "content" },
   { href: "/monsters", label: "Monsters", group: "content" },
   { href: "/about",    label: "About",      group: "project" },
   { href: "/attributions", label: "Credits",group: "project" },

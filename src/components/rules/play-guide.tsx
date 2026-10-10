@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { BookOpen, ChevronLeft, ChevronRight, ExternalLink, Search, X } from 'lucide-react';
+import { GUIDE_BOOK_REFERENCES } from '@/lib/publications/book-links';
 import { PLAY_GUIDE, searchGuide, type GuideBlock } from '@/lib/rules/play-guide';
 
 function BlockContent({ block, searching }: { block: GuideBlock; searching: boolean }) {
@@ -61,7 +62,7 @@ export function PlayGuide({ embedded = false }: { embedded?: boolean }) {
       {topic ? <>
         <header className="sw-play-guide-topic-head"><span><BookOpen size={16} aria-hidden="true" /> Chapter {chapterIndex + 1} / {PLAY_GUIDE.length}</span><h2>{topic.title}</h2><p>{topic.summary}</p></header>
         <div className="sw-play-guide-blocks">{topic.blocks.map((block, i) => <section key={block.title} className="sw-play-guide-block"><div className="sw-play-guide-block-head"><span aria-hidden="true">{String(i + 1).padStart(2, '0')}</span><h3>{block.title}</h3></div><BlockContent block={block} searching={Boolean(query.trim())} /></section>)}</div>
-        {topic.sources && <details className="sw-play-guide-sources"><summary>Source notes</summary><p>This guide follows current SwordWeave rulings and the app’s progression reference. Older source examples can use earlier terminology or formulas.</p>{topic.sources.map(source => <a key={source.url} href={source.url} target="_blank" rel="noopener noreferrer">{source.title} <ExternalLink size={13} aria-hidden="true" /></a>)}</details>}
+        <aside className="sw-play-guide-sources" aria-label="Book reference"><strong>Read in the books</strong><a href={`/books/${GUIDE_BOOK_REFERENCES[topic.id]?.slug ?? 'players-handbook'}#${GUIDE_BOOK_REFERENCES[topic.id]?.anchor ?? 'begin-a-shared-story'}`} target={embedded ? '_blank' : undefined} rel={embedded ? 'noopener noreferrer' : undefined}>Full explanation and examples <ExternalLink size={13} aria-hidden="true" /></a><Link href="/books/srd">System Reference Document →</Link><Link href="/books">Free PDF editions →</Link></aside>
         <footer className="sw-play-guide-next" aria-label="Continue through the guide">
           {chapterIndex > 0 && <button type="button" onClick={() => chapter(-1)}><ChevronLeft size={16} aria-hidden="true" /><span><small>Previous chapter</small>{PLAY_GUIDE[chapterIndex - 1]!.title}</span></button>}
           {chapterIndex < PLAY_GUIDE.length - 1 ? <button type="button" className="sw-play-guide-next-primary" onClick={() => chapter(1)}><span><small>Continue learning</small>{PLAY_GUIDE[chapterIndex + 1]!.title}</span><ChevronRight size={16} aria-hidden="true" /></button> : <Link className="sw-play-guide-next-primary" href="/characters/new">Create a character <ChevronRight size={16} aria-hidden="true" /></Link>}
