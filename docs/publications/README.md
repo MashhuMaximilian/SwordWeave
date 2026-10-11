@@ -18,7 +18,7 @@ The three files under `manuscripts/` are the book sources. `scripts/build-books.
 
 Python dependencies: ReportLab, pypdf; font conversion requires fontTools/Brotli. The current build uses the bundled Codex PDF runtime. Five app fonts are embedded: Unica One, Aubrey, Syne, Oxanium and IBM Plex Mono. In PDF prose the few unsupported mathematical/arrows symbols are written as words; the vector diagrams retain drawn arrows. Font metadata records the SIL OFL notices for the app fonts. Original vector diagrams use no external monster art or maps.
 
-The PDFs include linked contents, hierarchical bookmarks, an alphabetical topic index with page numbers, metadata, selectable text, repeated table headers and page numbers. These are digital/table-use editions; commercial press specifications and print sales remain a future phase.
+The PDFs include linked contents, hierarchical bookmarks, an alphabetical topic index with page numbers, metadata, selectable text, repeated table headers and page numbers. These are compact digital/table-use alpha editions. The [full-edition production plan](full-edition-production-plan.md) covers substantial illustrated PHB/GM Guide books and a fuller digital SRD. Commercial press specifications and print sales remain a future phase.
 
 ## Storage and publication
 

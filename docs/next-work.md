@@ -1,16 +1,16 @@
 # SwordWeave: publication and commerce follow-up
 
-Updated 10 October 2026 from the publication, licensing and future-store discussion. The original working roadmap is `.local-plans/next-phase.md`, whose latest update includes these decisions alongside the earlier collections/monsters, GM workspace and ChatGPT app/MCP plan. That ignored file remains private and is not committed or deployed. This document is a publication/commerce companion, not a replacement project roadmap. Historical implementation closeouts retain their original release context. Items below are plans, not claims that implementation or release has happened.
+Updated 11 October 2026 from the publication, licensing and future-store discussion. The original working roadmap is `.local-plans/next-phase.md`, whose latest update includes these decisions alongside the earlier collections/monsters, GM workspace and ChatGPT app/MCP plan. That ignored file remains private and is not committed or deployed. This document is a publication/commerce companion, not a replacement project roadmap. Historical implementation closeouts retain their original release context. Items below are plans, not claims that implementation or release has happened.
 
-## Current release: three complete free alpha books
+## Current release: three compact free alpha core editions
 
-The PHB, Game Master's Guide and SRD are now complete v0.1 alpha manuscripts with indexed, bookmarked light/dark PDFs and responsive readers. The release preserves the approved app fonts and gold/silver/teal materials. The PHB teaches all player procedures; the SRD reproduces the mechanical framework and principal primitive families; the GM Guide provides practical preparation and adjudication tools. No class subsystem, mandatory Monster Manual or exhaustive heritage/fork appendix was added.
+The PHB, Game Master's Guide and SRD are now compact v0.1 alpha core manuscripts with indexed, bookmarked light/dark PDFs and responsive readers. The release preserves the approved app fonts and gold/silver/teal materials. The PHB teaches all player procedures; the SRD reproduces the mechanical framework and principal primitive families; the GM Guide provides practical preparation and adjudication tools. No class subsystem, mandatory Monster Manual or exhaustive heritage/fork appendix was added.
 
 Book links are in the homepage, public navigation and rules pages. Historical public “Source notes” are replaced by real book section links. The new System sample collection contains 30 anonymously readable, pinned encounter preparations; its seed rerun creates no duplicates or play copies.
 
 See [release manifest](publications/release-manifest.json), [publication sources](publications/README.md), [accepted rulings](publications/creator-rulings-2026-10-10.md) and [sample encounters](library/system-encounters-v0.1-alpha.md). Static versioned website downloads are available; preferred R2 upload needs renewed Cloudflare authorization, with `images/*` preserved.
 
-Next: actual table feedback/errata, the creator's single deferred upkeep ruling, and optional R2 delivery after authentication. Printed products, adventure commerce and the ChatGPT app/MCP remain later phases. The existing short-rest carryover and agreed recovery controls already passed the earlier shared-component browser check and focused release tests.
+Next: substantial illustrated PHB and GM Guide editions, and a fuller digital SRD following the [full-edition production plan](publications/full-edition-production-plan.md). The present 42/34/33-page editions are usable alpha references, not the final illustrated print books. The SRD has no print-production requirement. Also continue actual table feedback/errata, the creator's single deferred upkeep ruling, and optional R2 delivery after authentication. Printed products, adventure commerce and the ChatGPT app/MCP remain later phases. The existing short-rest carryover and agreed recovery controls already passed the earlier shared-component browser check and focused release tests.
 
 ### Open decisions before calling the core release final
 
