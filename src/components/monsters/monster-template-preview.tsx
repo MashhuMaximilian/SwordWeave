@@ -26,12 +26,12 @@ type PreviewData = {
 const signed = (value: number) => value >= 0 ? `+${value}` : String(value);
 
 /** A template is read-only here. Playing creates an independent, pinned copy. */
-export function MonsterTemplatePreview({ id, version, compact = false, actions, actionPlacement = "bottom", hideActions = false }: { id: string; version?:number; compact?: boolean; actions?: PreviewActionProps; actionPlacement?: "top" | "bottom"; hideActions?: boolean }) {
+export function MonsterTemplatePreview({ id, version, compact = false, actions, actionPlacement = "bottom", hideActions = false, showIdentity = true, initialSection = "practices" }: { id: string; version?:number; compact?: boolean; actions?: PreviewActionProps; actionPlacement?: "top" | "bottom"; hideActions?: boolean; showIdentity?: boolean; initialSection?: "practices"|"abilities"|"story" }) {
   const { userId, isLoaded } = useAuth();
-  return <AccountPreview key={`${userId ?? "anonymous"}:${id}`} id={id} {...(version?{version}:{})} compact={compact} {...(actions?{actions}:{})} actionPlacement={actionPlacement} hideActions={hideActions} ready={isLoaded} />;
+  return <AccountPreview key={`${userId ?? "anonymous"}:${id}`} id={id} {...(version?{version}:{})} compact={compact} {...(actions?{actions}:{})} actionPlacement={actionPlacement} hideActions={hideActions} showIdentity={showIdentity} initialSection={initialSection} ready={isLoaded} />;
 }
 
-function AccountPreview({ id, version, compact, ready, actions, actionPlacement, hideActions }: { id: string; version?:number; compact: boolean; ready: boolean; actions?: PreviewActionProps; actionPlacement: "top" | "bottom"; hideActions: boolean }) {
+function AccountPreview({ id, version, compact, ready, actions, actionPlacement, hideActions, showIdentity, initialSection }: { id: string; version?:number; compact: boolean; ready: boolean; actions?: PreviewActionProps; actionPlacement: "top" | "bottom"; hideActions: boolean; showIdentity: boolean; initialSection: "practices"|"abilities"|"story" }) {
   const { isSignedIn } = useAuth();
   const {isGameMaster}=useAccount();
   const { redirectToSignIn } = useClerk();
@@ -86,12 +86,12 @@ function AccountPreview({ id, version, compact, ready, actions, actionPlacement,
   const artwork = monsterArtwork({ ...definition, id, name: monster.name });
   return <section className={`sw-creature-preview ${compact ? "is-compact" : ""}`} aria-label={`${monster.name} mini sheet`}>
     {!hideActions && actions && actionPlacement === "top" && <PreviewActions {...actions}/>}
-    <header className="sw-creature-identity">
+    {showIdentity && <header className="sw-creature-identity">
       <span className="sw-creature-emblem">{artwork ? <img src={artwork} alt={`${monster.name} portrait`} style={portraitFrameStyle(definition.portraitFrame)} /> : <IconDisplay iconSource="GAME_ICONS" iconKey="lorc/gluttonous-smile" iconColor="#64c7c1" size={44} />}</span>
       <div><p className="v12-kicker">Creature record · {definition.size.toLowerCase()}</p><h2>{monster.name}</h2><p>{sheet.availableBudget} BU · {sheet.mirrorCredit} weakness credit · Rank {sheet.rank.toFixed(2)} · {sheet.itemBu} item BU</p></div>
       <BookmarkButton targetType="MONSTER" targetId={id} />
-    </header>
-    <MonsterSheetPreview definition={definition} sheet={sheet} slots={slots} compact={compact}/>
+    </header>}
+    <MonsterSheetPreview initialSection={initialSection} collapseNumbers={!showIdentity} definition={definition} sheet={sheet} slots={slots} compact={compact}/>
 
     {error && <p role="alert">{error}</p>}
     {hideActions ? null : actions ? (actionPlacement === "bottom" && <PreviewActions {...actions}/>) : <footer className="sw-creature-preview-actions">
@@ -104,13 +104,13 @@ function AccountPreview({ id, version, compact, ready, actions, actionPlacement,
 }
 
 /** Shared read-only sheet sections for Library and the creation review. */
-export function MonsterSheetPreview({definition,sheet,slots,compact=false}:{definition:PinnedDefinition;sheet:ReturnType<typeof resolveMonster>;slots:MonsterSlot[];compact?:boolean}) {
- const [tab,setTab]=useState<"practices"|"abilities"|"story">("practices");
+export function MonsterSheetPreview({definition,sheet,slots,compact=false,initialSection="practices",collapseNumbers=false}:{definition:PinnedDefinition;sheet:ReturnType<typeof resolveMonster>;slots:MonsterSlot[];compact?:boolean;initialSection?:"practices"|"abilities"|"story";collapseNumbers?:boolean}) {
+ const [tab,setTab]=useState<"practices"|"abilities"|"story">(initialSection);
  const previewId=useId();
  const artwork=monsterArtwork(definition);
  const monster={name:definition.name};
  return <section className={`sw-creature-preview ${compact?"is-compact":""}`} aria-label="Creature review sheet">
-    <MonsterSheetStats showPractices={false} sheet={sheet} definition={definition} proficientAttribute={definition.proficientAttribute} baselineVitality={definition.baselineVitality ?? sheet.vitality}/>
+    {collapseNumbers ? <details className="sw-creature-numbers"><summary>Full creature numbers</summary><MonsterSheetStats showPractices={false} sheet={sheet} definition={definition} proficientAttribute={definition.proficientAttribute} baselineVitality={definition.baselineVitality ?? sheet.vitality}/></details> : <MonsterSheetStats showPractices={false} sheet={sheet} definition={definition} proficientAttribute={definition.proficientAttribute} baselineVitality={definition.baselineVitality ?? sheet.vitality}/>}
     <div className="sw-creature-tabs" role="tablist" aria-label="Creature sheet sections">
       {([{ key: "practices", label: "Practices", icon: Swords }, { key: "abilities", label: "Abilities & items", icon: Layers }, { key: "story", label: "Story", icon: BookOpen }] as const).map(item => <button type="button" role="tab" aria-selected={tab === item.key} aria-controls={`creature-${previewId}-${item.key}`} id={`creature-${previewId}-tab-${item.key}`} key={item.key} onClick={() => setTab(item.key)}><item.icon size={17}/>{item.label}</button>)}
     </div>
