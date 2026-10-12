@@ -15,6 +15,8 @@ from pypdf import PdfReader
 
 ROOT = Path(__file__).resolve().parents[1]
 PROOF = '--proof' in sys.argv
+ILLUSTRATED_ONLY = '--illustrated-only' in sys.argv
+WEB_ONLY = '--web-only' in sys.argv
 OUT = ROOT / ('tmp/pdfs/full-edition-proof' if PROOF else 'output/pdf')
 ASSETS = ROOT / 'public/books/figures'
 DATA = OUT / 'data' if PROOF else ROOT / 'src/lib/publications'
@@ -34,6 +36,8 @@ for name, source in FONTS.items():
         subprocess.run(['python3','-c',"from fontTools.ttLib import TTFont; from fontTools.varLib.instancer import instantiateVariableFont; import sys; f=TTFont(sys.argv[1]); f=instantiateVariableFont(f, {'wght':600}, inplace=True) if 'fvar' in f else f; f.flavor=None; f.save(sys.argv[2])", str(ROOT/'src/app/fonts'/source), str(target)],check=True)
     pdfmetrics.registerFont(TTFont(name,str(target)))
 pdfmetrics.registerFontFamily('Body',normal='Body',bold='Bold',italic='Italic',boldItalic='Bold')
+print_spec=importlib.util.spec_from_file_location('print_book_layout',ROOT/'scripts/print-book-layout.py')
+PRINT=importlib.util.module_from_spec(print_spec);print_spec.loader.exec_module(PRINT)
 
 BOOKS = [
  {'slug':'players-handbook','file':'players-handbook.md','short':'PHB','title':"Player's Handbook",'subtitle':'Imagine a person. Give them rules. Play a shared story.','description':'Learn to create a character, compose abilities, coordinate a shared round and carry the consequences.','accent':'gold','extensions':['player-workshops.md','player-depth.md'],'worksheets':['character','acquisitions','capability','consequences','round','session']},
@@ -310,8 +314,28 @@ for meta in BOOKS:
     book['headings']=[b for b in book['blocks'] if b['type']=='heading']
     book['words']=len(plain(text).split())
     for theme in (False,True):
-        result=build(book,theme);manifest.append({**result,'slug':meta['slug']})
+        if WEB_ONLY:
+            result=next(p for p in json.loads((ROOT/'docs/publications/release-manifest.json').read_text())['pdfs'] if p['filename']==meta['slug']+('-dark' if theme else '')+'.pdf')
+        elif meta['slug']!='srd':
+            result=PRINT.build(book,theme,OUT,FIGURES,LAYOUT.WORKSHEETS,LAYOUT.Map,LAYOUT.MAPS,proof=PROOF)
+        elif ILLUSTRATED_ONLY:
+            result=next(p for p in json.loads((ROOT/'docs/publications/release-manifest.json').read_text())['pdfs'] if p['filename']==meta['slug']+('-dark' if theme else '')+'.pdf')
+        else:result=build(book,theme)
+        manifest.append({**result,'slug':meta['slug']})
         if not PROOF:(STATIC/result['filename']).write_bytes((OUT/result['filename']).read_bytes())
+    if meta['slug']!='srd':
+        atlas=[]
+        modules=PRINT.atlas_modules(book)
+        for m in modules:
+            ident='field-atlas-'+m.get('id',slugify(m['title']))
+            atlas.append({'type':'heading','level':2,'text':m['title'],'id':ident})
+            atlas.append({'type':'paragraph','text':'**Original worked example.** '+m['kicker']})
+            for i,section in enumerate(m['sections']):
+                atlas.append({'type':'heading','level':3,'text':section['title'],'id':ident+'-section-'+str(i+1)})
+                atlas.append({'type':'paragraph','text':section['text']})
+        pos=next(i for i,b in enumerate(book['blocks']) if b['type']=='heading' and b['id']=='topic-index')
+        book={**book,'blocks':book['blocks'][:pos]+atlas+book['blocks'][pos:],'words':book['words']+sum(len(s['text'].split())for m in modules for s in m['sections'])}
+        book['headings']=[b for b in book['blocks'] if b['type']=='heading']
     web.append({**book,'version':'v0.1 alpha','lightPdf':ORIGIN+'/'+meta['slug']+'.pdf','darkPdf':ORIGIN+'/'+meta['slug']+'-dark.pdf'})
 (DATA/'catalogue.json').write_text(json.dumps([{k:b[k] for k in ['slug','short','title','description','accent','version','lightPdf','darkPdf']} for b in web],ensure_ascii=False,indent=2)+'\n')
 (DATA/'books.json').write_text(json.dumps(web,ensure_ascii=False,indent=2)+'\n')
@@ -319,5 +343,8 @@ for meta in BOOKS:
 (DATA/'maps.json').write_text(json.dumps(LAYOUT.MAPS,indent=2)+'\n')
 (DATA/'worksheets.json').write_text(json.dumps({k:{'title':v[0],'fields':v[1]} for k,v in LAYOUT.WORKSHEETS.items()},indent=2)+'\n')
 (DATA/'figures.json').write_text(json.dumps({k:{'title':v['title'],'caption':v['caption']} for k,v in FIGURES.items()},ensure_ascii=False,indent=2)+'\n')
-if not PROOF:(ROOT/'docs/publications/release-manifest.json').write_text(json.dumps({'edition':'v0.1 alpha','releaseDate':'2026-10-12','production':{'trimInches':[6.5,9],'innerMarginInches':0.70,'outerMarginInches':0.55,'light':'RGB digital-print interior; no bleed required','dark':'Screen reading edition','printerSpecificPdfX':False},'pdfs':manifest},indent=2)+'\n')
+if not PROOF:
+    for pdf in manifest:
+        pdf['r2Key']='documents/swordweave/v0.1-alpha/'+('print-r2/' if pdf['slug']!='srd' else '')+pdf['filename']
+    (ROOT/'docs/publications/release-manifest.json').write_text(json.dumps({'edition':'v0.1 alpha','releaseDate':'2026-10-12','production':{'illustratedBooks':{'trimInches':[7.75,10.5],'innerMarginInches':0.75,'outerMarginInches':0.55},'srd':{'trimInches':[6.5,9],'intent':'Digital reference; unchanged in this print revision'},'light':'RGB digital-print interior; no bleed required','dark':'Screen reading edition','printerSpecificPdfX':False},'pdfs':manifest},indent=2)+'\n')
 print(json.dumps([{'file':a['filename'],'pages':a['pages'],'words':a['words'],'links':a['links']} for a in manifest],indent=2))

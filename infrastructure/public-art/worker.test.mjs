@@ -56,3 +56,16 @@ test('released book illustrations are exposed without opening other folders', as
   assert.equal(response.status,404);assert.equal(read,false);
  }
 });
+
+test('reviewed print revision is exposed without opening arbitrary revisions', async () => {
+ for(const name of ['players-handbook','game-masters-guide']) for(const suffix of ['', '-dark']) {
+  const response=await worker.fetch(new Request(`https://art.example/documents/swordweave/v0.1-alpha/print-r2/${name}${suffix}.pdf`),makeEnv());
+  assert.equal(response.status,200);assert.equal(response.headers.get('Content-Type'),'application/pdf');
+ }
+ for(const name of ['phb-cover','gm-cover','party-cutout','custodian-cutout','skyborn-cutout','surgeon-cutout','guardian-cutout','artificer-cutout'])for(const suffix of ['.webp','-master.png']) {
+  assert.equal((await worker.fetch(new Request(`https://art.example/images/books/v0.1-alpha/print-r2/${name}${suffix}`),makeEnv())).status,200);
+ }
+ for(const path of ['/documents/swordweave/v0.1-alpha/print-r2/srd.pdf','/documents/swordweave/v0.1-alpha/print-r3/players-handbook.pdf','/images/books/v0.1-alpha/print-r2/draft.webp']) {
+  assert.equal((await worker.fetch(new Request('https://art.example'+path),makeEnv())).status,404);
+ }
+});

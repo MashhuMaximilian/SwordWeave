@@ -32,12 +32,17 @@ export function publicBookRedirects(origin: string = PUBLIC_ART_ORIGIN) {
   return [
     ...filenames.map(filename => ({
       source: `/books/v0.1-alpha/${filename}`,
-      destination: `${assetOrigin}/documents/swordweave/v0.1-alpha/${filename}`,
+      destination: `${assetOrigin}/documents/swordweave/v0.1-alpha/${filename.startsWith("srd") ? "" : "print-r2/"}${filename}`,
       permanent: false,
     })),
     ...artwork.map(name => ({
       source: `/books/art/${name}.webp`,
       destination: `${assetOrigin}/images/books/v0.1-alpha/${name}.webp`,
+      permanent: false,
+    })),
+    ...["phb-cover", "gm-cover", "party-cutout", "custodian-cutout", "skyborn-cutout", "surgeon-cutout", "guardian-cutout", "artificer-cutout"].map(name => ({
+      source: `/books/art/${name}.webp`,
+      destination: `${assetOrigin}/images/books/v0.1-alpha/print-r2/${name}.webp`,
       permanent: false,
     })),
   ];

@@ -1,0 +1,45 @@
+{
+  "tool": "OpenAI built-in image_gen.imagegen",
+  "cutoutPrompts": [
+    {
+      "asset": "skyborn-cutout",
+      "prompt": "Use case: background-extraction. Edit target: this original SwordWeave skyborn illustration. Create a genuinely transparent print-book spot illustration derived from the exact subject. Preserve the angular cut-paper/engraved facets, weathered ink textures, antique gold, ivory, charcoal and teal, costume, tools and recognisable identity. Remove the whole city/architecture, surrounding ornaments and background; retain the subject . Extend the subject naturally only where needed to create a complete isolated silhouette with comfortable margins. Keep the same illustrative texture and design, no photorealism, no soft airbrushed painting, no text. Actual RGBA transparency, no paper or flat-color backdrop, no panel or gold disk. This will sit beside text on cream paper and dark teal pages."
+    },
+    {
+      "asset": "guardian-cutout",
+      "prompt": "Use case: background-extraction. Edit target: this original SwordWeave guardian illustration. Create a genuinely transparent print-book spot illustration derived from the exact subject. Preserve the angular cut-paper/engraved facets, weathered ink textures, antique gold, ivory, charcoal and teal, costume, tools and recognisable identity. Remove the whole city/architecture, surrounding ornaments and background; retain the subject . Extend the subject naturally only where needed to create a complete isolated silhouette with comfortable margins. Keep the same illustrative texture and design, no photorealism, no soft airbrushed painting, no text. Actual RGBA transparency, no paper or flat-color backdrop, no panel or gold disk. This will sit beside text on cream paper and dark teal pages."
+    },
+    {
+      "asset": "surgeon-cutout",
+      "prompt": "Use case: background-extraction. Edit target: this original SwordWeave surgeon illustration. Create a genuinely transparent print-book spot illustration derived from the exact subject. Preserve the angular cut-paper/engraved facets, weathered ink textures, antique gold, ivory, charcoal and teal, costume, tools and recognisable identity. Remove the whole city/architecture, surrounding ornaments and background; retain the subject and a small working surface with the bandage and medical tools. Extend the subject naturally only where needed to create a complete isolated silhouette with comfortable margins. Keep the same illustrative texture and design, no photorealism, no soft airbrushed painting, no text. Actual RGBA transparency, no paper or flat-color backdrop, no panel or gold disk. This will sit beside text on cream paper and dark teal pages."
+    },
+    {
+      "asset": "artificer-cutout",
+      "prompt": "Use case: background-extraction. Edit target: this original SwordWeave artificer illustration. Create a genuinely transparent print-book spot illustration derived from the exact subject. Preserve the angular cut-paper/engraved facets, weathered ink textures, antique gold, ivory, charcoal and teal, costume, tools and recognisable identity. Remove the whole city/architecture, surrounding ornaments and background; retain the subject and hands assembling the little lantern mechanism, including a small work surface. Extend the subject naturally only where needed to create a complete isolated silhouette with comfortable margins. Keep the same illustrative texture and design, no photorealism, no soft airbrushed painting, no text. Actual RGBA transparency, no paper or flat-color backdrop, no panel or gold disk. This will sit beside text on cream paper and dark teal pages."
+    }
+  ],
+  "coverBriefs": [
+    {
+      "asset": "phb-cover",
+      "reference": "bridge-master.png",
+      "brief": "Recompose the original crossing party into a tall engraved and faceted canal-city cover, matching gold, teal and midnight blue. Reserve the upper quarter for typeset title; no generated text."
+    },
+    {
+      "asset": "gm-cover",
+      "reference": "custodian-master.png",
+      "brief": "A tall monumental bellhouse guardian, tiny people, routes and mechanisms, in the original SwordWeave engraved gold/teal/navy aesthetic. Quiet upper quarter for a typeset title; no generated text."
+    }
+  ],
+  "earlierCutoutBriefs": [
+    {
+      "asset": "party-cutout",
+      "reference": "bridge-master.png",
+      "brief": "Isolate the three original party members in full-body practical planning poses with genuine transparency and the same illustration style."
+    },
+    {
+      "asset": "custodian-cutout",
+      "reference": "custodian-master.png",
+      "brief": "Isolate the original Counterweight Custodian without architecture or gold disk, preserving its engraved angular metallic silhouette and genuine transparency."
+    }
+  ]
+}
