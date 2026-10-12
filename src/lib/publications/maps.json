@@ -1,0 +1,130 @@
+{
+  "sluice": {
+    "title": "The jammed sluice",
+    "caption": "Plan schematic. Route labels give measured distances; room footprints and line lengths are not to scale. Water and blocked trajectories still matter.",
+    "rooms": [
+      [
+        50,
+        120,
+        "A",
+        "Western landing"
+      ],
+      [
+        165,
+        120,
+        "B",
+        "Wheel platform"
+      ],
+      [
+        90,
+        260,
+        "C",
+        "Maintenance passage"
+      ],
+      [
+        285,
+        260,
+        "D",
+        "Spawning bed"
+      ]
+    ],
+    "routes": [
+      [
+        50,
+        120,
+        165,
+        120,
+        "30 ft"
+      ],
+      [
+        165,
+        120,
+        285,
+        120,
+        "30 ft to east bank"
+      ],
+      [
+        50,
+        120,
+        90,
+        260,
+        "40 ft lower route"
+      ]
+    ],
+    "notes": [
+      "A  Rope anchor, boards, tools",
+      "B  Snapped timber; visible control",
+      "C  Wet passage; access underneath",
+      "D  Guardians protect the reeds"
+    ],
+    "routeTexts": [
+      "A, western landing, to B, wheel platform: 30 ft.",
+      "B, wheel platform, to the east bank: 30 ft.",
+      "A, western landing, to C, maintenance passage: 40 ft lower route."
+    ]
+  },
+  "bellhouse": {
+    "title": "The bellhouse of borrowed names",
+    "caption": "Plan schematic. Read the distances on routes, not the drawing scale. The lift rises 30 ft; doors and stone walls can obstruct projected paths.",
+    "rooms": [
+      [
+        60,
+        255,
+        "E",
+        "Lower landing"
+      ],
+      [
+        70,
+        110,
+        "F",
+        "Archive"
+      ],
+      [
+        275,
+        110,
+        "G",
+        "Bell gallery"
+      ],
+      [
+        275,
+        250,
+        "H",
+        "Counterweights"
+      ]
+    ],
+    "routes": [
+      [
+        60,
+        255,
+        275,
+        110,
+        "50 ft stair route"
+      ],
+      [
+        70,
+        110,
+        275,
+        110,
+        "Archive door"
+      ],
+      [
+        275,
+        110,
+        275,
+        250,
+        "40 ft corridor"
+      ]
+    ],
+    "notes": [
+      "E  Lift: 30 ft above lower landing",
+      "F  Charter, ledger, keeper testimony",
+      "G  Three bells; visible hammer arms",
+      "H  Old weight, spare, repair tools"
+    ],
+    "routeTexts": [
+      "E, lower landing, to G, bell gallery: 50 ft stair route.",
+      "F, archive, to G, bell gallery: through the archive door; no distance specified.",
+      "G, bell gallery, to H, counterweights: 40 ft corridor."
+    ]
+  }
+}

@@ -7,6 +7,7 @@ export type BookBlock =
   | { type: 'list'; ordered: boolean; items: string[] }
   | { type: 'aside'; paragraphs: string[] }
   | { type: 'figure'; name: string }
+  | { type: 'art' | 'map' | 'worksheet'; name: string }
   | { type: 'index' };
 export type BookHeading = Extract<BookBlock, { type: 'heading' }>;
 export interface CoreBook {

@@ -43,3 +43,16 @@ test('only the six released core PDFs are exposed with PDF headers', async () =>
   assert.equal(response.status,404);assert.equal(read,false);
  }
 });
+
+test('released book illustrations are exposed without opening other folders', async () => {
+ for (const name of ['bridge','workshop','camp','tools','watcher','grazer','custodian']) {
+  for (const suffix of ['.webp','-master.png']) {
+   const response=await worker.fetch(new Request(`https://art.example/images/books/v0.1-alpha/${name}${suffix}`),makeEnv());
+   assert.equal(response.status,200);assert.equal(response.headers.get('Content-Type'),suffix.endsWith('.png')?'image/png':'image/webp');
+  }
+ }
+ for (const path of ['/images/books/private/a.webp','/images/books/v0.1-alpha/draft.webp','/images/books/v0.1-alpha/bridge.json','/images/books/v0.1-alpha/%2e%2e%2fbridge.webp']) {
+  let read=false;const response=await worker.fetch(new Request('https://art.example'+path),{ART:{get:()=>{read=true;}}});
+  assert.equal(response.status,404);assert.equal(read,false);
+ }
+});

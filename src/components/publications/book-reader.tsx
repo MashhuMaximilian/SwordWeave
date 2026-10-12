@@ -8,6 +8,9 @@ import { useGlobalControls } from '@/components/layout/global-controls';
 import type { CoreBook, BookBlock } from '@/lib/publications/books';
 import CORE_BOOKS from '@/lib/publications/catalogue.json';
 import BOOK_FIGURES from '@/lib/publications/figures.json';
+import BOOK_ART from '@/lib/publications/art.json';
+import BOOK_MAPS from '@/lib/publications/maps.json';
+import BOOK_SHEETS from '@/lib/publications/worksheets.json';
 
 /** Render the deliberately small manuscript grammar as React text, never HTML. */
 function Inline({ text }: { text: string }) {
@@ -29,6 +32,21 @@ function RenderBlock({ block }: { block: BookBlock }) {
   if (block.type === 'aside') return <aside className="sw-book-example">{block.paragraphs.map((text, i) => <p key={i}><Inline text={text}/></p>)}</aside>;
   if (block.type === 'table') return <div className="sw-book-table-wrap" tabIndex={0} aria-label="Reference table, scroll horizontally if needed"><table><thead><tr>{block.rows[0]?.map((text, i) => <th key={i} scope="col"><Inline text={text}/></th>)}</tr></thead><tbody>{block.rows.slice(1).map((row, i) => <tr key={i}>{row.map((text, j) => j === 0 ? <th scope="row" key={j}><Inline text={text}/></th> : <td key={j}><Inline text={text}/></td>)}</tr>)}</tbody></table></div>;
   if (block.type === 'index') return null;
+  if (block.type === 'art') {
+    const art = (BOOK_ART as Record<string, { caption: string; path: string; width: number; height: number; transparent: boolean }>)[block.name];
+    if (!art) return null;
+    return <figure className={`sw-book-art${art.transparent ? ' sw-book-art--spot' : ''}`}><Image unoptimized src={art.path} alt={art.caption} width={art.width} height={art.height}/><figcaption>{art.caption}</figcaption></figure>;
+  }
+  if (block.type === 'worksheet') {
+    const sheet = (BOOK_SHEETS as Record<string, { title: string; fields: string[][] }>)[block.name];
+    if (!sheet) return null;
+    return <section className="sw-book-sheet" aria-label={sheet.title}><p>Optional table tool. Copy or print for your game. These fields record agreements; they do not add rules.</p><dl>{sheet.fields.map(([name, hint]) => <div key={name}><dt>{name}</dt><dd>{hint}<span className="sw-book-writing-lines" aria-hidden="true"/></dd></div>)}</dl></section>;
+  }
+  if (block.type === 'map') {
+    const map = (BOOK_MAPS as Record<string, { title: string; caption: string; rooms: (string | number)[][]; routes: (string | number)[][]; routeTexts: string[]; notes: string[] }>)[block.name];
+    if (!map) return null;
+    return <figure className="sw-book-figure sw-book-map"><div className="sw-book-figure-visual"><Image unoptimized className="sw-book-figure--light" src={`/books/figures/${block.name}-light.svg`} alt={map.title} width={360} height={425}/><Image unoptimized className="sw-book-figure--dark" src={`/books/figures/${block.name}-dark.svg`} alt={map.title} width={360} height={425}/></div><figcaption>{map.caption}</figcaption><details className="sw-book-map-key"><summary>Locations and routes in text</summary><ul>{map.rooms.map((room) => <li key={String(room[2])}>{room[2]}: {room[3]}</li>)}{map.routeTexts.map(route => <li key={route}>{route}</li>)}{map.notes.map(note => <li key={note}>{note}</li>)}</ul></details></figure>;
+  }
   const figure = (BOOK_FIGURES as Record<string, { title: string; caption: string }>)[block.name];
   if (!figure) return null;
   return <figure className="sw-book-figure"><div className="sw-book-figure-visual"><Image unoptimized className="sw-book-figure--light" src={`/books/figures/${block.name}-light.svg`} alt={figure.title} width={720} height={block.name === 'composition' ? 310 : 224}/><Image unoptimized className="sw-book-figure--dark" src={`/books/figures/${block.name}-dark.svg`} alt={figure.title} width={720} height={block.name === 'composition' ? 310 : 224}/></div><figcaption>{figure.caption} <span className="sw-book-figure-hint">Swipe the diagram to explore it.</span></figcaption></figure>;

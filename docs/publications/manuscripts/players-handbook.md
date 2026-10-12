@@ -1,6 +1,6 @@
 # SwordWeave Player's Handbook
 
-Rules edition: **v0.1 alpha** · 11 October 2026 · Free digital edition.
+Rules edition: **v0.1 alpha** · 12 October 2026 · Free digital edition.
 
 
 ## Read, make, play
@@ -857,13 +857,13 @@ Compatible pairs are Add/Subtract, Multiply/Divide, Minimum/Maximum and Grant/Re
 
 ### Credits, rights and edition
 
-SwordWeave by **Marius Ion**. Rules edition **v0.1 alpha**, digital publication 11 October 2026. Writing, design and technical preparation assisted by OpenAI tools under the creator's direction. The official source, current catalogue and corrections are at [swordweave.quest](https://www.swordweave.quest). The three core books are free: [swordweave.quest/books](https://www.swordweave.quest/books).
+SwordWeave by **Marius Ion**. Rules edition **v0.1 alpha**, digital publication 12 October 2026. Writing, design and technical preparation assisted by OpenAI tools under the creator's direction. The official source, current catalogue and corrections are at [swordweave.quest](https://www.swordweave.quest). The three core books are free: [swordweave.quest/books](https://www.swordweave.quest/books).
 
 The original rules, explanatory game text, worked examples, tables and instructional diagrams in this edition are licensed under **Creative Commons Attribution 4.0 International**: [creativecommons.org/licenses/by/4.0](https://creativecommons.org/licenses/by/4.0/). You may copy, adapt and redistribute that material, including commercially, with appropriate attribution, a license link and an indication of changes. No royalty is required. Reuse does not imply official endorsement.
 
 Suggested attribution: “Based on SwordWeave v0.1 alpha by Marius Ion, swordweave.quest, licensed CC BY 4.0. Changes: [describe your changes].” The bracketed phrase is an instruction to reusers, not a missing credit in this book.
 
-The SwordWeave name, wordmark and brand identity identify the project; this notice grants no trademark or endorsement rights. This edition uses original vector instructional diagrams and abstract material treatments; it contains no separately licensed monster portrait or adventure map. Keep the complete PDF, print it for your table and share it with friends. Fonts retain their own licenses: Unica One, Aubrey, Syne, Oxanium and IBM Plex Mono use the SIL Open Font License 1.1; embedding does not require licensing your new game text under the font license.
+The SwordWeave name, wordmark and brand identity identify the project; this notice grants no trademark or endorsement rights. Instructional diagrams and the original schematic adventure maps are included in the CC BY 4.0 text-and-diagram scope. Illustrations are AI-generated with OpenAI image-generation tools under Marius Ion’s direction; selected system creature art is reused from the original SwordWeave catalogue. Illustration generation records accompany the publication sources. The creator permits sharing the complete illustrated book noncommercially and printing it for personal or table use. Other reuse of separately identified illustrations requires permission; this notice does not assert exclusive copyright in purely generated expression. Keep the complete PDF, print it for your table and share it with friends. Fonts retain their own licenses: Unica One, Aubrey, Syne, Oxanium and IBM Plex Mono use the SIL Open Font License 1.1; embedding does not require licensing your new game text under the font license.
 
 If these books help your games, you can [buy the creator a coffee](https://buymeacoffee.com/mashhul). Support is optional. Reading, downloading, sharing permitted content and playing do not require payment.
 

@@ -1,6 +1,6 @@
 # The three v0.1 alpha manuscripts
 
-These are the complete current book sources, not the former partial drafts:
+These are the shared core manuscripts. The full illustrated editions assemble them with the five teaching/reference extensions in `../expanded/`:
 
 - `players-handbook.md`: teaches all player procedures and includes the base construction reference, complete character/item/creature examples, quick reference, glossary, rights notice and topic index.
 - `game-masters-guide.md`: teaches a first session, rulings, shared rounds, creation/consequence review, creatures, encounters, recovery, adventures and campaigns; includes public sample links, worksheets and worked records.

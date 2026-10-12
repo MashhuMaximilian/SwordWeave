@@ -1,0 +1,51 @@
+{
+  "bridge": {
+    "caption": "The party makes a temporary crossing.",
+    "path": "/books/art/bridge.webp",
+    "width": 1536,
+    "height": 1024,
+    "transparent": false
+  },
+  "workshop": {
+    "caption": "Concepts become readable tools and workings.",
+    "path": "/books/art/workshop.webp",
+    "width": 1672,
+    "height": 941,
+    "transparent": false
+  },
+  "camp": {
+    "caption": "Recovery, care and continuing consequences.",
+    "path": "/books/art/camp.webp",
+    "width": 1536,
+    "height": 1024,
+    "transparent": false
+  },
+  "tools": {
+    "caption": "Ordinary tools remain useful alongside extraordinary access.",
+    "path": "/books/art/tools.webp",
+    "width": 1254,
+    "height": 1254,
+    "transparent": true
+  },
+  "watcher": {
+    "caption": "The Canal Watcher protects a flow, not a kill count.",
+    "path": "/books/art/watcher.webp",
+    "width": 1254,
+    "height": 1254,
+    "transparent": true
+  },
+  "grazer": {
+    "caption": "A guardian is useful because of its purpose and behavior.",
+    "path": "/books/art/grazer.webp",
+    "width": 1254,
+    "height": 1254,
+    "transparent": false
+  },
+  "custodian": {
+    "caption": "Mechanisms, positions and motives create an encounter.",
+    "path": "/books/art/custodian.webp",
+    "width": 1254,
+    "height": 1254,
+    "transparent": false
+  }
+}

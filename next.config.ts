@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 import { hostname, networkInterfaces } from "node:os";
 import { existsSync } from "node:fs";
-import { publicArtRedirects } from "./src/lib/assets/public-art";
+import { publicArtRedirects, publicBookRedirects } from "./src/lib/assets/public-art";
 
 // Allow the phone preview to load development assets over the current LAN.
 const localPreviewHosts = Object.values(networkInterfaces()).flatMap(addresses =>
@@ -55,6 +55,8 @@ const nextConfig: NextConfig = {
       // paths remain valid; local review galleries can still use local copies.
       ...((process.env.NODE_ENV === "development" && existsSync("public/images/lineages"))
         ? [] : publicArtRedirects(process.env["SW_PUBLIC_ART_ORIGIN"])),
+      ...(process.env.NODE_ENV === "development"
+        ? [] : publicBookRedirects(process.env["SW_PUBLIC_ART_ORIGIN"])),
       {
         source: "/sandbox/grammar",
         destination: "/atelier",

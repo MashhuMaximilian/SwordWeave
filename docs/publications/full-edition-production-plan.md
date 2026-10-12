@@ -1,10 +1,10 @@
 # Illustrated core books and digital SRD
 
-Updated 11 October 2026. This is the next publication phase agreed after review of the v0.1 alpha core editions. It does not claim the larger manuscripts or print masters already exist.
+Updated 12 October 2026. The illustrated alpha manuscripts and digital-print interiors are now assembled: PHB 168 pages, GM Guide 163 pages and digital SRD 114 pages, in separate light/dark exports. This records the agreed scope and the remaining physical-production gates.
 
 ## What the present books are
 
-The released PHB, Game Master's Guide and SRD are compact alpha core editions: 42, 34 and 33 pages respectively in the release manifest. They establish the shared rules and provide usable digital/table references. They are not the finished illustrated print products. Keep them free and accessible while the substantial editions are developed.
+The initial 11 October PHB, Game Master's Guide and SRD were compact alpha core editions: 42, 34 and 33 pages respectively. They establish the shared rules and provide usable digital/table references. They are not the finished illustrated print products. Keep them free and accessible while the substantial editions are developed.
 
 The creator's direction is now explicit: expand the PHB and GM Guide into beautifully illustrated, thoroughly taught books. The SRD is a complete digital mechanical reference, without a print-production requirement. Its length follows mechanical coverage, not an obligation to exceed the other books.
 
@@ -81,4 +81,4 @@ Design page families: chapter opener, annotated scene, worked construction, dial
 6. Prepare printer-specific trim, margins, bleed, binding gutter, image resolution, font embedding and color profiles only once a printer/binding is selected. Do not label generic browser exports press-ready or PDF/X compliant without verification.
 7. Publish free illustrated digital editions. Obtain and review a manufactured proof before offering physical copies or retail distribution.
 
-The current alpha remains the playable baseline throughout. Next deliverable: the expanded chapter inventory plus the first illustrated teaching chapter proof, not another compact summary carrying a full-print label.
+The illustrated alpha now replaces the compact reader content while preserving stable book anchors. Next: independent new-player/GM table testing, the deferred upkeep decision, and printer-specific production/physical proof before offering manufactured copies. A generic digital-print interior is not a PDF/X-certified press file or a wraparound cover.

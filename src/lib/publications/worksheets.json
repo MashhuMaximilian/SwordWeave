@@ -1,0 +1,272 @@
+{
+  "character": {
+    "title": "Your character at a glance",
+    "fields": [
+      [
+        "Person and purpose",
+        "Who are you? What do you want?"
+      ],
+      [
+        "Party connection",
+        "Why cooperate? Who matters to you?"
+      ],
+      [
+        "Foundation",
+        "Level / progression BU / Physical / Mental / Magical"
+      ],
+      [
+        "Training and resolution",
+        "Proficient attribute / PB / practices / saves / selected DC"
+      ],
+      [
+        "Survival",
+        "Current and maximum Vitality / short-rest recovery remaining"
+      ],
+      [
+        "Position and movement",
+        "Size / modes and speeds / senses / equipped slots / Load"
+      ]
+    ]
+  },
+  "acquisitions": {
+    "title": "Acquisitions and references",
+    "fields": [
+      [
+        "Actual acquisition",
+        "Name / version / bound subject / BU / occurrence identity"
+      ],
+      [
+        "Other acquisitions",
+        "Record each purchase once; references do not repurchase"
+      ],
+      [
+        "Organizations",
+        "Lineage / Upbringing / Manifest / effects / capabilities"
+      ],
+      [
+        "Accounting",
+        "Positive acquired BU / credit available / debt used / unspent"
+      ],
+      [
+        "Equipment",
+        "Separate Item BU / quantity / Load / final equipped slots"
+      ]
+    ]
+  },
+  "capability": {
+    "title": "Write a working people can use",
+    "fields": [
+      [
+        "Intent and permission",
+        "Result / verb / domain / range / actual ingredients"
+      ],
+      [
+        "Recipients and delivery",
+        "Location method / paths / shape / conditions"
+      ],
+      [
+        "Expression",
+        "Output / source and domain / resolution / timing"
+      ],
+      [
+        "Persistence",
+        "Duration / continuation / interruption / ending"
+      ],
+      [
+        "Review",
+        "Normal use / stretched use / outside-scope use"
+      ],
+      [
+        "Ledger",
+        "Acquisitions versus references / price proposal / version"
+      ]
+    ]
+  },
+  "consequences": {
+    "title": "Consequences and continuing work",
+    "fields": [
+      [
+        "Cause and subject",
+        "What happened? Who or what is affected?"
+      ],
+      [
+        "Actual change",
+        "Number / restriction / resource / environment / obligation"
+      ],
+      [
+        "Timing and maintenance",
+        "When does it apply or recur? What is required?"
+      ],
+      [
+        "Ending and recovery",
+        "Duration / task / treatment / explicit ending event"
+      ],
+      [
+        "Other records",
+        "What remains when this one ends? Who tracks it?"
+      ]
+    ]
+  },
+  "round": {
+    "title": "One shared round",
+    "fields": [
+      [
+        "Council",
+        "Scene / continuation / reactions / Main Intents"
+      ],
+      [
+        "Fast: Complexity 0\u20131",
+        "Intent / position / clashes / reactions / result"
+      ],
+      [
+        "Measured: Complexity 2\u20133",
+        "Dependencies / changed route / result"
+      ],
+      [
+        "Heavy: Complexity 4+",
+        "Further dependencies / pivots / result"
+      ],
+      [
+        "Carry forward",
+        "Movement used / Vitality / consequences / ongoing work"
+      ]
+    ]
+  },
+  "session": {
+    "title": "Return to the shared story",
+    "fields": [
+      [
+        "Last result",
+        "What changed? What remains unresolved?"
+      ],
+      [
+        "Current record",
+        "Vitality / recovery allowance / gear / acquisitions"
+      ],
+      [
+        "Continuing requirements",
+        "Consequences / maintenance / obligations / endings"
+      ],
+      [
+        "Next purpose",
+        "What do you want to pursue? What do others need?"
+      ],
+      [
+        "Agreement",
+        "Rewards / rule revisions / permissions / absent players"
+      ]
+    ]
+  },
+  "encounter": {
+    "title": "Prepare an encounter",
+    "fields": [
+      [
+        "Situation",
+        "Opening / objective / visible pressure / alternatives"
+      ],
+      [
+        "Party",
+        "Manual Party BU / Party Item BU / size / optional references"
+      ],
+      [
+        "Opposition",
+        "Base BU / Item BU / quantity / version / roles / tactics"
+      ],
+      [
+        "Place",
+        "Routes / distances / cover / senses / resources / warnings"
+      ],
+      [
+        "Appraisal",
+        "Separate totals / ratio / count / concentration; no difficulty label"
+      ],
+      [
+        "Aftermath",
+        "Retreat / resolution / rescue / changed relationships"
+      ]
+    ]
+  },
+  "creature": {
+    "title": "Build an opponent",
+    "fields": [
+      [
+        "Purpose",
+        "Want / behavior / tell / nonviolent ending"
+      ],
+      [
+        "Foundation",
+        "Base B / rank / points / allocation / PB / Vitality"
+      ],
+      [
+        "Acquisitions",
+        "Actual permissions / modifiers / price / remaining BU"
+      ],
+      [
+        "Rules",
+        "Senses / movement / attacks / saves / source and domain"
+      ],
+      [
+        "Persistence and gear",
+        "Continuation / endings / reactions / separate Item BU"
+      ],
+      [
+        "Test",
+        "Favorable scene / counter-approach / changed environment"
+      ]
+    ]
+  },
+  "adventure": {
+    "title": "Prepare a situation, not a script",
+    "fields": [
+      [
+        "Premise",
+        "People / place / pressure / useful player choices"
+      ],
+      [
+        "Facts",
+        "What exists? What is wrong? What changes unattended?"
+      ],
+      [
+        "People",
+        "Desire / resource / constraint / credible offers"
+      ],
+      [
+        "Information",
+        "Essential facts / several sources / optional discoveries"
+      ],
+      [
+        "Locations",
+        "Routes / barriers / distances / resources / threats"
+      ],
+      [
+        "Outcomes",
+        "Several resolutions / consequences / next questions"
+      ]
+    ]
+  },
+  "ruling": {
+    "title": "Make the agreement understandable",
+    "fields": [
+      [
+        "Wanted result",
+        "Ordinary circumstances / extraordinary access"
+      ],
+      [
+        "Actual scope",
+        "Targets / sense / reach / output / persistence"
+      ],
+      [
+        "Uncertainty",
+        "Secure result / check / attack / save / timing / contest"
+      ],
+      [
+        "Stakes",
+        "Success / failure / Cost / timing / options to revise"
+      ],
+      [
+        "Record",
+        "Changed scene / consequence terms / exception scope"
+      ]
+    ]
+  }
+}

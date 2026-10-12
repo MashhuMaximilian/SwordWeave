@@ -9,7 +9,7 @@ Confirmed direction: 10 October 2026. Applies to preparation of the Player's Han
 - One approved manuscript feeds the interactive reader and PDFs. Keep the light/dark switch in the reader; offer separate light and dark PDF downloads, with the app fonts and gold/silver/teal materials in both.
 - Readers may keep copies, print them for personal/table use and share the complete digital books with friends. Distribution permissions for included artwork must support this before release.
 - Support through Buy Me a Coffee is an invitation, never a condition of receiving, reading or sharing the free books.
-- Printed editions may be sold later. Printing, pricing, fulfillment and print-ready layout are deferred. The digital editions stay free.
+- Printed editions may be sold later. The illustrated alpha now has light digital-print interiors; printer-specific production, physical proof, pricing and fulfillment remain later. The digital editions stay free.
 
 ## 2. License boundary for these books
 
@@ -17,13 +17,13 @@ Use CC BY 4.0 for the original rules and explanatory game text designated in eac
 
 CC BY permits copying, modification and commercial redistribution of the designated text, even unchanged, with attribution and its other required notices. It cannot be combined with a new prohibition on resale of that same text. A voluntary coffee request does not change these permissions. [Official CC BY 4.0 terms](https://creativecommons.org/licenses/by/4.0/).
 
-Identify illustrations, maps, branding and third-party assets separately in the credits. Do not automatically place them under CC BY or assume ownership. The intended permission for the complete free PDF includes noncommercial sharing with friends and personal/table printing; confirm that each asset's actual rights allow those uses. The text's open license does not automatically authorize selling a complete illustrated PDF containing separately licensed assets.
+Identify illustrations, maps, branding and third-party assets separately in the credits. The original instructional vector maps and diagrams in the illustrated alpha are designated CC BY 4.0; AI illustrations follow the separate complete-book sharing notice. Do not automatically place them under CC BY or assume ownership. The intended permission for the complete free PDF includes noncommercial sharing with friends and personal/table printing; confirm that each asset's actual rights allow those uses. The text's open license does not automatically authorize selling a complete illustrated PDF containing separately licensed assets.
 
 ### Artwork provenance
 
 The creator confirms the SwordWeave illustrations were generated using OpenAI tools through the Codex/ChatGPT workflow. The existing 100-monster manifest, `docs/library/system-bestiary-art-2026-10.json`, records built-in `image_gen.imagegen` generation, source files and prompts. Do not infer the image-generation model from the reasoning model used to coordinate the task; record a specific model only when generation records identify it.
 
-Proposed transparent credit: **“AI-generated illustrations created with OpenAI image-generation tools under Marius Ion's direction.”** Record any human edits, supplied reference assets and third-party elements separately. Fonts and icons also retain their actual notices; AI illustration provenance does not settle their licenses.
+Release credit: **“AI-generated illustrations created with OpenAI image-generation tools under Marius Ion's direction.”** Record any human edits, supplied reference assets and third-party elements separately. Fonts and icons also retain their actual notices; AI illustration provenance does not settle their licenses.
 
 OpenAI's Europe terms assign its rights, if any, in output to the user to the extent permitted by law. That contractual assignment does not guarantee exclusive copyright in every generated image. Copyrightability depends on applicable law and human authorship; the U.S. Copyright Office, for example, distinguishes protectable human contributions from purely generated expression. Do not describe Codex, a GPT model or OpenAI as a commissioned human artist, or promise that an AI-art notice alone can prevent all third-party copying. [OpenAI terms](https://openai.com/policies/eu-terms-of-use/), [U.S. Copyright Office explanation](https://www.copyright.gov/newsnet/2025/1060.html).
 

@@ -9,8 +9,9 @@ export default {
     catch { return new Response('Invalid path', { status: 400 }); }
     // No bucket listings, writes, arbitrary folders, or private upload access.
     const isImage = /^images\/(characters|lineages|heritages|monsters)\/[a-zA-Z0-9_./-]+\.(png|webp)$/.test(key);
+    const isBookArt = /^images\/books\/v0\.1-alpha\/(bridge|workshop|camp|tools|watcher|grazer|custodian)(-master\.png|\.webp)$/.test(key);
     const isBook = /^documents\/swordweave\/v0\.1-alpha\/(players-handbook|game-masters-guide|srd)(-dark)?\.pdf$/.test(key);
-    if ((!isImage && !isBook)
+    if ((!isImage && !isBookArt && !isBook)
         || key.split('/').some(segment => segment === '..' || segment === '.')) {
       return new Response('Not found', { status: 404 });
     }

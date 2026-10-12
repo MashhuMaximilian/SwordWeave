@@ -69,5 +69,9 @@ t4.tsx
 /public/images/monsters/
 /public/art/monsters/
 
+# Versioned publication binaries are archived in R2; local rebuilds remain available.
+/public/books/v0.1-alpha/*.pdf
+/public/books/art/*.webp
+
 # Private planning notes and production repair snapshots
 /.local-plans/

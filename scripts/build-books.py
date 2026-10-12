@@ -4,7 +4,7 @@ Run with the bundled PDF Python runtime. Font conversion uses local fontTools.
 Outputs are deterministic except for PDF producer timestamps. No cloud mutations.
 """
 from pathlib import Path
-import base64, hashlib, html, json, re, subprocess
+import base64, hashlib, html, json, re, subprocess, importlib.util, sys
 from reportlab.lib import colors
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.pdfbase import pdfmetrics
@@ -14,15 +14,16 @@ from reportlab.platypus.tableofcontents import TableOfContents
 from pypdf import PdfReader
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / 'output/pdf'
+PROOF = '--proof' in sys.argv
+OUT = ROOT / ('tmp/pdfs/full-edition-proof' if PROOF else 'output/pdf')
 ASSETS = ROOT / 'public/books/figures'
-DATA = ROOT / 'src/lib/publications'
+DATA = OUT / 'data' if PROOF else ROOT / 'src/lib/publications'
 TMP = ROOT / 'tmp/pdfs/books'
 for p in (OUT, ASSETS, DATA, TMP): p.mkdir(parents=True, exist_ok=True)
 VERSION = 'v0.1-alpha'
 ORIGIN = '/books/' + VERSION
-W, H, M = 595.2756, 841.8898, 51
-CW = W - 2*M
+W, H, M = 468, 648, 45  # 6.5 x 9 inch trim; 0.70 inch inner / 0.55 inch outer
+CW = W - 50.4 - 39.6
 GOLD = ['#b68b3f','#e8c47a','#fff3bb','#ceac60','#e7c780','#ad813c','#f2d994']
 TEAL = ['#4e9290','#8dc2b3','#c6ead6','#69aaa0','#96c5b5','#53918d','#b2d6c4']
 SILVER = ['#6e8589','#d8e3e3','#ffffff','#82999e','#edf5f4','#7e969b']
@@ -35,9 +36,9 @@ for name, source in FONTS.items():
 pdfmetrics.registerFontFamily('Body',normal='Body',bold='Bold',italic='Italic',boldItalic='Bold')
 
 BOOKS = [
- {'slug':'players-handbook','file':'players-handbook.md','short':'PHB','title':"Player's Handbook",'subtitle':'Imagine a person. Give them rules. Play a shared story.','description':'Learn to create a character, compose abilities, coordinate a shared round and carry the consequences.','accent':'gold'},
- {'slug':'game-masters-guide','file':'game-masters-guide.md','short':'GM Guide','title':"Game Master's Guide",'subtitle':'Prepare situations. Make clear rulings. Let choices matter.','description':'Run your first session, review creations, author creatures and prepare encounters with practical worksheets.','accent':'teal'},
- {'slug':'srd','file':'system-reference-document.md','short':'SRD','title':'System Reference Document','subtitle':'The open construction and play framework.','description':'A precise reference for the rules, 29 primitive families, construction procedures and compatible creation.','accent':'silver'},
+ {'slug':'players-handbook','file':'players-handbook.md','short':'PHB','title':"Player's Handbook",'subtitle':'Imagine a person. Give them rules. Play a shared story.','description':'Learn to create a character, compose abilities, coordinate a shared round and carry the consequences.','accent':'gold','extensions':['player-workshops.md','player-depth.md'],'worksheets':['character','acquisitions','capability','consequences','round','session']},
+ {'slug':'game-masters-guide','file':'game-masters-guide.md','short':'GM Guide','title':"Game Master's Guide",'subtitle':'Prepare situations. Make clear rulings. Let choices matter.','description':'Run your first session, review creations, author creatures and prepare encounters with practical worksheets.','accent':'teal','extensions':['gm-workshops.md','gm-depth.md'],'worksheets':['ruling','creature','encounter','round','consequences','adventure','session']},
+ {'slug':'srd','file':'system-reference-document.md','short':'SRD','title':'System Reference Document','subtitle':'The open construction and play framework.','description':'A precise reference for the rules, 29 primitive families, construction procedures and compatible creation.','accent':'silver','extensions':['srd-reference.md'],'worksheets':[]},
 ]
 
 def slugify(s):
@@ -48,6 +49,7 @@ def plain(s):
     return s.replace('**','').replace('`','').replace('*','')
 
 def parse(text):
+    text=text.replace('—','-').replace('–','-').replace('‑','-').replace('−','-')
     lines=text.strip().splitlines(); blocks=[]; i=0; ids=set()
     while i < len(lines):
         line=lines[i].strip()
@@ -55,6 +57,8 @@ def parse(text):
         if line.startswith('# '): i+=1; continue
         if line==':::index':
             blocks.append({'type':'index'});i+=1;continue
+        if re.match(r'^:::(art|map|worksheet) ',line):
+            kind,name=line[3:].split(' ',1);blocks.append({'type':kind,'name':name.strip()});i+=1;continue
         if line.startswith(':::figure '):
             blocks.append({'type':'figure','name':line.split()[-1]});i+=1;continue
         if line.startswith('##'):
@@ -134,44 +138,34 @@ def gradient(c,x,y,w,h,stops,radius=0):
     c.linearGradient(x,y,x+w,y+h,[colors.HexColor(v) for v in stops],[i/(len(stops)-1) for i in range(len(stops))],extend=True)
     c.restoreState()
 
-class Figure(Flowable):
-    def __init__(self,key,dark):super().__init__();self.key=key;self.dark=dark;self.width=CW;self.height=FIGURES[key]['height']*CW/720
-    def draw(self):
-        c=self.canv;f=FIGURES[self.key];p=palette(self.dark);scale=CW/720;c.saveState();c.scale(scale,scale);h=f['height']
-        c.setFillColor(colors.HexColor(p['paper']));c.setStrokeColor(colors.HexColor(p['line']));c.roundRect(0,0,720,h,12,fill=1,stroke=1)
-        gradient(c,18,h-20,684,3,GOLD[:3]+TEAL[3:5]+SILVER[1:3]);c.setFillColor(colors.HexColor(p['gold']));c.setFont('Display',21);c.drawString(24,h-45,f['title'])
-        c.setStrokeColor(colors.HexColor(p['line']));c.setLineWidth(2)
-        for x1,y1,x2,y2 in f['edges']:
-            y1=h-y1;y2=h-y2;c.line(x1,y1,x2,y2)
-            import math
-            a=math.atan2(y2-y1,x2-x1);path=c.beginPath();path.moveTo(x2,y2);path.lineTo(x2-7*math.cos(a-.45),y2-7*math.sin(a-.45));path.lineTo(x2-7*math.cos(a+.45),y2-7*math.sin(a+.45));path.close();c.setFillColor(colors.HexColor(p['line']));c.drawPath(path,fill=1,stroke=0)
-        for x,y,w,h2,title,sub in f['nodes']:
-            yy=h-y-h2;c.setFillColor(colors.HexColor(p['panel']));c.setStrokeColor(colors.HexColor(p['line']));c.roundRect(x,yy,w,h2,7,fill=1,stroke=1);gradient(c,x+8,yy+h2-3,w-16,2,GOLD)
-            c.setFillColor(colors.HexColor(p['ink']));c.setFont('Bold',15);c.drawCentredString(x+w/2,h-y-25,title)
-            for j,s in enumerate(sub):c.setFont('Body',16);c.setFillColor(colors.HexColor(p['muted']));c.drawCentredString(x+w/2,h-y-45-j*17,s.replace('→','to'))
-        c.restoreState()
+_spec=importlib.util.spec_from_file_location('publication_layout',ROOT/'scripts/publication-layout.py')
+LAYOUT=importlib.util.module_from_spec(_spec);_spec.loader.exec_module(LAYOUT)
+for key in LAYOUT.MAPS:
+    for dark in (False,True):
+        (ASSETS/(key+('-dark' if dark else '-light')+'.svg')).write_text(LAYOUT.map_svg(key,dark).replace('<svg ', '<svg ').replace('<title>', '<style>'+SVG_FONTS+'</style><title>',1))
+
+class Figure(LAYOUT.Diagram):
+    def __init__(self,key,dark):super().__init__(key,FIGURES[key],CW,styles(dark),dark)
 
 class Cover(Flowable):
-    def __init__(self,book,dark):super().__init__();self.book=book;self.dark=dark;self.width=CW;self.height=H-150
+    def __init__(self,book,dark):super().__init__();self.book=book;self.dark=dark;self.width=CW;self.height=H-111
     def draw(self):
         c=self.canv;p=palette(self.dark);height=self.height;c.saveState()
-        c.setFillColor(colors.HexColor(p['gold']));c.setFont('Technical',10);c.drawString(0,height-28,'SWORDWEAVE  /  FREE CORE BOOKS')
-        gradient(c,0,height-53,CW,5,GOLD if self.book['accent']=='gold' else TEAL if self.book['accent']=='teal' else SILVER)
-        c.setFont('Display',50);c.setFillColor(colors.HexColor(p['ink']));c.drawString(0,height-127,'Sword·Weave')
-        para=Paragraph(self.book['title'],ParagraphStyle('cover',fontName='Display',fontSize=41,leading=45,textColor=colors.HexColor(p['ink'])))
-        _,hh=para.wrap(CW,150);para.drawOn(c,0,height-163-hh)
-        para=Paragraph(self.book['subtitle'],ParagraphStyle('deck',fontName='Italic',fontSize=14,leading=22,textColor=colors.HexColor(p['muted'])))
-        _,hh2=para.wrap(CW-35,100);para.drawOn(c,0,height-188-hh-hh2)
-        cx=CW/2;cy=185
-        c.setStrokeColor(colors.HexColor(p['line']));c.setLineWidth(.65)
-        for r in (57,83,107):c.circle(cx,cy,r,stroke=1,fill=0)
-        for angle in range(0,360,60):
-            import math
-            a=math.radians(angle);c.line(cx+57*math.cos(a),cy+57*math.sin(a),cx+107*math.cos(a),cy+107*math.sin(a))
-        gradient(c,cx-40,cy-3,80,6,GOLD);gradient(c,cx-3,cy-40,6,80,TEAL)
-        c.setFont('Technical',10);c.setFillColor(colors.HexColor(p['muted']));c.drawString(0,49,'MARIUS ION  /  v0.1 alpha  /  11 OCTOBER 2026')
-        c.setFont('Body',12);c.drawString(0,28,'Original rules, text and instructional diagrams: CC BY 4.0')
-        c.setFont('Body',12);c.drawString(0,8,'swordweave.quest/books  /  '+('Dark' if self.dark else 'Light')+' digital edition')
+        c.setFont('Display',45);c.setFillColor(colors.HexColor(p['ink']));c.drawString(0,height-52,'Sword·Weave')
+        gradient(c,0,height-74,CW,4,GOLD if self.book['accent']=='gold' else TEAL if self.book['accent']=='teal' else SILVER)
+        para=Paragraph(self.book['title'],ParagraphStyle('cover-title',fontName='Display',fontSize=35,leading=39,textColor=colors.HexColor(p['ink'])))
+        _,hh=para.wrap(CW,120);para.drawOn(c,0,height-103-hh)
+        para=Paragraph(self.book['subtitle'],ParagraphStyle('cover-deck',fontName='Body',fontSize=15,leading=19,textColor=colors.HexColor(p['muted'])))
+        _,deck=para.wrap(CW,80);para.drawOn(c,0,height-119-hh-deck)
+        key='bridge' if self.book['slug']=='players-handbook' else 'custodian' if self.book['slug']=='game-masters-guide' else 'tools'
+        a=LAYOUT.ART[key];from PIL import Image
+        im=Image.open(ROOT/a['printMaster']);w=min(CW,im.width/300*72);h=w*im.height/im.width
+        limit=height-170-hh-deck-76
+        if h>limit:w*=limit/h;h=limit
+        c.drawImage(str(ROOT/a['printMaster']),(CW-w)/2,82,w,h,mask='auto')
+        c.setFont('Technical',8);c.setFillColor(colors.HexColor(p['muted']));c.drawString(0,54,'MARIUS ION  /  v0.1 alpha  /  12 OCTOBER 2026')
+        c.setFont('Body',11.5);c.drawString(0,34,'Free core book. Text and instructional diagrams: CC BY 4.0.')
+        c.drawString(0,15,'swordweave.quest/books  /  '+('Dark screen edition' if self.dark else 'Light print interior'))
         c.restoreState()
 
 class Heading(Paragraph):
@@ -188,35 +182,38 @@ class TopicIndex(TableOfContents):
 
 class BookDoc(BaseDocTemplate):
     def __init__(self,path,book,dark):
-        super().__init__(str(path),pagesize=(W,H),leftMargin=M,rightMargin=M,topMargin=62,bottomMargin=58,title='SwordWeave '+book['title']+' · v0.1 alpha',author='Marius Ion',subject='Free SwordWeave core rules: original text and diagrams CC BY 4.0',pageCompression=1)
+        super().__init__(str(path),pagesize=(W,H),leftMargin=M,rightMargin=M,topMargin=48,bottomMargin=47,title='SwordWeave '+book['title']+' · v0.1 alpha',author='Marius Ion',subject='Free SwordWeave core rules: original text and diagrams CC BY 4.0',pageCompression=1)
         self.book=book;self.dark=dark;self.currentChapter=book['short'];self.pageMap={};self._onProgress=None
-        self.addPageTemplates(PageTemplate(id='book',frames=[Frame(M,58,CW,H-120,leftPadding=0,rightPadding=0,topPadding=0,bottomPadding=0)],onPage=self.page_background))
+        self.addPageTemplates([PageTemplate(id='recto',frames=[Frame(50.4,47,CW,H-96,leftPadding=0,rightPadding=0,topPadding=0,bottomPadding=0)],onPage=self.page_background,onPageEnd=self.page_header,autoNextPageTemplate='verso'),PageTemplate(id='verso',frames=[Frame(39.6,47,CW,H-96,leftPadding=0,rightPadding=0,topPadding=0,bottomPadding=0)],onPage=self.page_background,onPageEnd=self.page_header,autoNextPageTemplate='recto')])
     def beforeDocument(self):self.currentChapter=self.book['short'];self.pageMap={}
     def page_background(self,c,doc):
-        p=palette(self.dark);c.saveState();gradient(c,0,0,W,H,['#08161c','#102126','#1b3539'] if self.dark else ['#d6e4dc','#f1f5ec','#fcfcf4'])
-        c.setLineWidth(.5);c.setStrokeColor(colors.HexColor(p['line']));c.line(M,39,W-M,39)
+        p=palette(self.dark);c.saveState();left=50.4 if doc.page%2 else 39.6;right=left+CW
+        if self.dark:gradient(c,0,0,W,H,['#08161c','#102126','#1b3539'])
+        else:c.setFillColor(colors.white);c.rect(0,0,W,H,fill=1,stroke=0)
+        c.setLineWidth(.45);c.setStrokeColor(colors.HexColor(p['line']));c.line(left,34,right,34)
+        c.setFont('Technical',7.1);c.setFillColor(colors.HexColor(p['muted']));c.drawString(left,22,'v0.1 alpha / SwordWeave');c.drawRightString(right,22,str(doc.page));c.restoreState()
+    def page_header(self,c,doc):
         if doc.page>1:
-            c.setFont('Technical',7.6);c.setFillColor(colors.HexColor(p['muted']));c.drawString(M,H-31,'SWORDWEAVE  /  '+self.book['short'].upper())
+            p=palette(self.dark);left=50.4 if doc.page%2 else 39.6;right=left+CW;c.saveState()
+            c.setFont('Technical',7.3);c.setFillColor(colors.HexColor(p['muted']));c.drawString(left,H-24,'SWORDWEAVE / '+self.book['short'].upper())
             title=self.currentChapter
-            while pdfmetrics.stringWidth(title,'Body',10)>CW-160:title=title[:-2]
-            c.setFont('Body',10);c.drawRightString(W-M,H-31,title);gradient(c,M,H-43,CW,1.4,TEAL+GOLD)
-        c.setFont('Technical',7.5);c.setFillColor(colors.HexColor(p['muted']));c.drawString(M,25,'v0.1 alpha  ·  CC BY 4.0');c.drawRightString(W-M,25,str(doc.page));c.restoreState()
+            while pdfmetrics.stringWidth(title,'Body',9)>CW-125:title=title[:-2]
+            c.setFont('Body',9);c.drawRightString(right,H-24,title);gradient(c,left,H-35,CW,1.2,TEAL+GOLD);c.restoreState()
     def afterFlowable(self,f):
         if isinstance(f,Heading):
             self.canv.bookmarkPage(f.bookmark);self.canv.addOutlineEntry(f.title,f.bookmark,level=f.level,closed=False);self.pageMap[f.bookmark]=self.page
             if f.level==0:
                 self.currentChapter=f.title
-                c=self.canv;p=palette(self.dark);c.saveState();gradient(c,0,H-39,W,39,['#1b3539','#102126'] if self.dark else ['#fcfcf4','#f1f5ec']);c.setFont('Technical',7.6);c.setFillColor(colors.HexColor(p['muted']));c.drawString(M,H-31,'SWORDWEAVE  /  '+self.book['short'].upper());c.setFont('Body',10);c.drawRightString(W-M,H-31,self.currentChapter);c.restoreState()
             self.notify('TOCEntry',(f.level,f.title,self.page,f.bookmark))
             if f.bookmark!='topic-index':self.notify('TopicIndex',(f.title,self.page,f.bookmark))
 
 def styles(dark):
     p=palette(dark);s={}
-    s['body']=ParagraphStyle('body',fontName='Body',fontSize=12.8,leading=17.1,textColor=colors.HexColor(p['ink']),spaceAfter=9,allowWidows=0,allowOrphans=0)
+    s['body']=ParagraphStyle('body',fontName='Body',fontSize=13,leading=17.2,textColor=colors.HexColor(p['ink']),spaceAfter=9,allowWidows=0,allowOrphans=0)
     s['small']=ParagraphStyle('small',parent=s['body'],fontSize=11,leading=14.1,textColor=colors.HexColor(p['muted']),spaceAfter=10)
-    s['h2']=ParagraphStyle('h2',fontName='Display',fontSize=29,leading=32,textColor=colors.HexColor(p['gold']),spaceBefore=9,spaceAfter=15,keepWithNext=True)
+    s['h2']=ParagraphStyle('h2',fontName='Display',fontSize=28,leading=31,textColor=colors.HexColor(p['gold']),spaceBefore=9,spaceAfter=15,keepWithNext=True)
     s['h3']=ParagraphStyle('h3',fontName='Display',fontSize=19,leading=22,textColor=colors.HexColor(p['gold']),spaceBefore=12,spaceAfter=7,keepWithNext=True)
-    s['cell']=ParagraphStyle('cell',parent=s['body'],fontSize=11.4,leading=14.7,spaceAfter=0)
+    s['cell']=ParagraphStyle('cell',parent=s['body'],fontSize=11.5,leading=14.7,spaceAfter=0)
     s['headcell']=ParagraphStyle('headcell',fontName='Bold',fontSize=9.5,leading=13,textColor=colors.HexColor('#271903'),spaceAfter=0)
     s['rule']=ParagraphStyle('rule',parent=s['body'],textColor=colors.HexColor(p['rule']))
     s['callout']=ParagraphStyle('callout',parent=s['body'],leftIndent=12,rightIndent=12,borderColor=colors.HexColor(p['line']),borderWidth=.6,borderPadding=10,backColor=colors.HexColor(p['panel']),spaceBefore=8,spaceAfter=15)
@@ -238,6 +235,7 @@ def table_flow(rows,s,dark):
         elif lengths[2]>45 and lengths[1]<30:ratios=[.17,.22,.61]
         elif max(lengths)>45:ratios=[.18,.40,.42]
         else:ratios=[1/n]*n
+    elif n>=4:ratios=[1/n]*n
     elif n==4: ratios=[1/n]*n
     elif n==5: ratios=[.10,.26,.26,.26,.12]
     else:ratios=[1/n]*n
@@ -276,7 +274,10 @@ def build(book,dark):
         elif kind=='index':
             index=TopicIndex();index.levelStyles=[ParagraphStyle('index',parent=s['toc1'],leftIndent=0,firstLineIndent=0,spaceBefore=0)];index.dotsMinLevel=0;index.tableStyle=toc.tableStyle;story.append(index)
         elif kind=='figure':story.append(KeepTogether([Figure(b['name'],dark),Spacer(1,7),Paragraph(inline(FIGURES[b['name']]['caption']),s['small'])]))
-    doc.multiBuild(story,maxPasses=5)
+        elif kind=='art':story.append(LAYOUT.art_flow(b['name'],CW,s,dark))
+        elif kind=='map':story.append(KeepTogether([LAYOUT.Map(b['name'],CW,dark),Spacer(1,8),Paragraph(inline(LAYOUT.MAPS[b['name']]['caption']),s['small'])]))
+        elif kind=='worksheet':story.append(LAYOUT.Worksheet(b['name'],CW,H-218,s,dark))
+    doc.multiBuild(story,maxPasses=6)
     r=PdfReader(dest);all_text='\n'.join(page.extract_text() or '' for page in r.pages)
     if len(doc.pageMap)!=len([b for b in book['blocks'] if b['type']=='heading']):raise ValueError('Missing PDF anchors')
     if any(not (page.extract_text() or '').strip() for page in r.pages):raise ValueError('Empty PDF page')
@@ -284,25 +285,39 @@ def build(book,dark):
     return audit
 
 # Shared base definitions and worked records must remain identical across books.
-texts={b['slug']:(ROOT/'docs/publications/manuscripts'/b['file']).read_text() for b in BOOKS}
+def manuscript(meta):
+    text=(ROOT/'docs/publications/manuscripts'/meta['file']).read_text()
+    extension_names=[name for name in meta['extensions'] if not PROOF or name.endswith('-workshops.md')]
+    insert='\n\n'.join((ROOT/'docs/publications/expanded'/name).read_text() for name in extension_names)
+    boundary='## The primitive reference' if meta['slug']!='game-masters-guide' else '## Public sample encounters'
+    text=text.replace(boundary,insert+'\n\n'+boundary,1)
+    if meta['worksheets']:
+        worksheets='\n\n'.join('## Table sheet: '+LAYOUT.WORKSHEETS[key][0]+'\n\n:::worksheet '+key for key in meta['worksheets'])
+        text=text.replace('## Topic index',worksheets+'\n\n## Topic index')
+    return text
+texts={b['slug']:manuscript(b) for b in BOOKS}
 base=lambda text:text.split('## The primitive reference',1)[1].split('## Worked records',1)[0]
 if base(texts['players-handbook'])!=base(texts['srd']):raise ValueError('Cross-book primitive reference drift')
-records=lambda text:text.split('## Worked records',1)[1]
+records=lambda text:text.split('## Worked records',1)[1].split('## Table sheet:',1)[0].split('## Topic index',1)[0].strip()
 if len({records(t) for t in texts.values()})!=1:raise ValueError('Cross-book worked records drift')
 manifest=[];web=[]
 STATIC=ROOT/'public/books'/VERSION
 STATIC.mkdir(parents=True,exist_ok=True)
 for meta in BOOKS:
-    text=(ROOT/'docs/publications/manuscripts'/meta['file']).read_text()
+    text=texts[meta['slug']]
     if re.search(r'Editorial completeness|Working manuscript|not the complete book',text):raise ValueError('Unfinished manuscript '+meta['slug'])
     book={**meta,'blocks':parse(text)}
     book['headings']=[b for b in book['blocks'] if b['type']=='heading']
     book['words']=len(plain(text).split())
     for theme in (False,True):
-        result=build(book,theme);manifest.append({**result,'slug':meta['slug']});(STATIC/result['filename']).write_bytes((OUT/result['filename']).read_bytes())
+        result=build(book,theme);manifest.append({**result,'slug':meta['slug']})
+        if not PROOF:(STATIC/result['filename']).write_bytes((OUT/result['filename']).read_bytes())
     web.append({**book,'version':'v0.1 alpha','lightPdf':ORIGIN+'/'+meta['slug']+'.pdf','darkPdf':ORIGIN+'/'+meta['slug']+'-dark.pdf'})
 (DATA/'catalogue.json').write_text(json.dumps([{k:b[k] for k in ['slug','short','title','description','accent','version','lightPdf','darkPdf']} for b in web],ensure_ascii=False,indent=2)+'\n')
 (DATA/'books.json').write_text(json.dumps(web,ensure_ascii=False,indent=2)+'\n')
+(DATA/'art.json').write_text(json.dumps({k:{'caption':a['caption'],'path':a['webPath'],'width':a['width'],'height':a['height'],'transparent':a['transparent']} for k,a in LAYOUT.ART.items()},indent=2)+'\n')
+(DATA/'maps.json').write_text(json.dumps(LAYOUT.MAPS,indent=2)+'\n')
+(DATA/'worksheets.json').write_text(json.dumps({k:{'title':v[0],'fields':v[1]} for k,v in LAYOUT.WORKSHEETS.items()},indent=2)+'\n')
 (DATA/'figures.json').write_text(json.dumps({k:{'title':v['title'],'caption':v['caption']} for k,v in FIGURES.items()},ensure_ascii=False,indent=2)+'\n')
-(ROOT/'docs/publications/release-manifest.json').write_text(json.dumps({'edition':'v0.1 alpha','releaseDate':'2026-10-11','pdfs':manifest},indent=2)+'\n')
+if not PROOF:(ROOT/'docs/publications/release-manifest.json').write_text(json.dumps({'edition':'v0.1 alpha','releaseDate':'2026-10-12','production':{'trimInches':[6.5,9],'innerMarginInches':0.70,'outerMarginInches':0.55,'light':'RGB digital-print interior; no bleed required','dark':'Screen reading edition','printerSpecificPdfX':False},'pdfs':manifest},indent=2)+'\n')
 print(json.dumps([{'file':a['filename'],'pages':a['pages'],'words':a['words'],'links':a['links']} for a in manifest],indent=2))
