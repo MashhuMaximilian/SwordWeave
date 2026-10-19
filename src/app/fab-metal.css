@@ -75,6 +75,9 @@ body[data-ui="v12"] .sw-fab .sw-fab__support {
 }
 body[data-ui="v12"] .sw-fab .sw-fab__support .sw-fab-glyph {width:17px;height:18px;background:currentColor!important}
 .sw-fab__support>svg {margin-left:auto}
+.sw-fab__community-row {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.sw-fab__community-row>.sw-fab__support {min-width:0}
+.sw-fab__community-row>.sw-fab__support>svg:first-child {margin-left:0;flex:none;width:17px;height:18px}
 /* Feedback changes finish, never type size, weight, wrapping or layout. */
 @media(hover:hover) {
   body[data-ui="v12"] .sw-fab :is(.sw-fab__destination,[data-fab-action],.sw-fab__support):hover {background:var(--fab-gold)!important;color:#302611!important;border-color:#d3b773!important}
@@ -235,6 +238,17 @@ body[data-ui="v12"] .sw-fab .sw-fab__utility-grid :is([data-fab-action="dark"],[
 body[data-ui="v12"] .sw-fab :is(a,button) {transition-property:box-shadow,border-color!important}
 body[data-ui="v12"] .sw-fab [data-fab-trigger] svg {stroke:url(#sw-fab-gold)!important;filter:none!important}
 body[data-ui="v12"] .sw-fab [data-fab-trigger]:focus-visible {background:var(--fab-gold)!important;color:#17140f!important}
+/* Discord alone uses silver at rest and gold feedback. Support keeps its finish. */
+body[data-ui="v12"] .sw-fab .sw-fab__support[data-fab-link="discord"] {--discord-finish:var(--fab-silver)}
+body[data-ui="v12"] .sw-fab .sw-fab__support[data-fab-link="discord"]>span {
+  background:var(--discord-finish)!important;background-clip:text!important;-webkit-background-clip:text!important;color:transparent!important;
+}
+body[data-ui="v12"] .sw-fab .sw-fab__support[data-fab-link="discord"]>[data-discord-icon] {
+  width:19px;height:15px;background-clip:border-box!important;-webkit-background-clip:border-box!important;
+}
+body[data-ui="v12"] .sw-fab .sw-fab__support[data-fab-link="discord"]>svg {stroke:url(#sw-fab-silver)!important}
+body[data-ui="v12"] .sw-fab .sw-fab__support[data-fab-link="discord"]:is(:hover,:focus-visible) {--discord-finish:var(--fab-metal-text,var(--sw-metal-gold))}
+body[data-ui="v12"] .sw-fab .sw-fab__support[data-fab-link="discord"]:is(:hover,:focus-visible)>svg {stroke:url(#sw-fab-gold)!important}
 @media(hover:hover) and (pointer:fine) {
  body[data-ui="v12"] .sw-fab [data-fab-trigger]:hover {background:var(--fab-gold)!important;color:#17140f!important}
 }

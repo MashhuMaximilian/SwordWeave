@@ -19,6 +19,7 @@ import {
 } from "@/components/character-modal/character-modal-store";
 import { CharacterModal } from "@/components/character-modal/character-modal";
 import { usePathname } from "next/navigation";
+import { CookiePreferencesButton } from "@/components/privacy/cookie-consent";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -48,8 +49,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <span>
                 SwordWeave · Open-source TTRPG engine
               </span>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-4">
                 <a href="/rules" className="hover:text-foreground hover:underline">Rules & play guide</a>
+                <a href="/contact" className="hover:text-foreground hover:underline">Contact</a>
+                <a href="/privacy" className="hover:text-foreground hover:underline">Privacy</a>
+                <CookiePreferencesButton />
                 <a
                   href="/attributions"
                   className="hover:text-foreground hover:underline"

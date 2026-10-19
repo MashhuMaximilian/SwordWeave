@@ -1,0 +1,15 @@
+.icon {
+  display: inline-block;
+  flex: none;
+  width: 1.333em;
+  height: 1em;
+  vertical-align: -.12em;
+  --discord-default-finish: linear-gradient(125deg, #6e8589, #d8e3e3 24%, #fff 38%, #82999e 49%, #edf5f4 70%, #7e969b);
+  background: var(--discord-finish, var(--discord-default-finish));
+  mask: url("/icons/brands/discord.svg") center / contain no-repeat;
+  -webkit-mask: url("/icons/brands/discord.svg") center / contain no-repeat;
+}
+
+:global(html:not(.dark)) .icon {
+  --discord-default-finish: linear-gradient(125deg, #4c6266, #91a4a5 24%, #4c6266 49%, #6b8588 70%, #3e565a);
+}

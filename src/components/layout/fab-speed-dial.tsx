@@ -203,7 +203,9 @@ export function FabSpeedDial({
             <FabGridAction action={{ kind: "action", key: "account", label: accountLabel, icon: currentUser ? <span className="sw-fab__account-rim"><FabAccountAvatar user={currentUser}/></span> : <UserRound size={22}/>, onClick: () => {setAccountOpen(true);setCreateOpen(false);} }} badgeCount={0}/>
           </div>
         </div>
-        {items.filter((item): item is FabLink => item.kind === "link" && item.key === "buymeacoffee").map(item => <a key={item.key} href={item.href} target="_blank" rel="noopener noreferrer" className="sw-fab__support" data-fab-link={item.key}>{item.icon}<span>{item.label}</span><ArrowUpRight size={16}/></a>)}
+        <div className="sw-fab__community-row">
+          {items.filter((item): item is FabLink => item.kind === "link" && ["buymeacoffee", "discord"].includes(item.key)).map(item => <a key={item.key} href={item.href} target="_blank" rel="noopener noreferrer" className="sw-fab__support" data-fab-link={item.key}>{item.icon}<span>{item.label}</span><ArrowUpRight size={16} aria-hidden="true" /></a>)}
+        </div>
       </footer></>}
     </div>}
     <button ref={triggerRef} type="button" data-fab-trigger onClick={() => {setOpen(value => !value);setCreateOpen(false);setAccountOpen(false);}} aria-label={open ? "Close menu" : primaryLabel} aria-expanded={open} aria-controls="sw-quick-access" className="sw-fab__trigger">{open ? <X size={24}/> : <Menu size={24}/>}</button>

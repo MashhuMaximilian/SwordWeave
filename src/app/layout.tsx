@@ -4,8 +4,7 @@ import localFont from "next/font/local";
 import { Magra, Teko } from "next/font/google";
 import Script from "next/script";
 import { ClerkProvider } from "@clerk/nextjs";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
+import { CookieConsentManager } from "@/components/privacy/cookie-consent";
 import { AppShell } from "@/components/layout/app-shell";
 import { MobileViewport } from "@/components/layout/mobile-viewport";
 import "./globals.css";
@@ -51,6 +50,8 @@ import "@/components/characters/character-roster-views.css";
 import "./selection-controls.css";
 import "./compact-mobile.css";
 import "./release-badge.css";
+import "vanilla-cookieconsent/dist/cookieconsent.css";
+import "./cookie-consent.css";
 
 // Retain the previous typefaces behind the data-ui switch so setting
 // NEXT_PUBLIC_SW_UI_VERSION=legacy is a complete visual rollback.
@@ -241,23 +242,7 @@ try {
         >
           <MobileViewport />
           <AppShell><LibraryRefresh />{children}</AppShell>
-          {/* Vercel Web Analytics — tracks pageviews, custom events,
-              and visitors. Per
-              https://vercel.com/docs/analytics/quickstart?framework=nextjs,
-              the Analytics component auto-handles route changes via
-              the App Router. Drop it anywhere in the tree; we put it
-              next to AppShell so it shares the clerk+theme context. */}
-          <Analytics />
-          {/* Vercel Speed Insights — tracks Core Web Vitals on real
-              visits. Per
-              https://vercel.com/docs/speed-insights/quickstart,
-              the SpeedInsights component ships a tiny client script
-              that records LCP/CLS/INP and reports them to the
-              project's Speed Insights dashboard. Next.js v13.5+
-              must use the /next subpath import (not /react) — the
-              docs call this out explicitly because the /react
-              subpath bypasses Next's app-router route detection. */}
-          <SpeedInsights />
+          <CookieConsentManager />
         </ClerkProvider>
       </body>
     </html>

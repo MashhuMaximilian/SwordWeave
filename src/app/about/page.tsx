@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, BookOpen, Hammer, UsersRound } from "lucide-react";
+import { ArrowRight, ArrowUpRight, BookOpen, Hammer, Mail, UsersRound } from "lucide-react";
 import type { Metadata } from "next";
 import { PublicNav } from "@/components/home/public-nav";
+import { DISCORD_INVITE_URL } from "@/lib/community";
+import { DiscordIcon } from "@/components/icons/discord-icon";
 
 export const metadata: Metadata = {
   title: "About · SwordWeave",
@@ -64,7 +66,8 @@ export default function AboutPage() {
             <div><dt>First published</dt><dd>2026</dd><dd>A new beginning for SwordWeave</dd></div>
           </dl>
           <p className="sw-public-deck">The software engine is MIT licensed; the game design uses CC BY 4.0. The site is built with Next.js, Drizzle, Neon Postgres, and Clerk. Its visual language also owes a great deal to the artists at game-icons.net.</p>
-          <div className="sw-public-actions"><a className="sw-cta-ghost" href="https://github.com/MashhuMaximilian/SwordWeave" target="_blank" rel="noopener noreferrer">Explore the source <ArrowUpRight aria-hidden="true" /></a><Link className="sw-public-link" href="/attributions">Meet the artists and read the credits <ArrowRight aria-hidden="true" /></Link></div>
+          <p className="sw-public-deck">Help shape the alpha through play. Join the Discord to ask a rules question, share a character, find a table, or show us your pets.</p>
+          <div className="sw-public-actions"><Link className="sw-cta-ghost" href="/contact"><Mail aria-hidden="true" /> Contact Mashu <ArrowRight aria-hidden="true" /></Link><a className="sw-cta-ghost sw-discord-link" href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer"><DiscordIcon /> Join the Discord <ArrowUpRight aria-hidden="true" /></a><a className="sw-cta-ghost" href="https://github.com/MashhuMaximilian/SwordWeave" target="_blank" rel="noopener noreferrer">Explore the source <ArrowUpRight aria-hidden="true" /></a><Link className="sw-public-link" href="/attributions">Meet the artists and read the credits <ArrowRight aria-hidden="true" /></Link></div>
         </section>
       </div>
     </div>

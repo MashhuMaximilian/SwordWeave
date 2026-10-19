@@ -16,6 +16,8 @@
 // =============================================================================
 
 import {useAccount} from "@/components/account/account-provider";
+import { DISCORD_INVITE_URL } from "@/lib/community";
+import { DiscordIcon } from "@/components/icons/discord-icon";
 import {
   createContext,
   useCallback,
@@ -407,15 +409,22 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         active: dark,
       },
       ...ACCOUNT_LINKS,
-      // Phase 8.L round 89: "Buy me a dice set" link, opens
-      // buymeacoffee.com in a new tab. Placed LAST in the FAB
-      // list so it sits below the Builds / Account entries.
+      // Community and support share the bottom row and open in a new tab.
       {
         kind: "link",
         key: "buymeacoffee",
         label: "Keep the project going",
         href: "https://buymeacoffee.com/mashhul",
+        external: true,
         icon: <FabIcon iconKey="lorc/campfire" alt="Keep the fire going" />,
+      },
+      {
+        kind: "link",
+        key: "discord",
+        label: "Discord",
+        href: DISCORD_INVITE_URL,
+        external: true,
+        icon: <DiscordIcon />,
       },
     );
     return workspaceVisibility.build ? list : list.filter(item => item.key !== "build");
