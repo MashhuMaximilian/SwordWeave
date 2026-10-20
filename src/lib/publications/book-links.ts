@@ -16,3 +16,13 @@ export const GUIDE_BOOK_REFERENCES: Record<string, { slug: string; anchor: strin
   creating: { slug: 'srd', anchor: 'construction-reference' },
   sheet: { slug: 'players-handbook', anchor: 'mira-a-complete-starting-character' },
 };
+
+/** The same public further-reading links for the Rules reader and Markdown. */
+export function guideBookLinks(topicId: string) {
+  const reference = GUIDE_BOOK_REFERENCES[topicId];
+  return [
+    { title: 'Full explanation and examples', url: `/books/${reference?.slug ?? 'players-handbook'}#${reference?.anchor ?? 'begin-a-shared-story'}` },
+    { title: 'System Reference Document', url: '/books/srd' },
+    { title: 'Free PDF editions', url: '/books' },
+  ];
+}

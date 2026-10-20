@@ -6,7 +6,7 @@
 
 ## Voice auditions · 20 October
 
-The founder rejected the two AI Doc Maker samples as slow and robotic; the second merely changed the speaker and was worse. Those presets do not satisfy the requested delivery. A different expressive speech engine was tested using existing free workspace credits. Its first conversational take still measured about 147 words per minute and failed the pace check. A fresh quick-delivery take is 15.92 seconds (roughly 180 wpm) and was presented for listening. Neither timing nor a different engine establishes naturalness; founder review is still pending. No MP3 was post-processed to speed it up and no audio was published on the website.
+The founder rejected the two AI Doc Maker samples as slow and robotic; the second merely changed the speaker and was worse. Those presets do not satisfy the requested delivery. A different expressive speech engine was tested using existing free workspace credits. Its first conversational take still measured about 147 words per minute and failed the pace check. A fresh quick-delivery take is 15.92 seconds (roughly 180 wpm) and was presented for listening. The founder approved this voice direction on 20 October. The finished edit, full teaching script and website publication remain unapproved. No MP3 was post-processed to speed it up and no audio was published on the website.
 
 ## The first deliverable is a finished sample
 

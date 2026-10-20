@@ -1,7 +1,10 @@
 import { load } from 'cheerio';
 import TurndownService from 'turndown';
 import { CORE_BOOKS, type CoreBook, type BookBlock } from '@/lib/publications/books';
-import { PLAY_GUIDE, type GuideBlock } from '@/lib/rules/play-guide';
+import { PLAY_GUIDE, type GuideBlock, type GuideTopic } from '@/lib/rules/play-guide';
+import { CREATING_GUIDE, CREATING_GUIDE_INTRO } from '@/lib/rules/creating-guide';
+import { PRIMITIVE_TUTORIAL, PRIMITIVE_TUTORIAL_INTRO } from '@/lib/rules/primitive-tutorial';
+import { guideBookLinks } from '@/lib/publications/book-links';
 import figures from '@/lib/publications/figures.json';
 import art from '@/lib/publications/art.json';
 import maps from '@/lib/publications/maps.json';
@@ -36,11 +39,35 @@ function blockMarkdown(block: BookBlock): string {
 export function bookMarkdown(book: CoreBook) {
   return `# ${book.title}\n\n${book.subtitle}\n\n${book.version} · Online reader\n\nSource: ${SITE_URL}/books/${book.slug}\n\nThis exports the current online reader. Revised downloadable PDF editions may differ; see [Books](${SITE_URL}/books) for available editions.\n\n${book.blocks.map(blockMarkdown).filter(Boolean).join('\n\n')}\n`;
 }
-function guideBlock(block: GuideBlock, level: number): string {
-  return [`${'#'.repeat(Math.min(level, 6))} ${block.title}`, block.body, block.rules?.map(rule => `- ${rule}`).join('\n'), block.example && `> At the table: ${block.example}`, block.details?.map(detail => guideBlock(detail, level + 1)).join('\n\n')].filter(Boolean).join('\n\n');
+function guideBlock(block: GuideBlock, level: number, includeTitle = true): string {
+  return [
+    includeTitle && `${'#'.repeat(Math.min(level, 6))} ${block.title}`,
+    block.body,
+    block.paragraphs?.join('\n\n'),
+    block.rules?.map(rule => `- ${rule}`).join('\n'),
+    block.ordered?.map((step, index) => `${index + 1}. ${step}`).join('\n'),
+    block.table && `${block.table.caption}\n\n${table([block.table.headers, ...block.table.rows])}`,
+    block.example && `> At the table: ${block.example}`,
+    block.links?.map(link => `- [${link.title}](${new URL(link.url, SITE_URL)})`).join('\n'),
+    block.details?.map(detail => guideBlock(detail, level + 1)).join('\n\n'),
+  ].filter(Boolean).join('\n\n');
+}
+function topicMarkdown(topic: GuideTopic): string {
+  return [
+    `## ${topic.title}`,
+    topic.summary,
+    topic.blocks.map(block => guideBlock(block, 3, !(topic.blocks.length === 1 && block.title === topic.title))).join('\n\n'),
+    topic.sources?.map(link => `- [${link.title}](${new URL(link.url, SITE_URL)})`).join('\n'),
+  ].filter(Boolean).join('\n\n');
 }
 export function guideMarkdown() {
-  return `# Rules & play guide\n\nAll chapters from the same source as the interactive [play guide](${SITE_URL}/rules).\n\n${PLAY_GUIDE.map(topic => `## ${topic.title}\n\n${topic.summary}\n\n${topic.blocks.map(block => guideBlock(block, 3)).join('\n\n')}`).join('\n\n')}\n`;
+  return `# Rules & play guide\n\nAll chapters from the same source as the interactive [play guide](${SITE_URL}/rules).\n\n${PLAY_GUIDE.map(topic => topicMarkdown({ ...topic, sources: guideBookLinks(topic.id) })).join('\n\n')}\n`;
+}
+export function creatingMarkdown() {
+  return `# ${CREATING_GUIDE_INTRO.title}\n\n${CREATING_GUIDE_INTRO.summary}\n\nSource: ${SITE_URL}/creating\n\n${CREATING_GUIDE.map(topicMarkdown).join('\n\n')}\n`;
+}
+export function primitiveTutorialMarkdown() {
+  return `# ${PRIMITIVE_TUTORIAL_INTRO.title}\n\n${PRIMITIVE_TUTORIAL_INTRO.summary}\n\n${PRIMITIVE_TUTORIAL_INTRO.editionNote}\n\nSource: ${SITE_URL}/tutorials/create-a-primitive\n\n${PRIMITIVE_TUTORIAL.map(topicMarkdown).join('\n\n')}\n`;
 }
 export function publicHtmlMarkdown(html: string, path: string): string {
   const $ = load(html);

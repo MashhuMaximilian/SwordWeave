@@ -1,0 +1,103 @@
+/* This disclosure extends the existing public navigation, keeping its brand,
+   materials and CTA styling. Related secondary links share disclosures so desktop destinations stay visible. */
+.sw-public-nav.sw-public-nav--grouped .sw-public-nav__links {
+  display:none;
+  min-width:0;
+  margin-inline:0 auto;
+  gap:0;
+  flex-wrap:wrap;
+}
+.sw-public-nav.sw-public-nav--grouped .sw-public-nav__burger {display:flex;}
+.sw-public-nav--grouped .sw-public-nav__group {position:relative;}
+.sw-public-nav--grouped .sw-public-nav__group-toggle,
+.sw-public-nav__drawer--grouped .sw-public-nav__group-toggle {
+  appearance:none;
+  gap:6px;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  text-align:inherit;
+  cursor:pointer;
+}
+.sw-public-nav--grouped .sw-public-nav__group-toggle > svg,
+.sw-public-nav__drawer--grouped .sw-public-nav__group-toggle > svg {
+  flex:none;
+  color:var(--sw-text-gold,var(--foreground));
+  transition:transform 150ms ease;
+}
+.sw-public-nav--grouped .sw-public-nav__group-toggle[aria-expanded="true"] > svg,
+.sw-public-nav__drawer--grouped .sw-public-nav__group-toggle[aria-expanded="true"] > svg {transform:rotate(180deg);}
+.sw-public-nav--grouped .sw-public-nav__group-links {
+  position:absolute;
+  inset-block-start:100%;
+  inset-inline-start:0;
+  z-index:1;
+  width:260px;
+  max-width:calc(100vw - 32px);
+  max-height:calc(100dvh - 104px);
+  overflow-y:auto;
+  padding:6px;
+  margin:0;
+  list-style:none;
+  border:1px solid var(--border);
+  border-radius:7px;
+  background:var(--sw-surface-fill,var(--card));
+  box-shadow:0 12px 28px #0004;
+}
+.sw-public-nav__drawer--grouped .sw-public-nav__group-links {
+  padding:6px 0 10px 12px;
+  margin:0;
+  list-style:none;
+  border-bottom:1px solid var(--border);
+}
+.sw-public-nav--grouped .sw-public-nav__group-links[hidden],
+.sw-public-nav__drawer--grouped .sw-public-nav__group-links[hidden] {display:none;}
+.sw-public-nav--grouped .sw-public-nav__group-link,
+.sw-public-nav__drawer--grouped .sw-public-nav__group-link {
+  display:flex;
+  align-items:center;
+  min-height:44px;
+  padding:10px 12px;
+  border-radius:4px;
+  color:var(--foreground);
+  font:500 13px/1.4 var(--font-system,sans-serif);
+  text-decoration:none;
+  overflow-wrap:anywhere;
+}
+.sw-public-nav--grouped .sw-public-nav__group-link.is-active,
+.sw-public-nav__drawer--grouped .sw-public-nav__group-link.is-active {
+  background:var(--sw-inset-fill,var(--muted));
+  color:var(--sw-text-gold,var(--foreground));
+  font-weight:700;
+}
+.sw-public-nav--grouped .sw-public-nav__group-link:hover,
+.sw-public-nav__drawer--grouped .sw-public-nav__group-link:hover {
+  background:var(--sw-metal-gold,var(--accent));
+  color:#17140f;
+}
+.sw-public-nav--grouped :is(.sw-public-nav__group-toggle,.sw-public-nav__group-link):focus-visible,
+.sw-public-nav__drawer--grouped :is(.sw-public-nav__group-toggle,.sw-public-nav__group-link):focus-visible {
+  outline:2px solid var(--sw-focus,var(--ring));
+  outline-offset:2px;
+}
+.sw-public-nav__drawer--grouped .sw-public-nav__group-toggle {
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  width:100%;
+  font:inherit;
+  border-bottom:1px solid var(--border);
+}
+.sw-public-nav__drawer--grouped .sw-public-nav__group-toggle .sw-public-nav__drawer-label {text-align:end;}
+@media (min-width:1200px) {
+  .sw-public-nav.sw-public-nav--grouped .sw-public-nav__inner {gap:12px;}
+  .sw-public-nav.sw-public-nav--grouped .sw-public-nav__links {display:flex;}
+  .sw-public-nav.sw-public-nav--grouped .sw-public-nav__burger {display:none;}
+  .sw-public-nav.sw-public-nav--grouped .sw-public-nav__link {
+    padding-inline:9px;
+    white-space:nowrap;
+  }
+}
+@media (prefers-reduced-motion:reduce) {
+  .sw-public-nav--grouped .sw-public-nav__group-toggle > svg,
+  .sw-public-nav__drawer--grouped .sw-public-nav__group-toggle > svg {transition:none;}
+}

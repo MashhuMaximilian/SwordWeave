@@ -1,8 +1,16 @@
+import { searchTopics } from './guide-search';
+
 export type GuideBlock = {
+  /** Optional stable anchor, unique within this guide. */
+  id?: string;
   title: string;
   body?: string;
+  paragraphs?: string[];
   rules?: string[];
+  ordered?: string[];
   example?: string;
+  links?: { title: string; url: string }[];
+  table?: { caption: string; headers: string[]; rows: string[][] };
   /** Optional vocabulary, worked examples and analytical detail. */
   details?: GuideBlock[];
 };
@@ -953,14 +961,8 @@ export const PLAY_GUIDE: GuideTopic[] = [
   }
 ];
 
-function blockSearchText(block: GuideBlock): string[] {
-  return [block.title, block.body ?? '', ...(block.rules ?? []), block.example ?? '', ...(block.details ?? []).flatMap(blockSearchText)];
+export function searchGuide(query: string): GuideTopic[] {
+  return searchTopics(PLAY_GUIDE, query);
 }
 
-export function searchGuide(query: string): GuideTopic[] {
-  const words = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
-  return PLAY_GUIDE.filter(topic => {
-    const haystack = [topic.title, topic.summary, topic.keywords, ...topic.blocks.flatMap(blockSearchText)].join(' ').toLowerCase();
-    return words.every(word => haystack.includes(word));
-  });
-}
+export { searchTopics } from './guide-search';

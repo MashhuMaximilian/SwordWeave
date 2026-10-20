@@ -1,5 +1,5 @@
 import { PUBLIC_PAGES, SITE_URL, markdownPath } from '@/lib/seo/public-pages';
-import { bookMarkdown, guideMarkdown, publicHtmlMarkdown, CORE_BOOKS } from '@/lib/seo/markdown';
+import { bookMarkdown, guideMarkdown, creatingMarkdown, primitiveTutorialMarkdown, publicHtmlMarkdown, CORE_BOOKS } from '@/lib/seo/markdown';
 export const dynamic = 'force-dynamic';
 export async function GET(_request: Request, { params }: { params: Promise<{ discovery: string[] }> }) {
   const { discovery } = await params;
@@ -11,6 +11,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ dis
   try {
     if (book) markdown = bookMarkdown(book);
     else if (path === '/rules') markdown = guideMarkdown();
+    else if (path === '/creating') markdown = creatingMarkdown();
+    else if (path === '/tutorials/create-a-primitive') markdown = primitiveTutorialMarkdown();
     else {
       // Fetch only explicitly approved public editorial pages, anonymously.
       // This avoids a separately maintained text copy and never forwards cookies/auth.

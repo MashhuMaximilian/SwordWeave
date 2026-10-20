@@ -3,22 +3,25 @@ import { publicPageMetadata } from "@/lib/seo/metadata";
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { PublicNav } from '@/components/home/public-nav';
-import { PLAY_GUIDE } from '@/lib/rules/play-guide';
+import { LearningGuide } from '@/components/rules/learning-guide';
+import { CREATING_GUIDE, CREATING_GUIDE_INTRO } from '@/lib/rules/creating-guide';
+import '../books/books.css';
 
 export const metadata: Metadata = publicPageMetadata("/creating");
 
 export default function CreatingPage() {
-  const topic = PLAY_GUIDE.find(topic => topic.id === 'creating')!;
   return <div className="sw-public-site sw-rules-page"><StructuredData path="/creating" />
     <PublicNav />
-    <header className="sw-rules-header"><p className="sw-public-kicker">Your ideas · Your rules</p><h1>{topic.title}</h1><p>{topic.summary}</p><Link href="/rules#creating">Open this chapter in the play guide →</Link></header>
-    <section className="sw-public-section sw-creating-guide" aria-label="Creating guide">
-      {topic.blocks.map((block, index) => <article key={block.title}>
-        <p className="sw-public-kicker">{String(index + 1).padStart(2, '0')}</p><h2>{block.title}</h2><p>{block.body}</p>
-        {block.example && <aside className="sw-play-guide-example"><strong>For example</strong><p>{block.example}</p></aside>}
-      </article>)}
-      <aside className="sw-play-guide-example"><h2>A step-by-step editor tutorial</h2><p>Follow one primitive through Result, Operation, Value, Recipient, Trigger and stacking, then check what you saved.</p><Link href="/tutorials/create-a-primitive">Create your first primitive →</Link></aside>
-      <p><Link href="/atelier">Start in the Atelier →</Link></p>
-    </section>
+    <header className="sw-rules-header">
+      <p className="sw-public-kicker">Your ideas · Your rules</p>
+      <h1>{CREATING_GUIDE_INTRO.title}</h1><p>{CREATING_GUIDE_INTRO.summary}</p>
+      <div className="sw-rules-book-links">
+        <Link href="/rules#creating">This chapter in Rules →</Link>
+        <Link href="/tutorials/create-a-primitive">Create your first primitive →</Link>
+        <Link href="/atelier">Open the Atelier →</Link>
+        <Link href="/creating.md">Read as Markdown →</Link>
+      </div>
+    </header>
+    <LearningGuide topics={CREATING_GUIDE} basePath="/creating" indexTitle="Create, then explore" indexDescription="Follow the creation path or find help for the step you are on." searchLabel="Search the creating guide" searchPlaceholder="Find a step or example…" emptyHint="Try “fork”, “price”, “range”, or “visibility”." endLink={{ title: 'Create your first primitive', url: '/tutorials/create-a-primitive' }} />
   </div>;
 }
