@@ -125,6 +125,7 @@ export default function PrimitiveTutorialPage() {
           <p>For construction permissions, inspect formats such as <strong>Domain access</strong>, <strong>Verb access</strong>, <strong>Range</strong> or <strong>Output die</strong>. These define access for composing actions. The other scaling choices discussed at the table are not automatically a list of extra purchases.</p>
           <div className="sw-public-actions"><Link className="sw-cta-primary" href="/atelier?build=primitive">Build your own rule <ArrowRight aria-hidden="true" /></Link><Link className="sw-public-link" href="/creating">One set of primitives, several uses</Link><Link className="sw-public-link" href="/books/players-handbook">Player’s Handbook</Link></div>
           <p>For a question or a confusing result, use <Link href="/contact">Contact</Link> and describe the intended rule and what you observed.</p>
+          <p><a href="/tutorials/create-a-primitive.md" download>Download this tutorial as Markdown</a></p>
         </section>
       </article>
     </div>
