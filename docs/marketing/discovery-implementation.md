@@ -42,3 +42,15 @@ Localhost events are tagged debug_mode. A download event is a click, a Discord e
 - Google DebugView receives the test browser's page/session events. Production receipt and sitemap submission are recorded below once released.
 
 Use the saved keyword map as the dated baseline (1,092 provider rows, 540 distinct queries; 138 curated candidates, with hypotheses clearly distinguished). Review actual queries/landing pages/country and consented successful actions after enough data exists; do not forecast traffic from Keyword Planner buckets. Acquisition reports already supplied by GA4 cover sources/countries. Build richer saved funnels/explorations after real actions and dimensions have processed; do not invent results from the empty initial property. Bing ownership/AI Performance and later founder playtest reporting remain follow-up work.
+
+## Production verification
+
+- Code release `5d21dd01`, pushed to GitHub main; automatic Vercel production deployment `dpl_9YSzV9ETVaDDrer93L7qth9n64K8` is Ready. Canonical host is https://www.swordweave.quest.
+- Live browser confirms the new SEO title, canonical, index/follow directive and Markdown alternate, with no Google tag before the new consent choice.
+- A real production form submission reached Message sent. GA4 Realtime shows contact_form_started, generate_lead and copy_contact_email alongside page views; generate_lead is recognized as a key event. Local and production QA submissions are test activity, not real leads.
+- Search Console successfully fetched the submitted sitemap and reports **14 discovered pages**, status **Success**. Discovery is not the same as indexing. Initial homepage inspection said unknown to Google. The live Google test then reported “URL is available to Google” / “Page can be indexed”; the homepage indexing request was accepted. Actual indexing/rankings remain to be observed.
+- The live PHB Markdown download is 345,364 bytes (SHA-256 4e695b8ff7916a350e62759f3d440a75b26df1a93919891820a54a8256cb35da); its full reader text and edition warning are present. The live Privacy Markdown export includes the new Google disclosure and 20 October update, confirming canonical-HTML synchronization.
+- Browser refusal/withdrawal persists across reload and the Google script is then absent. Live provider-by-provider auth and guided new-character persistence QA remain outstanding; do not present their funnel as complete evidence yet.
+- Local test server stopped after verification.
+
+Campaign values are registered in `src/lib/analytics/contract.ts`. Add each approved public creator/source and asset label there before issuing campaign links; arbitrary UTM values are intentionally discarded. No internal navigation UTMs.

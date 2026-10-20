@@ -1,6 +1,8 @@
 # SwordWeave discovery plan
 
 **20 October implementation update:** See [the implementation and verification record](discovery-implementation.md) for what is configured, tested and still awaiting evidence. The dated planning baseline below is retained for provenance.
+
+**Live now:** technical SEO, public Markdown/llms.txt, founder-owned Search Console, linked direct GA4, consent controls, eight dimensions and three application key events. Sitemap accepted with 14 discovered URLs. See the linked record for evidence and remaining auth/provider/reporting checks. The next priorities are indexing evidence and real data; no new page-copy program is approved.
 Version 1 · 19 October 2026 · Planning and research, not a deployment checklist marked complete.
 
 ## The outcome
