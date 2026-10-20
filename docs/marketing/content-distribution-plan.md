@@ -1,21 +1,33 @@
 # Content and distribution backlog
 
-Updated 20 October 2026 · Proposals for founder review. The current request authorizes planning the guides, examples, creator kit and demonstrations; it does not request publishing them or contacting creators. Existing website design and hero remain in place.
+Updated 20 October 2026 · The founder authorizes mobile performance, keyword intent and AI/Markdown follow-through, including subagents. Book consistency remains work in progress. The guides, examples, creator kit and demonstrations below are concrete proposals, not an instruction to publish new visible content or contact creators. Existing website design and homepage hero remain in place.
 
-## Current proposal: one useful learning path
+## Exact page plan: one new page, focused changes to existing pages
 
-Build a small set of connected teaching materials from the finished books and working tools. A person should be able to prepare a session, understand one character, inspect one ability, and follow a scene. Reuse those same checked examples in videos and the creator kit. No new blog, broad website rewrite or weekly content quota is required.
+The only proposed new public page is **`/press`**, the creator kit, with **`/press.md`** generated from the same approved content when published. Everything else fits the existing pages. No separate example-character article, video gallery, first-session landing page, blog, or rewritten homepage is required.
 
-The existing site already has substantial introductions: `/rules` has **Your first game** and **Your first character**; `/character#build-example` explains Lyra and her connected pieces; `/combat` explains a shared round. Treat these as the starting material. New proposals below fill a specific practical gap rather than replacing them.
+| Page | Existing material retained | Proposed visible change, for founder review | Markdown destination |
+| --- | --- | --- | --- |
+| `/` | Current hero, visuals, sections, buttons and main message | No content or layout change needed for this plan. Improve delivery and factual search/share metadata now. Optional contextual links can be assessed after the teaching materials exist; do not add a second homepage guide or put the press kit in the hero. | `/index.md` — exists |
+| `/start` | Current walkthrough and role as the general starting point | Keep it. Later point its existing next steps to the relevant Rules topic and chosen examples, rather than write a competing first-session guide. | `/start.md` — exists |
+| `/rules#start` | Existing **Your first game** topic, basic vocabulary and play loop | Add a concise preparation checklist: what GM/players read, what to bring, how to choose/fork a demo character, which existing encounter to inspect, and how to return feedback. Use existing Library materials. | `/rules.md` — exists; exports the complete guide, including additions |
+| `/character#build-example` | General introduction, character choices, drawback/growth explanations and progression table | Replace the illustrative Lyra package and its matching hero-side example with a walkthrough of the real **Neris Cinderthread** sheet. Link **Orren Vaultwright** as an optional advanced example. Keep the current visual components; this is a localized example replacement, not a page redesign. | `/character.md` — exists; follows approved HTML |
+| `/creating` and its shared `/rules#creating` topic | Existing creation guide and Atelier link | Add **One set of primitives, several uses**: inspect a small owned set, describe multiple permitted intents, organize an optional saved capability, and distinguish BU acquisition from the effort/cost of each use. Do not teach every at-table dial as a mandatory primitive purchase. | `/creating.md` and `/rules.md` — exist; both derive from shared teaching content |
+| `/combat` | Existing shared-round explanation, tracks, reactions and scene conversation | Extend the current worked-scene section with one selected existing encounter: stated goals, relevant sheet permissions, agreed costs, a resolved example, and resulting sheet updates. This does not require a second combat page. | `/combat.md` — exists |
+| `/books` and the three book pages | Current hub, reader and download presentation | No new book page or consistency changes in this task. Reconcile editions/source links once the founder finishes the books. | Existing four book Markdown alternatives; consistency remains WIP |
+| **`/press` — new, later** | Reuse established site components and official identity | One concise creator kit: descriptions, facts, alpha limitations, book links, screenshots/logos, rights/AI-use notices, contact and a small media ZIP. Link from About, Contact and footer; it does not need a primary-navbar slot. | **`/press.md` — added with the page**, not an empty placeholder now |
+| `/about`, `/contact`, footer | Current content, form and navigation | Later add a small **Creator kit** link once `/press` exists. No extra contact page or form provider. | Existing `/about.md`, `/contact.md` |
+| Matching Character/Creating/Combat sections, then `/press` | Existing written explanations remain usable | Embed the relevant captioned recording beside each explanation, with transcript and useful destination link. One video can be reused in the kit; no dedicated video page required. | Transcript included in the page's Markdown when published |
 
-| Order | Proposed deliverable | Where it belongs | What changes for a reader | Release condition |
-| --- | --- | --- | --- | --- |
-| 1 | First-session preparation checklist | Expand the existing **Your first game** topic in `/rules`; link from the existing walkthrough | GM/player reading order, materials, agreed starting budget, characters, a bounded opening scene and feedback route in one place | Check against final PHB and GM Guide, then rehearse with a new reader |
-| 2 | A complete, inspectable sample character | An optional addition linked from `/character#build-example` and Rules; keep the present Lyra explanation | Real ledger, attributes, owned permissions, one capability and the corresponding saved sheet | Use a deliberately checked fixture; final book and live sheet agree; explicit sharing choice |
-| 3 | One worked ability construction | A focused example in `/creating`, linked from the character explanation and relevant book chapter | See intent → purchased permissions → effect/capability organization → limits → table use | Every acquisition, cost and stated behavior reconciled with the final source and app |
-| 4 | One worked scene/shared round | An optional example on `/combat` | See declared intents, dependencies, appraised cost, agreed resolution, result and sheet updates | Rehearsal/playtest confirms the explanation can be followed; no invented universal DC or automatic success |
-| 5 | Creator kit | Proposed `/press`, linked from About/Contact/footer; downloadable asset bundle | A reviewer can establish fit, get accurate facts/assets and contact the founder quickly | All three book releases current; selected screenshots/rights/disclosures checked; founder review |
-| 6 | Three short demonstrations | Embedded beside the relevant explanation and in the creator kit; external publication later | Watch one complete task, then follow the matching written instructions | Actual UI recording, corrected captions and working destination links; no private data |
+This is the visible-content proposal. The currently authorized technical release does not silently create `/press`, replace Lyra, change the homepage hero or publish videos.
+
+### Teaching principle: owned permissions support many expressions
+
+The founder clarified the central message: one owned set of primitives can support many actions and capabilities. Teach the relevant **verb tier, domain, range and output-die permission when needed** as the useful starting vocabulary; free baselines and ordinary actions remain governed by their actual rules. Do not imply that every action requires every category or that each verb is bought separately.
+
+The choices in an at-the-table scaling table are not all separate shopping requirements. Scope, duration, targets, intensity and other contextual decisions can change the agreed execution and cost without requiring an invented new primitive for every cell. A specific rule or an added permission may still be relevant to a particular proposal. Additional primitives can expand or specialize the owned set and can be combined as desired. Use the material/scaling table as a useful adjudication reference, rather than turn it into a mandatory build checklist.
+
+The proposed `/creating` example should show the **same ingredient list** next to several legal uses, then show how one can be saved as a named capability for convenience. State the intended result, ownership/access, reach, scene limits, resolution and cost as needed. Reusing owned permissions is not another BU purchase. A saved capability is not the full list of everything that character may attempt. Final numeric examples wait for the relevant sources to be checked; this plan does not rewrite the PHB or reconcile book editions.
 
 ### First-session checklist: a practical addition inside Rules
 
@@ -23,19 +35,26 @@ Use six short sections: **Before inviting people**, **What the GM reads**, **Wha
 
 The checklist should ask the group to agree the starting level/BU, item allowance, tone, boundaries and how consequences will be discussed. Use the existing PHB preparation worksheet where appropriate. Separate necessary materials from optional reference books and tools; do not imply every player must study all three books.
 
-Offer a bounded opening situation drawn from the final GM Guide once checked. If the package lacks ready characters, opponents, a map or an adventure, say so. Do not market it as a complete ready-to-run quickstart until those ingredients exist and have been rehearsed. Avoid unsupported promises about player count, preparation time or session length.
+Reuse the existing public Library before authoring more assets. A live check on 20 October found prepared public encounters including **Caravan at the Rooted Ford**, **The Grove That Asks for Help**, and **The Net at Siltwater Crossing**, with creature casts and explicit objectives/terrain/other approaches. The Library also has existing character and monster collections. Select one preparation and link its actual public record and creature sheets; do not substitute a founder-private run. The displayed party budgets are illustrative, not certified difficulty or a reason to pair any character with any encounter. A ready-to-run claim still needs a rehearsal with the selected party and instructions. Avoid unsupported preparation-time or balance promises.
 
-### Character and ability: reuse the book's strongest complete record
+### Character proposal: Neris first, Orren for an advanced comparison
 
-Lyra already illustrates how pieces fit together, and can stay. For a fully costed, playable demonstration, the current PHB manuscript provides **Mira**, **River Caravan Upbringing**, **Guided Water** and **River Hand**, with a complete purchase ledger and a worked use. These are better starting candidates than an arbitrary Library seed. Recheck them against the final illustrated PDF and current primitive definitions before production; this proposal does not certify the existing live records.
+The founder supplied these two actual public character sheets, inspected live on 20 October:
 
-Show a screenshot of the finished sheet beside a compact ledger, then expose the ingredients. Explain the distinctions that a newcomer is likely to miss: BU purchases versus execution cost, organizing already-owned ingredients versus buying them again, and an output-die permission versus an automatic attack/heal. Include at least one boundary or failed proposal, not just the impressive result.
+| Character | Observed public sheet | Proposed use |
+| --- | --- | --- |
+| [Neris Cinderthread](https://www.swordweave.quest/characters/1662962b-14c5-4433-994e-6273b3f7ca57?view=public) | Level 8, Ashlung / Field Surgeon Apprentice / Thread Surgeon; 21 primitive entries; public capability, equipment and backstory tabs; read-only with **Fork**. Named recipes include Splint and Rally, Patch the Seam, Dose and Release and Gentle Treatment. | Primary `/character` demonstration: a recognizable field medic, origins → owned pieces → saved recipes → a sheet the reader can inspect and fork. The same sheet supplies screenshots and the first demo recording. |
+| [Orren Vaultwright](https://www.swordweave.quest/characters/1da4e351-da76-4822-bf1f-632d2e657145?view=public) | Level 16, Ironborn / Siege Mason / Terrain Architect; 31 primitive entries; read-only with **Fork**. Named pieces include Plate Exchange, Crack Reader, Rapid Scaffold and Stone Rampart. | Optional advanced example of a more layered construction/terrain character, linked from the same page. Do not make a newcomer parse its full graph before starting. |
 
-Prepare a separate, intentionally public demonstration record if a read-only sheet is shared. A public article must remain understandable without account creation or access to a private character. Do not convert the founder's characters, draft content or internal QA fixtures into promotional examples.
+These are existing playable example records, not fictional placeholders invented for an article. The inspection establishes the accessible sheets and contents, not independent playtesting, encounter balance, exhaustive ledger correctness or finished-book parity. Neris is a level-8 demo, not automatically the table's default starting character. The guide should tell the reader to use the GM's agreed starting level/budget and inspect the result of a fork; no silent level-one conversion is promised.
+
+For Neris, highlight one recipe and the underlying permissions, leaving the complete graph available on the sheet rather than duplicating every card. The public sheet explicitly says treatment needs appropriate supplies and manual Vitality updates after resolution. Show that actual workflow; do not imply the Trigger button automates another character's healing. A boundary is useful, such as smoke filtration not granting protection from every gas or automatic rescue.
+
+This revises the earlier Lyra/Mira proposal. Lyra can be replaced in the page's local example areas; no additional new demo character is required. Mira/River Hand can remain a source candidate for a simpler permission example if it is the clearest checked source later, but are not mandatory new assets. Do not repurpose internal Analytics QA fixtures or expose private character notes/history as marketing material.
 
 ### Combat example: show decisions and consequences
 
-Use the PHB's existing **A bridge round** as the first source candidate, rather than writing another combat system. Select only the characters and mechanics actually required. The final GM Guide may offer a clearer scene; choose after comparing the final editions.
+First compare the existing `/combat` bridge conversation with one real public Library encounter. **Caravan at the Rooted Ford** is a candidate because its objective, non-combat approaches, cast and declared actions are already described. Use only the required characters/creatures and choose a party appropriate to that scene; do not assume Neris and Orren are a balanced starter party together. The PHB's **A bridge round** remains another source candidate. Choose one coherent example rather than splice incompatible budgets or rules from several editions.
 
 Present the situation, what each player intends, what depends on another action, what the GM and players agree before committing, the rolls/results, and what changes on the sheets. Identify illustrative table rulings as examples. Do not suggest a GM-selected DC, scene cost or consequence is a universal fixed rule. Link directly to the corresponding book section and the first-session checklist.
 
@@ -51,16 +70,16 @@ Use the existing SwordWeave visual language. A new banner campaign is unnecessar
 
 | Clip | Intended length (an editing target) | Outline | Next destination |
 | --- | --- | --- | --- |
-| What is SwordWeave? | 45–60 seconds | Show the game, current books, browser character tools, free access and alpha status; show a real finished result early | Existing walkthrough/Rules |
-| Build and use River Hand | 90–150 seconds | Start with the intended result, show the owned ingredients and ledger, organize the capability, then show one bounded use and limitation | Written ability example + relevant PHB chapter |
-| Follow one shared round | 2–3 minutes | Show the scene, each intent, dependency order, agreed costs, resolution and resulting sheet state | Written combat example + first-session checklist |
+| Inspect and fork Neris | 60–90 seconds | Show the finished read-only character, origins, one recipe, equipment and where Fork creates a personal copy. Show account requirements at the relevant step. | `/character` walkthrough + actual public Neris sheet |
+| One set of primitives, several uses | 90–150 seconds | Keep one small owned permission set visible, show several allowed intents, then optionally save one composition. Separate ownership, scope and use cost. | `/creating` example + relevant rule reference |
+| Prepare and follow one existing encounter | 2–3 minutes | Inspect a public preparation and its creatures, demonstrate Council/intents/agreed cost/resolution, then show actual manual sheet updates. | `/combat` example + `/rules#start` checklist |
 
 Record a readable 16:9 master. Crop a 20–30 second vertical excerpt only where the text remains legible; do not shrink the entire desktop into a phone frame. Supply corrected captions (SRT/VTT), a transcript, a clear title/description, source version and one useful link. Narration can be the founder's voice or captions initially; voiceover tooling is optional. Use actual application behavior, with no synthetic mouse clicks that pretend an unavailable feature works. Add VideoObject metadata only after a real published video and thumbnail exist.
 
 ### Production sequence and evidence
 
 1. **Prepare now:** outlines, source mapping, shot lists, creator descriptions and asset inventory. These are drafts, with no website content release required.
-2. **After the three books are ready:** reconcile every selected example and edition, prepare the sample record, assemble the first-session checklist and first useful recording. Upload/review the three PDFs together on itch.io under the existing release plan.
+2. **After the three books are ready:** check the selected existing records against the relevant sources, assemble the first-session checklist and first useful recording; create another character only if an actual gap remains. Upload/review the three PDFs together on itch.io under the existing release plan.
 3. **During founder group playtests:** note actual preparation effort, misunderstood terms, stalled choices, missing tools and repeated questions. Revise the package using this evidence. Use player quotes/recordings only with permission.
 4. **After the founder is ready for outreach:** finish `/press` and demonstrations; founder contacts a small, relevant first group of creators personally. No fixed outreach date; the planned playtest period may last a month or more.
 

@@ -48,7 +48,7 @@ import { useMobileDialogFocus } from "@/lib/hooks/use-mobile-dialog-focus";
 //    seed has already happened (the form's effect pulls it).
 // =============================================================================
 
-import { useEffect, useState, useRef, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -56,8 +56,14 @@ import {
   useCharacterModal,
   isNavigationApproved,
 } from "./character-modal-store";
-import { TabbedCharacterForm } from "./tabbed-character-form";
 import { UnsavedChangesModal } from "@/components/sandbox/unsaved-changes-modal";
+import { TabErrorBoundary } from "@/components/characters/tab-error-boundary";
+
+// The persistent shell and draft store stay available on every route. Fetch
+// the editor and its authoring dependencies only when the modal is opened.
+const TabbedCharacterForm = lazy(() => import("./tabbed-character-form").then(
+  module => ({ default: module.TabbedCharacterForm }),
+));
 
 export interface CharacterModalProps {
   /** Optional content override. Defaults to a minimal "scaffold" panel
@@ -319,7 +325,7 @@ export function CharacterModal({ children }: CharacterModalProps) {
           </header>
 
           <div className="sw-character-modal-content">
-            {children ?? <TabbedCharacterForm />}
+            {children ?? <TabErrorBoundary tabName="Character workshop" fallback={() => <p className="p-6" role="alert">The character workshop could not load. Close this panel and reload the page to try again.</p>}><Suspense fallback={<div className="p-6 text-muted-foreground" role="status">Loading character workshop…</div>}><TabbedCharacterForm /></Suspense></TabErrorBoundary>}
           </div>
         </div>
       </div>

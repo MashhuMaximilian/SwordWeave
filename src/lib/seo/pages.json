@@ -1,7 +1,7 @@
 {
   "/": {
     "title": "SwordWeave · Free Modular Tabletop RPG",
-    "description": "Build the character you imagine. Compose clear mechanical rules, shape the stakes with your group, and make SwordWeave your table’s own roleplaying game.",
+    "description": "Free modular tabletop RPG in v0.1 alpha. Build characters and abilities from reusable rules, read the books, and use browser tools for your table.",
     "group": "home"
   },
   "/start": {
@@ -10,13 +10,13 @@
     "group": "guide"
   },
   "/character": {
-    "title": "Create your character · SwordWeave",
-    "description": "Bring the character in your head to the table. A practical guide to attributes, Build Units, reusable rules, and meaningful drawbacks.",
+    "title": "Character creation & builder guide · SwordWeave",
+    "description": "Create a SwordWeave character with Quickbuild or the Complete character flow. Learn attributes, Build Units and reusable rules before opening the builder.",
     "group": "guide"
   },
   "/creating": {
-    "title": "Create, edit & fork · SwordWeave",
-    "description": "Create your own rules in the Atelier, adapt Library ideas, and develop your character.",
+    "title": "Create abilities, effects & rules · SwordWeave",
+    "description": "Compose SwordWeave abilities and effects from reusable primitives. Use the same owned rules in new actions, create in the Atelier, and adapt Library ideas.",
     "group": "guide"
   },
   "/rules": {
@@ -35,8 +35,8 @@
     "group": "books"
   },
   "/about": {
-    "title": "About · SwordWeave",
-    "description": "A TTRPG for your table. Why Marius Ion is building SwordWeave, an open game of character creation, shared imagination, and table rulings.",
+    "title": "Creator & open licenses · SwordWeave",
+    "description": "Meet Marius Ion, the creator of SwordWeave. Learn why the game is open, how its MIT and CC BY 4.0 licenses apply, and where to find credits.",
     "group": "project"
   },
   "/contact": {

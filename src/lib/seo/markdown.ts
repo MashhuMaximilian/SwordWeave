@@ -47,13 +47,21 @@ export function publicHtmlMarkdown(html: string, path: string): string {
   const main = $('.sw-public-site').first();
   if (!main.length || !main.find('h1').length) throw new Error('Missing public page content');
   main.find('script,style,nav,footer,svg,button,input,textarea,form,[aria-hidden="true"],.sw-public-nav').remove();
+  // Visual line breaks must not split one HTML heading into separate Markdown blocks.
+  main.find('h1,h2,h3,h4,h5,h6').find('br').replaceWith(' ');
   main.find('a[href],img[src]').each((_, element) => {
     const key = element.tagName === 'a' ? 'href' : 'src';
     const value = $(element).attr(key);
     if (value) $(element).attr(key, new URL(value, `${SITE_URL}${path}`).toString());
   });
   const converter = new TurndownService({ headingStyle: 'atx', bulletListMarker: '-' });
-  converter.addRule('tables', { filter: 'table', replacement: (_, node) => `\n\n${table(Array.from(node.querySelectorAll('tr')).map(row => Array.from(row.querySelectorAll('th,td')).map(cell => cell.textContent?.trim() ?? '')))}\n\n` });
+  converter.addRule('tables', { filter: 'table', replacement: (_, node) => {
+    const caption = converter.turndown(node.querySelector('caption')?.innerHTML ?? '');
+    const rows = Array.from(node.querySelectorAll('tr')).map(row =>
+      Array.from(row.querySelectorAll('th,td')).map(cell => converter.turndown(cell.innerHTML).trim()),
+    );
+    return `\n\n${caption ? `${caption}\n\n` : ''}${table(rows)}\n\n`;
+  } });
   return `${converter.turndown(main.html() ?? '')}\n\nSource: ${SITE_URL}${path}\n`;
 }
 export { CORE_BOOKS };

@@ -2,7 +2,7 @@
 
 19 October 2026 · Working copy for founder review. Website content changes are deferred. This pack prepares an itch.io draft, a creator kit and one simple demonstration from existing material.
 
-**20 October planning update:** Keep the itch.io project private until the three final PDFs are ready for a combined release review. The [current content and creator proposal](content-distribution-plan.md#current-proposal-one-useful-learning-path) expands the briefs for a first-session checklist, checked character/ability/scene examples, a `/press` kit and three captioned demonstrations. These are proposals and production plans; none of those new website additions or recordings is published. Founder-led creator outreach follows personal group playtests and feedback, potentially a month or more later. The older PHB-first instructions below are historical and do not override the combined release decision.
+**20 October planning update:** Keep the itch.io project private until the three final PDFs are ready for a combined release review. The [current content and creator proposal](content-distribution-plan.md#exact-page-plan-one-new-page-focused-changes-to-existing-pages) expands the briefs for a first-session checklist, checked character/ability/scene examples, a `/press` kit and three captioned demonstrations. These are proposals and production plans; none of those new website additions or recordings is published. Founder-led creator outreach follows personal group playtests and feedback, potentially a month or more later. The older PHB-first instructions below are historical and do not override the combined release decision.
 
 ## Release facts and sources
 

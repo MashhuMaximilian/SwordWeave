@@ -25,7 +25,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ dis
   }
   return new Response(markdown, { headers: {
     'Content-Type': 'text/markdown; charset=utf-8',
-    'Link': `<${SITE_URL}${path}>; rel="canonical"`,
+    'Link': `<${SITE_URL}${path}>; rel="canonical", <${SITE_URL}/llms.txt>; rel="describedby"`,
     'X-Robots-Tag': 'noindex, follow',
     'Cache-Control': 'public, max-age=60, s-maxage=300',
   } });

@@ -20,6 +20,8 @@ import { DISCORD_INVITE_URL } from "@/lib/community";
 import { DiscordIcon } from "@/components/icons/discord-icon";
 import {
   createContext,
+  lazy,
+  Suspense,
   useCallback,
   useContext,
   useEffect,
@@ -33,7 +35,7 @@ import {
   NAV_LINKS,
   type FabItem,
 } from "./fab-speed-dial";
-import { PlayGuide } from "@/components/rules/play-guide";
+import { TabErrorBoundary } from "@/components/characters/tab-error-boundary";
 import { RightFilterPanel } from "./right-filter-panel";
 import { BuildPreviewDrawer } from "./build-preview-drawer";
 import { usePathname } from "next/navigation";
@@ -50,6 +52,12 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { FabThemeIcon } from "./fab-theme-icon";
 import { fabWorkspaceVisibility } from "@/lib/fab-visibility";
+
+// The full guide is server-rendered on /rules. Other routes need its text
+// and controls only when the sheet's Play guide panel is opened.
+const PlayGuide = lazy(() => import("@/components/rules/play-guide").then(
+  module => ({ default: module.PlayGuide }),
+));
 
 type DrawerTab = "build" | "preview" | null;
 
@@ -315,7 +323,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
       ...(isGameMaster ? [{kind:"link" as const,key:"encounters",label:"Encounter Builder",href:"/encounters",icon:<FabIcon iconKey="lorc/crossed-swords" alt=""/>}] : []),
       ...NAV_LINKS.filter(item=>isGameMaster || item.key!=="monsters").map(item => item.key === "rules" && isCharacterSheetRoute && pathname !== "/characters/new" ? {
         kind: "action" as const, key: "rules", label: "Play guide", icon: <FabIcon iconKey="delapouite/rule-book" alt="Play guide" />,
-        onClick: () => { stack.push({ key: "play-guide", label: "Rules & play guide", category: "At the table", global: true, content: <PlayGuide embedded /> }); },
+        onClick: () => { stack.push({ key: "play-guide", label: "Rules & play guide", category: "At the table", global: true, content: <TabErrorBoundary tabName="Play guide" fallback={() => <p className="p-6" role="alert">The guide could not load. <a className="underline" href="/rules" target="_blank" rel="noopener noreferrer">Open the full play guide</a>.</p>}><Suspense fallback={<p className="p-6 text-muted-foreground" role="status">Loading play guide…</p>}><PlayGuide embedded /></Suspense></TabErrorBoundary> }); },
       } : item),
       {
         kind: "divider",

@@ -59,12 +59,14 @@ const legacyDisplay = Teko({
   subsets: ["latin"],
   variable: "--font-sword-display-legacy",
   weight: ["400", "700"],
+  preload: false,
 });
 
 const legacyBody = Magra({
   subsets: ["latin"],
   variable: "--font-sword-body-legacy",
   weight: ["400", "700"],
+  preload: false,
 });
 
 const unicaOne = localFont({
@@ -103,6 +105,9 @@ const ibmPlexMono = localFont({
   ],
   variable: "--font-v12-technical",
   display: "swap",
+  // Technical tables can request their face when used; it does not compete
+  // with the public hero's display/body fonts on every first visit.
+  preload: false,
 });
 
 // Next.js 16: themeColor moved out of metadata. Putting it in metadata

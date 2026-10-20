@@ -32,4 +32,13 @@ describe('public discovery', () => {
     expect(md).not.toMatch(/secret|Private menu/);
     expect(() => publicHtmlMarkdown('<h1>Missing scope</h1>', '/start')).toThrow();
   });
+  it('preserves complete headings and table qualifications, links and line breaks', () => {
+    const md = publicHtmlMarkdown('<div class="sw-public-site"><h1>Bring someone<br><em>only you could imagine.</em></h1><h2>The budget grows.<br>The person changes.</h2><table><caption>Selected progression levels, continuing beyond 20</caption><tr><th>Level</th><th>Reference</th></tr><tr><th>21</th><td><a href="/rules#growth">Growth rules</a><br>Agree scope | cost</td></tr></table></div>', '/character');
+    expect(md).toContain('# Bring someone _only you could imagine._\n');
+    expect(md).toContain('## The budget grows. The person changes.\n');
+    expect(md).toContain('Selected progression levels, continuing beyond 20\n\n| Level | Reference |');
+    expect(md).toContain('[Growth rules](https://www.swordweave.quest/rules#growth)');
+    expect(md).toContain('<br>Agree scope \\| cost');
+    expect(md).toContain('| 21 |');
+  });
 });

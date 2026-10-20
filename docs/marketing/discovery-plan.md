@@ -4,8 +4,12 @@
 
 **Live now:** technical SEO, public Markdown/llms.txt, founder-owned Search Console, linked direct GA4, consent controls, eight dimensions and three application key events. Sitemap accepted with 14 discovered URLs. Signup, Google login, both guided character flows, PDF/Discord clicks and contact success have live event evidence; registered campaign values and consent withdrawal were also checked. See the linked record for evidence and limits. The next priorities are mobile performance, actual indexing evidence and real data; no new page-copy program is approved.
 
-**20 October follow-through:** Bing Webmaster Tools is now verified under the founder's personal account through one CNAME. Its sitemap is submitted; AI Performance is available with no data yet. Google AI inclusion is confirmed Include, and the PHB and Rules pass live indexability tests with indexing requests accepted. See the [current teaching-material and creator proposal](content-distribution-plan.md#current-proposal-one-useful-learning-path) for the requested plans and the remaining SEO roadmap. This is preparation for review, not authorization for a broad content rewrite or creator outreach.
+**20 October follow-through:** Bing Webmaster Tools is now verified under the founder's personal account through one CNAME. Its sitemap is submitted; AI Performance is available with no data yet. Google AI inclusion is confirmed Include, and the PHB and Rules pass live indexability tests with indexing requests accepted. See the [current teaching-material and creator proposal](content-distribution-plan.md#exact-page-plan-one-new-page-focused-changes-to-existing-pages) for the requested plans and the remaining SEO roadmap. This is preparation for review, not authorization for a broad content rewrite or creator outreach.
 Version 1 · 19 October 2026 · Planning and research, not a deployment checklist marked complete.
+
+## Active follow-through · 20 October
+
+The founder authorized mobile performance, keyword intent and AI/Markdown work; book consistency remains work in progress. The [exact page plan](content-distribution-plan.md#exact-page-plan-one-new-page-focused-changes-to-existing-pages) proposes one new `/press` page, focused additions to existing guides and the actual Neris/Orren examples. It preserves the homepage hero. [Keyword intent review](keyword-intent-review.md), [Markdown coverage](markdown-coverage.md) and [mobile performance review](mobile-performance-review.md) record this technical pass. The dated baseline/status table below describes the earlier starting state; use the implementation record for current configuration.
 
 ## The outcome
 
