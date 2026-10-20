@@ -73,4 +73,8 @@ The web-reader tool in this chat returned “not accessible via this tool” for
 
 ## Release follow-through
 
-Pending the shared-reader verification and production release. Do not mark this complete based only on the source proposal.
+Code commit **`8841348e`** was pushed to `origin/main`. Automatic Vercel production deployment **`dpl_4nLSxPxnBfeFDPmY5A6oZX8HmKSo`** is **Ready**, with canonical www/apex aliases; build duration 2m34s. The canonical browser now contains all 15 Rules chapter sections and 15 chapter links, with only the selected chapter visible after hydration. The first-session deep link focuses its authored block; the revised Rules description is present, and selecting Combat works with the preserved design. Proof: `output/marketing/seo-reader-live.png` and `seo-release-2026-10-20.json`.
+
+Google accepted one refresh of the existing sitemap. The refreshed report now shows **Success / 17 discovered pages**. The original-character URL progressed from unknown to **Discovered — currently not indexed**, with the sitemap identified as its discovery source. Its indexing request was then **accepted into the priority crawl queue**. That is not a guarantee or claim of indexing. No repeat request was made. Screenshots: `gsc-sitemap-17-2026-10-20.png`, `gsc-new-guide-indexing-requested-2026-10-20.png`.
+
+The production ZIP checked above already includes the final companions; this release carries the same unchanged files. The temporary local server is stopped and port 3000 has no listener. Browser viewport override was reset. This closes the bounded technical/keyword follow-through, not all measurement/performance work or the video pilot.
