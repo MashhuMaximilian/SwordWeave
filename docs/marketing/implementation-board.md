@@ -95,7 +95,15 @@ The same request reopened companion visual quality and added a separate original
 
 See the dated audit for the final release state. This bounded batch does not close all of Batch 4.
 
-## Earlier release evidence
+## Creator-preview correction · 20 October
+
+The founder identified a delivery mismatch: the original companions were available in the materials section and ZIP, but the lower “First-session worksheet” / “Worked character build” cards still showed PHB pages 7/53 and offered only those excerpt JPEGs. The previous ZIP verification did not verify that visible preview row.
+
+Those cards now use actual first-page renders of the current two-page run sheet and three-page Neris companion, with complete-PDF image links and primary **Download PDF** actions beside the preview JPEG downloads. Metadata, captions, README and notices match. The two PHB excerpt JPEGs are removed from the archive and public originals; legacy image URLs redirect to the new named previews. The PHB cover remains a separate cover preview.
+
+`render-companion-previews.py` reads the current PDFs, renders page 1 with Poppler, and records dimensions/source hashes. The kit builder now rejects stale PDF preview hashes. Both PDFs remain byte-identical, retaining their fields. Rebuilt ZIP: 20 entries / 3,255,185 bytes / SHA-256 `91b1e66593a73362e3a3f975a7717b5c6e5a82727ca940dd07ec48bc776d5587`; deterministic rebuild, source-byte/manifest checks, CRC and the stale-preview negative check pass. Production build and scoped lint pass; desktop and 390px phone show the correct cards/PDF links with no overflow. Release/download proof is recorded in `output/marketing/companion-preview-integrity.json` and the final delivery evidence after deployment.
+
+## Earlier deployment snapshots
 
 - Core release: `a72a0b22`, instructional corrections `217527f2`; final Markdown-link/chapter-name follow-up `2fd10736`. All three reached Ready in Vercel. Final code deployment: `dpl_22V9zNNkwrXhm2ujtczSNnx3ZKxq`.
 - Build: production Next.js build passed on 20 October.

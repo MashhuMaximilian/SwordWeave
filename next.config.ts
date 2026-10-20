@@ -51,6 +51,9 @@ const nextConfig: NextConfig = {
   // its /sandbox/builds and /sandbox/characters sub-routes intact.
   async redirects() {
     return [
+      // Older creator-kit image links now lead to the current companion previews.
+      { source: "/press/previews/phb-first-session.jpg", destination: "/press/previews/first-session-run-sheet.jpg", permanent: true },
+      { source: "/press/previews/phb-worked-build.jpg", destination: "/press/previews/build-with-neris.jpg", permanent: true },
       // Production artwork lives outside deployment output. Existing database
       // paths remain valid; local review galleries can still use local copies.
       ...((process.env.NODE_ENV === "development" && existsSync("public/images/lineages"))

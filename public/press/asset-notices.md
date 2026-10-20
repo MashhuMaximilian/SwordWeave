@@ -10,7 +10,7 @@ The designated original rules and explanatory game text, including original inst
 
 The first-session run sheet and Build with Neris companion are newly authored instructional text and forms under that CC BY 4.0 notice. They are separate, printable/fillable documents with equivalent public text; they are not extracted PHB pages. Their illustrative table choices do not establish universal prices, difficulty, treatment or Cost rules.
 
-The book-preview files are unmodified exports from the published illustrated Player’s Handbook, Interwoven edition, 19 October 2026: PDF pages 1, 7 and 53. The source PDF hash is included per file in the manifest. Page 53 labels some prices and choices as workshop proposals; its contents should not be represented as universal catalogue prices.
+The PHB cover is an unmodified export of page 1 from the published illustrated Player’s Handbook, Interwoven edition, 19 October 2026. The other two document previews are rendered from page 1 of the current original companion PDFs, not PHB pages 7 or 53. Each preview's exact source PDF and hash are recorded in the manifest. Download the complete two-page run sheet or three-page Neris companion from `materials/`; the JPEG is only a first-page preview. The Neris preview includes separately credited heritage portraits, which retain the same notices as the full companion.
 
 ## Illustrations and the complete book
 

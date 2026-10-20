@@ -12,7 +12,7 @@ import './press.css';
 
 export const metadata: Metadata = publicPageMetadata('/press');
 
-const bookPreviews = PRESS_KIT.assets.filter(asset => asset.kind === 'book');
+const previews = PRESS_KIT.assets.filter(asset => asset.kind === 'book' || asset.kind === 'companion');
 const logos = PRESS_KIT.assets.filter(asset => asset.kind === 'logo');
 const screenshots = PRESS_KIT.assets.filter(asset => asset.kind === 'screenshot');
 
@@ -30,7 +30,7 @@ export default function PressPage() {
             <TrackLink event={{ name: 'media_kit_download', params: { placement: 'press', release_version: 'v0.1-alpha' } }} className="sw-cta-primary" href={PRESS_KIT_ZIP} download><Download aria-hidden="true" /> Download the creator kit</TrackLink>
             <Link className="sw-cta-ghost" href="/contact"><Mail aria-hidden="true" /> Contact Mashu <ArrowRight aria-hidden="true" /></Link>
           </div>
-          <p className="sw-press__download-note">ZIP: descriptions, fact sheet, original fillable companions, flat and gradient marks, three book previews, a public character screenshot, captions and asset notices. Books are linked separately so you can choose the current edition.</p>
+          <p className="sw-press__download-note">ZIP: descriptions, fact sheet, original fillable companions and their previews, flat and gradient marks, the PHB cover, a public character screenshot, captions and asset notices. Books are linked separately so you can choose the current edition.</p>
         </div>
         <figure className="sw-press__cover">
           <Link href="/books/players-handbook" aria-label="Read the Player’s Handbook">
@@ -80,14 +80,14 @@ export default function PressPage() {
       <CompanionMaterials />
 
       <section className="sw-public-section" id="screenshots" aria-labelledby="press-screenshots">
-        <header className="sw-press__section-head"><h2 id="press-screenshots">On the page.<br /><em>In the browser.</em></h2><p>A real public character sheet and faithful exports from the published illustrated PHB. Sources, dates and credits accompany the downloads.</p></header>
+        <header className="sw-press__section-head"><h2 id="press-screenshots">On the page.<br /><em>In the browser.</em></h2><p>A real public character sheet, the illustrated PHB cover and previews of the current table companions. Download each complete companion as a PDF below.</p></header>
         {screenshots.map(asset => <figure className="sw-press__tool-preview" key={asset.file}>
           <a href={`/press/${asset.file}`} aria-label={`View full-size ${asset.label.toLowerCase()}`}><Image src={`/press/${asset.file}`} alt={asset.caption} width={asset.width} height={asset.height} sizes="(max-width: 1280px) 94vw, 1200px" /></a>
           <figcaption><div><h3>{asset.label}</h3><p>{asset.caption}</p></div><a className="sw-public-link" href={`/press/${asset.file}`} download>Download PNG <Download aria-hidden="true" /></a></figcaption>
         </figure>)}
-        <div className="sw-press__previews">{bookPreviews.map(asset => <figure key={asset.file}>
-          <a href={`/press/${asset.file}`} aria-label={`View full-size ${asset.label.toLowerCase()}`}><Image src={`/press/${asset.file}`} alt={asset.caption} width={asset.width} height={asset.height} sizes="(max-width: 640px) 88vw, (max-width: 1000px) 44vw, 30vw" /></a>
-          <figcaption><h3>{asset.label}</h3><p>{asset.caption}</p><a className="sw-public-link" href={`/press/${asset.file}`} download>Download JPEG <Download aria-hidden="true" /></a></figcaption>
+        <div className="sw-press__previews">{previews.map(asset => <figure key={asset.file}>
+          <a href={`/press/${asset.pdf ?? asset.file}`} aria-label={asset.pdf ? `Read the complete ${asset.label} PDF` : `View full-size ${asset.label.toLowerCase()}`}><Image src={`/press/${asset.file}`} alt={asset.caption} width={asset.width} height={asset.height} sizes="(max-width: 640px) 88vw, (max-width: 1000px) 44vw, 30vw" /></a>
+          <figcaption><h3>{asset.label}</h3><p>{asset.caption}</p><div className="sw-press__material-links">{asset.pdf && <a className="sw-public-link" href={`/press/${asset.pdf}`} download aria-label={`Download ${asset.label} PDF`}>Download PDF <Download aria-hidden="true" /></a>}<a className="sw-public-link" href={`/press/${asset.file}`} download aria-label={`Download ${asset.label} preview JPEG`}>Download JPEG <Download aria-hidden="true" /></a></div></figcaption>
         </figure>)}</div>
       </section>
 

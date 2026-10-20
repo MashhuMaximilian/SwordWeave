@@ -24,6 +24,10 @@ def build():
         if not path.is_file() or PRESS.resolve() not in path.resolve().parents:
             raise ValueError(f"Missing or invalid kit asset: {item['file']}")
         content = path.read_bytes()
+        if item["kind"] == "companion":
+            pdf = PRESS / item["pdf"]
+            if not pdf.is_file() or sha256(pdf.read_bytes()).hexdigest() != item["sourcePdfSha256"]:
+                raise ValueError(f"Stale companion preview: {item['file']}. Run render-companion-previews.py first.")
         assets.append({**item, "bytes": len(content), "sha256": sha256(content).hexdigest()})
 
     materials = []

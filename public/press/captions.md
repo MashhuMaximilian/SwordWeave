@@ -50,29 +50,29 @@ Source: Player’s Handbook, Interwoven edition, PDF page 1
 
 Rights: Existing book preview, not an open artwork license. The complete-book notice and separately identified art, branding and font notices apply; ask before other standalone artwork reuse.
 
-## First-session worksheet
+## First-session run sheet
 
-File: `previews/phb-first-session.jpg` · 894 × 1200 nominal dimensions
+File: `previews/first-session-run-sheet.jpg` · 849 × 1200 nominal dimensions
 
-First-session worksheet in the illustrated Player’s Handbook. Actual PDF page 7, Interwoven edition, 19 October 2026.
-
-Credit: SwordWeave / Marius Ion
-
-Source: Player’s Handbook, Interwoven edition, PDF page 7
-
-Rights: Designated original game text and instructional diagrams use CC BY 4.0. Branding, artwork and fonts keep their separate notices.
-
-## Worked character build
-
-File: `previews/phb-worked-build.jpg` · 894 × 1200 nominal dimensions
-
-An acquisition ledger and worked check in the illustrated Player’s Handbook. Actual PDF page 53, Interwoven edition, 19 October 2026; workshop proposals are labeled in the source.
+Page 1 of the original two-page first-session run sheet. Prepare your table and record actions, costs and consequences; print it or fill in its 21 PDF fields.
 
 Credit: SwordWeave / Marius Ion
 
-Source: Player’s Handbook, Interwoven edition, PDF page 53
+Source: https://www.swordweave.quest/press/materials/swordweave-first-session-run-sheet.pdf
 
 Rights: Designated original game text and instructional diagrams use CC BY 4.0. Branding, artwork and fonts keep their separate notices.
+
+## Build with Neris Cinderthread
+
+File: `previews/build-with-neris.jpg` · 849 × 1200 nominal dimensions
+
+Page 1 of the original three-page Neris construction companion, with his three heritage portraits. The full PDF includes the 19-acquisition ledger, a resolved treatment and fillable prompts for your own variation.
+
+Credit: SwordWeave / Marius Ion. Existing heritage illustrations created with OpenAI image-generation tools under Marius Ion’s direction.
+
+Source: https://www.swordweave.quest/press/materials/swordweave-build-with-neris.pdf
+
+Rights: Original companion text and forms use CC BY 4.0. The three heritage portraits, branding and fonts keep their separate notices.
 
 ## Neris Cinderthread in the browser
 
