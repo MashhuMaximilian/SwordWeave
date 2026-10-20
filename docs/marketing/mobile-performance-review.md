@@ -45,7 +45,7 @@ Local evidence, excluded from Git: `output/marketing/mobile-bundle-before.json` 
 - `npx --yes pnpm@10 exec vitest run src/components/character-modal/__tests__/navigation-approval.test.ts src/components/character-modal/__tests__/edit-character-id-invariant.test.ts src/components/character-modal/__tests__/draft-comparison.test.ts`: nine existing invariant tests passed.
 - Focused ESLint: `layout.tsx` clean. The other two touched files have the same eight pre-existing errors and one warning as their `HEAD` versions, verified by running ESLint against `git show HEAD:<path>` through stdin. Existing effect/ref diagnostics and a memo-dependency warning were not suppressed or expanded into this task. No new rule/message findings.
 - `git diff --check`: passed.
-- Desktop/mobile browser checks, deployed-build confirmation and a fresh PageSpeed run belong to the final release verification; record their results separately rather than treating this bundle comparison as browser proof.
+- Live browser and release verification are recorded below, separately from the bundle comparison.
 
 ## Reproduce the bundle comparison
 
@@ -86,3 +86,25 @@ JS
 The main blocking-CSS debt remains. `v12.css` mixes shared body tokens, font aliases, backgrounds, heading/control rules, FAB/modal styles and workspace rules throughout 9,294 lines. Moving that file wholesale to `/atelier` would change public pages and public character sheets. Moving global imports independently could also alter the cascade. This release deliberately avoids that uncontrolled visual change.
 
 The next safe refactor is to inventory shared selectors, extract a common foundation and move component/route styles behind explicit boundaries while preserving declaration order. Start with styles used exclusively by one tool or deferred panel; retain tokens, public navigation, FAB and shared overlays in the root. Compare production CSS manifests before and after. Verify home, rules, books, a complete public character sheet, Atelier and the character workshop on mobile/desktop in both themes, including direct entry and client navigation. Only then deploy and rerun the same mobile PageSpeed scenario. Do not remove styles merely because a homepage coverage sample marks them unused.
+
+
+## Live release verification
+
+Code commit **`9d5a211d`** was pushed to `origin/main` and Vercel production deployment **`dpl_BzYH9K78Mcvn9upvm3FaA16EZYhV`** reached Ready. The canonical homepage exposes the new description and exactly four font preloads. Desktop/mobile appearances were inspected; at 390 px the live page has layout width = scroll width = 390 px. The existing hero, typography, FAB and official Discord icon remain unchanged.
+
+The deferred character workshop opened from Atelier, loaded its form, closed and reopened in the same existing draft step. No fields were edited or character saved. The embedded play guide opened from Neris's read-only public sheet, loaded its chapter list and actual text, then closed. The full `/rules` page still renders independently. Local loopback navigation was rejected by the browser, and the protected preview required an owner passkey, so those were not counted as UI passes; production was checked directly after the already-authorized deployment. The local server was stopped.
+
+A fresh [mobile PageSpeed run](https://pagespeed.web.dev/analysis/https-www-swordweave-quest/q1x8d5rsfo?form_factor=mobile), captured **20 October 2026 at 12:05 Bucharest**, used the same emulated Moto G Power, slow 4G, Lighthouse 13.5.0 and initial-load scenario as the baseline:
+
+| Lab metric | Baseline | Follow-up |
+| --- | ---: | ---: |
+| Performance score | 59 | 58 |
+| FCP | 4.0 s | 4.0 s |
+| LCP | 9.2 s | 8.4 s |
+| TBT | 210 ms | 270 ms |
+| CLS | 0 | 0 |
+| Speed Index | 5.7 s | 5.2 s |
+
+Accessibility 100, Best Practices 100, SEO 92 and agentic checks 3/3 are unchanged. There is still no CrUX field data. The lower sampled LCP does **not** establish an overall performance-score improvement or a causal field result; the score and blocking time did not improve. Do not keep rerunning solely to obtain a preferred score. The measured bundle reduction is useful, but render-blocking CSS/unused CSS remain the next material bottleneck. The follow-up still reports about 180 KiB unused CSS, 266 KiB unused JS and estimated 1,240 ms render-blocking savings. Estimates are not guaranteed or additive.
+
+Saved live proof under the task's local `output/marketing/`: `home-after-desktop-2026-10-20.png`, `home-after-mobile-2026-10-20.png`, `deferred-guide-live-2026-10-20.png`, and `pagespeed-mobile-followup-2026-10-20.png`.
