@@ -39,6 +39,7 @@ The [execution plan](execution-plan.md) defines all seven ordered batches, depen
 
 ### Batch 1 evidence — 20 October
 
+- Code commit: `9eba9425` on `codex/discovery-measurement`. Vercel preview deployment `dpl_EHn8JYdp8jN2XFw6cyTRbSQvZ9yb` reached **READY**: [review preview](https://sword-weave-djzo1xi40-mashus-projects-3b3cfec0.vercel.app/tutorials/create-a-primitive). The browser reaches Vercel sign-in because normal preview protection is enabled; remote UI inspection is therefore pending. Current local UI evidence is below. This branch has not been pushed to main and production remains unchanged.
 - Focused checks: 35 tests pass across Rules/search/reader/Markdown/discovery; scoped ESLint and diff checks pass. An initial full build found a Creating mapping type error; that was corrected and the final production build passes, including TypeScript and static generation.
 - Preservation: the complete `PLAY_GUIDE` data is identical to the previous commit: 15 topics, 99 top-level blocks, including nested content. Tutorial conversion preserved all 80 original substantive text blocks, both tables and ordered actions.
 - Independent review caught copied Creating keywords and historical Notion source links leaking into Rules Markdown. Creating search now uses actual chapter text; Rules HTML/Markdown use the same public book-link mapping. Regression tests cover both corrections.

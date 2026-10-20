@@ -105,4 +105,6 @@ Research trim/page formats, bleed/safe areas, paper/binding, color options, prin
 3. Tutorial-data agent: complete existing tutorial converted to shared structured content.
 4. Parent: execution plan/status board, Creating/tutorial integration, full-source Markdown, preservation checks, one build and the reviewable first result.
 
+**Current handoff:** all three agent scopes and parent integration are implemented. Thirty-five focused tests, scoped lint, the final production build and bounded local browser checks pass. A protected Vercel preview is Ready; normal Vercel sign-in is needed for remote review. See the board for exact evidence and limitations. Batch 2 is next in the queue; the broader teaching/material work has not been marked complete.
+
 Broader completion requires multiple batches and founder-dependent inputs. The first delivery is a finished, reviewable reader/navigation batch; it is not a claim that the entire marketing program is complete.
