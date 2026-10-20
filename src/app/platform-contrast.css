@@ -8,6 +8,15 @@ body[data-ui="v12"] {
   --sw-contrast-inset: #132d33;
   --sw-contrast-inset-ink: #e0f1ed;
 }
+/* Mechanical choices receive the shared bright gold fill. Their labels and
+   help text must override the older rule-builder gold foregrounds together. */
+html:root body[data-ui="v12"] .v12-rule-condition-join button[aria-pressed="true"],
+html:root body[data-ui="v12"] :is(.v12-rule-operation-grid,.v12-rule-recipient-grid,.v12-rule-trigger-modes) > button:is([aria-pressed="true"],[aria-checked="true"]),
+html:root body[data-ui="v12"] :is(.v12-rule-operation-grid,.v12-rule-recipient-grid,.v12-rule-trigger-modes) > button:is([aria-pressed="true"],[aria-checked="true"]) :is(b,span,small,strong) {
+  color:var(--sw-contrast-ink)!important;
+  -webkit-text-fill-color:currentColor!important;
+  text-shadow:none!important;
+}
 html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open):focus-visible span.sw-library-cost-badge.sw-library-cost-badge,
 html:root body[data-ui="v12"] :is([data-preview-trigger="true"],.v12-entry-row,.v12-composition-node-row,.sw-phone-composition-row,[data-component-card],.sw-character-component-row,.sw-character-item-row,.sw-access-entry,.sheet-library-entry,.v12-live-effect-open):focus-visible span.sheet-library-entry-cost.sheet-library-entry-cost {
   background:var(--sw-contrast-inset)!important;

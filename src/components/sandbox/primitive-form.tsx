@@ -1736,6 +1736,7 @@ export function PrimitiveForm({
               defines a construction permission. Otherwise its verbose
               description is the complete player-facing explanation.
         </p>
+        <p><a className="underline underline-offset-4" href="/tutorials/create-a-primitive" target="_blank" rel="noopener noreferrer">Follow the primitive editor tutorial ↗</a></p>
             <button
               type="button"
               className="phone-rule-format-toggle"

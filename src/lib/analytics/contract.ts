@@ -13,6 +13,7 @@ export const DEFINITIONS = {
   contact_form_error: { form_id: ['contact'], error_type: ['validation', 'rate_limited', 'unavailable', 'delivery_unconfirmed'] },
   discord_invite_click: { placement: ['hero', 'fab', 'footer', 'about', 'contact', 'playtest'] },
   file_download: { book_id: ['phb', 'gm_guide', 'srd'], edition: ['interwoven', 'interwoven_full', 'earlier_dark', 'light', 'dark'], release_version: ['v0.1-alpha'], placement: ['home', 'books', 'reader'] },
+  media_kit_download: { placement: ['press'], release_version: ['v0.1-alpha'] },
   support_click: { placement: ['fab', 'book', 'footer', 'other'] },
   copy_contact_email: { placement: ['contact'] },
 } as const;

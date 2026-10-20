@@ -4,7 +4,7 @@
 
 ## Scope and current coverage
 
-All **14 curated public discovery pages already have Markdown alternatives**. “Each page” means the public game explanations, guides, books and project information. Account screens, private workspaces, drafts, private notes, search/filter combinations and arbitrary user submissions are not public discovery exports.
+All **16 curated public discovery pages have Markdown alternatives**. “Each page” means the public game explanations, guides, books and project information. Account screens, private workspaces, drafts, private notes, search/filter combinations and arbitrary user submissions are not public discovery exports.
 
 | Canonical HTML | Markdown alternative | Source used by the export |
 | --- | --- | --- |
@@ -22,16 +22,18 @@ All **14 curated public discovery pages already have Markdown alternatives**. �
 | `/contact` | `/contact.md` | Anonymous rendered public page, excluding the interactive form |
 | `/attributions` | `/attributions.md` | Anonymous rendered public page |
 | `/privacy` | `/privacy.md` | Anonymous rendered public page |
+| `/press` | `/press.md` | Anonymous rendered creator-kit page |
+| `/tutorials/create-a-primitive` | `/tutorials/create-a-primitive.md` | Anonymous rendered written editor tutorial |
 
 The online readers and downloadable PDF editions may differ. Book Markdown explicitly identifies the online reader as its source. Reconciling books remains separate work in progress, as the founder requested; this audit does not certify edition consistency.
 
-The proposed creator page `/press` will also receive `/press.md` when its visible content is approved and published through the same curated public-page registry. Videos belong beside their relevant guide and in the creator kit; their captions/transcripts should be public text, with the same factual content available in the corresponding Markdown export. No separate video directory or duplicate SEO landing pages are required for that plan.
+The creator page `/press` and editor tutorial `/tutorials/create-a-primitive` use the same curated registry for HTML metadata, sitemap, llms index and Markdown. The kit also exposes exactly four static text files: `/press/README.md`, `/press/fact-sheet.md`, `/press/captions.md` and `/press/asset-notices.md`. The proxy explicitly allows those public assets while keeping other unregistered `.md` paths excluded. Videos belong beside their relevant guide and in the creator kit; their captions/transcripts should be public text, with the same factual content available in the corresponding Markdown export. No separate video directory or duplicate SEO landing pages are required for that plan.
 
 ## Delivery and access contract
 
 - The public-page registry is the export allowlist. Unknown or excluded `.md` paths return 404 before fetching any source.
-- Public HTML advertises its `text/markdown` alternative. `/llms.txt` links the 14 exports. Markdown responses identify their canonical HTML source and, after this update, describe their index through an HTTP `Link` relation to `/llms.txt`.
-- Markdown is served as `text/markdown; charset=utf-8`. HTML remains the search canonical, and the XML sitemap lists only the 14 canonical HTML pages. Equivalent Markdown has `noindex, follow` to avoid a second search result for the same text; this does not make it private or prevent direct retrieval.
+- Public HTML advertises its `text/markdown` alternative. `/llms.txt` links the 16 exports. Markdown responses identify their canonical HTML source and, after this update, describe their index through an HTTP `Link` relation to `/llms.txt`.
+- Markdown is served as `text/markdown; charset=utf-8`. HTML remains the search canonical, and the XML sitemap lists only the 16 canonical HTML pages. Equivalent Markdown has `noindex, follow` to avoid a second search result for the same text; this does not make it private or prevent direct retrieval.
 - Production editorial extraction uses the fixed canonical origin and an allowlisted path. It does not forward the incoming host, queries, cookies or authorization. Redirects are rejected, requests time out after 15 seconds, and missing or invalid public sources return a temporary 503 with a retry hint.
 - Scripts, navigation, forms, decorative SVGs and hidden accessibility elements are removed from the editorial reading scope. Links and image sources are made absolute. Book/rules exports preserve their shared structured source rather than depending on the selected interactive chapter.
 - Editorial text can be cached publicly for five minutes at the edge. The current route does not export mutable personal records. A future record export must choose caching appropriate to immediate privacy changes.
@@ -77,6 +79,8 @@ Markdown and `/llms.txt` are useful alternate reading formats, not a citation gu
 The August 2026 `/llms.txt` v2 proposal describes `.md` alternatives plus standard `alternate` and `describedby` links. It remains a proposal, rather than a mandatory search protocol. Source: [llms.txt proposal](https://llmstxt.org/).
 
 ## Verification and limits
+
+The subsequent creator/teaching implementation passed a combined 28 focused SEO/Markdown, analytics and play-guide tests, plus the production build. Release browser checks are tracked in [the implementation board](implementation-board.md). Earlier test counts and download sizes below describe the previous technical release.
 
 The focused source and route suite passed **15 tests**. Coverage includes all 14 registered alternatives, complete book/rule generation, canonical/type/index headers, anonymous canonical-host fetches, excluded routes, source errors, heading structure and table context. ESLint also passed for the changed implementation and tests. These do not represent a new live fetch from every third-party crawler, independent AI-answer experiments, a new indexing result or full book/PDF equivalence.
 

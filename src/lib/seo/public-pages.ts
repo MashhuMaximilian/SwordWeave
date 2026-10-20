@@ -10,5 +10,9 @@ export const PUBLIC_PAGES: Record<string, PublicPage> = {
   }])),
 };
 export const markdownPath = (path: string) => path === '/' ? '/index.md' : `${path}.md`;
+// Deliberately public files in the downloadable kit are assets, not extra pages.
+export const PUBLIC_MARKDOWN_ASSETS = new Set([
+  '/press/README.md', '/press/fact-sheet.md', '/press/captions.md', '/press/asset-notices.md',
+]);
 export function isPublicPage(path: string) { return Object.hasOwn(PUBLIC_PAGES, path); }
 export function isDiscoveryProduction() { return process.env['VERCEL_ENV'] !== 'preview' && process.env.NODE_ENV !== 'development'; }

@@ -1,0 +1,57 @@
+.sw-press { --press-rule:color-mix(in srgb,var(--sw-text-gold) 35%,transparent); }
+.sw-press__intro { display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,360px);gap:clamp(32px,6vw,100px);align-items:center;padding:48px 0 64px; }
+.sw-press .sw-public-title { font-size:clamp(48px,6.2vw,88px);letter-spacing:-.035em;margin-bottom:28px; }
+.sw-press .sw-public-deck { max-width:35ch; }
+.sw-press p { line-height:1.65; }
+.sw-press__intro-note { margin-top:24px;color:var(--muted-foreground);font-size:18px; }
+.sw-press__download-note { max-width:62ch;margin-top:20px;color:var(--muted-foreground);font-size:16px; }
+.sw-press figure { min-width:0;margin:0; }
+.sw-press__cover { max-width:360px;justify-self:center; }
+.sw-press__cover img { width:100%;height:auto;border-radius:3px;box-shadow:0 16px 32px #0005; }
+.sw-press__cover figcaption { font-size:15px;color:var(--muted-foreground);margin-top:16px;text-align:center; }
+.sw-press__contents { display:flex;flex-wrap:wrap;gap:8px 28px;padding:22px 0;border-block:1px solid var(--press-rule);font-family:var(--font-system,sans-serif);font-size:14px; }
+.sw-press__contents a { padding-block:8px;color:var(--sw-text-gold); }
+.sw-press__contents a:hover { text-decoration:underline;text-underline-offset:5px; }
+.sw-press :is(section[id],h2[id]) { scroll-margin-top:110px; }
+.sw-press__editorial { display:grid;grid-template-columns:minmax(0,.7fr) minmax(0,1.3fr);gap:clamp(24px,6vw,90px); }
+.sw-press__editorial h2,.sw-press__section-head h2 { font-size:clamp(34px,4vw,54px);line-height:1.12; }
+.sw-press__copy { display:grid;gap:32px; }
+.sw-press__copy article { max-width:72ch; }
+.sw-press h3 { font-size:23px;line-height:1.35;color:var(--sw-text-gold);margin-bottom:10px; }
+.sw-press__copy p + p { margin-top:16px; }
+.sw-press__copy p a,.sw-press__examples a,.sw-press__asset-note a { text-decoration:underline;text-decoration-color:var(--press-rule);text-underline-offset:4px;color:var(--sw-text-gold); }
+.sw-press__facts > div { display:grid;grid-template-columns:minmax(120px,.7fr) minmax(0,1.3fr);gap:20px;padding:16px 0;border-bottom:1px solid var(--press-rule); }
+.sw-press__facts > div:first-child { padding-top:0; }
+.sw-press__facts dt { color:var(--sw-text-gold);font:600 14px/1.65 var(--font-system,sans-serif); }
+.sw-press__facts dd { line-height:1.55; }
+.sw-press__subheading { margin-top:32px; }
+.sw-press__limitations { padding-left:24px;margin:14px 0 24px;display:grid;gap:12px;list-style:disc;line-height:1.65; }
+.sw-press__limitations li::marker { color:var(--sw-text-gold); }
+.sw-press__book-list { list-style:none;padding:0;margin:0 0 24px;display:grid;gap:28px; }
+.sw-press__book-list h3 a { display:inline-flex;gap:12px;align-items:center; }
+.sw-press__book-list h3 svg { flex:none;width:18px; }
+.sw-press__examples { margin-top:40px;padding-top:28px;border-top:1px solid var(--press-rule); }
+.sw-press__examples p + p { margin-top:16px; }
+.sw-press__section-head { display:flex;justify-content:space-between;gap:40px;align-items:end;margin-bottom:32px; }
+.sw-press__section-head > p { max-width:48ch;color:var(--muted-foreground); }
+.sw-press__tool-preview { margin-bottom:48px !important; }
+.sw-press__tool-preview > a { display:block; }
+.sw-press__tool-preview img { width:100%;height:auto;border:1px solid var(--press-rule);border-radius:5px; }
+.sw-press__tool-preview figcaption { display:flex;align-items:start;justify-content:space-between;gap:28px;margin-top:20px; }
+.sw-press__tool-preview figcaption p { max-width:75ch;font-size:17px;color:var(--muted-foreground); }
+.sw-press__tool-preview figcaption > a { flex:none; }
+.sw-press__previews,.sw-press__logos { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px; }
+.sw-press__previews figure > a { display:block; }
+.sw-press__previews img { display:block;width:100%;height:auto;border:1px solid var(--press-rule);border-radius:3px; }
+.sw-press :is(.sw-press__previews,.sw-press__logos) figcaption { margin-top:20px; }
+.sw-press__previews figcaption p { font-size:17px;color:var(--muted-foreground);margin-bottom:16px; }
+.sw-press__logo-field { display:grid;place-items:center;min-height:260px;background:#10272c;border:1px solid var(--press-rule);border-radius:5px;padding:32px; }
+.sw-press__logo-field--light { background:#f3efdf; }
+.sw-press__logo-field img { width:auto;height:160px;max-width:100%;object-fit:contain; }
+.sw-press__logos h3 { font-size:19px; }
+.sw-press__asset-note { margin-top:28px;max-width:75ch;color:var(--muted-foreground); }
+.sw-press .sw-public-link svg { width:17px;height:17px;flex:none; }
+.sw-press .sw-public-link { gap:10px; }
+@media(max-width:1000px) { .sw-press__intro { grid-template-columns:minmax(0,1fr) minmax(190px,280px);gap:32px; }.sw-press__editorial { grid-template-columns:minmax(0,.65fr) minmax(0,1.35fr);gap:30px; }.sw-press__section-head { display:block; }.sw-press__section-head > p { margin-top:18px;max-width:70ch; }.sw-press__previews,.sw-press__logos { gap:20px; }.sw-press__logo-field { min-height:220px;padding:20px; } }
+@media(max-width:760px) { .sw-press__intro { grid-template-columns:minmax(0,1fr);padding-top:20px;padding-bottom:40px; }.sw-press__cover { max-width:280px;margin-top:12px; }.sw-press__editorial { grid-template-columns:minmax(0,1fr);gap:28px; }.sw-press__intro-note { font-size:16px; }.sw-press__facts > div { grid-template-columns:minmax(110px,.7fr) minmax(0,1.3fr);gap:16px; }.sw-press__previews { grid-template-columns:repeat(2,minmax(0,1fr)); }.sw-press__logos { grid-template-columns:minmax(0,1fr);gap:32px; }.sw-press__logos figure { display:grid;grid-template-columns:150px minmax(0,1fr);gap:20px;align-items:center; }.sw-press__logo-field { min-height:170px;padding:20px; }.sw-press__logo-field img { height:130px; }.sw-press__logos figcaption { margin-top:0; }.sw-press__contents { gap:4px 22px; }.sw-press__tool-preview figcaption { flex-direction:column;gap:16px; } }
+@media(max-width:480px) { .sw-press__previews { grid-template-columns:minmax(0,1fr);gap:36px; }.sw-press__previews figure { max-width:340px;justify-self:center; }.sw-press__facts > div { grid-template-columns:minmax(0,1fr);gap:6px; }.sw-press__logos figure { grid-template-columns:120px minmax(0,1fr);gap:16px; }.sw-press__logo-field { min-height:150px;padding:16px; }.sw-press__logo-field img { height:110px; }.sw-press__logos h3 { font-size:17px; }.sw-press__logos .sw-public-link { font-size:15px; }.sw-press .sw-public-actions > a { width:100%;justify-content:center; } }

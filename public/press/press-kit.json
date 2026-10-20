@@ -1,0 +1,189 @@
+{
+  "name": "SwordWeave",
+  "version": "v0.1 alpha",
+  "updated": "2026-10-20",
+  "creator": "Marius Ion (Mashu)",
+  "website": "https://www.swordweave.quest/",
+  "email": "contact@swordweave.quest",
+  "oneLine": "SwordWeave is a free modular tabletop roleplaying game with browser tools for building characters and abilities from shared rules.",
+  "shortDescription": "SwordWeave is a free modular tabletop RPG by Marius Ion (Mashu). Players build characters and abilities from shared rules, then agree intent, scope, costs and consequences with their table. The v0.1 alpha includes public rules, browser tools and an illustrated Player’s Handbook; the GM Guide and SRD are still being revised.",
+  "longDescription": "SwordWeave is a free modular tabletop roleplaying game and a set of browser tools by Marius Ion (Mashu). Characters, effects and capabilities draw on a shared vocabulary of primitives. The same owned ingredients can support several actions: players and the GM agree what is being attempted, which permissions apply, and the costs and consequences in the scene. Public rules and books can be read without an account; an account is used to save work in the browser tools. The illustrated Player’s Handbook is complete for the current v0.1 alpha. The Game Master’s Guide and System Reference Document remain in revision, and current online readers can differ from downloadable PDF editions. This is a one-person project in active development. Questions, independent assessments and feedback from actual sessions are welcome.",
+  "facts": [
+    {
+      "label": "Created by",
+      "value": "Marius Ion / Mashu"
+    },
+    {
+      "label": "Category",
+      "value": "Tabletop roleplaying game and browser tools"
+    },
+    {
+      "label": "Release",
+      "value": "v0.1 alpha · in development"
+    },
+    {
+      "label": "Digital access",
+      "value": "Free rules, readers and core-book PDFs"
+    },
+    {
+      "label": "Player’s Handbook",
+      "value": "Illustrated alpha complete · 268 pages"
+    },
+    {
+      "label": "GM Guide and SRD",
+      "value": "Available drafts · revisions in progress"
+    },
+    {
+      "label": "Accounts",
+      "value": "Public reading needs no account; saving work uses an account"
+    },
+    {
+      "label": "Print editions",
+      "value": "A future possibility; no physical edition is on sale"
+    }
+  ],
+  "limitations": [
+    "The rules and tools are evolving. Alpha availability is not evidence of independent playtest results or comparative balance.",
+    "Some Library content is provisional. The founder is still gathering feedback from play.",
+    "The PHB, GM Guide and SRD are not yet a synchronized final set. Check the book and edition before quoting a rule.",
+    "There is no claim of compatibility with another game’s rules or character builders."
+  ],
+  "aiDisclosure": [
+    "AI was used in creating the SwordWeave platform, books and artwork. The system design and the platform’s UI and UX are Marius Ion’s own. AI assisted implementation and book production, including reasoning through programming problems.",
+    "For the book illustrations and heritage artwork, AI took the lead in art direction as well as generating the images. Illustrations were made with OpenAI image-generation tools under Marius Ion’s direction.",
+    "SwordWeave is currently a one-person project. The Player’s Handbook contains the creator’s fuller note, “AI and this alpha.”"
+  ],
+  "books": [
+    {
+      "title": "Player’s Handbook",
+      "path": "/books/players-handbook",
+      "status": "Start here. The illustrated alpha teaches the player procedures and includes examples and worksheets."
+    },
+    {
+      "title": "Game Master’s Guide",
+      "path": "/books/game-masters-guide",
+      "status": "For preparing and running the table. The available draft is being revised."
+    },
+    {
+      "title": "System Reference Document",
+      "path": "/books/srd",
+      "status": "For mechanical reference and compatible creation. The available draft is being revised."
+    }
+  ],
+  "links": [
+    {
+      "label": "Current books and PDF editions",
+      "url": "https://www.swordweave.quest/books"
+    },
+    {
+      "label": "Public rules",
+      "url": "https://www.swordweave.quest/rules"
+    },
+    {
+      "label": "Neris Cinderthread · public demonstration character",
+      "url": "https://www.swordweave.quest/characters/1662962b-14c5-4433-994e-6273b3f7ca57?view=public"
+    },
+    {
+      "label": "Orren Vaultwright · advanced demonstration character",
+      "url": "https://www.swordweave.quest/characters/1da4e351-da76-4822-bf1f-632d2e657145?view=public"
+    },
+    {
+      "label": "Contact form",
+      "url": "https://www.swordweave.quest/contact"
+    },
+    {
+      "label": "Discord community",
+      "url": "https://discord.gg/3z5tqnchY"
+    },
+    {
+      "label": "Source code and repository license",
+      "url": "https://github.com/MashhuMaximilian/SwordWeave"
+    },
+    {
+      "label": "Icon attributions",
+      "url": "https://www.swordweave.quest/attributions"
+    }
+  ],
+  "assets": [
+    {
+      "file": "logos/swordweave-mark-light-background.png",
+      "kind": "logo",
+      "label": "Mark for a light background",
+      "width": 647,
+      "height": 795,
+      "caption": "SwordWeave’s existing dark-teal mark on a transparent background.",
+      "credit": "SwordWeave / Marius Ion",
+      "source": "/logo-light.png",
+      "rights": "Project identity; no trademark, endorsement or new standalone reuse license is granted by this kit."
+    },
+    {
+      "file": "logos/swordweave-mark-dark-background.png",
+      "kind": "logo",
+      "label": "Mark for a dark background",
+      "width": 647,
+      "height": 795,
+      "caption": "SwordWeave’s existing pale mark on a transparent background.",
+      "credit": "SwordWeave / Marius Ion",
+      "source": "/logo-dark.png",
+      "rights": "Project identity; no trademark, endorsement or new standalone reuse license is granted by this kit."
+    },
+    {
+      "file": "logos/swordweave-mark-mono.png",
+      "kind": "logo",
+      "label": "Monochrome mark",
+      "width": 1000,
+      "height": 1000,
+      "caption": "SwordWeave’s existing monochrome mark.",
+      "credit": "SwordWeave / Marius Ion",
+      "source": "/logo-mono.png",
+      "rights": "Project identity; no trademark, endorsement or new standalone reuse license is granted by this kit."
+    },
+    {
+      "file": "previews/phb-cover.jpg",
+      "kind": "book",
+      "label": "Player’s Handbook cover",
+      "width": 894,
+      "height": 1200,
+      "caption": "Cover of the illustrated v0.1-alpha Player’s Handbook, Interwoven edition, 19 October 2026. Actual PDF page 1.",
+      "credit": "SwordWeave / Marius Ion. AI-generated illustration made with OpenAI image-generation tools under Marius Ion’s direction.",
+      "source": "Player’s Handbook, Interwoven edition, PDF page 1",
+      "sourcePdfSha256": "6215d7461b8fe5748898b586d6b89fde52a17a208d555eaea941345422fc39ae",
+      "rights": "Existing book preview, not an open artwork license. The complete-book notice and separately identified art, branding and font notices apply; ask before other standalone artwork reuse."
+    },
+    {
+      "file": "previews/phb-first-session.jpg",
+      "kind": "book",
+      "label": "First-session worksheet",
+      "width": 894,
+      "height": 1200,
+      "caption": "First-session worksheet in the illustrated Player’s Handbook. Actual PDF page 7, Interwoven edition, 19 October 2026.",
+      "credit": "SwordWeave / Marius Ion",
+      "source": "Player’s Handbook, Interwoven edition, PDF page 7",
+      "sourcePdfSha256": "6215d7461b8fe5748898b586d6b89fde52a17a208d555eaea941345422fc39ae",
+      "rights": "Designated original game text and instructional diagrams use CC BY 4.0. Branding, artwork and fonts keep their separate notices."
+    },
+    {
+      "file": "previews/phb-worked-build.jpg",
+      "kind": "book",
+      "label": "Worked character build",
+      "width": 894,
+      "height": 1200,
+      "caption": "An acquisition ledger and worked check in the illustrated Player’s Handbook. Actual PDF page 53, Interwoven edition, 19 October 2026; workshop proposals are labeled in the source.",
+      "credit": "SwordWeave / Marius Ion",
+      "source": "Player’s Handbook, Interwoven edition, PDF page 53",
+      "sourcePdfSha256": "6215d7461b8fe5748898b586d6b89fde52a17a208d555eaea941345422fc39ae",
+      "rights": "Designated original game text and instructional diagrams use CC BY 4.0. Branding, artwork and fonts keep their separate notices."
+    },
+    {
+      "file": "previews/neris-public-character.png",
+      "kind": "screenshot",
+      "label": "Neris Cinderthread in the browser",
+      "width": 1280,
+      "height": 720,
+      "caption": "Neris Cinderthread, an existing level-8 public demonstration character. The real read-only sheet shows heritage, upbringing, manifest and its Build Unit ledger. Captured 20 October 2026.",
+      "credit": "SwordWeave / Marius Ion. Embedded character artwork was made with OpenAI image-generation tools under Marius Ion’s direction. Icons retain their individual source notices.",
+      "source": "https://www.swordweave.quest/characters/1662962b-14c5-4433-994e-6273b3f7ca57?view=public",
+      "rights": "Real public website screenshot; game text, software, artwork, branding and icons retain their separate source notices. This is a demonstration record, not independent playtest evidence."
+    }
+  ]
+}

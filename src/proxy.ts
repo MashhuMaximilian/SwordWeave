@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isPublicPage, PUBLIC_PAGES, markdownPath } from "@/lib/seo/public-pages";
+import { isPublicPage, PUBLIC_PAGES, PUBLIC_MARKDOWN_ASSETS, markdownPath } from "@/lib/seo/public-pages";
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 // Routes that require authentication
@@ -27,6 +27,12 @@ const isPublicRoute = createRouteMatcher([
 
 export default clerkMiddleware(async (auth, req) => {
   if (req.nextUrl.pathname.endsWith('.md')) {
+    if (PUBLIC_MARKDOWN_ASSETS.has(req.nextUrl.pathname)) {
+      const response = NextResponse.next();
+      response.headers.set('Content-Type', 'text/markdown; charset=utf-8');
+      response.headers.set('X-Robots-Tag', 'noindex, follow');
+      return response;
+    }
     if (!Object.keys(PUBLIC_PAGES).some(path => markdownPath(path) === req.nextUrl.pathname)) {
       return new NextResponse('Not found', { status: 404, headers: { 'X-Robots-Tag': 'noindex' } });
     }

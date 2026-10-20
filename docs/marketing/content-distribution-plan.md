@@ -1,8 +1,16 @@
 # Content and distribution backlog
 
-Updated 20 October 2026 · The founder authorizes mobile performance, keyword intent and AI/Markdown follow-through, including subagents. Book consistency remains work in progress. The guides, examples, creator kit and demonstrations below are concrete proposals, not an instruction to publish new visible content or contact creators. Existing website design and homepage hero remain in place.
+Updated 20 October 2026. The founder subsequently authorized implementation and delegation. The current [implementation board](implementation-board.md) supersedes the proposal/deferred labels below.
 
-## Exact page plan: one new page, focused changes to existing pages
+## Current implementation
+
+Two new public pages are implemented: **`/press`** (creator kit and downloadable materials) and **`/tutorials/create-a-primitive`** (a detailed written mechanical-editor walkthrough). Rules stays in place with an appended first-session checklist and reusable-primitives explanation. The localized character example uses Neris, with Orren advanced; Combat adds an explicitly illustrative round from Caravan at the Rooted Ford. Creating and the editor link to the tutorial. About, Contact and the footer link to the kit. The homepage hero and book sources are unchanged.
+
+Both new pages have registry-derived Markdown alternatives. There are now 16 curated public page exports, plus four explicitly public kit Markdown assets. Book consistency remains founder WIP. Voice samples and the video production brief are auditions/preparation, not published or approved videos. The [video outline](video-scripts/create-a-primitive.md) leads with founder talking points and screen actions, rather than a required script to read.
+
+Production build and 28 focused tests passed. Browser/release evidence is recorded in the implementation board. The remaining material below preserves the reasoning and earlier proposal; references to only one new page or to awaiting implementation describe that earlier stage.
+
+## Earlier page proposal: one new page, focused changes to existing pages
 
 The only proposed new public page is **`/press`**, the creator kit, with **`/press.md`** generated from the same approved content when published. Everything else fits the existing pages. No separate example-character article, video gallery, first-session landing page, blog, or rewritten homepage is required.
 

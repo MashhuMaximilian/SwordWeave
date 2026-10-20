@@ -17,6 +17,7 @@ export default function CreatingPage() {
         <p className="sw-public-kicker">{String(index + 1).padStart(2, '0')}</p><h2>{block.title}</h2><p>{block.body}</p>
         {block.example && <aside className="sw-play-guide-example"><strong>For example</strong><p>{block.example}</p></aside>}
       </article>)}
+      <aside className="sw-play-guide-example"><h2>A step-by-step editor tutorial</h2><p>Follow one primitive through Result, Operation, Value, Recipient, Trigger and stacking, then check what you saved.</p><Link href="/tutorials/create-a-primitive">Create your first primitive →</Link></aside>
       <p><Link href="/atelier">Start in the Atelier →</Link></p>
     </section>
   </div>;

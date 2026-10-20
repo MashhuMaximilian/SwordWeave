@@ -77,6 +77,19 @@ export const PLAY_GUIDE: GuideTopic[] = [
       {
         "title": "Where to go next",
         "body": "Read Your first character to build a starting sheet, then Primitives, capabilities & effects to understand its pieces. At the table, use the search and topic list as a reference. The optional detail panels explain vocabulary and calculations without making you read all of them before playing."
+      },
+      {
+        "title": "First-session preparation checklist",
+        "body": "Use this checklist alongside the rules above. Choose a small situation with a clear objective so you can learn through decisions, rather than trying every subsystem in the first session.",
+        "rules": [
+          "Before inviting players: agree the setting, tone, boundaries, session length and a way to pause. Choose who will GM and whether you will play in person or online.",
+          "GM preparation: read Your first game, Combat rhythm, Push the limits and Vitality, collapse & consequences. Choose one existing encounter starter, read its pinned creatures and alternatives, and replace its illustrative party budgets with your actual party. Encounter starters are not difficulty-rated packages.",
+          "Player preparation: read Your first character and Primitives, capabilities & effects. Agree a starting budget with the GM, then create a character or inspect and fork a public demo. Neris Cinderthread is a level-8 example; use it only if that starting point fits your table. Orren Vaultwright is a more elaborate level-16 example.",
+          "Bring: a readable character sheet, dice or a dice roller, the agreed supplies and a way to record consequences. Find current Vitality, the relevant checks and one usable capability before starting. Public reading needs no account; saving or forking into your own workspace does.",
+          "Begin: describe the objective and what the characters can perceive. Let each player ask a question and propose an intent. Agree access, stakes and any Cost before resolving; use the shared-round procedure when the situation calls for combat timing.",
+          "Finish: record changed Vitality, spent supplies, ongoing effects and unresolved consequences. Ask what felt clear, where the table had to stop and which ruling needs a note. Share actionable alpha feedback through Contact or the optional Discord community."
+        ],
+        "example": "Caravan at the Rooted Ford starts with a parent grazer, its calf, two hungry jackals and medicine that needs to cross. The goal is safe passage, not defeating every creature. The encounter already offers retreat, food, recovering a pack and a longer route as possible approaches."
       }
     ],
     "sources": [
@@ -892,6 +905,16 @@ export const PLAY_GUIDE: GuideTopic[] = [
       {
         "title": "Bring the new rule into play",
         "body": "Agree its price and permissions with the DM, then acquire the primitive using available BU. You can invent and purchase a piece during a session, including combat when it makes sense for the scene. Buying it grants access; the particular action still needs an agreed resolution and cost. Keep a note of the ruling so the next use is easier."
+      },
+      {
+        "title": "One set of primitives, several uses",
+        "body": "Start with the verb tier, domain and range that permit the idea, plus an output die when the construction needs one. These are reusable permissions, not a fixed list of finished powers. The same owned set can support several actions or saved capabilities. Additional primitives can supply a new behavior, a specific rule or another permission when the idea needs it; each action does not automatically need a new purchase.",
+        "example": "In the Player’s Handbook, Mira owns Verb II, Water I and Near Range. Within their actual definitions, she can transfer existing water between vessels, redirect a narrow stream or reshape an available flow into a maintained passage. She can call one useful arrangement River Hand and reuse those ingredients in another. A more ambitious version still needs an agreed volume, route, opposition, duration and Cost. Her separate d8 output permission can support an appropriate water-impact construction; it does not make every water action an attack or a heal."
+      },
+      {
+        "title": "Choose the expression at the table",
+        "body": "After checking access, describe how much the action affects, how strongly, where it reaches and how its parts depend on one another. Dice count, number of recipients, area and duration are scaling choices; they do not each require a separate primitive by default. They can raise Strain or change the Cost. A new behavior can need new access, and an existing authored primitive can impose specific limits. Buying ingredients in BU and paying for an attempted use are separate decisions.",
+        "example": "Moving a cup of water across a table may simply happen. Diverting a surging channel from a worker’s legs may need a check and continued direction. Healing an injured worker is a different behavior: Water access and a larger payment do not grant it on their own. Agree what makes that treatment possible before resolving it."
       }
     ]
   },

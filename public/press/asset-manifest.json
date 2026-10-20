@@ -1,0 +1,103 @@
+{
+  "project": "SwordWeave",
+  "version": "v0.1 alpha",
+  "updated": "2026-10-20",
+  "source": "https://www.swordweave.quest/press",
+  "notice": "Read asset-notices.md. These files do not share one blanket license.",
+  "assets": [
+    {
+      "file": "logos/swordweave-mark-light-background.png",
+      "kind": "logo",
+      "label": "Mark for a light background",
+      "width": 647,
+      "height": 795,
+      "caption": "SwordWeave’s existing dark-teal mark on a transparent background.",
+      "credit": "SwordWeave / Marius Ion",
+      "source": "/logo-light.png",
+      "rights": "Project identity; no trademark, endorsement or new standalone reuse license is granted by this kit.",
+      "bytes": 198510,
+      "sha256": "9a4521f42aa17bf56ccd5fc2167958bd0d197e28c4b82c90ea271bd1155d5244"
+    },
+    {
+      "file": "logos/swordweave-mark-dark-background.png",
+      "kind": "logo",
+      "label": "Mark for a dark background",
+      "width": 647,
+      "height": 795,
+      "caption": "SwordWeave’s existing pale mark on a transparent background.",
+      "credit": "SwordWeave / Marius Ion",
+      "source": "/logo-dark.png",
+      "rights": "Project identity; no trademark, endorsement or new standalone reuse license is granted by this kit.",
+      "bytes": 321088,
+      "sha256": "f8f046959172e60c796305968d133817a1a8d98d1f1b65f665e001b7a5925cee"
+    },
+    {
+      "file": "logos/swordweave-mark-mono.png",
+      "kind": "logo",
+      "label": "Monochrome mark",
+      "width": 1000,
+      "height": 1000,
+      "caption": "SwordWeave’s existing monochrome mark.",
+      "credit": "SwordWeave / Marius Ion",
+      "source": "/logo-mono.png",
+      "rights": "Project identity; no trademark, endorsement or new standalone reuse license is granted by this kit.",
+      "bytes": 73206,
+      "sha256": "160f13172405534435c850e53b6fb3ea91b135c63a8e573a952d8cf0fc74b7cb"
+    },
+    {
+      "file": "previews/phb-cover.jpg",
+      "kind": "book",
+      "label": "Player’s Handbook cover",
+      "width": 894,
+      "height": 1200,
+      "caption": "Cover of the illustrated v0.1-alpha Player’s Handbook, Interwoven edition, 19 October 2026. Actual PDF page 1.",
+      "credit": "SwordWeave / Marius Ion. AI-generated illustration made with OpenAI image-generation tools under Marius Ion’s direction.",
+      "source": "Player’s Handbook, Interwoven edition, PDF page 1",
+      "sourcePdfSha256": "6215d7461b8fe5748898b586d6b89fde52a17a208d555eaea941345422fc39ae",
+      "rights": "Existing book preview, not an open artwork license. The complete-book notice and separately identified art, branding and font notices apply; ask before other standalone artwork reuse.",
+      "bytes": 302874,
+      "sha256": "89952a610b9e1f271a876eecb4b9dc12f6d067b3f4129637ae1ea47e176fa122"
+    },
+    {
+      "file": "previews/phb-first-session.jpg",
+      "kind": "book",
+      "label": "First-session worksheet",
+      "width": 894,
+      "height": 1200,
+      "caption": "First-session worksheet in the illustrated Player’s Handbook. Actual PDF page 7, Interwoven edition, 19 October 2026.",
+      "credit": "SwordWeave / Marius Ion",
+      "source": "Player’s Handbook, Interwoven edition, PDF page 7",
+      "sourcePdfSha256": "6215d7461b8fe5748898b586d6b89fde52a17a208d555eaea941345422fc39ae",
+      "rights": "Designated original game text and instructional diagrams use CC BY 4.0. Branding, artwork and fonts keep their separate notices.",
+      "bytes": 188247,
+      "sha256": "032d2d4e6955f4f683b145476cb0d87b8d301ef9f429f3b114ce70a022262fe6"
+    },
+    {
+      "file": "previews/phb-worked-build.jpg",
+      "kind": "book",
+      "label": "Worked character build",
+      "width": 894,
+      "height": 1200,
+      "caption": "An acquisition ledger and worked check in the illustrated Player’s Handbook. Actual PDF page 53, Interwoven edition, 19 October 2026; workshop proposals are labeled in the source.",
+      "credit": "SwordWeave / Marius Ion",
+      "source": "Player’s Handbook, Interwoven edition, PDF page 53",
+      "sourcePdfSha256": "6215d7461b8fe5748898b586d6b89fde52a17a208d555eaea941345422fc39ae",
+      "rights": "Designated original game text and instructional diagrams use CC BY 4.0. Branding, artwork and fonts keep their separate notices.",
+      "bytes": 200141,
+      "sha256": "9ddcdccf61ebc9792192a68dbac30b2dc64fc8aab5b65482fd2b3e0c30d85596"
+    },
+    {
+      "file": "previews/neris-public-character.png",
+      "kind": "screenshot",
+      "label": "Neris Cinderthread in the browser",
+      "width": 1280,
+      "height": 720,
+      "caption": "Neris Cinderthread, an existing level-8 public demonstration character. The real read-only sheet shows heritage, upbringing, manifest and its Build Unit ledger. Captured 20 October 2026.",
+      "credit": "SwordWeave / Marius Ion. Embedded character artwork was made with OpenAI image-generation tools under Marius Ion’s direction. Icons retain their individual source notices.",
+      "source": "https://www.swordweave.quest/characters/1662962b-14c5-4433-994e-6273b3f7ca57?view=public",
+      "rights": "Real public website screenshot; game text, software, artwork, branding and icons retain their separate source notices. This is a demonstration record, not independent playtest evidence.",
+      "bytes": 93703,
+      "sha256": "935f33b45f48709fc39bbd9dde5b745f1560f0e492f1de0770f9498265d1899d"
+    }
+  ]
+}

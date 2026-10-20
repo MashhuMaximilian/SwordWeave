@@ -52,6 +52,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <div className="flex flex-wrap items-center gap-4">
                 <a href="/rules" className="hover:text-foreground hover:underline">Rules & play guide</a>
                 <a href="/contact" className="hover:text-foreground hover:underline">Contact</a>
+                <a href="/press" className="hover:text-foreground hover:underline">Creator kit</a>
                 <a href="/privacy" className="hover:text-foreground hover:underline">Privacy</a>
                 <CookiePreferencesButton />
                 <a

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PUBLIC_PAGES, markdownPath } from '../public-pages';
+import { PUBLIC_PAGES, PUBLIC_MARKDOWN_ASSETS, markdownPath } from '../public-pages';
 import { bookMarkdown, guideMarkdown, publicHtmlMarkdown, CORE_BOOKS } from '../markdown';
 import { publicPageMetadata } from '../metadata';
 import sitemap from '@/app/sitemap';
@@ -7,8 +7,12 @@ import robots from '@/app/robots';
 
 describe('public discovery', () => {
   it('maps only curated public pages to distinct canonical URLs and formats', () => {
-    expect(Object.keys(PUBLIC_PAGES)).toHaveLength(14);
-    expect(sitemap()).toHaveLength(14);
+    expect(Object.keys(PUBLIC_PAGES)).toHaveLength(16);
+    expect(sitemap()).toHaveLength(16);
+    expect(PUBLIC_PAGES['/press']).toBeDefined();
+    expect(PUBLIC_PAGES['/tutorials/create-a-primitive']).toBeDefined();
+    expect(PUBLIC_MARKDOWN_ASSETS.has('/press/fact-sheet.md')).toBe(true);
+    expect(PUBLIC_MARKDOWN_ASSETS.has('/characters/private.md')).toBe(false);
     for (const path of Object.keys(PUBLIC_PAGES)) {
       expect(publicPageMetadata(path).alternates?.canonical).toBe(`https://www.swordweave.quest${path === '/' ? '' : path}`);
       expect(markdownPath(path)).toMatch(/\.md$/);

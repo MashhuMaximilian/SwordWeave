@@ -19,6 +19,16 @@
     "description": "Compose SwordWeave abilities and effects from reusable primitives. Use the same owned rules in new actions, create in the Atelier, and adapt Library ideas.",
     "group": "guide"
   },
+  "/tutorials/create-a-primitive": {
+    "title": "Create a primitive: mechanical rule tutorial · SwordWeave",
+    "description": "Follow SwordWeave’s primitive editor through Result, Operation, Value, Recipient, Trigger and stacking, then review and save your first rule.",
+    "group": "guide"
+  },
+  "/press": {
+    "title": "Creator kit: facts, screenshots & logos · SwordWeave",
+    "description": "SwordWeave descriptions, current books, public demo characters, screenshots, logos, alpha status and contact details for creators and reviewers.",
+    "group": "project"
+  },
   "/rules": {
     "title": "Rules & play guide · SwordWeave",
     "description": "Learn SwordWeave: primitives, capabilities, effects, heritages, rolls, combat rhythm, upkeep, damage, and your character sheet.",

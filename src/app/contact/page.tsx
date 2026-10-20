@@ -20,6 +20,7 @@ export default function ContactPage() {
         <header>
           <h1 className="sw-public-title">Let’s talk<br /><em>SwordWeave.</em></h1>
           <p className="sw-public-deck">A question about the game, feedback from your table, or a creator collaboration? Send Mashu a message.</p>
+          <p>Preparing coverage? The <a className="sw-public-link" href="/press">creator kit</a> has project facts, screenshots, logos and current book links.</p>
         </header>
         <div className="sw-contact__direct">
           <h2>Email</h2>
