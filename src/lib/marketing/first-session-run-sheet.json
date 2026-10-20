@@ -1,0 +1,82 @@
+{
+  "title": "Your first SwordWeave session",
+  "subtitle": "A run sheet to prepare, play and learn together",
+  "version": "v0.1 alpha",
+  "updated": "2026-10-20",
+  "intro": "Use this beside the Rules guide. Write your table's agreements and the changes that actually happen; these prompts add no new rules.",
+  "pages": [
+    {
+      "title": "Before the first scene",
+      "purpose": "Agree a small objective and give each player one usable starting point.",
+      "sections": [
+        {
+          "title": "Gather the table",
+          "hint": "Choose a way to pause, check comfort and change direction. Nobody needs to explain a boundary.",
+          "fields": [
+            { "name": "session", "label": "Date, table and GM", "lines": 1 },
+            { "name": "tone", "label": "Our setting, tone and things to leave out", "lines": 2 },
+            { "name": "pause", "label": "Our pause signal, check-in and planned finish time", "lines": 1 }
+          ]
+        },
+        {
+          "title": "Choose the starting situation",
+          "hint": "Name a goal, a visible problem and another possible approach. An encounter's sample party budget is not a difficulty guarantee.",
+          "fields": [
+            { "name": "scene", "label": "Scene or encounter / version", "lines": 1 },
+            { "name": "objective", "label": "What are we trying to achieve? What can we perceive?", "lines": 2 },
+            { "name": "alternatives", "label": "An approach besides a fight; what failure could change", "lines": 2 }
+          ]
+        },
+        {
+          "title": "Check each character",
+          "hint": "Use the GM's agreed starting budget. Neris is a level-8 demo; review a fork before using it. Read the actual limits of one useful capability.",
+          "fields": [
+            { "name": "party", "label": "Players / characters / agreed level or BU / separate Item BU", "lines": 2 },
+            { "name": "ready", "label": "One usable capability, its supplies, and where to find current Vitality", "lines": 2 }
+          ]
+        }
+      ],
+      "checks": ["Sheets and dice or a dice roller are ready", "Everyone knows the objective and pause signal", "GM has read the encounter's pinned creatures and other approaches"],
+      "links": [
+        { "title": "Start with Your first game", "url": "https://www.swordweave.quest/rules#start" },
+        { "title": "Inspect the selected public encounter", "url": "https://www.swordweave.quest/encounters/2aec9871-7900-59f4-a68f-7cd8b80af5a9" }
+      ]
+    },
+    {
+      "title": "At the table, then after play",
+      "purpose": "Follow one declared intent through its result. Reuse the record for a decision that taught you something.",
+      "sections": [
+        {
+          "title": "Agree before resolving",
+          "hint": "Begin with intent. Ordinary actions may need no special purchase. For unusual behavior, inspect owned permissions; agree scope, resolution, stakes and any Cost before rolling.",
+          "fields": [
+            { "name": "intent", "label": "Who acts, what do they want, and what access applies?", "lines": 2 },
+            { "name": "stakes", "label": "Agreed scope, timing, roll / threshold, success and failure", "lines": 2 },
+            { "name": "cost", "label": "Agreed use Cost / supplies / duration and continuation point", "lines": 2 }
+          ]
+        },
+        {
+          "title": "Resolve and carry the change forward",
+          "hint": "Use the displayed total once. In combat, coordinate Council and Fast / Measured / Heavy. Movement shares the round's allowance; reactions need their own valid trigger and available slot.",
+          "fields": [
+            { "name": "roll", "label": "Actual dice + displayed bonus = total; what happened?", "lines": 2 },
+            { "name": "changes", "label": "Vitality before / after; supplies spent; ongoing effects and their endings", "lines": 2 },
+            { "name": "next", "label": "The new situation and the next decision", "lines": 1 }
+          ]
+        },
+        {
+          "title": "Keep the useful feedback",
+          "hint": "Record the rule / page or tool step, what you expected, what happened and any temporary ruling. Leave out other players' private information when sharing feedback.",
+          "fields": [
+            { "name": "feedback", "label": "One clear moment, one confusing step, and what we will try next", "lines": 3 }
+          ]
+        }
+      ],
+      "checks": ["Changed values and spent supplies recorded", "Ongoing effects have clear timing and ending terms", "Open questions saved with the version we used"],
+      "links": [
+        { "title": "Rules reference", "url": "https://www.swordweave.quest/rules" },
+        { "title": "Send alpha feedback", "url": "https://www.swordweave.quest/contact" }
+      ]
+    }
+  ]
+}

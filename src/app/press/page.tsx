@@ -7,6 +7,7 @@ import { StructuredData } from '@/components/analytics/structured-data';
 import { TrackLink } from '@/components/analytics/track-link';
 import { publicPageMetadata } from '@/lib/seo/metadata';
 import { PRESS_KIT, PRESS_KIT_ZIP } from '@/lib/marketing/press-kit';
+import { CompanionMaterials } from '@/components/marketing/companion-materials';
 import './press.css';
 
 export const metadata: Metadata = publicPageMetadata('/press');
@@ -29,7 +30,7 @@ export default function PressPage() {
             <TrackLink event={{ name: 'media_kit_download', params: { placement: 'press', release_version: 'v0.1-alpha' } }} className="sw-cta-primary" href={PRESS_KIT_ZIP} download><Download aria-hidden="true" /> Download the creator kit</TrackLink>
             <Link className="sw-cta-ghost" href="/contact"><Mail aria-hidden="true" /> Contact Mashu <ArrowRight aria-hidden="true" /></Link>
           </div>
-          <p className="sw-press__download-note">ZIP: descriptions, fact sheet, three logo files, three book previews, a public character screenshot, captions and asset notices. Books are linked separately so you can choose the current edition.</p>
+          <p className="sw-press__download-note">ZIP: descriptions, fact sheet, original fillable companions, flat and gradient marks, three book previews, a public character screenshot, captions and asset notices. Books are linked separately so you can choose the current edition.</p>
         </div>
         <figure className="sw-press__cover">
           <Link href="/books/players-handbook" aria-label="Read the Player’s Handbook">
@@ -40,7 +41,7 @@ export default function PressPage() {
       </header>
 
       <nav className="sw-press__contents" aria-label="Creator kit sections">
-        <a href="#descriptions">Descriptions</a><a href="#facts">Facts &amp; alpha status</a><a href="#books">Books &amp; examples</a><a href="#screenshots">Previews</a><a href="#logos">Logos</a><a href="#credits">Credits &amp; AI use</a>
+        <a href="#descriptions">Descriptions</a><a href="#facts">Facts &amp; alpha status</a><a href="#books">Books &amp; examples</a><a href="#materials">Table companions</a><a href="#screenshots">Previews</a><a href="#logos">Logos</a><a href="#credits">Credits &amp; AI use</a>
       </nav>
 
       <section className="sw-public-section sw-press__editorial" id="descriptions" aria-labelledby="press-descriptions">
@@ -76,6 +77,8 @@ export default function PressPage() {
         </div>
       </section>
 
+      <CompanionMaterials />
+
       <section className="sw-public-section" id="screenshots" aria-labelledby="press-screenshots">
         <header className="sw-press__section-head"><h2 id="press-screenshots">On the page.<br /><em>In the browser.</em></h2><p>A real public character sheet and faithful exports from the published illustrated PHB. Sources, dates and credits accompany the downloads.</p></header>
         {screenshots.map(asset => <figure className="sw-press__tool-preview" key={asset.file}>
@@ -89,10 +92,10 @@ export default function PressPage() {
       </section>
 
       <section className="sw-public-section" id="logos" aria-labelledby="press-logos">
-        <header className="sw-press__section-head"><h2 id="press-logos">The project mark.</h2><p>Original PNG files, including transparent light- and dark-background versions. Keep their proportions and use the name SwordWeave when identifying the project.</p></header>
+        <header className="sw-press__section-head"><h2 id="press-logos">The project mark.</h2><p>The navigation’s gold-and-teal gradient mark and the original flat versions. Keep their proportions and use the name SwordWeave when identifying the project.</p></header>
         <div className="sw-press__logos">{logos.map((asset, index) => <figure key={asset.file}>
           <div className={`sw-press__logo-field ${index === 0 ? 'sw-press__logo-field--light' : ''}`}><Image src={`/press/${asset.file}`} alt={asset.caption} width={asset.width} height={asset.height} sizes="160px" /></div>
-          <figcaption><h3>{asset.label}</h3><a className="sw-public-link" href={`/press/${asset.file}`} download>Download PNG <Download aria-hidden="true" /></a></figcaption>
+          <figcaption><h3>{asset.label}</h3><a className="sw-public-link" href={`/press/${asset.file}`} download>Download PNG <Download aria-hidden="true" /></a>{asset.file.endsWith('swordweave-mark-gradient.png') && <a className="sw-public-link" href="/press/logos/swordweave-mark-gradient.svg" download>Download SVG <Download aria-hidden="true" /></a>}</figcaption>
         </figure>)}</div>
         <p className="sw-press__asset-note">The files identify SwordWeave. They do not imply an endorsement or grant trademark rights. See the <a href="/press/asset-notices.md">asset notices</a> for reuse boundaries.</p>
       </section>

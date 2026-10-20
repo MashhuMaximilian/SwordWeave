@@ -1,3 +1,5 @@
+import { REUSE_EXAMPLE_BLOCKS } from './reuse-example';
+import { NERIS_SHEET_URL, ORREN_SHEET_URL } from './neris-example';
 import { searchTopics } from './guide-search';
 
 export type GuideBlock = {
@@ -34,6 +36,126 @@ export const PLAY_GUIDE: GuideTopic[] = [
       {
         "title": "You do not need to know another game",
         "body": "A tabletop roleplaying game is a story you create together. Each player describes what their character says and does. One person, the Dungeon Master (DM, also called the GM), describes the world and plays the people and creatures you encounter. Together you decide what happens. Dice help answer uncertain questions; they do not replace your ideas."
+      },
+      {
+        "id": "first-session-preparation",
+        "title": "First-session preparation checklist",
+        "body": "Prepare one small situation with an understandable objective. Use a ready example if it helps, or bring your own people and setting. You do not need to master every chapter, join Discord or finish reading three books before trying the game.",
+        "ordered": [
+          "Agree the table: choose a GM, setting, tone, boundaries, session length and a way to pause. Decide whether you are playing in person or online and what starting level or budget fits this group.",
+          "GM reading order: finish Your first game, then read Combat rhythm, Clashes, contests & reactions, Strain, Cost & scaling and Vitality, collapse & consequences. Read Duration, upkeep & interruption if an intended working needs maintenance. The links below open those exact chapters.",
+          "Player reading order: read Your first character, then Primitives, capabilities & effects. Inspect one usable action and its actual rules. Build your own concept or fork a public example into your account; an existing character is a starting aid, not a required class or catalogue choice.",
+          "Choose the scene: open Caravan at the Rooted Ford, read its objective, terrain, alternatives and pinned creatures. Replace the illustrative four-person / 100-BU party inputs with your actual party. Those inputs are not a difficulty rating, and safe passage rather than killing every creature is the stated objective.",
+          "Before the first intent: each player finds current/max Vitality, DC, the relevant combined check bonus, movement, a usable capability and its ingredients. Name the supplies the scene actually uses. Agree access, stakes and any Cost before a roll; use Council and the shared tracks when combat timing matters.",
+          "Finish with a useful record: write changed Vitality, spent supplies, ongoing effects, ending conditions and the next unresolved problem. Tell the creator which version you used, the intent or field that caused confusion, what you expected, what happened and your table’s ruling. Omit private player information."
+        ],
+        "table": {
+          "caption": "Bring the essentials; keep the extra reference optional",
+          "headers": [
+            "Status",
+            "Material",
+            "What to prepare"
+          ],
+          "rows": [
+            [
+              "Essential",
+              "Character sheets and one person to GM",
+              "Read your own build and agree the starting budget. Neris Cinderthread is a level-8 public example, not a universal beginner starting level. Orren Vaultwright is an optional, more elaborate level-16 reference."
+            ],
+            [
+              "Essential",
+              "Dice or a dice roller",
+              "Have a d20 and the output dice used by the chosen characters. The linked hostile Rooted Ford example uses a d20 and a d4."
+            ],
+            [
+              "Essential",
+              "A scene and a way to record changes",
+              "Keep the objective, positions, Vitality, Reaction Slots, agreed supplies and consequences readable. For Rooted Ford, identify the medicine pack and any ration offered; do not silently grant unlimited supplies."
+            ],
+            [
+              "Optional",
+              "Current PHB download or online reader",
+              "Use the PHB for fuller explanations. The GM Guide and SRD are additional references while their revised editions are being finished. Check the Books page for actual available versions."
+            ],
+            [
+              "Optional",
+              "Browser account and shared tools",
+              "Public rules and examples can be read without an account. Saving or forking your own workspace needs one. A paper sheet or ordinary notes can still record table outcomes."
+            ],
+            [
+              "Optional",
+              "Discord and advanced examples",
+              "Discord can help with questions and feedback; Contact works without joining it. Keep the first commitment to one session rather than a campaign migration."
+            ]
+          ]
+        },
+        "example": "Caravan at the Rooted Ford starts with a parent grazer, its calf, two hungry jackals and medicine that needs to cross. The goal is safe passage, not defeating every creature. The encounter already offers retreat, food, recovering a pack and a longer route as possible approaches.",
+        "links": [
+          {
+            "title": "Your first character",
+            "url": "/rules#first-character"
+          },
+          {
+            "title": "Primitives, capabilities & effects",
+            "url": "/rules#building-blocks"
+          },
+          {
+            "title": "Combat rhythm",
+            "url": "/rules#combat"
+          },
+          {
+            "title": "Clashes, contests & reactions",
+            "url": "/rules#reactions"
+          },
+          {
+            "title": "Strain, Cost & scaling",
+            "url": "/rules#strain"
+          },
+          {
+            "title": "Vitality, collapse & consequences",
+            "url": "/rules#vitality"
+          },
+          {
+            "title": "Duration, upkeep & interruption",
+            "url": "/rules#upkeep"
+          },
+          {
+            "title": "Neris: inspect and fork the public level-8 sheet",
+            "url": NERIS_SHEET_URL
+          },
+          {
+            "title": "Orren: optional advanced public level-16 sheet",
+            "url": ORREN_SHEET_URL
+          },
+          {
+            "title": "Caravan at the Rooted Ford: preparation",
+            "url": "/encounters/2aec9871-7900-59f4-a68f-7cd8b80af5a9"
+          },
+          {
+            "title": "Rooted Ford: resolved nonviolent and hostile examples",
+            "url": "/combat#rooted-ford"
+          },
+          {
+            "title": "Read or download the current books",
+            "url": "/books"
+          },
+          {
+            "title": "Print or fill the first-session run sheet (PDF)",
+            "url": "/press/materials/swordweave-first-session-run-sheet.pdf"
+          },
+          {
+            "title": "Keep the Build with Neris companion beside the character guide (PDF)",
+            "url": "/press/materials/swordweave-build-with-neris.pdf"
+          },
+          {
+            "title": "Send actionable session feedback",
+            "url": "/contact"
+          },
+          {
+            "title": "Optional Discord community",
+            "url": "https://discord.gg/3z5tqnchY"
+          }
+        ]
       },
       {
         "title": "Gather your table",
@@ -84,20 +206,17 @@ export const PLAY_GUIDE: GuideTopic[] = [
       },
       {
         "title": "Where to go next",
-        "body": "Read Your first character to build a starting sheet, then Primitives, capabilities & effects to understand its pieces. At the table, use the search and topic list as a reference. The optional detail panels explain vocabulary and calculations without making you read all of them before playing."
-      },
-      {
-        "title": "First-session preparation checklist",
-        "body": "Use this checklist alongside the rules above. Choose a small situation with a clear objective so you can learn through decisions, rather than trying every subsystem in the first session.",
-        "rules": [
-          "Before inviting players: agree the setting, tone, boundaries, session length and a way to pause. Choose who will GM and whether you will play in person or online.",
-          "GM preparation: read Your first game, Combat rhythm, Strain, Cost & scaling and Vitality, collapse & consequences. Choose one existing encounter starter, read its pinned creatures and alternatives, and replace its illustrative party budgets with your actual party. Encounter starters are not difficulty-rated packages.",
-          "Player preparation: read Your first character and Primitives, capabilities & effects. Agree a starting budget with the GM, then create a character or inspect and fork a public demo. Neris Cinderthread is a level-8 example; use it only if that starting point fits your table. Orren Vaultwright is a more elaborate level-16 example.",
-          "Bring: a readable character sheet, dice or a dice roller, the agreed supplies and a way to record consequences. Find current Vitality, the relevant checks and one usable capability before starting. Public reading needs no account; saving or forking into your own workspace does.",
-          "Begin: describe the objective and what the characters can perceive. Let each player ask a question and propose an intent. Agree access, stakes and any Cost before resolving; use the shared-round procedure when the situation calls for combat timing.",
-          "Finish: record changed Vitality, spent supplies, ongoing effects and unresolved consequences. Ask what felt clear, where the table had to stop and which ruling needs a note. Share actionable alpha feedback through Contact or the optional Discord community."
-        ],
-        "example": "Caravan at the Rooted Ford starts with a parent grazer, its calf, two hungry jackals and medicine that needs to cross. The goal is safe passage, not defeating every creature. The encounter already offers retreat, food, recovering a pack and a longer route as possible approaches."
+        "body": "Read Your first character to build a starting sheet, then Primitives, capabilities & effects to understand its pieces. At the table, use the search and topic list as a reference. The optional detail panels explain vocabulary and calculations without making you read all of them before playing.",
+        "links": [
+          {
+            "title": "Return to first-session preparation",
+            "url": "/rules#first-session-preparation"
+          },
+          {
+            "title": "Build your own character",
+            "url": "/characters/new"
+          }
+        ]
       }
     ],
     "sources": [
@@ -882,47 +1001,45 @@ export const PLAY_GUIDE: GuideTopic[] = [
   {
     "id": "creating",
     "title": "Create, edit & fork",
-    "summary": "Turn your own concept into reusable rules, adapt a Library seed, and keep ownership and versions clear.",
+    "summary": "Start from one owned set, use it in several ways, then save and develop your own expressions.",
     "keywords": "atelier create author edit fork publish private library ownership version primitive capability effect heritage",
     "blocks": [
       {
         "title": "Start with the idea you want to play",
-        "body": "Describe the result in plain language before looking for a Library entry: “I want to stitch memories into maps,” for example. Discuss what that means with the DM. Break it into subjects you can affect, actions you can perform and any special rules it needs. You can author a primitive, effect, capability, heritage or item in the Atelier. The community Library provides inspiration; your concept does not have to match an existing entry."
+        "body": "Describe the result in plain language before looking for a Library entry: “I want to stitch memories into maps,” for example. Discuss what that means with the DM. Break it into subjects you can affect, actions you can perform and any special rules it needs. You can author a primitive, effect, capability, heritage or item in the Atelier. The community Library provides inspiration; your concept does not have to match an existing entry.",
+        "id": "idea"
       },
+      ...REUSE_EXAMPLE_BLOCKS,
       {
         "title": "Create a reusable building block",
         "body": "In the Atelier, choose the kind of piece you are building and give it a clear name and description. A primitive grants one reusable permission or rule. Describe its intended scope, limits and price; add a mechanical rule when a tracked number or behavior should change. The description explains what happens in the fiction. A mechanical rule helps the sheet calculate it. Neither replaces the table’s judgment about an actual action.",
-        "example": "“Cartographic Memory” could permit recording a witnessed place as a remembered map. Explain what can be recalled and what remains uncertain. Agree its BU price and limits before purchasing it for play."
+        "example": "“Cartographic Memory” could permit recording a witnessed place as a remembered map. Explain what can be recalled and what remains uncertain. Agree its BU price and limits before purchasing it for play.",
+        "id": "primitive"
       },
       {
         "title": "Compose effects and capabilities",
-        "body": "An effect groups related primitives; a capability compiles pieces into a ready idea for play. Select the relevant pieces, describe targeting and resolution, and state duration, upkeep and consequences where needed. Preview the composition to check that it says what you mean. Saved capabilities are shortcuts: owned primitives can still be combined into new actions at the table."
+        "body": "An effect groups related primitives; a capability compiles pieces into a ready idea for play. Select the relevant pieces, describe targeting and resolution, and state duration, upkeep and consequences where needed. Preview the composition to check that it says what you mean. Saved capabilities are shortcuts: owned primitives can still be combined into new actions at the table.",
+        "id": "compose"
       },
       {
         "title": "Fork something you want to adapt",
-        "body": "Fork makes your own copy of a Library piece or public character. Open its preview or sheet, choose Fork, then work on your copy. A public character opens read-only; fork it to change Vitality, consequences or its build. Your edits to the copy do not rewrite the original author’s work. Review inherited rules and costs before using the copy."
+        "body": "Fork makes your own copy of a Library piece or public character. Open its preview or sheet, choose Fork, then work on your copy. A public character opens read-only; fork it to change Vitality, consequences or its build. Your edits to the copy do not rewrite the original author’s work. Review inherited rules and costs before using the copy.",
+        "id": "fork"
       },
       {
         "title": "Edit, save and review",
-        "body": "Open your own creation in the Atelier or open edit mode on a character you own or have edit permission for. Change the description or composition, inspect the preview and budget, then save. Reading a Library preview does not give edit permission. Fork a piece owned by somebody else when you want your own version. A character can keep a pinned older version; review an offered update before adopting it."
+        "body": "Open your own creation in the Atelier or open edit mode on a character you own or have edit permission for. Change the description or composition, inspect the preview and budget, then save. Reading a Library preview does not give edit permission. Fork a piece owned by somebody else when you want your own version. A character can keep a pinned older version; review an offered update before adopting it.",
+        "id": "edit"
       },
       {
         "title": "Choose who can see the work",
-        "body": "Keep a draft private while shaping it. Use the available sharing or publishing controls when you want others to read or reuse it. Publishing is a separate choice from writing a useful rule for your own table. Check the current visibility before you finish."
+        "body": "Keep a draft private while shaping it. Use the available sharing or publishing controls when you want others to read or reuse it. Publishing is a separate choice from writing a useful rule for your own table. Check the current visibility before you finish.",
+        "id": "visibility"
       },
       {
         "title": "Bring the new rule into play",
-        "body": "Agree its price and permissions with the DM, then acquire the primitive using available BU. You can invent and purchase a piece during a session, including combat when it makes sense for the scene. Buying it grants access; the particular action still needs an agreed resolution and cost. Keep a note of the ruling so the next use is easier."
-      },
-      {
-        "title": "One set of primitives, several uses",
-        "body": "Start with the verb tier, domain and range that permit the idea, plus an output die when the construction needs one. These are reusable permissions, not a fixed list of finished powers. The same owned set can support several actions or saved capabilities. Additional primitives can supply a new behavior, a specific rule or another permission when the idea needs it; each action does not automatically need a new purchase.",
-        "example": "In the Player’s Handbook, Mira owns Verb II, Water I and Near Range. Within their actual definitions, she can transfer existing water between vessels, redirect a narrow stream or reshape an available flow into a maintained passage. She can call one useful arrangement River Hand and reuse those ingredients in another. A more ambitious version still needs an agreed volume, route, opposition, duration and Cost. Her separate d8 output permission can support an appropriate water-impact construction; it does not make every water action an attack or a heal."
-      },
-      {
-        "title": "Choose the expression at the table",
-        "body": "After checking access, describe how much the action affects, how strongly, where it reaches and how its parts depend on one another. Dice count, number of recipients, area and duration are scaling choices; they do not each require a separate primitive by default. They can raise Strain or change the Cost. A new behavior can need new access, and an existing authored primitive can impose specific limits. Buying ingredients in BU and paying for an attempted use are separate decisions.",
-        "example": "Moving a cup of water across a table may simply happen. Diverting a surging channel from a worker’s legs may need a check and continued direction. Healing an injured worker is a different behavior: Water access and a larger payment do not grant it on their own. Agree what makes that treatment possible before resolving it."
+        "body": "Agree its price and permissions with the DM, then acquire the primitive using available BU. You can invent and purchase a piece during a session, including combat when it makes sense for the scene. Buying it grants access; the particular action still needs an agreed resolution and cost. Keep a note of the ruling so the next use is easier.",
+        "id": "play"
       }
     ]
   },

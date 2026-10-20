@@ -19,7 +19,7 @@ For each batch retain its diff, focused checks, desktop/phone proof, content/rul
 
 ## Batch 1 — shared reader and visible destinations
 
-**Owners:** reader agent, navigation agent, tutorial-data agent; parent integration/review. **Active now.** Tasks WEB-06, NAV-01 and the source-completeness portion of AI-01.
+**Owners:** reader agent, navigation agent, tutorial-data agent; parent integration/review. **Implemented; see the current board.** Tasks WEB-06, NAV-01 and the source-completeness portion of AI-01.
 
 | Work | Deliverable | Acceptance |
 | --- | --- | --- |
@@ -98,13 +98,10 @@ Research trim/page formats, bleed/safe areas, paper/binding, color options, prin
 - No task becomes accepted simply because its agent finished. Every handoff lists changed files, checks, open concerns and a reviewable artifact.
 - Use one active batch plus genuinely independent work; do not begin all seven batches at once. Continue independent work when founder input is needed, without treating silence as approval.
 
-## Immediate assignments
+## Current handoff
 
-1. Reader agent: shared component/model/search with Rules and embedded preservation.
-2. Navigation agent: Create destinations, Creator kit, responsive and keyboard behavior.
-3. Tutorial-data agent: complete existing tutorial converted to shared structured content.
-4. Parent: execution plan/status board, Creating/tutorial integration, full-source Markdown, preservation checks, one build and the reviewable first result.
+Batches 2–3 have been implemented with bounded agent scopes for the Neris construction trail, reuse/encounter teaching, source/numeric review and faithful gradient export. The parent integrated the original PDF/web companions, revised kit, public Library navigation and complete Neris Markdown. Both public monster and encounter browsing work signed out; private records and saving controls retain their existing checks.
 
-**Current handoff:** all three agent scopes and parent integration are implemented. Thirty-five focused tests, scoped lint, the final production build and bounded local browser checks pass. A protected Vercel preview is Ready; normal Vercel sign-in is needed for remote review. See the board for exact evidence and limitations. Batch 2 is next in the queue; the broader teaching/material work has not been marked complete.
+Fifty-four focused tests, scoped lint, actual desktop/phone reading flows and browser downloads pass. Every companion PDF page and all fillable fields were checked. The implementation board records source evidence, archive hashes, final build/preview status and the production-mode Markdown caveat. These checks establish a reviewable result; founder acceptance is still separate.
 
-Broader completion requires multiple batches and founder-dependent inputs. The first delivery is a finished, reviewable reader/navigation batch; it is not a claim that the entire marketing program is complete.
+Next active implementation batch is discovery/measurement/performance (Batch 4), followed by the finished video pilot (Batch 5) once teaching is accepted. Book reconciliation, all-three-book upload and real playtest feedback remain founder dependencies. No claim is made that the entire marketing program is finished.

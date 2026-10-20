@@ -8,6 +8,8 @@ This kit collects existing project marks, faithful publication previews, factual
 
 The designated original rules and explanatory game text, including original instructional vector diagrams and schematic maps, use [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/). Credit Marius Ion / SwordWeave, link the source and license, and identify changes. Follow the source publication and repository notices for the actual scope. Reuse does not imply endorsement.
 
+The first-session run sheet and Build with Neris companion are newly authored instructional text and forms under that CC BY 4.0 notice. They are separate, printable/fillable documents with equivalent public text; they are not extracted PHB pages. Their illustrative table choices do not establish universal prices, difficulty, treatment or Cost rules.
+
 The book-preview files are unmodified exports from the published illustrated Player’s Handbook, Interwoven edition, 19 October 2026: PDF pages 1, 7 and 53. The source PDF hash is included per file in the manifest. Page 53 labels some prices and choices as workshop proposals; its contents should not be represented as universal catalogue prices.
 
 ## Illustrations and the complete book
@@ -20,7 +22,7 @@ Ask [contact@swordweave.quest](mailto:contact@swordweave.quest) about extracting
 
 ## Project identity
 
-The SwordWeave name and supplied marks identify the project. The existing publication notice grants no trademark or endorsement rights; this kit adds none. The PNGs are unchanged copies of the project’s existing public logo files. Their presence in the kit does not create a new general art or brand license.
+The SwordWeave name and supplied marks identify the project. The existing publication notice grants no trademark or endorsement rights; this kit adds none. The flat PNGs are unchanged copies of the existing public logos. The gradient PNG and self-contained SVG faithfully export the navigation's existing alpha silhouette and gold-and-teal gradient; the SVG embeds the original raster alpha mask rather than claiming a new vector master. Their presence in the kit does not create a new general art or brand license.
 
 ## Website screenshots, icons and fonts
 

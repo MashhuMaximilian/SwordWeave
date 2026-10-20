@@ -5,6 +5,7 @@ import { PLAY_GUIDE, type GuideBlock, type GuideTopic } from '@/lib/rules/play-g
 import { CREATING_GUIDE, CREATING_GUIDE_INTRO } from '@/lib/rules/creating-guide';
 import { PRIMITIVE_TUTORIAL, PRIMITIVE_TUTORIAL_INTRO } from '@/lib/rules/primitive-tutorial';
 import { guideBookLinks } from '@/lib/publications/book-links';
+import { NERIS_GUIDE } from '@/lib/rules/neris-example';
 import figures from '@/lib/publications/figures.json';
 import art from '@/lib/publications/art.json';
 import maps from '@/lib/publications/maps.json';
@@ -82,6 +83,10 @@ export function publicHtmlMarkdown(html: string, path: string): string {
     if (value) $(element).attr(key, new URL(value, `${SITE_URL}${path}`).toString());
   });
   const converter = new TurndownService({ headingStyle: 'atx', bulletListMarker: '-' });
+  if (path === '/character') converter.addRule('complete-character-walkthrough', {
+    filter: node => node.hasAttribute('data-neris-guide'),
+    replacement: () => `\n\n${NERIS_GUIDE.map(topicMarkdown).join('\n\n')}\n\n`,
+  });
   converter.addRule('tables', { filter: 'table', replacement: (_, node) => {
     const caption = converter.turndown(node.querySelector('caption')?.innerHTML ?? '');
     const rows = Array.from(node.querySelectorAll('tr')).map(row =>

@@ -98,6 +98,56 @@
       "rights": "Real public website screenshot; game text, software, artwork, branding and icons retain their separate source notices. This is a demonstration record, not independent playtest evidence.",
       "bytes": 93703,
       "sha256": "935f33b45f48709fc39bbd9dde5b745f1560f0e492f1de0770f9498265d1899d"
+    },
+    {
+      "file": "logos/swordweave-mark-gradient.png",
+      "kind": "logo",
+      "label": "Navigation gradient mark",
+      "width": 1440,
+      "height": 1760,
+      "caption": "The existing navigation silhouette with its gold-and-teal metallic gradient, on a transparent background. The SVG uses the original raster alpha mask with a vector gradient.",
+      "source": "Existing public/logo-light.png alpha mask and the 132-degree gradient in src/app/public-guide-refinements.css; exported 20 October 2026.",
+      "credit": "SwordWeave / Marius Ion",
+      "rights": "Project identity; no new trademark or endorsement rights. See asset-notices.md.",
+      "bytes": 1221334,
+      "sha256": "3bdd881fa3ffcb641f953edb5dfea04bc6672bb1e0443d0e562ab6717f33484e"
+    },
+    {
+      "file": "logos/swordweave-mark-gradient.svg",
+      "kind": "logo-source",
+      "label": "Navigation gradient mark SVG source",
+      "width": 1440,
+      "height": 1760,
+      "caption": "The existing navigation silhouette with its gold-and-teal metallic gradient, on a transparent background. The SVG uses the original raster alpha mask with a vector gradient.",
+      "source": "Existing public/logo-light.png alpha mask and the 132-degree gradient in src/app/public-guide-refinements.css; exported 20 October 2026.",
+      "credit": "SwordWeave / Marius Ion",
+      "rights": "Project identity; no new trademark or endorsement rights. See asset-notices.md.",
+      "bytes": 114100,
+      "sha256": "2aa46b389265afe294998b599a51e6ab32f557145663fffc57124d3e0a5ff54a"
+    }
+  ],
+  "materials": [
+    {
+      "title": "Your first SwordWeave session",
+      "pdf": "materials/swordweave-first-session-run-sheet.pdf",
+      "text": "materials/swordweave-first-session-run-sheet.md",
+      "pages": 2,
+      "description": "Original preparation and action/consequence run sheet, with 21 interactive fields.",
+      "pdfBytes": 49737,
+      "pdfSha256": "d408eb8814af8b226e5c335d40cd11adfbc2659d1c9c9f0dc07600ecf9b223c4",
+      "textBytes": 4103,
+      "textSha256": "90d22b09f9ff92d7476ca61e5e485d800ecc0d85f46ddf7a8588e77b3e4f30a4"
+    },
+    {
+      "title": "Build with Neris Cinderthread",
+      "pdf": "materials/swordweave-build-with-neris.pdf",
+      "text": "materials/swordweave-build-with-neris.md",
+      "pages": 3,
+      "description": "Original source-checked construction companion, complete 19-acquisition ledger, resolved treatment and personal variation prompts; four interactive fields.",
+      "pdfBytes": 38552,
+      "pdfSha256": "30d08b42c846f6bf440db0bac16950fbf9e2559f00b9a593db6fa65706c7f475",
+      "textBytes": 7037,
+      "textSha256": "e438426ca3be11b3fbbfc5850cdf1159860239d455c9cbce783331313bff7305"
     }
   ]
 }

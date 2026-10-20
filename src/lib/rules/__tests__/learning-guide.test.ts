@@ -44,7 +44,7 @@ describe('reusable learning-guide search', () => {
   });
 
   it('finds the relevant Creating chapters instead of matching every chapter through copied keywords', () => {
-    expect(searchTopics(CREATING_GUIDE, 'private').map(topic => topic.id)).toEqual(['visibility']);
+    expect(searchTopics(CREATING_GUIDE, 'private').map(topic => topic.id)).toEqual(['save-river-hand', 'visibility']);
     expect(searchTopics(CREATING_GUIDE, 'fork').map(topic => topic.id)).toEqual(['fork', 'edit']);
   });
 });

@@ -7,24 +7,28 @@ export const CREATING_GUIDE_INTRO = {
   summary: creating.summary,
 };
 
-const chapters = [
-  { id: 'idea', summary: 'Describe the result you want before choosing an entry from the Library.' },
-  { id: 'primitive', summary: 'Give one reusable permission or rule a clear scope and agreed price.' },
-  { id: 'compose', summary: 'Group useful pieces without turning a saved composition into your only possible action.' },
-  { id: 'fork', summary: 'Adapt your own copy while preserving the original author’s work.' },
-  { id: 'edit', summary: 'Review the description, composition, budget and version before saving.' },
-  { id: 'visibility', summary: 'Keep practice drafts private and choose deliberately when to share them.' },
-  { id: 'play', summary: 'Distinguish buying access in BU from resolving and paying for an actual use.' },
-  { id: 'reuse', summary: 'Use the same owned ingredients for several actions and capabilities.' },
-  { id: 'expression', summary: 'Agree the scope, resolution and Cost of the particular attempt.' },
-];
+const summaries: Record<string, string> = {
+  idea: 'Describe the result you want before choosing an entry from the Library.',
+  reuse: 'Read Mira’s actual owned ingredient list before proposing another use.',
+  expression: 'Use the same three permissions for three concrete water tasks.',
+  'ordinary-owned-missing': 'Separate an ordinary action, an owned permission and a genuinely missing behavior.',
+  'river-hand-resolution': 'Follow permission, check, Cost and changed state through one complete use.',
+  'save-river-hand': 'Save one helpful expression while keeping the underlying acquisition ledger unchanged.',
+  primitive: 'Give one reusable permission or rule a clear scope and agreed price.',
+  compose: 'Group useful pieces without turning a saved composition into your only possible action.',
+  fork: 'Adapt your own copy while preserving the original author’s work.',
+  edit: 'Review the description, composition, budget and version before saving.',
+  visibility: 'Keep practice drafts private and choose deliberately when to share them.',
+  play: 'Distinguish buying access in BU from resolving and paying for an actual use.',
+};
 
-/** A focused reading path over the unchanged Creating chapter of the Rules guide. */
+/** One teaching source supplies the Rules chapter, focused reader and full Markdown. */
 export const CREATING_GUIDE: GuideTopic[] = creating.blocks.map((block, index) => ({
-  ...chapters[index]!,
+  id: block.id ?? `step-${index + 1}`,
+  summary: summaries[block.id ?? ''] ?? 'Read the authored rule and review the actual result.',
   title: block.title,
   keywords: '',
-  blocks: [index === 1 ? {
+  blocks: [block.id === 'primitive' ? {
     ...block,
     links: [
       { title: 'Create your first primitive: editor tutorial', url: '/tutorials/create-a-primitive' },

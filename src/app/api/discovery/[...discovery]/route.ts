@@ -18,7 +18,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ dis
       // This avoids a separately maintained text copy and never forwards cookies/auth.
       // Production uses the canonical host; local development uses a fixed loopback origin.
       const origin = process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : SITE_URL;
-      const response = await fetch(`${origin}${path}`, { headers: { Accept: 'text/html' }, redirect: 'error', signal: AbortSignal.timeout(15_000), cache: 'no-store' });
+      // This is an anonymous server fetch, not a browser document navigation.
+      // Advertising text/html makes Clerk's development handshake redirect it.
+      const response = await fetch(`${origin}${path}`, { headers: { Accept: '*/*' }, redirect: 'error', signal: AbortSignal.timeout(15_000), cache: 'no-store' });
       if (!response.ok) throw new Error('Public source unavailable');
       markdown = publicHtmlMarkdown(await response.text(), path);
     }

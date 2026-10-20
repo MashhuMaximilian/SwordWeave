@@ -26,18 +26,34 @@ def build():
         content = path.read_bytes()
         assets.append({**item, "bytes": len(content), "sha256": sha256(content).hexdigest()})
 
+    materials = []
+    material_files = []
+    for item in kit.get("materials", []):
+        entry = dict(item)
+        for key in ("pdf", "text"):
+            path = PRESS / item[key]
+            if not path.is_file() or PRESS.resolve() not in path.resolve().parents:
+                raise ValueError(f"Missing or invalid companion: {item[key]}")
+            content = path.read_bytes()
+            entry[key + "Bytes"] = len(content)
+            entry[key + "Sha256"] = sha256(content).hexdigest()
+            material_files.append(path)
+        materials.append(entry)
+
     manifest = {
         "project": kit["name"], "version": kit["version"], "updated": kit["updated"],
         "source": "https://www.swordweave.quest/press",
         "notice": "Read asset-notices.md. These files do not share one blanket license.",
         "assets": assets,
+        "materials": materials,
     }
     (PRESS / "asset-manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n")
     facts = [f"# {kit['name']} creator fact sheet", f"{kit['version']} · Updated {kit['updated']}",
              "## One sentence", kit["oneLine"], "## Short description", kit["shortDescription"],
              "## Longer description", kit["longDescription"], "## Facts"]
     facts += [f"- **{item['label']}:** {item['value']}" for item in kit["facts"]]
-    facts += ["## Alpha limitations", *[f"- {item}" for item in kit["limitations"]],
+    facts += ["## Original table companions", *[f"- [{item['title']}]({kit['website'].rstrip('/')}/press/{item['pdf']}): {item['pages']} pages. {item['description']} [Full text]({kit['website'].rstrip('/')}/press/{item['text']})" for item in materials],
+              "## Alpha limitations", *[f"- {item}" for item in kit["limitations"]],
               "## Current books", *[f"- [{book['title']}](https://www.swordweave.quest{book['path']}): {book['status']}" for book in kit["books"]],
               "## Official links", *[f"- [{item['label']}]({item['url']})" for item in kit["links"]],
               f"- Email: {kit['email']}", "## AI and this alpha", *kit["aiDisclosure"],
@@ -46,7 +62,7 @@ def build():
     (PRESS / "fact-sheet.md").write_text("\n\n".join(facts) + "\n")
     captions = ["# Image captions and credits", f"SwordWeave {kit['version']} · {kit['updated']}"]
     for item in assets:
-        captions += [f"## {item['label']}", f"File: `{item['file']}` · {item['width']} × {item['height']} pixels",
+        captions += [f"## {item['label']}", f"File: `{item['file']}` · {item['width']} × {item['height']} nominal dimensions",
                      item["caption"], f"Credit: {item['credit']}", f"Source: {item['source']}", f"Rights: {item['rights']}"]
     (PRESS / "captions.md").write_text("\n\n".join(captions) + "\n")
     (PRESS / "repository-license.txt").write_bytes((ROOT / "LICENSE").read_bytes())
@@ -54,6 +70,7 @@ def build():
     files = [SOURCE, PRESS / "README.md", PRESS / "fact-sheet.md", PRESS / "captions.md",
              PRESS / "asset-notices.md", PRESS / "asset-manifest.json", PRESS / "repository-license.txt"]
     files += [PRESS / item["file"] for item in assets]
+    files += material_files
     timestamp = (*datetime.fromisoformat(kit["updated"]).timetuple()[:3], 0, 0, 0)
     with zipfile.ZipFile(ARCHIVE, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
         for path in sorted(files):

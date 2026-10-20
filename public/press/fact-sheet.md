@@ -32,6 +32,12 @@ SwordWeave is a free modular tabletop roleplaying game and a set of browser tool
 
 - **Print editions:** A future possibility; no physical edition is on sale
 
+## Original table companions
+
+- [Your first SwordWeave session](https://www.swordweave.quest/press/materials/swordweave-first-session-run-sheet.pdf): 2 pages. Original preparation and action/consequence run sheet, with 21 interactive fields. [Full text](https://www.swordweave.quest/press/materials/swordweave-first-session-run-sheet.md)
+
+- [Build with Neris Cinderthread](https://www.swordweave.quest/press/materials/swordweave-build-with-neris.pdf): 3 pages. Original source-checked construction companion, complete 19-acquisition ledger, resolved treatment and personal variation prompts; four interactive fields. [Full text](https://www.swordweave.quest/press/materials/swordweave-build-with-neris.md)
+
 ## Alpha limitations
 
 - The rules and tools are evolving. Alpha availability is not evidence of independent playtest results or comparative balance.

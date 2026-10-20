@@ -4,6 +4,9 @@ import { PUBLIC_PAGES, SITE_URL, markdownPath } from '../public-pages';
 import { PLAY_GUIDE } from '@/lib/rules/play-guide';
 import { CREATING_GUIDE } from '@/lib/rules/creating-guide';
 import { PRIMITIVE_TUTORIAL } from '@/lib/rules/primitive-tutorial';
+import { NERIS_GUIDE } from '@/lib/rules/neris-example';
+import { ROOTED_FORD_HOSTILE } from '@/lib/rules/encounter-example';
+import type { GuideBlock } from '@/lib/rules/play-guide';
 
 function requestMarkdown(path: string, request = new Request(`${SITE_URL}${path}`)) {
   return GET(request, { params: Promise.resolve({ discovery: path.slice(1).split('/') }) });
@@ -65,10 +68,14 @@ describe('public Markdown delivery', () => {
     const markdown = await (await requestMarkdown('/creating.md')).text();
     const original = PLAY_GUIDE.find(topic => topic.id === 'creating')!;
     expect(CREATING_GUIDE).toHaveLength(original.blocks.length);
-    for (const block of original.blocks) {
-      expect(markdown).toContain(block.body);
-      if (block.example) expect(markdown).toContain(block.example);
-    }
+    const checkBlock = (block: GuideBlock) => {
+      for (const text of [block.body, ...(block.paragraphs ?? []), ...(block.rules ?? []), ...(block.ordered ?? []), block.example, ...(block.links ?? []).map(link => link.title)]) {
+        if (text) expect(markdown).toContain(text);
+      }
+      if (block.table) for (const cell of [block.table.caption, ...block.table.headers, ...block.table.rows.flat()]) expect(markdown).toContain(cell.replace(/\|/g, '\\|'));
+      block.details?.forEach(checkBlock);
+    };
+    original.blocks.forEach(checkBlock);
     expect(markdown).toContain('[Create your first primitive: editor tutorial](https://www.swordweave.quest/tutorials/create-a-primitive)');
   });
 
@@ -76,6 +83,39 @@ describe('public Markdown delivery', () => {
     const markdown = await (await requestMarkdown('/rules.md')).text();
     expect(markdown).toContain('[Full explanation and examples](https://www.swordweave.quest/books/srd#construction-reference)');
     expect(markdown).not.toContain('app.notion.com');
+  });
+
+  it('replaces the selected character-reader view with the complete construction trail', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('<div class="sw-public-site"><h1>Character guide</h1><p>Before the walkthrough.</p><div data-neris-guide><h2>Only one browser chapter</h2><p>Selected view.</p></div><h2>Keep developing</h2><p>After the walkthrough.</p></div>')));
+    const markdown = await (await requestMarkdown('/character.md')).text();
+    expect(markdown).toContain('Before the walkthrough.');
+    expect(markdown).toContain('After the walkthrough.');
+    expect(markdown).not.toContain('Only one browser chapter');
+    for (const topic of NERIS_GUIDE) expect(markdown).toContain(`## ${topic.title}`);
+    expect(markdown).toContain('86');
+    expect(markdown).toContain('Gentle Treatment');
+    const checkBlock = (block: GuideBlock) => {
+      for (const text of [block.body, ...(block.paragraphs ?? []), ...(block.rules ?? []), ...(block.ordered ?? []), block.example]) {
+        if (text) expect(markdown).toContain(text);
+      }
+      if (block.table) for (const cell of [block.table.caption, ...block.table.headers, ...block.table.rows.flat()]) expect(markdown).toContain(cell.replace(/\|/g, '\\|'));
+      block.details?.forEach(checkBlock);
+    };
+    NERIS_GUIDE.forEach(topic => topic.blocks.forEach(checkBlock));
+    expect(markdown).toContain('https://www.swordweave.quest/press/materials/swordweave-build-with-neris.pdf');
+    expect(markdown).toContain('https://www.swordweave.quest/press/materials/swordweave-first-session-run-sheet.pdf');
+  });
+
+  it('preserves the complete rendered hostile branch and the linked preparation companion', async () => {
+    const prep = await (await requestMarkdown('/rules.md')).text();
+    expect(prep).toContain('https://www.swordweave.quest/press/materials/swordweave-first-session-run-sheet.pdf');
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(`<div class="sw-public-site"><h1>Combat guide</h1><section id="rooted-ford-hostile">${ROOTED_FORD_HOSTILE.steps.map(step => `<h2>${step.title}</h2><p>${step.body}</p>`).join('')}</section></div>`)));
+    const combat = await (await requestMarkdown('/combat.md')).text();
+    for (const step of ROOTED_FORD_HOSTILE.steps) {
+      expect(combat).toContain(step.title);
+      expect(combat).toContain(step.body);
+    }
+    expect(combat).toContain('Source: https://www.swordweave.quest/combat');
   });
 
   it('never forwards request hosts, query parameters, cookies or authorization to the editorial source', async () => {
@@ -87,7 +127,7 @@ describe('public Markdown delivery', () => {
     }));
     expect(response.status).toBe(200);
     expect(fetcher).toHaveBeenCalledWith(`${SITE_URL}/contact`, {
-      headers: { Accept: 'text/html' }, redirect: 'error', signal: expect.any(AbortSignal), cache: 'no-store',
+      headers: { Accept: '*/*' }, redirect: 'error', signal: expect.any(AbortSignal), cache: 'no-store',
     });
     expect(await response.text()).not.toMatch(/untrusted|private/);
   });

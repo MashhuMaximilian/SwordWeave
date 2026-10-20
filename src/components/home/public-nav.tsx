@@ -18,7 +18,6 @@ import "./public-nav.css";
 // no external deps, no framer-motion.
 // =============================================================================
 
-import {useAccount} from "@/components/account/account-provider";
 import Link from "next/link";
 import { ChevronDown, Menu, X } from "lucide-react";
 import { usePathname } from "next/navigation";
@@ -57,15 +56,12 @@ const CREATE_ITEMS = [
 const DESKTOP_QUERY = "(min-width: 1200px)";
 
 export function PublicNav() {
-  const {isGameMaster}=useAccount();
   const disclosureItems = {
     create: CREATE_ITEMS,
     library: [
       { href: "/library/browse", label: "Browse library" },
-      ...(isGameMaster ? [
-        { href: "/monsters", label: "Monsters" },
-        { href: "/encounters", label: "Encounters" },
-      ] : []),
+      { href: "/monsters", label: "Monsters" },
+      { href: "/encounters", label: "Encounters" },
     ],
     about: [
       { href: "/about", label: "About SwordWeave" },

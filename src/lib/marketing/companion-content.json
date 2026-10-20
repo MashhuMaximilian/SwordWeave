@@ -1,0 +1,540 @@
+[
+  {
+    "slug": "swordweave-first-session-run-sheet",
+    "title": "Your first SwordWeave session",
+    "description": "Use this beside the Rules guide. Write your table's agreements and the changes that actually happen; these prompts add no new rules.",
+    "pageCount": 2,
+    "pdf": "/press/materials/swordweave-first-session-run-sheet.pdf",
+    "markdown": "/press/materials/swordweave-first-session-run-sheet.md",
+    "pages": [
+      {
+        "title": "Before the first scene",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Agree a small objective and give each player one usable starting point."
+          },
+          {
+            "type": "paragraph",
+            "text": "Use this beside the Rules guide. Write your table's agreements and the changes that actually happen; these prompts add no new rules."
+          },
+          {
+            "type": "heading",
+            "text": "Gather the table"
+          },
+          {
+            "type": "paragraph",
+            "text": "Choose a way to pause, check comfort and change direction. Nobody needs to explain a boundary."
+          },
+          {
+            "type": "field",
+            "text": "Date, table and GM",
+            "lines": 1
+          },
+          {
+            "type": "field",
+            "text": "Our setting, tone and things to leave out",
+            "lines": 2
+          },
+          {
+            "type": "field",
+            "text": "Our pause signal, check-in and planned finish time",
+            "lines": 1
+          },
+          {
+            "type": "heading",
+            "text": "Choose the starting situation"
+          },
+          {
+            "type": "paragraph",
+            "text": "Name a goal, a visible problem and another possible approach. An encounter's sample party budget is not a difficulty guarantee."
+          },
+          {
+            "type": "field",
+            "text": "Scene or encounter / version",
+            "lines": 1
+          },
+          {
+            "type": "field",
+            "text": "What are we trying to achieve? What can we perceive?",
+            "lines": 2
+          },
+          {
+            "type": "field",
+            "text": "An approach besides a fight; what failure could change",
+            "lines": 2
+          },
+          {
+            "type": "heading",
+            "text": "Check each character"
+          },
+          {
+            "type": "paragraph",
+            "text": "Use the GM's agreed starting budget. Neris is a level-8 demo; review a fork before using it. Read the actual limits of one useful capability."
+          },
+          {
+            "type": "field",
+            "text": "Players / characters / agreed level or BU / separate Item BU",
+            "lines": 2
+          },
+          {
+            "type": "field",
+            "text": "One usable capability, its supplies, and where to find current Vitality",
+            "lines": 2
+          },
+          {
+            "type": "checks",
+            "items": [
+              "Sheets and dice or a dice roller are ready",
+              "Everyone knows the objective and pause signal",
+              "GM has read the encounter's pinned creatures and other approaches"
+            ]
+          }
+        ],
+        "links": [
+          {
+            "title": "Start with Your first game",
+            "url": "https://www.swordweave.quest/rules#start"
+          },
+          {
+            "title": "Inspect the selected public encounter",
+            "url": "https://www.swordweave.quest/encounters/2aec9871-7900-59f4-a68f-7cd8b80af5a9"
+          }
+        ]
+      },
+      {
+        "title": "At the table, then after play",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Follow one declared intent through its result. Reuse the record for a decision that taught you something."
+          },
+          {
+            "type": "heading",
+            "text": "Agree before resolving"
+          },
+          {
+            "type": "paragraph",
+            "text": "Begin with intent. Ordinary actions may need no special purchase. For unusual behavior, inspect owned permissions; agree scope, resolution, stakes and any Cost before rolling."
+          },
+          {
+            "type": "field",
+            "text": "Who acts, what do they want, and what access applies?",
+            "lines": 2
+          },
+          {
+            "type": "field",
+            "text": "Agreed scope, timing, roll / threshold, success and failure",
+            "lines": 2
+          },
+          {
+            "type": "field",
+            "text": "Agreed use Cost / supplies / duration and continuation point",
+            "lines": 2
+          },
+          {
+            "type": "heading",
+            "text": "Resolve and carry the change forward"
+          },
+          {
+            "type": "paragraph",
+            "text": "Use the displayed total once. In combat, coordinate Council and Fast / Measured / Heavy. Movement shares the round's allowance; reactions need their own valid trigger and available slot."
+          },
+          {
+            "type": "field",
+            "text": "Actual dice + displayed bonus = total; what happened?",
+            "lines": 2
+          },
+          {
+            "type": "field",
+            "text": "Vitality before / after; supplies spent; ongoing effects and their endings",
+            "lines": 2
+          },
+          {
+            "type": "field",
+            "text": "The new situation and the next decision",
+            "lines": 1
+          },
+          {
+            "type": "heading",
+            "text": "Keep the useful feedback"
+          },
+          {
+            "type": "paragraph",
+            "text": "Record the rule / page or tool step, what you expected, what happened and any temporary ruling. Leave out other players' private information when sharing feedback."
+          },
+          {
+            "type": "field",
+            "text": "One clear moment, one confusing step, and what we will try next",
+            "lines": 3
+          },
+          {
+            "type": "checks",
+            "items": [
+              "Changed values and spent supplies recorded",
+              "Ongoing effects have clear timing and ending terms",
+              "Open questions saved with the version we used"
+            ]
+          }
+        ],
+        "links": [
+          {
+            "title": "Rules reference",
+            "url": "https://www.swordweave.quest/rules"
+          },
+          {
+            "title": "Send alpha feedback",
+            "url": "https://www.swordweave.quest/contact"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "swordweave-build-with-neris",
+    "title": "Build with Neris Cinderthread",
+    "description": "A source-checked construction trail, unique-acquisition ledger and resolved use, with prompts for a personal variation.",
+    "pageCount": 3,
+    "pdf": "/press/materials/swordweave-build-with-neris.pdf",
+    "markdown": "/press/materials/swordweave-build-with-neris.md",
+    "pages": [
+      {
+        "title": "Build with Neris Cinderthread",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "Read an existing build as a chain of decisions, then plan a variation of your own."
+          },
+          {
+            "type": "paragraph",
+            "text": "Checked public level-8 demonstration, 20 October 2026. This is a reading and construction companion, not a new level-1 template or evidence of independent playtesting. Use your GM's starting point."
+          },
+          {
+            "type": "heading",
+            "text": "Begin with the person"
+          },
+          {
+            "type": "paragraph",
+            "text": "A field medic with smoke filtration, trained triage and reusable treatment recipes."
+          },
+          {
+            "type": "paragraph",
+            "text": "One way to read these choices: trained hands and knowledge support treatment; smoke filtration makes an ordinary smoky route possible; saved recipes keep a bounded use ready. The foundations support the concept without becoming fixed classes."
+          },
+          {
+            "type": "table",
+            "headers": [
+              "Physical",
+              "Mental",
+              "Magical",
+              "Proficiency",
+              "Vitality"
+            ],
+            "rows": [
+              [
+                "3",
+                "5",
+                "2",
+                "+3 / Mental",
+                "104 maximum"
+              ]
+            ]
+          },
+          {
+            "type": "heading",
+            "text": "Read the three foundations"
+          },
+          {
+            "type": "table",
+            "headers": [
+              "Foundation",
+              "What it contributes to this concept"
+            ],
+            "rows": [
+              [
+                "Ashlung",
+                "Fire Resistance and Ordinary Smoke Filtration. Light ordinary smoke is different from heat, toxic gas or magical fumes."
+              ],
+              [
+                "Field Surgeon Apprentice",
+                "Training, careful handling, carrying support and Splint and Rally. Appropriate supplies and a reachable patient still matter."
+              ],
+              [
+                "Thread Surgeon",
+                "Finesse and Knowledge training, useful bonuses, material patching and familiar treatment pieces. Shared acquisitions are counted once."
+              ]
+            ]
+          },
+          {
+            "type": "heading",
+            "text": "Keep access and budgets distinct"
+          },
+          {
+            "type": "paragraph",
+            "text": "Level 8 contributes 99 BU. This saved demo adds 1 DM BU: 100 total. Its 19 unique character acquisitions cost 86 BU, leaving 14. Items cost 14 Item BU separately."
+          },
+          {
+            "type": "paragraph",
+            "text": "No separate Domain acquisition is stored in this snapshot. Read its bounded authored physical treatments; do not infer unrestricted magical healing. When you fork or build a new character, review the current required access, foundation and budget before applying changes."
+          },
+          {
+            "type": "field",
+            "text": "Your person: what do they do, and what do they want?",
+            "lines": 2
+          }
+        ],
+        "links": [
+          {
+            "title": "Full character walkthrough",
+            "url": "https://www.swordweave.quest/character#build-example"
+          },
+          {
+            "title": "Inspect the public sheet",
+            "url": "https://www.swordweave.quest/characters/1662962b-14c5-4433-994e-6273b3f7ca57?view=public"
+          }
+        ]
+      },
+      {
+        "title": "Count ownership, then reuse it",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "The same acquisition can appear in several compositions without becoming another purchase."
+          },
+          {
+            "type": "table",
+            "headers": [
+              "Read in this order",
+              "New BU",
+              "Running BU"
+            ],
+            "rows": [
+              [
+                "Ashlung",
+                "12",
+                "12"
+              ],
+              [
+                "Field Surgeon Apprentice",
+                "18",
+                "30"
+              ],
+              [
+                "Thread Surgeon",
+                "18",
+                "48"
+              ],
+              [
+                "Dose and Release",
+                "4",
+                "52"
+              ],
+              [
+                "Gentle Treatment",
+                "4",
+                "56"
+              ],
+              [
+                "Direct additions",
+                "30",
+                "86"
+              ]
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "These are new costs in this reading order, not the displayed price of each whole bundle. A later foundation can reference pieces acquired earlier. Count the saved acquisition identity once; a same-name entry alone does not establish that it is the same purchase."
+          },
+          {
+            "type": "heading",
+            "text": "The complete unique character ledger"
+          },
+          {
+            "type": "table",
+            "headers": [
+              "Acquisition",
+              "BU",
+              "Acquisition",
+              "BU"
+            ],
+            "rows": [
+              [
+                "Careful Body Preparation (v2)",
+                "2",
+                "Knowledge Check +PB (v2)",
+                "12"
+              ],
+              [
+                "Carry Capacity Augment +20 (v2)",
+                "4",
+                "Knowledge Proficiency (v5)",
+                "4"
+              ],
+              [
+                "Carry Capacity Augment +50 (v2)",
+                "8",
+                "Mental Saving Throw +2 (v2)",
+                "6"
+              ],
+              [
+                "Consent-Based Prepared Remedy (v1)",
+                "4",
+                "Minor Die Block (v4)",
+                "0"
+              ],
+              [
+                "Finesse Check +2 (v2)",
+                "4",
+                "Ordinary Smoke Filtration (v2)",
+                "4"
+              ],
+              [
+                "Finesse Check +3 (v2)",
+                "6",
+                "Patient Reassurance Influence +2 (v1)",
+                "4"
+              ],
+              [
+                "Finesse Proficiency (v5)",
+                "4",
+                "Temporary Material Patch (v2)",
+                "4"
+              ],
+              [
+                "Fire Resistance (v1)",
+                "8",
+                "Touch Range (v7)",
+                "0"
+              ],
+              [
+                "Heavy Die Block (1d8) (v6)",
+                "4",
+                "Verb Access Tier I (v7)",
+                "4"
+              ],
+              [
+                "Knowledge Check +2 (v2)",
+                "4",
+                "",
+                ""
+              ]
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Character total: 86 BU. Remaining: 100 - 86 = 14 BU. Touch and the stored d4 cost zero here; their presence does not buy extra range or a different behavior."
+          },
+          {
+            "type": "heading",
+            "text": "Items stay on their own ledger"
+          },
+          {
+            "type": "paragraph",
+            "text": "Boundary Marker Satchel: 2 Item BU; Patchplate Vest: 8 Item BU; Patchsmith Roll: 4 Item BU. Total: 14 Item BU. Item-supplied ingredients are not extra character acquisitions."
+          },
+          {
+            "type": "field",
+            "text": "Which owned acquisition would your next idea reuse? What genuinely new access would it need?",
+            "lines": 2
+          }
+        ],
+        "links": [
+          {
+            "title": "Full character walkthrough",
+            "url": "https://www.swordweave.quest/character#build-example"
+          },
+          {
+            "title": "Inspect the public sheet",
+            "url": "https://www.swordweave.quest/characters/1662962b-14c5-4433-994e-6273b3f7ca57?view=public"
+          }
+        ]
+      },
+      {
+        "title": "Resolve Gentle Treatment",
+        "blocks": [
+          {
+            "type": "paragraph",
+            "text": "A bounded worked use, followed by room to plan your own variation."
+          },
+          {
+            "type": "heading",
+            "text": "Read the saved recipe before rolling"
+          },
+          {
+            "type": "paragraph",
+            "text": "Gentle Treatment uses Patient Reassurance Influence +2 and Mended Vitality, whose stored output is Minor Die Block (1d4). The reassurance applies only with a willing patient during the named treatment; end that condition when treatment ends or consent is withdrawn."
+          },
+          {
+            "type": "paragraph",
+            "text": "Neris also owns a d8. It does not silently replace the saved 1d4 recipe. Changing a recipe requires reviewing its access, scope and Cost; owning an ingredient is different from resolving a use."
+          },
+          {
+            "type": "heading",
+            "text": "One illustrative table agreement"
+          },
+          {
+            "type": "paragraph",
+            "text": "A willing, reachable patient has 6 of 12 Vitality, with time outside immediate danger. A suitable clean dressing is available. The table agrees a bounded treatment, an Influence check against DC 12, 1d4 recovery on success, and one dressing spent. No extra Vitality Cost is chosen for this attempt; these are scene agreements, not universal treatment rules."
+          },
+          {
+            "type": "table",
+            "headers": [
+              "Decision",
+              "Calculation / state"
+            ],
+            "rows": [
+              [
+                "Check the active scope",
+                "Ordinary Influence +8; applicable reassurance +2 gives +10."
+              ],
+              [
+                "Resolve the check",
+                "d20 shows 7; 7 + 10 = 17, meeting DC 12. Do not add PB again."
+              ],
+              [
+                "Resolve recovery",
+                "The authored 1d4 shows 3. The patient moves from 6/12 to 9/12 Vitality."
+              ],
+              [
+                "Record the Cost",
+                "Dressing: 1 to 0. Neris stays at 104/104 Vitality. End the treatment-only reassurance condition."
+              ]
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Roll and apply the agreed changes manually. Saving or triggering the capability does not automatically heal a different sheet. Record the supply spent and the new situation; further treatment needs its own fiction and agreement."
+          },
+          {
+            "type": "heading",
+            "text": "Plan a personal variation"
+          },
+          {
+            "type": "field",
+            "text": "What result do you want? Which owned ingredients permit it?",
+            "lines": 2
+          },
+          {
+            "type": "field",
+            "text": "Scope, target, resolution, Cost, ending and exact values to update",
+            "lines": 2
+          },
+          {
+            "type": "paragraph",
+            "text": "Open the public sheet to inspect it; Fork requires an account and creates your own copy. Review the fork before editing. For a fresh character, use the existing character builder and your table's agreed foundation."
+          }
+        ],
+        "links": [
+          {
+            "title": "Full character walkthrough",
+            "url": "https://www.swordweave.quest/character#build-example"
+          },
+          {
+            "title": "Inspect the public sheet",
+            "url": "https://www.swordweave.quest/characters/1662962b-14c5-4433-994e-6273b3f7ca57?view=public"
+          }
+        ]
+      }
+    ]
+  }
+]
