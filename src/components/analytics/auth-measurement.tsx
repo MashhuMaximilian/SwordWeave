@@ -1,6 +1,6 @@
 'use client';
 import { useEffect } from 'react';
-import { useClerk } from '@clerk/nextjs';
+import { useClerk, useUser } from '@clerk/nextjs';
 import { usePathname } from 'next/navigation';
 import { AUTH_PENDING_KEY, beginAuthMeasurement, completedAuthAttempt, pendingAuth, redirectedAuthCompletion, type Completion } from '@/lib/analytics/auth';
 import { track } from '@/lib/analytics/client';
@@ -9,12 +9,13 @@ import { analyticsConsent } from '@/lib/cookie-consent';
 const seen = new Set<string>();
 export function AuthMeasurement({ allowed }: { allowed: boolean }) {
   const clerk = useClerk();
+  const { isLoaded } = useUser();
   const path = usePathname();
   useEffect(() => {
-    if (!allowed) return;
+    if (!allowed || !isLoaded) return;
     const baselineSession = clerk.session?.id;
     const observe = ({ client, session, user }: Completion) => {
-      if (!clerk.loaded || !analyticsConsent.getSnapshot()) return;
+      if (!analyticsConsent.getSnapshot()) return;
       if (!session || !user) {
         if (/^\/sign-(in|up)(\/|$)/.test(path)) {
           try { beginAuthMeasurement(sessionStorage, clerk.client?.sessions.map(item => item.id) ?? []); } catch { /* Optional storage. */ }
@@ -36,6 +37,6 @@ export function AuthMeasurement({ allowed }: { allowed: boolean }) {
     const unsubscribe = clerk.addListener(observe, { skipInitialEmit: true });
     observe({ client: clerk.client, session: clerk.session ?? null, user: clerk.user ?? null });
     return unsubscribe;
-  }, [allowed, clerk, path]);
+  }, [allowed, isLoaded, clerk, path]);
   return null;
 }
