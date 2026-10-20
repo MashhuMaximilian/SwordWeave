@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type MouseEvent } from 'react';
 import Link from 'next/link';
 import { BookOpen, ChevronLeft, ChevronRight, ExternalLink, Search, X } from 'lucide-react';
 import { searchTopics } from '@/lib/rules/guide-search';
@@ -8,6 +8,10 @@ import type { GuideBlock, GuideTopic } from '@/lib/rules/play-guide';
 
 type GuideLink = { title: string; url: string };
 type GuideLocation = { topicId: string; blockId: string | null };
+
+const subscribeToHydration = () => () => {};
+const hydratedSnapshot = () => true;
+const serverSnapshot = () => false;
 
 function linkUrl(url: string, basePath: string): string {
   return url.startsWith('#') ? `${basePath}${url}` : url;
@@ -94,10 +98,13 @@ export function LearningGuide({
   }));
   const reading = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
+  // Public HTML contains the complete guide before the chapter reader enhances it.
+  // Keep every public chapter in the DOM after enhancement, without duplicating copy.
+  const hydrated = useSyncExternalStore(subscribeToHydration, hydratedSnapshot, serverSnapshot);
+  const enhanced = embedded || hydrated;
   const matches = searchTopics(topics, query);
   const topic = matches.find(candidate => candidate.id === selection.topicId) ?? matches[0];
-  const chapterIndex = topic ? topics.indexOf(topic) : -1;
-  const references = topic ? sourceLinks?.[topic.id] ?? topic.sources ?? [] : [];
+  const renderedTopics = embedded ? (topic ? [topic] : []) : topics;
 
   useEffect(() => {
     if (embedded) return;
@@ -115,8 +122,10 @@ export function LearningGuide({
   useEffect(() => {
     if (!selection.request || !reading.current) return;
     const container = reading.current;
+    const selectedChapter = Array.from(container.querySelectorAll<HTMLElement>('[data-guide-topic-id]'))
+      .find(element => element.dataset['guideTopicId'] === selection.topicId);
     const block = selection.blockId
-      ? Array.from(container.querySelectorAll<HTMLElement>('[data-guide-block-id]')).find(element => element.dataset['guideBlockId'] === selection.blockId)
+      ? Array.from((selectedChapter ?? container).querySelectorAll<HTMLElement>('[data-guide-block-id]')).find(element => element.dataset['guideBlockId'] === selection.blockId)
       : null;
     const destination = block ?? heading.current;
     if (!destination) return;
@@ -150,33 +159,36 @@ export function LearningGuide({
     choose(location);
   };
 
-  const chapter = (offset: number) => {
-    const next = topics[chapterIndex + offset];
-    if (!next) return;
-    setQuery('');
-    choose({ topicId: next.id, blockId: null });
-  };
-
   const currentAnchor = topic?.id === selection.topicId && selection.blockId ? selection.blockId : topic?.id ?? topics[0]?.id ?? '';
+  const chapterUrl = (id: string) => `${basePath}#${encodeURIComponent(id)}`;
 
-  return <div className={`sw-play-guide${embedded ? ' sw-play-guide--embedded' : ''}`}>
+  return <div className={`sw-play-guide${embedded ? ' sw-play-guide--embedded' : ''}`} data-guide-enhanced={enhanced || undefined}>
     <aside className="sw-play-guide-index">
       <div className="sw-play-guide-index-intro"><BookOpen size={20} aria-hidden="true" /><div><strong>{indexTitle}</strong><p>{indexDescription}</p></div></div>
       <label className="sw-play-guide-search"><Search size={18} aria-hidden="true" /><span className="sr-only">{searchLabel}</span><input aria-label={searchLabel} value={query} onChange={event => setQuery(event.target.value)} placeholder={searchPlaceholder} type="search" />{query && <button type="button" aria-label="Clear guide search" onClick={() => setQuery('')}><X size={16} /></button>}</label>
       <p className="sw-play-guide-index-label" aria-live="polite">{query ? `${matches.length} matching topics` : 'Contents'}<span className="sw-play-guide-phone-hint"> · Swipe topics</span></p>
-      <nav aria-label="Guide topics">{matches.map(candidate => <button type="button" key={candidate.id} aria-current={topic?.id === candidate.id ? 'page' : undefined} onClick={() => choose({ topicId: candidate.id, blockId: null })}><span className="sw-play-guide-chapter-number" aria-hidden="true">{String(topics.indexOf(candidate) + 1).padStart(2, '0')}</span><span>{candidate.title}</span><ChevronRight size={16} aria-hidden="true" /></button>)}</nav>
+      <nav aria-label="Guide topics">{matches.map(candidate => <a href={chapterUrl(candidate.id)} key={candidate.id} aria-current={topic?.id === candidate.id ? 'page' : undefined} onClick={event => followLink(event, chapterUrl(candidate.id))}><span className="sw-play-guide-chapter-number" aria-hidden="true">{String(topics.indexOf(candidate) + 1).padStart(2, '0')}</span><span>{candidate.title}</span><ChevronRight size={16} aria-hidden="true" /></a>)}</nav>
       {embedded && <a className="sw-play-guide-page-link" href={`${basePath}#${encodeURIComponent(currentAnchor)}`} target="_blank" rel="noopener noreferrer">Open full guide <ExternalLink size={14} aria-hidden="true" /></a>}
     </aside>
     <article className="sw-play-guide-reading" ref={reading} aria-label={topic?.title ?? 'Guide search results'}>
-      {topic ? <>
-        <header className="sw-play-guide-topic-head"><span><BookOpen size={16} aria-hidden="true" /> Chapter {chapterIndex + 1} / {topics.length}</span><h2 ref={heading} tabIndex={-1}>{topic.title}</h2><p>{topic.summary}</p></header>
-        <div className="sw-play-guide-blocks">{topic.blocks.map((block, index) => <section key={block.id ?? index} id={block.id} data-guide-block-id={block.id} tabIndex={block.id ? -1 : undefined} aria-label={block.title} className="sw-play-guide-block">{!(topic.blocks.length === 1 && block.title === topic.title) && <div className="sw-play-guide-block-head"><span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span><h3>{block.title}</h3></div>}<BlockContent block={block} searching={Boolean(query.trim())} targetBlockId={selection.blockId} basePath={basePath} embedded={embedded} onLinkClick={followLink} /></section>)}</div>
-        {references.length > 0 && <aside className="sw-play-guide-sources" aria-label="Further reading"><strong>{sourceLabel}</strong>{references.map((link, index) => <Link key={index} href={linkUrl(link.url, basePath)} onClick={event => followLink(event, linkUrl(link.url, basePath))} target={embedded ? '_blank' : undefined} rel={embedded ? 'noopener noreferrer' : undefined}>{link.title} <ExternalLink size={13} aria-hidden="true" /></Link>)}</aside>}
-        {(chapterIndex > 0 || chapterIndex < topics.length - 1 || endLink) && <footer className="sw-play-guide-next" aria-label="Continue through the guide">
-          {chapterIndex > 0 && <button type="button" onClick={() => chapter(-1)}><ChevronLeft size={16} aria-hidden="true" /><span><small>Previous chapter</small>{topics[chapterIndex - 1]!.title}</span></button>}
-          {chapterIndex < topics.length - 1 ? <button type="button" className="sw-play-guide-next-primary" onClick={() => chapter(1)}><span><small>Continue learning</small>{topics[chapterIndex + 1]!.title}</span><ChevronRight size={16} aria-hidden="true" /></button> : endLink && <Link className="sw-play-guide-next-primary" href={linkUrl(endLink.url, basePath)} onClick={event => followLink(event, linkUrl(endLink.url, basePath))}>{endLink.title} <ChevronRight size={16} aria-hidden="true" /></Link>}
-        </footer>}
-      </> : <div className="sw-play-guide-empty" role="status"><BookOpen size={30} /><h2>No matching topics</h2><p>{emptyHint}</p><button type="button" onClick={() => setQuery('')}>Show all topics</button></div>}
+      {renderedTopics.map(chapter => {
+        const chapterIndex = topics.indexOf(chapter);
+        const previous = topics[chapterIndex - 1];
+        const next = topics[chapterIndex + 1];
+        const active = chapter.id === topic?.id;
+        const references = sourceLinks?.[chapter.id] ?? chapter.sources ?? [];
+        const titleId = embedded ? undefined : `guide-${chapter.id}-title`;
+        return <section key={chapter.id} id={embedded ? undefined : chapter.id} data-guide-topic-id={chapter.id} className="sw-play-guide-chapter" hidden={enhanced && !active} aria-labelledby={titleId}>
+          <header className="sw-play-guide-topic-head"><span><BookOpen size={16} aria-hidden="true" /> Chapter {chapterIndex + 1} / {topics.length}</span><h2 id={titleId} ref={active ? heading : undefined} tabIndex={-1}>{chapter.title}</h2><p>{chapter.summary}</p></header>
+          <div className="sw-play-guide-blocks">{chapter.blocks.map((block, index) => <section key={block.id ?? index} id={!embedded && block.id === chapter.id ? undefined : block.id} data-guide-block-id={block.id} tabIndex={block.id ? -1 : undefined} aria-label={block.title} className="sw-play-guide-block">{!(chapter.blocks.length === 1 && block.title === chapter.title) && <div className="sw-play-guide-block-head"><span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span><h3>{block.title}</h3></div>}<BlockContent block={block} searching={active && Boolean(query.trim())} targetBlockId={active ? selection.blockId : null} basePath={basePath} embedded={embedded} onLinkClick={followLink} /></section>)}</div>
+          {references.length > 0 && <aside className="sw-play-guide-sources" aria-label="Further reading"><strong>{sourceLabel}</strong>{references.map((link, index) => <Link key={index} href={linkUrl(link.url, basePath)} onClick={event => followLink(event, linkUrl(link.url, basePath))} target={embedded ? '_blank' : undefined} rel={embedded ? 'noopener noreferrer' : undefined}>{link.title} <ExternalLink size={13} aria-hidden="true" /></Link>)}</aside>}
+          {(chapterIndex > 0 || chapterIndex < topics.length - 1 || endLink) && <footer className="sw-play-guide-next" aria-label="Continue through the guide">
+            {previous && <a className="sw-play-guide-chapter-link" href={chapterUrl(previous.id)} onClick={event => followLink(event, chapterUrl(previous.id))}><ChevronLeft size={16} aria-hidden="true" /><span><small>Previous chapter</small>{previous.title}</span></a>}
+            {next ? <a className="sw-play-guide-chapter-link sw-play-guide-next-primary" href={chapterUrl(next.id)} onClick={event => followLink(event, chapterUrl(next.id))}><span><small>Continue learning</small>{next.title}</span><ChevronRight size={16} aria-hidden="true" /></a> : endLink && <Link className="sw-play-guide-next-primary" href={linkUrl(endLink.url, basePath)} onClick={event => followLink(event, linkUrl(endLink.url, basePath))}>{endLink.title} <ChevronRight size={16} aria-hidden="true" /></Link>}
+          </footer>}
+        </section>;
+      })}
+      {!topic && <div className="sw-play-guide-empty" role="status"><BookOpen size={30} /><h2>No matching topics</h2><p>{emptyHint}</p><button type="button" onClick={() => setQuery('')}>Show all topics</button></div>}
     </article>
   </div>;
 }

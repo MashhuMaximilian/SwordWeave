@@ -11,10 +11,10 @@
 .sw-play-guide-search button { padding: 2px; }
 .sw-play-guide-index-label { font-family: var(--font-v12-subtitle); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--v12-brass); margin: 24px 0 10px; }
 .sw-play-guide-index nav { display: grid; gap: 4px; }
-.sw-play-guide-index nav button { display: flex; justify-content: space-between; align-items: center; gap: 8px; text-align: left; font-family: var(--font-v12-subtitle); font-size: 13px; padding: 12px; border: 1px solid transparent; border-radius: 6px; min-height: 44px; }
-.sw-play-guide-index nav button svg { flex: 0 0 auto; }
-.sw-play-guide-index nav button:hover { background: var(--muted); }
-.sw-play-guide-index nav button[aria-current] { color: var(--v12-brass-hi); border-color: var(--v12-brass); background: linear-gradient(120deg, color-mix(in srgb, var(--v12-brass) 22%, var(--card)), var(--background)); }
+.sw-play-guide-index nav :is(button,a) { display: flex; justify-content: space-between; align-items: center; gap: 8px; text-align: left; font-family: var(--font-v12-subtitle); font-size: 13px; padding: 12px; border: 1px solid transparent; border-radius: 6px; min-height: 44px; }
+.sw-play-guide-index nav :is(button,a) svg { flex: 0 0 auto; }
+.sw-play-guide-index nav :is(button,a):hover { background: var(--muted); }
+.sw-play-guide-index nav :is(button,a)[aria-current] { color: var(--v12-brass-hi); border-color: var(--v12-brass); background: linear-gradient(120deg, color-mix(in srgb, var(--v12-brass) 22%, var(--card)), var(--background)); }
 .sw-play-guide button:focus-visible, .sw-play-guide a:focus-visible { outline: 2px solid var(--v12-teal); outline-offset: 3px; }
 .sw-play-guide-reading { scroll-margin-top: 84px; min-width: 0; padding: clamp(20px, 3vw, 42px); }
 .sw-play-guide-topic-head { border-bottom: 1px solid var(--v12-brass); padding-bottom: 24px; margin-bottom: 24px; }
@@ -36,18 +36,18 @@
 .sw-play-guide-sources a, .sw-play-guide-page-link { display: flex; align-items: center; gap: 8px; color: var(--v12-teal); font-size: 13px; padding: 8px 0; }
 .sw-play-guide-page-link { margin-top: 20px; }
 .sw-play-guide-next { margin-top: 28px; }
-.sw-play-guide-next button, .sw-play-guide-empty button { display: flex; align-items: center; gap: 10px; border: 1px solid var(--v12-brass); border-radius: 6px; color: var(--v12-brass-hi); padding: 12px 16px; font-family: var(--font-v12-subtitle); font-size: 13px; }
+.sw-play-guide-next :is(button,.sw-play-guide-chapter-link), .sw-play-guide-empty button { display: flex; align-items: center; gap: 10px; border: 1px solid var(--v12-brass); border-radius: 6px; color: var(--v12-brass-hi); padding: 12px 16px; font-family: var(--font-v12-subtitle); font-size: 13px; }
 .sw-play-guide--embedded { border: 0; border-radius: 0; max-width: none; }
 .sw-play-guide--embedded .sw-play-guide-index, .sw-play-guide--embedded .sw-play-guide-reading { max-height: 70dvh; overflow-y: auto; }
 .sw-play-guide-empty { min-height: 300px; display: grid; align-content: start; justify-items: start; gap: 16px; }
-html:not(.dark) .sw-play-guide-topic-head h2, html:not(.dark) .sw-rules-header h1, html:not(.dark) .sw-play-guide-index nav button[aria-current], html:not(.dark) .sw-play-guide-next button { color: var(--v12-brass); }
+html:not(.dark) .sw-play-guide-topic-head h2, html:not(.dark) .sw-rules-header h1, html:not(.dark) .sw-play-guide-index nav :is(button,a)[aria-current], html:not(.dark) .sw-play-guide-next :is(button,.sw-play-guide-chapter-link) { color: var(--v12-brass); }
 html:not(.dark) .sw-play-guide-mechanics li { color: var(--v12-copper); }
 @media (max-width: 760px) {
   .sw-play-guide { grid-template-columns: minmax(0, 1fr); }
   .sw-play-guide-index { border-right: 0; border-bottom: 1px solid var(--v12-line-subtle); padding: 14px; }
   .sw-play-guide-index nav { display: flex; overflow-x: auto; gap: 8px; padding: 2px 3px 8px; }
-  .sw-play-guide-index nav button { flex: 0 0 auto; max-width: 240px; padding: 10px 12px; }
-  .sw-play-guide-index nav button svg { display: none; }
+  .sw-play-guide-index nav :is(button,a) { flex: 0 0 auto; max-width: 240px; padding: 10px 12px; }
+  .sw-play-guide-index nav :is(button,a) svg { display: none; }
   .sw-play-guide-index-label { margin: 14px 0 8px; }
   .sw-play-guide-page-link { margin-top: 4px; }
   .sw-play-guide--embedded .sw-play-guide-index, .sw-play-guide--embedded .sw-play-guide-reading { max-height: none; overflow-y: visible; }
@@ -65,8 +65,8 @@ body[data-ui="v12"] .v12-instrument-dialog .sw-play-guide-topic-head h2 { font-s
 .sw-play-guide-index-intro strong { font-family:var(--font-v12-subtitle); font-size:14px; }
 .sw-play-guide-index-intro p { font-size:14px; line-height:1.45; color:var(--v12-soft); margin:6px 0 0; }
 .sw-play-guide-chapter-number { flex:0 0 22px; font-size:10px; font-variant-numeric:tabular-nums; color:var(--v12-teal); }
-.sw-play-guide-index nav button > span:nth-child(2) { flex:1; }
-.sw-play-guide-index nav button[aria-current] { background:linear-gradient(130deg,color-mix(in srgb,var(--v12-brass) 25%,var(--card)) 0%,color-mix(in srgb,var(--v12-brass-hi) 12%,var(--card)) 35%,color-mix(in srgb,var(--v12-teal) 15%,var(--card)) 55%,var(--card) 100%); box-shadow:inset 2px 0 var(--v12-brass-hi); }
+.sw-play-guide-index nav :is(button,a) > span:nth-child(2) { flex:1; }
+.sw-play-guide-index nav :is(button,a)[aria-current] { background:linear-gradient(130deg,color-mix(in srgb,var(--v12-brass) 25%,var(--card)) 0%,color-mix(in srgb,var(--v12-brass-hi) 12%,var(--card)) 35%,color-mix(in srgb,var(--v12-teal) 15%,var(--card)) 55%,var(--card) 100%); box-shadow:inset 2px 0 var(--v12-brass-hi); }
 .sw-play-guide-details { margin-top:18px; display:grid; gap:8px; }
 .sw-play-guide p.sw-play-guide-detail-label { font-size:12px; font-family:var(--font-v12-subtitle); color:var(--v12-soft); margin:0 0 2px; }
 .sw-play-guide-details details { border:1px solid color-mix(in srgb,var(--v12-teal) 38%,var(--v12-line-subtle)); border-radius:8px; background:linear-gradient(135deg,color-mix(in srgb,var(--v12-teal) 7%,var(--card)),var(--card)); overflow:clip; }
@@ -97,7 +97,7 @@ body[data-ui="v12"] .v12-instrument-dialog .sw-play-guide-topic-head h2 { font-s
  .sw-play-guide-detail-body p,.sw-play-guide-detail-body li { font-size:16px; }
  .sw-play-guide-mechanics { padding:12px 12px 12px 28px; }
  .sw-play-guide-example { padding:12px; }
- .sw-play-guide-index nav button .sw-play-guide-chapter-number { flex-basis:auto; }
+ .sw-play-guide-index nav :is(button,a) .sw-play-guide-chapter-number { flex-basis:auto; }
 }
 @media(prefers-reduced-motion:reduce) { .sw-play-guide-details summary svg { transition:none; } }
 
@@ -123,3 +123,9 @@ html:not(.dark) .sw-play-guide-table th { color:var(--v12-brass); }
  .sw-play-guide-table table { font-size:16px; }
  .sw-play-guide-table th, .sw-play-guide-table td { padding:10px 12px; }
 }
+
+/* Chapters are complete in public HTML; enhancement keeps the familiar one-chapter view. */
+.sw-play-guide-chapter[hidden] { display:none; }
+.sw-play-guide-chapter { scroll-margin-top:96px; }
+.sw-play-guide:not([data-guide-enhanced]) .sw-play-guide-chapter + .sw-play-guide-chapter { margin-top:40px; }
+.sw-play-guide-index nav a,.sw-play-guide-chapter-link { text-decoration:none; }

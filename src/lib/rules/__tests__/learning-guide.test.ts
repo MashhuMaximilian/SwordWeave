@@ -4,8 +4,12 @@ import { load } from 'cheerio';
 import { describe, expect, it } from 'vitest';
 import { LearningGuide, resolveGuideAnchor } from '@/components/rules/learning-guide';
 import { searchTopics } from '../guide-search';
-import type { GuideTopic } from '../play-guide';
+import { PLAY_GUIDE, type GuideBlock, type GuideTopic } from '../play-guide';
 import { CREATING_GUIDE } from '../creating-guide';
+import { PRIMITIVE_TUTORIAL } from '../primitive-tutorial';
+import { NERIS_GUIDE } from '../neris-example';
+import { ADVANCED_CHARACTER_GUIDE } from '../advanced-character-guide';
+import { publicHtmlMarkdown } from '@/lib/seo/markdown';
 
 const topics: GuideTopic[] = [
   {
@@ -62,6 +66,45 @@ describe('authored chapter and block deep links', () => {
 });
 
 describe('shared learning-guide markup', () => {
+  it.each([
+    ['/rules', PLAY_GUIDE, 15],
+    ['/creating', CREATING_GUIDE, 12],
+    ['/tutorials/create-a-primitive', PRIMITIVE_TUTORIAL, 10],
+    ['/character', NERIS_GUIDE, 7],
+    ['/creating-a-character', ADVANCED_CHARACTER_GUIDE, 12],
+  ] as const)('includes every %s chapter and its substantive content in canonical server HTML', (basePath, guide, count) => {
+    const $ = load(renderToStaticMarkup(createElement(LearningGuide, { topics: guide, basePath })));
+    expect($('.sw-play-guide-chapter')).toHaveLength(count);
+    expect($('.sw-play-guide-chapter[hidden]')).toHaveLength(0);
+    expect($('.sw-play-guide[data-guide-enhanced]')).toHaveLength(0);
+    expect($('.sw-play-guide-index nav a')).toHaveLength(count);
+    expect($('.sw-play-guide-index nav button')).toHaveLength(0);
+    const ids = $('[id]').map((_, element) => $(element).attr('id')).get();
+    expect(new Set(ids).size).toBe(ids.length);
+    const inspectBlock = (block: GuideBlock, text: string) => {
+      for (const copy of [block.body, ...(block.paragraphs ?? []), ...(block.rules ?? []), ...(block.ordered ?? []), block.example, block.table?.caption, ...(block.table?.headers ?? []), ...(block.table?.rows.flat() ?? [])]) {
+        if (copy) expect(text).toContain(copy);
+      }
+      for (const detail of block.details ?? []) inspectBlock(detail, text);
+    };
+    for (const chapter of guide) {
+      const section = $('.sw-play-guide-chapter').filter((_, element) => $(element).attr('id') === chapter.id);
+      expect(section).toHaveLength(1);
+      expect(section.find('.sw-play-guide-topic-head h2').text()).toBe(chapter.title);
+      expect(section.text()).toContain(chapter.summary);
+      for (const block of chapter.blocks) inspectBlock(block, section.text());
+      const url = `${basePath}#${encodeURIComponent(chapter.id)}`;
+      expect($('.sw-play-guide-index nav a').filter((_, element) => $(element).attr('href') === url)).toHaveLength(1);
+    }
+  });
+
+  it('replaces the complete Neris DOM with a single structured Markdown walkthrough', () => {
+    const guide = renderToStaticMarkup(createElement(LearningGuide, { topics: NERIS_GUIDE, basePath: '/character' }));
+    const markdown = publicHtmlMarkdown(`<div class="sw-public-site"><h1>Character guide</h1><div data-neris-guide>${guide}</div></div>`, '/character');
+    for (const topic of NERIS_GUIDE) expect(markdown.split(`## ${topic.title}\n`).length - 1).toBe(1);
+    expect(markdown).not.toContain('Continue learning');
+  });
+
   it('renders all rich block forms and topic-specific references', () => {
     const html = renderToStaticMarkup(createElement(LearningGuide, {
       topics, basePath: '/tutorials/example',
@@ -89,9 +132,11 @@ describe('shared learning-guide markup', () => {
     })));
     expect($('.sw-play-guide-topic-head h2').text()).toBe('Check what you saved');
     expect($('.sw-play-guide-page-link').attr('href')).toBe('/tutorials/example#review');
-    expect($('.sw-play-guide-next a').attr('href')).toBe('/atelier?build=primitive');
-    expect($('.sw-play-guide-next a').text()).toContain('Try your own rule');
+    expect($('.sw-play-guide-next .sw-play-guide-next-primary').attr('href')).toBe('/atelier?build=primitive');
+    expect($('.sw-play-guide-next .sw-play-guide-next-primary').text()).toContain('Try your own rule');
     expect($('.sw-play-guide--embedded')).toHaveLength(1);
+    expect($('.sw-play-guide-chapter')).toHaveLength(1);
+    expect($('.sw-play-guide-reading').text()).not.toContain('existing description stays visible');
   });
 
   it('handles an empty guide without an invalid chapter or destination', () => {

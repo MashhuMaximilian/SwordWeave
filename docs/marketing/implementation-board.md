@@ -84,7 +84,18 @@ The same request reopened companion visual quality and added a separate original
 - **Revised kit:** separate portrait/font notices, public portrait references and distinct approved-master/embedded-export hashes. ZIP rebuilt twice identically: 20 entries / 3,329,537 bytes / SHA-256 `52053506c5a878473b666cdafe03147345febbb33b53ac1a3eb8db5a54d74dc8`. All 13 asset/material hashes, archive CRC and all source bytes match. Actual browser downloads of the revised Neris PDF and ZIP match their final public files. Generated PDFs are explicitly binary Git assets so encoded PDF whitespace is preserved.
 - **Checks:** 62 focused tests across nine suites and scoped lint pass; production build passes. Final build passes; the Ready production release is identified above. No homepage redesign, book-manuscript revision, synthetic narration, external account action, itch release or creator outreach was included.
 
-## Previous release evidence
+## Focused Batch 4 follow-through · 20 October
+
+- Re-downloaded the actual production creator-kit ZIP: both final PHB-style companions match current public sources exactly; archive CRC, 20 entries and SHA-256 `52053506c5a878473b666cdafe03147345febbb33b53ac1a3eb8db5a54d74dc8` verified. No PDF regeneration was needed.
+- Finalized [eight page/keyword priorities](keyword-strategy.md) from the existing four US/UK exports; all export hashes/counts rechecked. Retained 1,092 rows / 540 queries and clear measured-versus-hypothesis boundaries; no campaigns or paid research.
+- [Live technical audit](seo-discovery-review-2026-10-20.md): 17 HTML + 17 Markdown + crawler files return 200; exclusions return 404. Canonicals, index directives, format links, sitemap set, raw JSON-LD, share image and URL boundaries checked. Ordinary HTTP and Google access pass; the chat's web-reader remains a separately unestablished retrieval limit.
+- Google confirms homepage and Rules indexed; fresh Rules and new-guide tests pass. New original-character URL is not yet indexed. Aggregate Pages/Performance and the dedicated Generative AI report are processing. AI inclusion is already enabled. Current sitemap serves 17 URLs; the stored successful read still reports 14. No rankings, AI citations or zero-traffic conclusion is claimed.
+- Corrected missing canonical-HTML chapters: full public guide content now server-renders once, with real chapter links and progressive enhancement preserving the one-chapter UI. Embedded guides stay compact. Scoped independent review, lint, 56 tests and production build pass. Desktop/390px phone links, deep-link focus, search reset, native details, modified clicks and read-only-sheet embedded navigation work. No record writes.
+- Implemented three small metadata refinements and press → Neris walkthrough link. Production release/final indexing follow-through is pending; measurement reporting, shared-CSS performance and the finished video pilot remain open.
+
+See the dated audit for the final release state. This bounded batch does not close all of Batch 4.
+
+## Earlier release evidence
 
 - Core release: `a72a0b22`, instructional corrections `217527f2`; final Markdown-link/chapter-name follow-up `2fd10736`. All three reached Ready in Vercel. Final code deployment: `dpl_22V9zNNkwrXhm2ujtczSNnx3ZKxq`.
 - Build: production Next.js build passed on 20 October.

@@ -72,7 +72,7 @@ export default function PressPage() {
           <div className="sw-press__examples">
             <h3>Public demonstration characters</h3>
             <p><Link href="/characters/1662962b-14c5-4433-994e-6273b3f7ca57?view=public">Neris Cinderthread</Link> is the first character to inspect. <Link href="/characters/1da4e351-da76-4822-bf1f-632d2e657145?view=public">Orren Vaultwright</Link> shows a more elaborate build. These are existing demonstration records, not independent player testimonials.</p>
-            <p>For the procedures behind the tools, read the <Link href="/rules">Play Guide</Link>, <Link href="/creating">creation guide</Link> and <Link href="/combat">combat guide</Link>.</p>
+            <p>Read <Link href="/character#build-example">Neris’s construction walkthrough</Link> for the acquisitions and decisions behind his sheet. For the procedures behind the tools, read the <Link href="/rules">Play Guide</Link>, <Link href="/creating">creation guide</Link> and <Link href="/combat">combat guide</Link>.</p>
           </div>
         </div>
       </section>

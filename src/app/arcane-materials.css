@@ -243,9 +243,9 @@ html:not(.dark) body[data-ui="v12"] :is(.sheet-phone-section>summary strong,.she
 html:not(.dark) body[data-ui="v12"] .sheet-phone-section>summary small {color:var(--muted-foreground);}
 html:not(.dark) body[data-ui="v12"] .sw-forge-attributes button {background:var(--sw-surface-fill) padding-box,var(--sw-edge-teal) border-box;color:var(--foreground);}
 body[data-ui="v12"] .sw-forge-mode button.is-active {background:var(--sw-metal-gold);color:var(--sw-metal-gold-ink);}
-body[data-ui="v12"] :is(.sw-play-guide-index nav button[aria-current="page"],.sheet-phone-task-nav button[aria-current="page"],.v12-author-tabs .is-active) {background:var(--sw-metal-gold)!important;color:var(--sw-metal-gold-ink)!important;box-shadow:inset 0 1px #fff4ce99,inset 0 -2px #9d7534!important;}
-body[data-ui="v12"] .sw-play-guide-index nav button[aria-current="page"] .sw-play-guide-chapter-number {color:inherit;}
-body[data-ui="v12"] .sw-play-guide :is(.sw-play-guide-topic-head h2,.sw-play-guide-next button,.sw-play-guide-next-primary) {color:var(--sw-text-gold);}
+body[data-ui="v12"] :is(.sw-play-guide-index nav :is(button,a)[aria-current="page"],.sheet-phone-task-nav button[aria-current="page"],.v12-author-tabs .is-active) {background:var(--sw-metal-gold)!important;color:var(--sw-metal-gold-ink)!important;box-shadow:inset 0 1px #fff4ce99,inset 0 -2px #9d7534!important;}
+body[data-ui="v12"] .sw-play-guide-index nav :is(button,a)[aria-current="page"] .sw-play-guide-chapter-number {color:inherit;}
+body[data-ui="v12"] .sw-play-guide :is(.sw-play-guide-topic-head h2,.sw-play-guide-next :is(button,.sw-play-guide-chapter-link),.sw-play-guide-next-primary) {color:var(--sw-text-gold);}
 body[data-ui="v12"] .sw-rules-header h1 {color:var(--sw-text-gold);}
 
 /* Three work surfaces fit tablets and landscape phones. Containers keep their

@@ -5,7 +5,7 @@
     "group": "home"
   },
   "/start": {
-    "title": "How to play · SwordWeave",
+    "title": "Character walkthrough: Bartholomew · SwordWeave",
     "description": "Follow Bartholomew from character concept through starting access, sheet composition, and a turn at the table.",
     "group": "guide"
   },
@@ -36,11 +36,11 @@
   },
   "/rules": {
     "title": "Rules & play guide · SwordWeave",
-    "description": "Learn SwordWeave: primitives, capabilities, effects, heritages, rolls, combat rhythm, upkeep, damage, and your character sheet.",
+    "description": "Learn to play SwordWeave and prepare a first session. Find character basics, checks, combat timing, costs and consequences in the rules reader.",
     "group": "guide"
   },
   "/combat": {
-    "title": "Combat rhythm · SwordWeave",
+    "title": "Combat rules & worked encounter · SwordWeave",
     "description": "A shared round of intent, timing, and consequence. Learn the Council Phase, Fast / Measured / Heavy tracks, and reactions in SwordWeave.",
     "group": "guide"
   },
