@@ -3,6 +3,8 @@
 **20 October implementation update:** See [the implementation and verification record](discovery-implementation.md) for what is configured, tested and still awaiting evidence. The dated planning baseline below is retained for provenance.
 
 **Live now:** technical SEO, public Markdown/llms.txt, founder-owned Search Console, linked direct GA4, consent controls, eight dimensions and three application key events. Sitemap accepted with 14 discovered URLs. See the linked record for evidence and remaining auth/provider/reporting checks. The next priorities are indexing evidence and real data; no new page-copy program is approved.
+
+**20 October follow-through:** Bing Webmaster Tools is now verified under the founder's personal account through one CNAME. Its sitemap is submitted; AI Performance is available with no data yet. Google AI inclusion is confirmed Include, and the PHB and Rules pass live indexability tests with indexing requests accepted. See the [current teaching-material and creator proposal](content-distribution-plan.md#current-proposal-one-useful-learning-path) for the requested plans and the remaining SEO roadmap. This is preparation for review, not authorization for a broad content rewrite or creator outreach.
 Version 1 · 19 October 2026 · Planning and research, not a deployment checklist marked complete.
 
 ## The outcome

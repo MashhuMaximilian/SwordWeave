@@ -1,6 +1,115 @@
 # Content and distribution backlog
 
-19 October 2026 · Recommended sequence. This document does not authorize posting, emailing creators, opening new service accounts or publishing unfinished materials.
+Updated 20 October 2026 · Proposals for founder review. The current request authorizes planning the guides, examples, creator kit and demonstrations; it does not request publishing them or contacting creators. Existing website design and hero remain in place.
+
+## Current proposal: one useful learning path
+
+Build a small set of connected teaching materials from the finished books and working tools. A person should be able to prepare a session, understand one character, inspect one ability, and follow a scene. Reuse those same checked examples in videos and the creator kit. No new blog, broad website rewrite or weekly content quota is required.
+
+The existing site already has substantial introductions: `/rules` has **Your first game** and **Your first character**; `/character#build-example` explains Lyra and her connected pieces; `/combat` explains a shared round. Treat these as the starting material. New proposals below fill a specific practical gap rather than replacing them.
+
+| Order | Proposed deliverable | Where it belongs | What changes for a reader | Release condition |
+| --- | --- | --- | --- | --- |
+| 1 | First-session preparation checklist | Expand the existing **Your first game** topic in `/rules`; link from the existing walkthrough | GM/player reading order, materials, agreed starting budget, characters, a bounded opening scene and feedback route in one place | Check against final PHB and GM Guide, then rehearse with a new reader |
+| 2 | A complete, inspectable sample character | An optional addition linked from `/character#build-example` and Rules; keep the present Lyra explanation | Real ledger, attributes, owned permissions, one capability and the corresponding saved sheet | Use a deliberately checked fixture; final book and live sheet agree; explicit sharing choice |
+| 3 | One worked ability construction | A focused example in `/creating`, linked from the character explanation and relevant book chapter | See intent → purchased permissions → effect/capability organization → limits → table use | Every acquisition, cost and stated behavior reconciled with the final source and app |
+| 4 | One worked scene/shared round | An optional example on `/combat` | See declared intents, dependencies, appraised cost, agreed resolution, result and sheet updates | Rehearsal/playtest confirms the explanation can be followed; no invented universal DC or automatic success |
+| 5 | Creator kit | Proposed `/press`, linked from About/Contact/footer; downloadable asset bundle | A reviewer can establish fit, get accurate facts/assets and contact the founder quickly | All three book releases current; selected screenshots/rights/disclosures checked; founder review |
+| 6 | Three short demonstrations | Embedded beside the relevant explanation and in the creator kit; external publication later | Watch one complete task, then follow the matching written instructions | Actual UI recording, corrected captions and working destination links; no private data |
+
+### First-session checklist: a practical addition inside Rules
+
+Use six short sections: **Before inviting people**, **What the GM reads**, **What players read**, **What to bring**, **How to begin**, and **What to tell us afterwards**. Link to the actual named chapters and current book downloads. Explain which website actions need an account and that reading the rules does not. Discord stays an optional help route.
+
+The checklist should ask the group to agree the starting level/BU, item allowance, tone, boundaries and how consequences will be discussed. Use the existing PHB preparation worksheet where appropriate. Separate necessary materials from optional reference books and tools; do not imply every player must study all three books.
+
+Offer a bounded opening situation drawn from the final GM Guide once checked. If the package lacks ready characters, opponents, a map or an adventure, say so. Do not market it as a complete ready-to-run quickstart until those ingredients exist and have been rehearsed. Avoid unsupported promises about player count, preparation time or session length.
+
+### Character and ability: reuse the book's strongest complete record
+
+Lyra already illustrates how pieces fit together, and can stay. For a fully costed, playable demonstration, the current PHB manuscript provides **Mira**, **River Caravan Upbringing**, **Guided Water** and **River Hand**, with a complete purchase ledger and a worked use. These are better starting candidates than an arbitrary Library seed. Recheck them against the final illustrated PDF and current primitive definitions before production; this proposal does not certify the existing live records.
+
+Show a screenshot of the finished sheet beside a compact ledger, then expose the ingredients. Explain the distinctions that a newcomer is likely to miss: BU purchases versus execution cost, organizing already-owned ingredients versus buying them again, and an output-die permission versus an automatic attack/heal. Include at least one boundary or failed proposal, not just the impressive result.
+
+Prepare a separate, intentionally public demonstration record if a read-only sheet is shared. A public article must remain understandable without account creation or access to a private character. Do not convert the founder's characters, draft content or internal QA fixtures into promotional examples.
+
+### Combat example: show decisions and consequences
+
+Use the PHB's existing **A bridge round** as the first source candidate, rather than writing another combat system. Select only the characters and mechanics actually required. The final GM Guide may offer a clearer scene; choose after comparing the final editions.
+
+Present the situation, what each player intends, what depends on another action, what the GM and players agree before committing, the rolls/results, and what changes on the sheets. Identify illustrative table rulings as examples. Do not suggest a GM-selected DC, scene cost or consequence is a universal fixed rule. Link directly to the corresponding book section and the first-session checklist.
+
+### Creator kit: contents and packaging
+
+One public HTML page should contain a one-sentence description, about 50-word and 150-word descriptions, creator credit, version/date, free digital access, alpha limitations, three current books, official links, screenshots, a short demonstration, and contact@swordweave.quest. Include the existing AI-use disclosure and exact license boundaries. A public kit can be prepared before outreach without sending anyone a message.
+
+Provide a small ZIP with named logo variants, 3–5 actual screenshots, captions, a plain-text factsheet and an asset-use notice identifying the selected files. Keep the books as their normal versioned downloads rather than inflating the media ZIP. Do not imply blanket reuse rights for artwork, branding, fonts or third-party material. Link the actual publication notices; any new press-asset permission wording requires founder review against the asset inventory.
+
+Use the existing SwordWeave visual language. A new banner campaign is unnecessary. Update screenshots when their shown UI or rules change, and keep a simple asset manifest with source/version/caption/permission.
+
+### Demonstrations: proposed first three
+
+| Clip | Intended length (an editing target) | Outline | Next destination |
+| --- | --- | --- | --- |
+| What is SwordWeave? | 45–60 seconds | Show the game, current books, browser character tools, free access and alpha status; show a real finished result early | Existing walkthrough/Rules |
+| Build and use River Hand | 90–150 seconds | Start with the intended result, show the owned ingredients and ledger, organize the capability, then show one bounded use and limitation | Written ability example + relevant PHB chapter |
+| Follow one shared round | 2–3 minutes | Show the scene, each intent, dependency order, agreed costs, resolution and resulting sheet state | Written combat example + first-session checklist |
+
+Record a readable 16:9 master. Crop a 20–30 second vertical excerpt only where the text remains legible; do not shrink the entire desktop into a phone frame. Supply corrected captions (SRT/VTT), a transcript, a clear title/description, source version and one useful link. Narration can be the founder's voice or captions initially; voiceover tooling is optional. Use actual application behavior, with no synthetic mouse clicks that pretend an unavailable feature works. Add VideoObject metadata only after a real published video and thumbnail exist.
+
+### Production sequence and evidence
+
+1. **Prepare now:** outlines, source mapping, shot lists, creator descriptions and asset inventory. These are drafts, with no website content release required.
+2. **After the three books are ready:** reconcile every selected example and edition, prepare the sample record, assemble the first-session checklist and first useful recording. Upload/review the three PDFs together on itch.io under the existing release plan.
+3. **During founder group playtests:** note actual preparation effort, misunderstood terms, stalled choices, missing tools and repeated questions. Revise the package using this evidence. Use player quotes/recordings only with permission.
+4. **After the founder is ready for outreach:** finish `/press` and demonstrations; founder contacts a small, relevant first group of creators personally. No fixed outreach date; the planned playtest period may last a month or more.
+
+For each asset, keep its source chapter/version, intended reader question, publication destination, correctness reviewer, last actual revision, open questions and the next useful action. Initial usefulness can be checked with a new reader explaining the next step without coaching; website clicks alone cannot prove that learning happened.
+
+### Founder-led creator outreach plan
+
+Start with 5–10 researched prospects across indie-system reviewers, character/build educators, and small actual-play groups willing to try an alpha. For each, read/watch a recent relevant piece and check their current submission/AI-content policies. Explain the specific audience fit and offer one appropriate task: evaluate the system, try the worked build, or run a session. Do not expect every creator to do all three.
+
+A future message can be three short paragraphs: why this particular creator, what SwordWeave and the alpha package offer, and one optional invitation with the kit link. State AI use honestly where relevant. Ask for an independent assessment, with no obligation to praise or cover it. The founder sends the message; this plan does not authorize messaging, scraping private addresses or bulk DMs.
+
+Keep the outreach correspondence ledger private. Record public channel, fit, public submission route, date, materials/version, response and outcome. Register an approved public campaign slug in the analytics allowlist before issuing a tagged link. Measure useful replies, actual evaluations, sessions completed and groups returning separately from link clicks. A quiet refusal or no reply is a reason to respect the creator's process, not start an automatic follow-up sequence.
+
+## Remaining SEO and AI work beyond the foundation
+
+The technical release makes the current public material accessible; it does not establish rankings or citations. Further work is prioritized below, with broad editorial/design changes still subject to founder review.
+
+| Priority | Work | Evidence / deliverable | Decision it supports |
+| --- | --- | --- | --- |
+| Now | Complete live measurement QA; Google/Bing ownership, sitemap, AI inclusion and key URL checks | See [implementation record](discovery-implementation.md); distinguish submitted, crawlable and actually indexed | Can we trust the next observations? |
+| Next | Validate high-fit keyword intent against real search results | Start with the 21 clusters/138 candidates already saved; classify game downloads, generic character generators and compatible-system tools separately; retain US/UK range evidence | Which existing page answers the query, and is the visitor a plausible SwordWeave player? |
+| Next | Audit representative mobile performance and public navigation | Homepage, Rules, character explanation and long book reader; PageSpeed/lab diagnostics, real-user data when available, broken links/anchors/images and crawl findings | Fix concrete loading/navigation faults without redesigning the site |
+| Book release | Reconcile public book readers, PDFs, Markdown, release labels and credits | Explicit source/version parity or visible edition differences; preserve old download links; update social/kit screenshots | Can readers and assistants identify the authoritative current rules? |
+| After initial search data | Review indexed URLs, selected canonicals, exclusions, queries, countries and landing pages | Compare with the curated 14-page sitemap; check actual causes of missing pages, then titles/descriptions/internal links where justified | Resolve indexing issues and attract relevant readers, instead of creating duplicate keyword pages |
+| After checked teaching material | Publish selective examples/checklist and contextual links | The reader questions and destinations described above; no requirement to rewrite the hero | Help a visitor complete a first useful task |
+| During/after playtests | Publish real release changes and useful answers to recurring questions | Dated source/version, accurate founder identity, reproducible examples, permitted quotes/credits | Build trust and give creators something substantial to evaluate |
+| When outreach starts | Consistent official profiles and earned independent coverage | Website, GitHub, itch.io and creator kit agree on identity/version/access/disclosure; relevant public coverage recorded | Extend discovery beyond the website without invented reviews or mass link placement |
+
+AI-specific follow-through means checking actual access and factual accuracy, not repeatedly adding files. `/llms.txt` and 14 synchronized Markdown alternatives already exist. Keep them current, preserve useful rule headings/links, inspect genuine crawler delivery failures if observed, and use Google/Bing reporting with its actual limits. The Google AI inclusion control is confirmed **Include**; Bing AI Performance is available, currently with no data. No new custom GPT, MCP server, paid GEO subscription or additional metadata vocabulary is required for this phase.
+
+Use a small manual benchmark after indexing: official identity/free access, how to start, custom ability construction, and relevant category discovery. Use fresh search-enabled sessions, record platform/date/market and source URLs, and repeat a small subset independently. Keep retrieved/cited/mentioned/recommended/factually correct/referral separate. This conversation already knows SwordWeave and cannot serve as an unbiased discovery baseline. Check again when there is a material release or enough new evidence; no recurring automation has been created.
+
+The 20 October general English search sample reinforces the need to qualify tool keywords: primary result pages include D&D-specific builders and system-agnostic VTTs. That is directional intent evidence, not a US/UK rank census or difficulty score. Existing Keyword Planner estimates stay ranges, and missing reported brand volume is not zero demand. A proper priority-cluster SERP review remains next work.
+
+### Concrete mobile performance baseline · 20 October
+
+The [initial homepage PageSpeed report](https://pagespeed.web.dev/analysis/https-www-swordweave-quest/u0d0xicwze?form_factor=mobile) reports **59 Performance, 100 Accessibility, 100 Best Practices and 92 SEO**. Mobile lab metrics: FCP 4.0 s, LCP 9.2 s, TBT 210 ms, CLS 0, Speed Index 5.7 s. This is one initial-load run on an emulated Moto G Power/slow 4G with Lighthouse 13.5.0. CrUX real-user data is unavailable; these are not field Core Web Vitals or ranking scores. Automated accessibility checks do not establish complete accessibility.
+
+The LCP element is the existing hero heading (`#home-title`). The report identifies about 237.8 KiB of render-blocking styles, estimated 1,100 ms potential savings, about 180 KiB unused CSS and 309 KiB unused JavaScript. Trace the actual dependency chain and shared public/app imports before choosing a fix; these estimates are not additive guaranteed savings. First candidates are reducing public-page style/script delivery and checking font/heading render timing while preserving the hero's appearance. Repeat a representative mobile run after a concrete change, and check Rules/book pages separately before generalizing site-wide.
+
+The single basic SEO warning is the navbar **Start** link to `/sign-up`. A later copy proposal is **Create account**, without a layout or style change; do not churn metadata or the hero merely to raise a Lighthouse score. Its agentic-browsing checks pass 3/3, which does not establish search inclusion or AI citations.
+
+References checked 20 October: [Google AI optimization guidance](https://developers.google.com/search/docs/fundamentals/ai-optimization-guide), [Core Web Vitals](https://developers.google.com/search/docs/appearance/core-web-vitals), [Bing AI Performance scope](https://www.bing.com/webmasters/help/ai-performance-9f8e7d6c), [OpenAI crawler purposes](https://developers.openai.com/api/docs/bots). Examples of mixed tool intent: [Roll20's D&D builder](https://pages.roll20.net/free-dnd-character-builder-s), [FeyGate's system-agnostic VTT](https://www.fey-gate.com/). These examples are not endorsement or competitor quality assessments.
+
+---
+
+## Historical planning baseline — 19 October
+
+The material below preserves the earlier proposal and deferrals. The 20 October proposal above is the current planning reference; no new tutorial, public creator-kit page or finished video has been published by this planning update.
 
 ## Current scope: distribution preparation first
 

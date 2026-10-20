@@ -29,7 +29,7 @@ CookieConsent revision 1 names Google and requires a new analytics choice. No Go
 
 Explicit events: page_view, contact_form_started, contact_form_error, generate_lead, copy_contact_email, discord_invite_click, file_download, support_click, character_created, sign_up and login. The typed/runtime allowlist rejects unknown parameters. Public URLs keep only registered campaign labels; private routes use a fixed synthetic context and no public page view. No names, messages, account/character IDs, arbitrary titles, usernames, search terms or URL secrets are sent.
 
-Auth events require a completed Clerk attempt whose created session is active (and exact created user for signup). Existing/restored sessions and stale attempts are excluded. This conservative hook can undercount redirect/provider flows if Clerk no longer exposes the completed attempt; it must not be interpreted as an exhaustive account census. Provider-by-provider manual completion QA is still needed before relying on the signup funnel. Clone/import/edit/preview are not counted as a new guided character creation.
+Auth events originally required a completed Clerk attempt whose created session is active (and exact created user for signup). Follow-through QA found that a provider redirect can clear the attempt before the app mounts. The updated hook also accepts a consented, same-tab signed-out auth-page marker plus a session created after that marker. It excludes session IDs already present before the attempt, classifies a genuinely new user by the user creation timestamp, consumes the marker, and deduplicates the session. It waits for Clerk readiness; stale markers expire after 30 minutes. IDs/timestamps remain local, never GA parameters. Restored sessions/reloads do not count. Missing storage or clock skew can undercount; this is not an exhaustive account census. Google login is verified below; new registration/email and complete-character QA still require a separate test account. Clone/import/edit/preview are not counted as a new guided character creation.
 
 Localhost events are tagged debug_mode. A download event is a click, a Discord event is an invite click, and generate_lead means SMTP acceptance—not reading, joining, inbox delivery or a qualified partnership.
 
@@ -54,3 +54,32 @@ Use the saved keyword map as the dated baseline (1,092 provider rows, 540 distin
 - Local test server stopped after verification.
 
 Campaign values are registered in `src/lib/analytics/contract.ts`. Add each approved public creator/source and asset label there before issuing campaign links; arbitrary UTM values are intentionally discarded. No internal navigation UTMs.
+
+## Follow-through checks · 20 October 2026
+
+### Search access and indexing
+
+- Bing Webmaster Tools is verified under the same founder-owned personal Google identity. Manual CNAME verification was used, avoiding a new grant of access to the Google Search Console account. Added only `1fd53ad0bd0b9c29f7ee269117e03849.swordweave.quest → verify.bing.com`, TTL 600; prior 14 records remain, now 15 total.
+- Bing fetched the canonical sitemap successfully: **Success, 14 URLs discovered**. AI Performance is available, with **No data available** at this stage. Its citation sampling is not a cross-platform census.
+- Bing's stored homepage inspection reports **Indexed successfully / URL can appear on Bing**, last crawl **8 October 2026**. It therefore predates the new metadata. The old result's missing canonical/markup fields do not establish a defect in the current release.
+- Bing's Live URL utility returned a generic inspection error twice. No cause or WAF block was established; security settings were not weakened. A fresh homepage indexing request was accepted.
+- A one-time **sitemap-only, 14-page Site Scan** completed: **14 scanned, 0 errors, 0 warnings**. Scan email updates were unchecked. This is a scoped crawler diagnostic, not proof of perfect SEO, performance or all-page accessibility.
+- Google Pages and Crawl stats are still processing/no data. robots.txt is reported **Valid**. The canonical prefix's Search generative AI control inherits **Include** from the domain; no setting change was necessary.
+- Google's live PHB and Rules tests passed **URL is available to Google / Page can be indexed**. PHB details confirm crawl allowed, fetch successful, indexing allowed and the exact self-canonical; Google-selected canonical is only determined after indexing. Both indexing requests were accepted. Actual Google inclusion and search performance remain to be observed.
+
+### Application measurement
+
+- A private, clearly named Quickbuild QA fixture was saved and survived a full sheet reload. Realtime records **character_created**, recognized as a key event, with **creation_flow=quickbuild**. This is internal test activity, not an independent player activation. An existing complete-mode draft was found and left intact.
+- Actual PDF and Discord clicks were received as **file_download** and **discord_invite_click**. Production contact success was already verified; no additional contact messages were required for this pass.
+- A fresh Google login returned to the working Atelier. After processing, Realtime records **login = 1**. The earlier restored signed-in snapshot was not treated as a signup. The redirect hook changes are commits `a91a97a4` and `51f2c5d5`; latest Vercel production deployment `dpl_9NT7LU38PXk2sqHxKUw3okhQGs7x` is Ready.
+- Nine focused analytics checks pass (auth proof/redirect/expiry, safe event/URL contract, consent lifecycle); lint and Next production build pass. Previous foundation checks remain recorded above; this is not a claim that every repository test was rerun.
+- **Pending human step:** a separate new SwordWeave signup in the prepared tab, with the founder entering its new password and verification directly. This allows new-account and complete-character checks without replacing the founder's existing local draft. No new Google/Proton/paid account is needed. Do not mark signup, email login or complete creation as live-verified until their actual completion/event receipt is observed.
+- Campaign values, no-replay/refusal and withdrawal are covered by the contract/lifecycle tests and earlier browser checks. Additional live campaign-dimension/withdrawal checks should follow the pending signup test so consent is not changed while it is in progress.
+
+### Remaining SEO work and planning
+
+The [current content/distribution proposal](content-distribution-plan.md#current-proposal-one-useful-learning-path) contains first-session, complete-character, ability, combat, creator-kit and demonstration briefs, source candidates, placements, production gates and founder-led outreach sequencing. The PHB's Mira/River Hand and bridge-round examples are source candidates, requiring final-PDF/app reconciliation before publication. No new tutorial, public `/press` page, finished recording or creator message has been published.
+
+The mobile homepage [PageSpeed baseline](https://pagespeed.web.dev/analysis/https-www-swordweave-quest/u0d0xicwze?form_factor=mobile) is **59 Performance / 100 Accessibility / 100 Best Practices / 92 SEO**, LCP **9.2 s**, CLS **0**, simulated slow 4G. Real-user data is unavailable. Blocking styles and unused CSS/JS warrant investigation; a Start signup link triggers the one basic link-text warning. These are concrete follow-ups preserving the current design, not a reason for a hero rewrite. See the plan for exact metrics, limits and next priorities.
+
+Evidence screenshots are in the original workspace's `output/marketing/`: `bing-sitemap-success-2026-10-20.png`, `bing-public-scan-completed-2026-10-20.png`, `bing-home-indexed-2026-10-20.png`, `bing-indexing-requested-2026-10-20.png`, `gsc-phb-indexing-requested-2026-10-20.png`, `gsc-rules-indexing-requested-2026-10-20.png`, `ga4-quickbuild-verified-2026-10-20.png`, `ga4-login-verified-2026-10-20.png` and `pagespeed-mobile-baseline-2026-10-20.png`.
