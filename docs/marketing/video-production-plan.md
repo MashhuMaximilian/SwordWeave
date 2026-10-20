@@ -4,6 +4,10 @@
 **Status:** Preproduction brief and shooting guide. A short synthetic-voice audition was prepared separately at the founder's request; it is not a finished video or approved website audio. No actual tutorial footage, full edit or timed captions exists yet.
 **Quality decision:** The founder rejects videos that look or sound like generic AI output. A tool or installed skill cannot establish that a video is good enough to publish.
 
+## Voice auditions · 20 October
+
+The founder rejected the two AI Doc Maker samples as slow and robotic; the second merely changed the speaker and was worse. Those presets do not satisfy the requested delivery. A different expressive speech engine was tested using existing free workspace credits. Its first conversational take still measured about 147 words per minute and failed the pace check. A fresh quick-delivery take is 15.92 seconds (roughly 180 wpm) and was presented for listening. Neither timing nor a different engine establishes naturalness; founder review is still pending. No MP3 was post-processed to speed it up and no audio was published on the website.
+
 ## The first deliverable is a finished sample
 
 Make a **20–30 second finished excerpt from the primitive tutorial** before producing a full video. It must use actual SwordWeave footage, the proposed voice, the final caption treatment and a representative explanation. The separately requested synthetic-voice audition can test a sound preference; it does not approve the finished production or a website release. A rough storyboard or silent animatic does not approve the edit.
