@@ -49,11 +49,11 @@ export default function PrimitiveTutorialPage() {
           <p>In the Atelier, choose a new <strong>Primitive</strong> and open <strong>Identity</strong>. If another draft is already open, finish or keep that work before starting this example.</p>
           <ol>
             <li>Give the example a name you will recognize, such as <strong>Steady Aim · tutorial</strong>.</li>
-            <li>Choose an icon and a Lexicon Category appropriate to the rule. For this numerical example, inspect <strong>Universal Mathematical Modifiers</strong>.</li>
-            <li>Review <strong>Cost Tier Bracket</strong> and <strong>Exact BU</strong> with your GM. A bracket is a pricing anchor; this tutorial does not establish the correct purchase price.</li>
+            <li>Choose an icon and a <strong>Lexicon Category</strong> appropriate to the rule (<strong>Lexicon</strong> on a phone). For this numerical example, inspect <strong>Universal Mathematical Modifiers</strong>.</li>
+            <li>Review <strong>Cost Tier Bracket</strong> and <strong>Exact BU</strong> with your GM (<strong>Tier</strong> and <strong>Cost (BU)</strong> on a phone). A bracket is a pricing anchor; this tutorial does not establish the correct purchase price.</li>
             <li>Write the intended behavior in <strong>Verbose Narrative Rule</strong>: “While active, add 2 to the character’s attack rolls. This bonus does not add damage.”</li>
           </ol>
-          <p>Now open <strong>Mechanical rule</strong> and choose <strong>Change a number</strong>. That format supplies a starting rule. Review every field even when the starting values already look right.</p>
+          <p>Now open <strong>Mechanical rule</strong> and choose <strong>Change a number</strong>. On a phone, open <strong>Rule format</strong> first to reveal that choice. The format supplies a starting rule. Review every field even when the starting values already look right.</p>
           <div className="sw-primitive-tutorial__example">
             <h3>The rule we are building</h3>
             <table><caption>Illustrative editor settings, with pricing agreed separately</caption><thead><tr><th scope="col">Result</th><th scope="col">Operation</th><th scope="col">Value</th><th scope="col">Recipient</th><th scope="col">Trigger</th></tr></thead><tbody><tr><td>Attack Roll</td><td>Add</td><td>Fixed number: 2</td><td>Self</td><td>Always</td></tr></tbody></table>
@@ -74,7 +74,7 @@ export default function PrimitiveTutorialPage() {
         </section>
         <section id="value" aria-labelledby="value-title">
           <h2 id="value-title">Value: by how much?</h2>
-          <p>Choose <strong>Value</strong>, select <strong>Fixed number</strong>, and enter <strong>2</strong>. This is the amount of the bonus. It is neither the primitive’s BU price nor an action’s execution cost.</p>
+          <p>Choose <strong>Value</strong> and select <strong>Fixed number</strong>. Click the <strong>2</strong> shortcut, or type <strong>2</strong> in the custom number field and click <strong>Use number</strong> to apply it. Confirm the generated sentence shows 2. This is the amount of the bonus. It is neither the primitive’s BU price nor an action’s execution cost.</p>
           <table><caption>Other Value choices answer different questions</caption><thead><tr><th scope="col">Choice</th><th scope="col">Use it when</th></tr></thead><tbody>
             <tr><th scope="row">Sheet value</th><td>The contribution reads a character value, such as Proficiency Bonus, rather than a fixed number.</td></tr>
             <tr><th scope="row">Dice</th><td>The rule needs a rolled value. Check where and how that output is resolved; a die alone does not define a complete attack or healing action.</td></tr>
@@ -115,7 +115,8 @@ export default function PrimitiveTutorialPage() {
             <li>Choose <strong>Save Primitive</strong>. Wait for the saved confirmation. Authoring from inside a character instead uses <strong>Add to draft</strong> or <strong>Update draft</strong>; review that character draft before applying it.</li>
             <li>Open the saved entry again and inspect it. Saving an entry does not automatically give it to every character.</li>
           </ol>
-          <p>Try the rule on a character you use for testing, with the agreed BU available. Compare its attack-roll bonus before and after activating the source. A baseline bonus of +5 with only this +2 contribution becomes +7. Turn it off and compare again. If other rules affect the result, inspect them too.</p>
+          <p>Try the rule on a character you use for testing, with the agreed BU available. Record its attack-roll bonus first, acquire the saved primitive in the character draft, then apply the draft and compare. A baseline bonus of +5 with only this +2 contribution becomes +7. If other rules affect the result, inspect them too.</p>
+          <p>A standalone primitive does not have a general on/off button. To test activation separately, use it inside a capability or effect that supports toggling, then compare the enabled and disabled states.</p>
           <p>If the number does not change as expected, check ownership, active/equipped state, Result, Recipient, Trigger and stacking before adding another rule. A numerical bonus still needs an actual action and the table’s agreed resolution.</p>
         </section>
         <section id="next" aria-labelledby="next-title">
