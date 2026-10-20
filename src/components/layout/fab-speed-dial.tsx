@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode, type MouseEvent } from "react";
 import Link from "next/link";
+import { track } from "@/lib/analytics/client";
 import { usePathname } from "next/navigation";
 import { fabCreationMode } from "@/lib/fab-visibility";
 import Image from "next/image";
@@ -204,7 +205,7 @@ export function FabSpeedDial({
           </div>
         </div>
         <div className="sw-fab__community-row">
-          {items.filter((item): item is FabLink => item.kind === "link" && ["buymeacoffee", "discord"].includes(item.key)).map(item => <a key={item.key} href={item.href} target="_blank" rel="noopener noreferrer" className="sw-fab__support" data-fab-link={item.key}>{item.icon}<span>{item.label}</span><ArrowUpRight size={16} aria-hidden="true" /></a>)}
+          {items.filter((item): item is FabLink => item.kind === "link" && ["buymeacoffee", "discord"].includes(item.key)).map(item => <a key={item.key} onClick={() => track(item.key === "discord" ? { name: "discord_invite_click", params: { placement: "fab" } } : { name: "support_click", params: { placement: "fab" } })} href={item.href} target="_blank" rel="noopener noreferrer" className="sw-fab__support" data-fab-link={item.key}>{item.icon}<span>{item.label}</span><ArrowUpRight size={16} aria-hidden="true" /></a>)}
         </div>
       </footer></>}
     </div>}

@@ -1,0 +1,14 @@
+{
+  "raw_rows": 1092,
+  "unique_provider_queries": 540,
+  "curated_candidates": 138,
+  "curated_with_provider_rows": 35,
+  "clusters": 21,
+  "triage_counts": {
+    "curated candidate": 35,
+    "exclude: other product or medium": 205,
+    "hold: comparative or dated list intent": 43,
+    "manual intent review required": 257
+  },
+  "curated_with_ranged_estimates": 26
+}

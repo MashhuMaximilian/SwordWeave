@@ -1,3 +1,6 @@
+import { TrackLink } from "@/components/analytics/track-link";
+import { StructuredData } from "@/components/analytics/structured-data";
+import { publicPageMetadata } from "@/lib/seo/metadata";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, BookOpen, Hammer, Mail, UsersRound } from "lucide-react";
 import type { Metadata } from "next";
@@ -5,14 +8,11 @@ import { PublicNav } from "@/components/home/public-nav";
 import { DISCORD_INVITE_URL } from "@/lib/community";
 import { DiscordIcon } from "@/components/icons/discord-icon";
 
-export const metadata: Metadata = {
-  title: "About · SwordWeave",
-  description: "A TTRPG for your table. Why Marius Ion is building SwordWeave, an open game of character creation, shared imagination, and table rulings.",
-};
+export const metadata: Metadata = publicPageMetadata("/about");
 
 export default function AboutPage() {
   return (
-    <div className="sw-home sw-public-site sw-public-site--arcane">
+    <div className="sw-home sw-public-site sw-public-site--arcane"><StructuredData path="/about" />
       <PublicNav />
       <div id="main-content">
         <header className="sw-public-hero sw-public-hero--compact">
@@ -67,7 +67,7 @@ export default function AboutPage() {
           </dl>
           <p className="sw-public-deck">The software engine is MIT licensed; the game design uses CC BY 4.0. The site is built with Next.js, Drizzle, Neon Postgres, and Clerk. Its visual language also owes a great deal to the artists at game-icons.net.</p>
           <p className="sw-public-deck">Help shape the alpha through play. Join the Discord to ask a rules question, share a character, find a table, or show us your pets.</p>
-          <div className="sw-public-actions"><Link className="sw-cta-ghost" href="/contact"><Mail aria-hidden="true" /> Contact Mashu <ArrowRight aria-hidden="true" /></Link><a className="sw-cta-ghost sw-discord-link" href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer"><DiscordIcon /> Join the Discord <ArrowUpRight aria-hidden="true" /></a><a className="sw-cta-ghost" href="https://github.com/MashhuMaximilian/SwordWeave" target="_blank" rel="noopener noreferrer">Explore the source <ArrowUpRight aria-hidden="true" /></a><Link className="sw-public-link" href="/attributions">Meet the artists and read the credits <ArrowRight aria-hidden="true" /></Link></div>
+          <div className="sw-public-actions"><Link className="sw-cta-ghost" href="/contact"><Mail aria-hidden="true" /> Contact Mashu <ArrowRight aria-hidden="true" /></Link><TrackLink event={{ name: "discord_invite_click", params: { placement: "about" } }} className="sw-cta-ghost sw-discord-link" href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer"><DiscordIcon /> Join the Discord <ArrowUpRight aria-hidden="true" /></TrackLink><a className="sw-cta-ghost" href="https://github.com/MashhuMaximilian/SwordWeave" target="_blank" rel="noopener noreferrer">Explore the source <ArrowUpRight aria-hidden="true" /></a><Link className="sw-public-link" href="/attributions">Meet the artists and read the credits <ArrowRight aria-hidden="true" /></Link></div>
         </section>
       </div>
     </div>

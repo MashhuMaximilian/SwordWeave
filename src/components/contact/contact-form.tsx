@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { Check, Copy, LoaderCircle, Send } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { track } from "@/lib/analytics/client";
 import { CONTACT_EMAIL } from "@/lib/community";
 import { ContactDeliveryError, sendContactMessage } from "@/lib/contact";
 
@@ -12,6 +14,7 @@ export function CopyContactEmail() {
     try {
       await navigator.clipboard.writeText(CONTACT_EMAIL);
       setFeedback("Email address copied.");
+      track({ name: "copy_contact_email", params: { placement: "contact" } });
     } catch {
       setFeedback("Select the address above to copy it.");
     }
@@ -26,6 +29,8 @@ export function CopyContactEmail() {
 export function ContactForm({ configured }: { configured: boolean }) {
   const successRef = useRef<HTMLDivElement>(null);
   const pendingRef = useRef(false);
+  const startedRef = useRef(false);
+  const invalidRef = useRef(false);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
@@ -47,9 +52,11 @@ export function ContactForm({ configured }: { configured: boolean }) {
         message: String(data.get("message") ?? ""),
         botcheck: String(data.get("botcheck") ?? ""),
       });
+      track({ name: "generate_lead", params: { form_id: "contact" } });
       form.reset();
       setSent(true);
     } catch (cause) {
+      track({ name: "contact_form_error", params: { form_id: "contact", error_type: cause instanceof ContactDeliveryError ? cause.errorType : "unavailable" } });
       setError(cause instanceof ContactDeliveryError ? cause.message : "We couldn’t confirm delivery. Please try again.");
     } finally {
       pendingRef.current = false;
@@ -64,7 +71,7 @@ export function ContactForm({ configured }: { configured: boolean }) {
     <button className="sw-cta-ghost" type="button" onClick={() => { setSent(false); setError(""); }}>Send another message</button>
   </div>;
 
-  return <form className="sw-contact__form" onSubmit={submit} aria-labelledby="contact-form-title" aria-busy={sending}>
+  return <form className="sw-contact__form" onSubmit={submit} onInput={() => { if (!startedRef.current) { startedRef.current = true; track({ name: "contact_form_started", params: { form_id: "contact" } }); } }} onInvalidCapture={() => { if (invalidRef.current) return; invalidRef.current = true; track({ name: "contact_form_error", params: { form_id: "contact", error_type: "validation" } }); queueMicrotask(() => { invalidRef.current = false; }); }} aria-labelledby="contact-form-title" aria-busy={sending}>
     <h2 id="contact-form-title">Send a message</h2>
     <p>It goes straight to Mashu’s inbox.</p>
     {!configured && <p className="sw-contact__unavailable" role="status">The form is temporarily unavailable. You can copy the email address and write to Mashu directly.</p>}
@@ -90,6 +97,6 @@ export function ContactForm({ configured }: { configured: boolean }) {
       {sending ? <LoaderCircle size={18} className="sw-contact__spinner" aria-hidden="true" /> : <Send size={18} aria-hidden="true" />}
       {sending ? "Sending…" : "Send message"}
     </button>
-    <p className="sw-contact__privacy">Your details are used to reply to your message. Please don’t include passwords or sensitive account information. <a href="/privacy">Privacy & cookies</a>.</p>
+    <p className="sw-contact__privacy">Your details are used to reply to your message. Please don’t include passwords or sensitive account information. <Link href="/privacy">Privacy & cookies</Link>.</p>
   </form>;
 }

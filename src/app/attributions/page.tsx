@@ -1,13 +1,12 @@
+import { StructuredData } from "@/components/analytics/structured-data";
+import { publicPageMetadata } from "@/lib/seo/metadata";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, Palette, ScrollText } from "lucide-react";
 import { PublicNav } from "@/components/home/public-nav";
 import iconIndex from "@/lib/icons/game-icons-index.json";
 
-export const metadata: Metadata = {
-  title: "Credits & attributions · SwordWeave",
-  description: "The artists, icons, and open licenses behind SwordWeave. Full game-icons.net contributor credits.",
-};
+export const metadata: Metadata = publicPageMetadata("/attributions");
 const CC0_AUTHORS = new Set(["viscious-speed", "zeromancer"]);
 
 export default function AttributionsPage() {
@@ -22,7 +21,7 @@ export default function AttributionsPage() {
   const totalIcons = idx.icons.length;
   const cc0Icons = idx.icons.filter(icon=>CC0_AUTHORS.has(icon.author)).length;
 
-  return <div className="sw-home sw-public-site sw-public-site--arcane">
+  return <div className="sw-home sw-public-site sw-public-site--arcane"><StructuredData path="/attributions" />
     <PublicNav />
     <div id="main-content">
       <header className="sw-public-hero sw-public-hero--compact"><div>

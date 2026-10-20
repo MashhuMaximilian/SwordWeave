@@ -1,9 +1,11 @@
+import { StructuredData } from "@/components/analytics/structured-data";
+import { publicPageMetadata } from "@/lib/seo/metadata";
 import Link from "next/link";
 import { ArrowRight, Clock3, Eye, Flame, Shield, Swords, UsersRound, Zap } from "lucide-react";
 import type { Metadata } from "next";
 import { PublicNav } from "@/components/home/public-nav";
 
-export const metadata: Metadata = {title:"Combat rhythm · SwordWeave",description:"A shared round of intent, timing, and consequence. Learn the Council Phase, Fast / Measured / Heavy tracks, and reactions in SwordWeave."};
+export const metadata: Metadata = publicPageMetadata("/combat");
 const RHYTHM=[
  {n:"01",icon:UsersRound,title:"Council",body:"The whole party makes one shared plan: declare your intentions, coordinate movement and dependencies, and hear the DM describe the enemies’ round and what your characters can perceive."},
  {n:"02",icon:Eye,title:"Read the scene",body:"The GM considers scale, impact, and complexity. Agree timing, strain, cost, and stakes before committing."},
@@ -15,7 +17,7 @@ const TRACKS=[
  {tone:"gold",name:"Measured",range:"Complexity 2–3",icon:Swords,verb:"Make the pieces connect.",body:"A deliberate or layered intent. Reposition through danger, divide enemies with a barrier, or bring someone through an escape route.",note:"Resolves after Fast."},
  {tone:"copper",name:"Heavy",range:"Complexity 4+",icon:Flame,verb:"Give the scene a new shape.",body:"An intent requiring substantial construction or concentration. A complex transformation needs time to become real, and the scene may change first.",note:"Resolves last; the intent must still be possible."},
 ] as const;
-export default function CombatPage(){return <div className="sw-home sw-public-site sw-public-site--arcane"><PublicNav/><div id="main-content">
+export default function CombatPage(){return <div className="sw-home sw-public-site sw-public-site--arcane"><StructuredData path="/combat" /><PublicNav/><div id="main-content">
  <header className="sw-public-hero sw-public-hero--compact"><div><p className="sw-public-kicker"><Swords aria-hidden="true"/> The combat rhythm</p><h1 className="sw-public-title">Steel moves.<br />The world answers.<br /><em>Everyone is in the scene.</em></h1><p className="sw-public-deck">Declare your intent together. Let complexity shape when it arrives. React when the moment changes. A fight is a shared situation, unfolding through a shared round.</p><div className="sw-public-actions"><a href="#round" className="sw-cta-primary">Follow a round <ArrowRight aria-hidden="true"/></a><Link href="/character" className="sw-cta-ghost">Build a character first <Shield aria-hidden="true"/></Link></div></div></header>
  <section id="round" className="sw-public-section" aria-labelledby="round-title"><header className="sw-public-section-head"><div><p className="sw-public-kicker">01 / One round, four movements</p><h2 id="round-title">Declare. Commit.<br /><em>See what changes.</em></h2></div><p>The baseline is one Main Intent and one Reaction Slot per round. Movement belongs to the intent. Specific purchased rules can change that baseline.</p></header><ol className="sw-public-rhythm">{RHYTHM.map(phase=><li className="sw-public-panel" key={phase.n}><span className="sw-public-number">{phase.n}</span><phase.icon aria-hidden="true"/><h3>{phase.title}</h3><p>{phase.body}</p></li>)}</ol></section>
  <section className="sw-public-section" aria-labelledby="tracks-title"><header className="sw-public-section-head"><div><p className="sw-public-kicker">02 / When an intent arrives</p><h2 id="tracks-title">Three tracks.<br /><em>One changing battlefield.</em></h2></div><p>Complexity measures what must happen before the action can manifest. The GM assigns the track from the actual intent and its circumstances.</p></header><div className="sw-public-grid">{TRACKS.map(track=><article className="sw-public-panel sw-public-track" data-tone={track.tone} key={track.name}><track.icon aria-hidden="true"/><p className="sw-public-kicker">{track.range}</p><h3>{track.name}</h3><h4>{track.verb}</h4><p>{track.body}</p><strong>{track.note}</strong></article>)}</div></section>

@@ -1,3 +1,5 @@
+import { StructuredData } from "@/components/analytics/structured-data";
+import { publicPageMetadata } from "@/lib/seo/metadata";
 import Link from "next/link";
 import { ArrowRight, BookOpen, Compass, Gem, Layers3, ShieldHalf, Sparkles, Swords } from "lucide-react";
 import type { Metadata } from "next";
@@ -6,10 +8,7 @@ import { cumulativeBuForLevel, maxBuDebtForLevel } from "@/lib/engine/bu";
 import { computeMaxVitality } from "@/lib/engine/vitality";
 import { proficiencyBonus } from "@/lib/engine/practices";
 
-export const metadata: Metadata = {
-  title: "Create your character · SwordWeave",
-  description: "Bring the character in your head to the table. A practical guide to attributes, Build Units, reusable rules, and meaningful drawbacks.",
-};
+export const metadata: Metadata = publicPageMetadata("/character");
 const LEVELS = [1,2,3,4,5,6,7,8,9,10,13,17,21,25,29];
 const CHOICES = [
   {icon:Compass,title:"Give them a life.",body:"Give them a name and a short idea of who they are. Quickbuild offers ready lineage, upbringing and manifest choices. Complete character offers more space for their story. Both produce a sheet you can keep developing."},
@@ -18,7 +17,7 @@ const CHOICES = [
   {icon:Swords,title:"Compose something memorable.",body:"Ready capabilities are convenient saved ideas. You can also assemble an action from owned primitives during play and save it later. Purchase or invent a missing piece using spare BU when it fits the scene and the DM agrees, even during combat."},
 ];
 
-export default function CharacterPage(){return <div className="sw-home sw-public-site sw-public-site--arcane sw-character-guide">
+export default function CharacterPage(){return <div className="sw-home sw-public-site sw-public-site--arcane sw-character-guide"><StructuredData path="/character" />
   <PublicNav />
   <div id="main-content">
     <header className="sw-public-hero sw-public-hero--compact sw-character-guide__hero"><div><p className="sw-public-kicker"><Sparkles aria-hidden="true"/> The character forge</p><h1 className="sw-public-title">Bring someone<br /><em>only you could imagine.</em></h1><p className="sw-public-deck">A mapmaker who folds roads. A knight who bargains with echoes. A cook who keeps a small thunderstorm in a jar. Start there. Build the rules around them.</p><div className="sw-public-actions"><Link className="sw-cta-primary" href="/characters/new">Create your character <ArrowRight aria-hidden="true"/></Link><a className="sw-cta-ghost" href="#build-example">See a build take shape <Layers3 aria-hidden="true"/></a></div></div><aside className="sw-character-package" aria-label="Example character package"><span className="sw-public-kicker">An illustrative character / connected pieces</span><h2>Lyra, the wayfinder</h2><p>A mine runner who always looks for another way out.</p><div className="sw-character-package__roots"><span><small>Lineage</small>Saltborn</span><span><small>Upbringing</small>Mine runner</span><span><small>Manifest</small>Wayfinder</span></div><div className="sw-character-package__capability"><Layers3 aria-hidden="true"/><span><small>Capability</small>A Way Out</span></div><ul><li><Gem aria-hidden="true"/><span>Stride Extension<small>Move faster over land</small></span></li><li><Gem aria-hidden="true"/><span>Aquatic Unlock<small>Swim at your land speed</small></span></li><li><Gem aria-hidden="true"/><span>Subterranean Bore<small>Burrow through soft earth</small></span></li></ul><a className="sw-public-link" href="#build-example">Open the package <ArrowRight aria-hidden="true"/></a></aside></header>

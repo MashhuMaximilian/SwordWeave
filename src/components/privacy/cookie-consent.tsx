@@ -1,4 +1,6 @@
 "use client";
+import { AuthMeasurement } from "@/components/analytics/auth-measurement";
+import { GoogleAnalytics } from "@/components/analytics/google-analytics";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Analytics } from "@vercel/analytics/next";
@@ -11,10 +13,14 @@ export function CookieConsentManager() {
     // Fail closed if the manager cannot initialize: analytics stays off.
     void initializeCookieConsent().catch(() => {});
   }, []);
-  return allowed ? <>
+  return <>
+    <GoogleAnalytics allowed={allowed} />
+    <AuthMeasurement allowed={allowed} />
+    {allowed && <>
     <Analytics beforeSend={filterAnalyticsEvent} />
     <SpeedInsights beforeSend={filterAnalyticsEvent} />
-  </> : null;
+  </>}
+  </>;
 }
 
 export function CookiePreferencesButton() {

@@ -110,6 +110,8 @@ const ibmPlexMono = localFont({
 // export" on every route. Viewport exports go to a <meta name="viewport">
 // tag instead, which is where the browser actually reads theme-color from.
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.swordweave.quest"),
+  robots: { index: false, follow: true },
   title: "SwordWeave",
   description: "Open-source web engine for the SwordWeave TTRPG system.",
   manifest: "/manifest.json",
@@ -130,6 +132,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
+        <link rel="describedby" href="/llms.txt" type="text/plain" />
         {/* Logo assets shipped 2026-07-14 in public/: logo-light.png
             (teal-on-transparent, light-mode brand mark), logo-dark.png
             (white-on-transparent, dark-mode brand mark). favicon-source

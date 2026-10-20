@@ -1,3 +1,5 @@
+import { NextResponse } from "next/server";
+import { isPublicPage, PUBLIC_PAGES, markdownPath } from "@/lib/seo/public-pages";
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 // Routes that require authentication
@@ -24,11 +26,25 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
+  if (req.nextUrl.pathname.endsWith('.md')) {
+    if (!Object.keys(PUBLIC_PAGES).some(path => markdownPath(path) === req.nextUrl.pathname)) {
+      return new NextResponse('Not found', { status: 404, headers: { 'X-Robots-Tag': 'noindex' } });
+    }
+    const destination = req.nextUrl.clone();
+    destination.pathname = `/api/discovery${req.nextUrl.pathname}`;
+    destination.search = '';
+    return NextResponse.rewrite(destination);
+  }
   const isSheet = /^\/characters\/[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\/?$/i.test(req.nextUrl.pathname);
   // The sheet server page checks publication/share access. Editing routes stay protected.
   if (isProtectedRoute(req) && !isSheet) {
     await auth.protect();
   }
+  const response = NextResponse.next();
+  if (process.env["VERCEL_ENV"] === "preview" || !isPublicPage(req.nextUrl.pathname) || Array.from(req.nextUrl.searchParams.keys()).some(key => !["utm_source", "utm_medium", "utm_campaign", "utm_content"].includes(key))) {
+    response.headers.set("X-Robots-Tag", "noindex, follow");
+  }
+  return response;
 });
 
 export const config = {

@@ -1,0 +1,57 @@
+{
+  "/": {
+    "title": "SwordWeave · Free Modular Tabletop RPG",
+    "description": "Build the character you imagine. Compose clear mechanical rules, shape the stakes with your group, and make SwordWeave your table’s own roleplaying game.",
+    "group": "home"
+  },
+  "/start": {
+    "title": "How to play · SwordWeave",
+    "description": "Follow Bartholomew from character concept through starting access, sheet composition, and a turn at the table.",
+    "group": "guide"
+  },
+  "/character": {
+    "title": "Create your character · SwordWeave",
+    "description": "Bring the character in your head to the table. A practical guide to attributes, Build Units, reusable rules, and meaningful drawbacks.",
+    "group": "guide"
+  },
+  "/creating": {
+    "title": "Create, edit & fork · SwordWeave",
+    "description": "Create your own rules in the Atelier, adapt Library ideas, and develop your character.",
+    "group": "guide"
+  },
+  "/rules": {
+    "title": "Rules & play guide · SwordWeave",
+    "description": "Learn SwordWeave: primitives, capabilities, effects, heritages, rolls, combat rhythm, upkeep, damage, and your character sheet.",
+    "group": "guide"
+  },
+  "/combat": {
+    "title": "Combat rhythm · SwordWeave",
+    "description": "A shared round of intent, timing, and consequence. Learn the Council Phase, Fast / Measured / Heavy tracks, and reactions in SwordWeave.",
+    "group": "guide"
+  },
+  "/books": {
+    "title": "Free rulebooks · SwordWeave v0.1 alpha",
+    "description": "Read or download the free SwordWeave Player's Handbook, Game Master's Guide and SRD in light or dark editions.",
+    "group": "books"
+  },
+  "/about": {
+    "title": "About · SwordWeave",
+    "description": "A TTRPG for your table. Why Marius Ion is building SwordWeave, an open game of character creation, shared imagination, and table rulings.",
+    "group": "project"
+  },
+  "/contact": {
+    "title": "Contact · SwordWeave",
+    "description": "Questions, table feedback or creator collaborations: send Mashu a message at contact@swordweave.quest.",
+    "group": "contact"
+  },
+  "/attributions": {
+    "title": "Credits & attributions · SwordWeave",
+    "description": "The artists, icons, and open licenses behind SwordWeave. Full game-icons.net contributor credits.",
+    "group": "project"
+  },
+  "/privacy": {
+    "title": "Privacy & cookies · SwordWeave",
+    "description": "How SwordWeave uses essential storage, optional analytics, and contact messages.",
+    "group": "project"
+  }
+}

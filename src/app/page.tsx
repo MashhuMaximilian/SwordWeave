@@ -1,3 +1,6 @@
+import { TrackLink } from "@/components/analytics/track-link";
+import { StructuredData } from "@/components/analytics/structured-data";
+import { publicPageMetadata } from "@/lib/seo/metadata";
 import Link from "next/link";
 import { BookCards } from "@/components/publications/book-cards";
 import "./books/books.css";
@@ -10,10 +13,7 @@ import { IconDisplay } from "@/components/icons/icon-display";
 import { DISCORD_INVITE_URL } from "@/lib/community";
 import { DiscordIcon } from "@/components/icons/discord-icon";
 
-export const metadata: Metadata = {
-  title: "SwordWeave · A TTRPG for YOUR table",
-  description: "Build the character you imagine. Compose clear mechanical rules, shape the stakes with your group, and make SwordWeave your table’s own roleplaying game.",
-};
+export const metadata: Metadata = publicPageMetadata("/");
 
 const PIECES = [
   { number: "01", name: "Primitives", label: "Reusable building blocks", icon: "delapouite/cube", description: "Buy the rules your character owns with Build Units: a domain, a verb tier, a die, a range, a bonus, a permission. Pieces can change numbers, grant permissions or describe a particular fictional ability.", example: "A rule you can point to.", kind: "primitive" },
@@ -36,7 +36,7 @@ const CORE_TENETS = [
 
 export default function HomePage() {
   return (
-    <div className="sw-home sw-public-site sw-public-site--arcane">
+    <div className="sw-home sw-public-site sw-public-site--arcane"><StructuredData path="/" />
       <PublicNav />
       <section className="sw-public-hero sw-home-hero" aria-labelledby="home-title">
         <div className="sw-home-hero__copy">
@@ -45,7 +45,7 @@ export default function HomePage() {
           <p className="sw-public-deck">Build the character you mean. Shape the rules with the people you play with.</p>
           <p className="sw-home-hero__intro">Each player describes a character’s choices. The DM describes the world and helps your group resolve what happens. SwordWeave gives those ideas reusable rules.</p>
           <div className="sw-public-actions"><Link className="sw-cta-primary" href="/start">Learn to play <ArrowRight aria-hidden="true" /></Link><Link className="sw-cta-ghost" href="/character"><Users aria-hidden="true" /> Create a character</Link></div>
-          <div className="sw-home-hero__links"><Link href="/atelier?build=primitive">Enter the Atelier <ArrowUpRight aria-hidden="true" /></Link><Link href="/library/browse">Explore the Library <ArrowUpRight aria-hidden="true" /></Link><a className="sw-discord-link" href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer"><DiscordIcon /> Join Discord <ArrowUpRight aria-hidden="true" /></a></div>
+          <div className="sw-home-hero__links"><Link href="/atelier?build=primitive">Enter the Atelier <ArrowUpRight aria-hidden="true" /></Link><Link href="/library/browse">Explore the Library <ArrowUpRight aria-hidden="true" /></Link><TrackLink event={{ name: "discord_invite_click", params: { placement: "hero" } }} className="sw-discord-link" href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer"><DiscordIcon /> Join Discord <ArrowUpRight aria-hidden="true" /></TrackLink></div>
         </div>
         <div className="sw-home-hero__instrument"><ArcaneForge /></div>
       </section>
@@ -95,9 +95,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="sw-home-books" aria-labelledby="home-books-title"><div><p className="sw-public-kicker">Read, make, play · v0.1 alpha</p><h2 id="home-books-title">The books for your table</h2><p>Three free core books, with light and dark PDF editions. Learn to play, run a session, or use the open reference to create your own.</p><Link href="/books">Explore the books <ArrowRight size={16} aria-hidden="true" /></Link></div><BookCards /></section>
+      <section className="sw-home-books" aria-labelledby="home-books-title"><div><p className="sw-public-kicker">Read, make, play · v0.1 alpha</p><h2 id="home-books-title">The books for your table</h2><p>Three free core books, with light and dark PDF editions. Learn to play, run a session, or use the open reference to create your own.</p><Link href="/books">Explore the books <ArrowRight size={16} aria-hidden="true" /></Link></div><BookCards placement="home" /></section>
       <section className="sw-public-invitation"><div className="sw-public-invitation__seal" aria-hidden="true"><Sparkles /></div><p className="sw-public-kicker">Bring the idea you cannot stop thinking about.</p><h2>There is room for it<br /><em>at your table.</em></h2><p>Start with a character. A strange gift. One impossible thing.<br />Then give it rules you and your friends can play.</p><div className="sw-public-actions"><Link href="/character" className="sw-cta-primary">Begin your character <ArrowRight aria-hidden="true" /></Link><Link href="/about" className="sw-cta-ghost"><MessageCircle aria-hidden="true" /> Meet the project</Link></div></section>
-      <footer className="sw-public-footer"><Link href="/" className="sw-public-footer__brand">Sword<span>·</span>Weave</Link><p>A framework for the stories you tell together.</p><nav aria-label="Project information"><Link href="/start">Walkthrough</Link><Link href="/combat">Combat</Link><Link href="/books">Books</Link><Link href="/about">About</Link><Link href="/contact">Contact</Link><Link href="/attributions">Credits</Link><a className="sw-discord-link" href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer"><DiscordIcon /> Discord <ArrowUpRight size={13} aria-hidden="true" /></a></nav></footer>
+      <footer className="sw-public-footer"><Link href="/" className="sw-public-footer__brand">Sword<span>·</span>Weave</Link><p>A framework for the stories you tell together.</p><nav aria-label="Project information"><Link href="/start">Walkthrough</Link><Link href="/combat">Combat</Link><Link href="/books">Books</Link><Link href="/about">About</Link><Link href="/contact">Contact</Link><Link href="/attributions">Credits</Link><TrackLink event={{ name: "discord_invite_click", params: { placement: "footer" } }} className="sw-discord-link" href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer"><DiscordIcon /> Discord <ArrowUpRight size={13} aria-hidden="true" /></TrackLink></nav></footer>
     </div>
   );
 }

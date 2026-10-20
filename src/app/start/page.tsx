@@ -1,12 +1,11 @@
+import { StructuredData } from "@/components/analytics/structured-data";
+import { publicPageMetadata } from "@/lib/seo/metadata";
 import Link from "next/link";
 import { ArrowRight, BookOpen, Boxes, Compass, Hammer, Layers3, Sparkles, Swords } from "lucide-react";
 import type { Metadata } from "next";
 import { PublicNav } from "@/components/home/public-nav";
 
-export const metadata: Metadata = {
-  title: "How to play · SwordWeave",
-  description: "Follow Bartholomew from character concept through starting access, sheet composition, and a turn at the table.",
-};
+export const metadata: Metadata = publicPageMetadata("/start");
 
 const STEPS = [
   { id:"character", number:"01", icon:Compass, phase:"Create / Your character", title:"Meet the person before the rules.", body:"A roleplaying game is a story your group makes together. You describe your character’s choices; the DM describes the world, plays the opposition and helps resolve uncertainty. Open Create character. Quickbuild offers ready foundations; Complete character gives more room for the story. A name and one sentence about what you want to play are enough to begin.", example:"Bartholomew Vey is a refined psychic serpent, a gentleman with copper-and-amber scales and an immaculate top hat. He wants to understand consciousness. Other people’s memories have begun to blur with his own.", label:"An actual character’s concept" },
@@ -19,7 +18,7 @@ const STEPS = [
   { id:"resolve", number:"08", icon:BookOpen, phase:"At the table / Resolve and continue", title:"Choose the right resolution together.", body:"Agree who rolls, what they roll, what opposes them, and what success or failure means. The available declarations cover your action roll, a target’s saving throw, a target’s practice check against a DC, opposed checks, and no roll. Leave a saved resolution unspecified when the scene must decide it. A resolution note grants no bonus, proficiency, access, or extra action.", example:"The GM might call for the courier’s Mental save against the acting character’s single DC, an opposed check if both sides actively struggle, or no roll if nothing uncertain is being contested. Decide from the actual rules and scene. Apply the outcome and any consequences, then respond to the changed situation.", label:"A ruling, not a predetermined result" },
 ] as const;
 
-export default function StartPage(){return <div className="sw-home sw-public-site sw-public-site--arcane sw-guide-walkthrough">
+export default function StartPage(){return <div className="sw-home sw-public-site sw-public-site--arcane sw-guide-walkthrough"><StructuredData path="/start" />
   <PublicNav/><div id="main-content">
     <header className="sw-public-hero sw-guide-hero"><div><p className="sw-public-kicker"><Compass aria-hidden="true"/> Your first adventure / field guide</p><h1 className="sw-public-title">First, a character.<br/><em>Then, a possibility.</em></h1><p className="sw-public-deck">Never played a roleplaying game? Follow a character from a simple idea to a shared scene. Choose a ready foundation, learn where its rules live, and discover how to describe an action with your group.</p><div className="sw-public-actions"><Link className="sw-cta-primary" href="/characters/new">Create a character <ArrowRight aria-hidden="true"/></Link><a className="sw-cta-ghost" href="#character">Follow the walkthrough <BookOpen aria-hidden="true"/></a></div></div>
     <aside className="sw-guide-example" aria-label="Meet Bartholomew Vey"><div className="sw-guide-example__heading"><span className="sw-guide-sigil"><Compass aria-hidden="true"/></span><div><p className="sw-public-kicker">Meet an existing character</p><h2>Bartholomew Vey</h2><p>A psychic serpent. An impeccable gentleman. A mind full of borrowed memories.</p></div></div><ol className="sw-guide-flow"><li><span className="sw-guide-flow__marker"><Sparkles aria-hidden="true"/></span><div><span className="sw-guide-flow__label">The person</span><p>He studies consciousness, but fears losing the boundary of his own identity.</p></div></li><li><span className="sw-guide-flow__marker"><Boxes aria-hidden="true"/></span><div><span className="sw-guide-flow__label">The foundation</span><p>Domains, verb tiers, range, and an output die provide actual mechanical access.</p></div></li><li><span className="sw-guide-flow__marker"><Swords aria-hidden="true"/></span><div><span className="sw-guide-flow__label">The possibility</span><p>“Could I turn the courier’s certainty into a moment of doubt?”</p></div></li></ol><p className="sw-guide-example__foot">His concept and heritage names come from an existing character. This scene illustrates the conversation; your table agrees its exact access, rolls, costs and outcome.</p></aside></header>

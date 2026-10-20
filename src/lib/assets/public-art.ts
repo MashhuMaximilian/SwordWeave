@@ -32,9 +32,14 @@ export function publicBookRedirects(origin: string = PUBLIC_ART_ORIGIN) {
   return [
     ...filenames.map(filename => ({
       source: `/books/v0.1-alpha/${filename}`,
-      destination: `${assetOrigin}/documents/swordweave/v0.1-alpha/${filename.startsWith("srd") ? "" : "print-r2/"}${filename}`,
+      destination: `${assetOrigin}/documents/swordweave/v0.1-alpha/${filename === "players-handbook.pdf" ? "interwoven-2026-10-19/" : filename.startsWith("srd") ? "" : "print-r2/"}${filename}`,
       permanent: false,
     })),
+    {
+      source: "/books/v0.1-alpha/players-handbook-full.pdf",
+      destination: `${assetOrigin}/documents/swordweave/v0.1-alpha/interwoven-2026-10-19/players-handbook-full.pdf`,
+      permanent: false,
+    },
     ...artwork.map(name => ({
       source: `/books/art/${name}.webp`,
       destination: `${assetOrigin}/images/books/v0.1-alpha/${name}.webp`,

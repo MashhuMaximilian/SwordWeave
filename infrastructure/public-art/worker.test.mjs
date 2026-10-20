@@ -69,3 +69,14 @@ test('reviewed print revision is exposed without opening arbitrary revisions', a
   assert.equal((await worker.fetch(new Request('https://art.example'+path),makeEnv())).status,404);
  }
 });
+
+test('only the two reviewed Interwoven release PDFs are exposed', async () => {
+ for (const name of ['players-handbook', 'players-handbook-full']) {
+  const response = await worker.fetch(new Request(`https://art.example/documents/swordweave/v0.1-alpha/interwoven-2026-10-19/${name}.pdf`), makeEnv());
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('Content-Type'), 'application/pdf');
+ }
+ for (const path of ['game-masters-guide.pdf', 'draft.pdf', 'players-handbook-dark.pdf']) {
+  assert.equal((await worker.fetch(new Request(`https://art.example/documents/swordweave/v0.1-alpha/interwoven-2026-10-19/${path}`), makeEnv())).status, 404);
+ }
+});

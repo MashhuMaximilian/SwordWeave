@@ -1,4 +1,5 @@
 "use client";
+import { track } from "@/lib/analytics/client";
 import { CatalogueQuickLook } from "@/components/library/catalogue-quick-look";
 import { Markdown } from "@/components/ui/markdown";
 import { ForgeProgressRail, ForgeWorkbench, QuickbuildSection } from "./forge-section";
@@ -841,6 +842,7 @@ function AccountNewCharacterForm({accountId}:{accountId:string|null}) {
           throw new Error(
             payload.error ?? "The character could not be created.",
           );
+        track({ name: "character_created", params: { creation_flow: "complete" } });
         try {
           if(draftKey)window.localStorage.removeItem(draftKey);
         } catch {
@@ -1756,6 +1758,7 @@ function QuickBuildForm({
         const data = await response.json();
         if (!response.ok || !data.character?.id)
           throw Error(data.error ?? "Your character could not be created.");
+        track({ name: "character_created", params: { creation_flow: "quickbuild" } });
         try {
           if(draftKey)window.localStorage.removeItem(draftKey);
         } catch {
