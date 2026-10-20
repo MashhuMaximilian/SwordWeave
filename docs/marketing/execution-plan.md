@@ -42,6 +42,10 @@ For each batch retain its diff, focused checks, desktop/phone proof, content/rul
 
 **Acceptance:** follow a complete example without needing the author's explanation; cross-check source and arithmetic; all referenced records/chapters open; no unsupported automation, price, balance or rule claims. Website and Markdown teach the same complete material. Advanced qualifications belong in detail panels when they are not needed in the main example.
 
+### Requested extension — character from scratch
+
+On 20 October the founder requested a separate advanced authoring page and Create submenu destination, covering personal traits rather than supplied heritage choices. `/creating-a-character` now teaches a complete original proposal through numerical/nonnumerical primitives, conditional bonuses, optional compositions, exact accounting, resolved uses and consequences/recovery. It preserves the main Character guide and existing builder. The board records rule/UI review, tests and release evidence.
+
 ## Batch 3 — original companion materials and revised kit
 
 **Owners:** material/PDF agent, brand/kit agent, parent review. **Depends on:** reviewed examples from Batch 2; exact gradient export may proceed independently. Tasks MATERIAL-01, MATERIAL-02, BRAND-01, WEB-02.
@@ -104,4 +108,4 @@ Batches 2–3 have been implemented with bounded agent scopes for the Neris cons
 
 Fifty-four focused tests, scoped lint, actual desktop/phone reading flows and browser downloads pass. Every companion PDF page and all fillable fields were checked. The implementation board records source evidence, archive hashes, final build/preview status and the production-mode Markdown caveat. These checks establish a reviewable result; founder acceptance is still separate.
 
-Next active implementation batch is discovery/measurement/performance (Batch 4), followed by the finished video pilot (Batch 5) once teaching is accepted. Book reconciliation, all-three-book upload and real playtest feedback remain founder dependencies. No claim is made that the entire marketing program is finished.
+The founder-requested logo layout, PHB-style companion revision and separate original-character guide are implemented; see the board for release evidence. Next active implementation batch is discovery/measurement/performance (Batch 4), followed by the finished video pilot (Batch 5) once teaching is accepted. Book reconciliation, all-three-book upload and real playtest feedback remain founder dependencies. No claim is made that the entire marketing program is finished.

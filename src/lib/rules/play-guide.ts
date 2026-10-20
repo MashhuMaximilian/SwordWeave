@@ -238,7 +238,8 @@ export const PLAY_GUIDE: GuideTopic[] = [
       },
       {
         "title": "Choose a creation mode",
-        "body": "Quickbuild lets you choose ready library foundations. Give the character a name and short backstory, choose level or budget, and add a portrait if you want. Complete character gives more room to describe their personality and history. Both create the same kind of sheet, which you can keep developing."
+        "body": "Quickbuild lets you choose ready library foundations. Give the character a name and short backstory, choose level or budget, and add a portrait if you want. Complete character gives more room to describe their personality and history. Both create the same kind of sheet, which you can keep developing.",
+        "links": [{ "title": "Create a character from scratch: custom traits and rules", "url": "/creating-a-character" }]
       },
       {
         "title": "Give the character a simple idea",

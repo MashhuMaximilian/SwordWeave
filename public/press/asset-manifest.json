@@ -133,8 +133,9 @@
       "text": "materials/swordweave-first-session-run-sheet.md",
       "pages": 2,
       "description": "Original preparation and action/consequence run sheet, with 21 interactive fields.",
-      "pdfBytes": 49737,
-      "pdfSha256": "d408eb8814af8b226e5c335d40cd11adfbc2659d1c9c9f0dc07600ecf9b223c4",
+      "presentation": "Warm ivory, deep teal and simulated metallic typography; printable and fillable.",
+      "pdfBytes": 54901,
+      "pdfSha256": "7e5ee5497d7a21bdf8f5eaa12158bed053145f50845083952cbc7158e4281379",
       "textBytes": 4103,
       "textSha256": "90d22b09f9ff92d7476ca61e5e485d800ecc0d85f46ddf7a8588e77b3e4f30a4"
     },
@@ -144,10 +145,32 @@
       "text": "materials/swordweave-build-with-neris.md",
       "pages": 3,
       "description": "Original source-checked construction companion, complete 19-acquisition ledger, resolved treatment and personal variation prompts; four interactive fields.",
-      "pdfBytes": 38552,
-      "pdfSha256": "30d08b42c846f6bf440db0bac16950fbf9e2559f00b9a593db6fa65706c7f475",
-      "textBytes": 7037,
-      "textSha256": "e438426ca3be11b3fbbfc5850cdf1159860239d455c9cbce783331313bff7305"
+      "presentation": "Warm ivory, deep teal and simulated metallic typography; printable and fillable.",
+      "illustrationCredit": "Existing AI-generated heritage illustrations created with OpenAI image-generation tools under Marius Ion’s direction. Artwork retains separate source notices; it is not covered by the companion text CC BY 4.0 license.",
+      "illustrations": [
+        {
+          "name": "Ashlung",
+          "publicReference": "https://www.swordweave.quest/images/lineages/ashlung-graphic-v1.webp",
+          "approvedMasterSha256": "d39652d677eb4d8ae2d4c10321cb68bb586e8d68cbe792db6d78bea94ca4c7b1",
+          "embeddedExportSha256": "f3373602754d70ab92c876b82ed0b2753523f535c10853833fd78bcf5b4b16dc"
+        },
+        {
+          "name": "Field Surgeon Apprentice",
+          "publicReference": "https://www.swordweave.quest/images/heritages/upbringings/field-surgeon-apprentice-graphic-v3.webp",
+          "approvedMasterSha256": "9ff6f92a4ccade9d9b6860e8470b4d6e948b5f0044ff19897377750b86acd87f",
+          "embeddedExportSha256": "ba9c8a9e8ba38305db37e2a7747911cd4321ce91b81f3ac070e05d21f80bb7f0"
+        },
+        {
+          "name": "Thread Surgeon",
+          "publicReference": "https://www.swordweave.quest/images/heritages/manifests/thread-surgeon-graphic-v3.webp",
+          "approvedMasterSha256": "aca66cc4d2a185b371b82ebe238a5c5b99002b84c05dc79ba9e85a9bbcf02ed6",
+          "embeddedExportSha256": "c92bbfe03bf7da657d703709e55b09c0118f7ca39d97101e519d82adc2d3261c"
+        }
+      ],
+      "pdfBytes": 897924,
+      "pdfSha256": "a09bc03a8c11c625ff227a608fa8127262183ce8ac33f81244974eca357f719a",
+      "textBytes": 7225,
+      "textSha256": "cdd91d69eac69428f4700b22577e6fb88c2c8bd05fc8897b51382bd3f367b9ad"
     }
   ]
 }

@@ -17,6 +17,7 @@ export default function CreatingPage() {
       <h1>{CREATING_GUIDE_INTRO.title}</h1><p>{CREATING_GUIDE_INTRO.summary}</p>
       <div className="sw-rules-book-links">
         <Link href="/rules#creating">This chapter in Rules →</Link>
+        <Link href="/creating-a-character">Build an original character →</Link>
         <Link href="/tutorials/create-a-primitive">Create your first primitive →</Link>
         <Link href="/atelier">Open the Atelier →</Link>
         <Link href="/creating.md">Read as Markdown →</Link>

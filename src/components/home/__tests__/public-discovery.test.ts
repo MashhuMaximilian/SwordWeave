@@ -23,6 +23,14 @@ describe('public Library discovery without an account provider', () => {
     ]);
   });
 
+  it('keeps the character guide and exposes the original-concept guide in Create', () => {
+    const $ = load(renderToStaticMarkup(createElement(PublicNav)));
+    const entries = $('ul[aria-label="Create"] a').map((_, element) => $(element).attr('href')).get();
+    expect(entries).toContain('/character');
+    expect(entries).toContain('/creating-a-character');
+    expect(entries).toContain('/characters/new');
+  });
+
   it('opens the visibility-filtered public encounter directory rather than the owner-only archive', async () => {
     const $ = load(renderToStaticMarkup(await EncountersPage({ searchParams: Promise.resolve({}) })));
     expect($('[data-discovery="true"]')).toHaveLength(1);

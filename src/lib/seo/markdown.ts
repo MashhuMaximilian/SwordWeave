@@ -6,6 +6,7 @@ import { CREATING_GUIDE, CREATING_GUIDE_INTRO } from '@/lib/rules/creating-guide
 import { PRIMITIVE_TUTORIAL, PRIMITIVE_TUTORIAL_INTRO } from '@/lib/rules/primitive-tutorial';
 import { guideBookLinks } from '@/lib/publications/book-links';
 import { NERIS_GUIDE } from '@/lib/rules/neris-example';
+import { ADVANCED_CHARACTER_GUIDE, ADVANCED_CHARACTER_INTRO } from '@/lib/rules/advanced-character-guide';
 import figures from '@/lib/publications/figures.json';
 import art from '@/lib/publications/art.json';
 import maps from '@/lib/publications/maps.json';
@@ -66,6 +67,9 @@ export function guideMarkdown() {
 }
 export function creatingMarkdown() {
   return `# ${CREATING_GUIDE_INTRO.title}\n\n${CREATING_GUIDE_INTRO.summary}\n\nSource: ${SITE_URL}/creating\n\n${CREATING_GUIDE.map(topicMarkdown).join('\n\n')}\n`;
+}
+export function advancedCharacterMarkdown() {
+  return `# ${ADVANCED_CHARACTER_INTRO.title}\n\n${ADVANCED_CHARACTER_INTRO.summary}\n\nSource: ${SITE_URL}/creating-a-character\n\n${ADVANCED_CHARACTER_GUIDE.map(topicMarkdown).join('\n\n')}\n`;
 }
 export function primitiveTutorialMarkdown() {
   return `# ${PRIMITIVE_TUTORIAL_INTRO.title}\n\n${PRIMITIVE_TUTORIAL_INTRO.summary}\n\n${PRIMITIVE_TUTORIAL_INTRO.editionNote}\n\nSource: ${SITE_URL}/tutorials/create-a-primitive\n\n${PRIMITIVE_TUTORIAL.map(topicMarkdown).join('\n\n')}\n`;

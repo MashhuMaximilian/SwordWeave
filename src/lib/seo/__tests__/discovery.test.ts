@@ -7,9 +7,10 @@ import robots from '@/app/robots';
 
 describe('public discovery', () => {
   it('maps only curated public pages to distinct canonical URLs and formats', () => {
-    expect(Object.keys(PUBLIC_PAGES)).toHaveLength(16);
-    expect(sitemap()).toHaveLength(16);
+    expect(Object.keys(PUBLIC_PAGES)).toHaveLength(17);
+    expect(sitemap()).toHaveLength(17);
     expect(PUBLIC_PAGES['/press']).toBeDefined();
+    expect(PUBLIC_PAGES['/creating-a-character']).toBeDefined();
     expect(PUBLIC_PAGES['/tutorials/create-a-primitive']).toBeDefined();
     expect(PUBLIC_MARKDOWN_ASSETS.has('/press/fact-sheet.md')).toBe(true);
     expect(PUBLIC_MARKDOWN_ASSETS.has('/characters/private.md')).toBe(false);

@@ -5,6 +5,7 @@ import { PLAY_GUIDE } from '@/lib/rules/play-guide';
 import { CREATING_GUIDE } from '@/lib/rules/creating-guide';
 import { PRIMITIVE_TUTORIAL } from '@/lib/rules/primitive-tutorial';
 import { NERIS_GUIDE } from '@/lib/rules/neris-example';
+import { ADVANCED_CHARACTER_GUIDE } from '@/lib/rules/advanced-character-guide';
 import { ROOTED_FORD_HOSTILE } from '@/lib/rules/encounter-example';
 import type { GuideBlock } from '@/lib/rules/play-guide';
 
@@ -31,13 +32,14 @@ describe('public Markdown delivery', () => {
       expect(markdown).toMatch(/^# .+/);
       expect(markdown).toContain(`${SITE_URL}${path}`);
     }
-    // Three books and all three learning readers use complete structured sources.
-    expect(fetcher).toHaveBeenCalledTimes(Object.keys(PUBLIC_PAGES).length - 6);
+    // Three books and all four learning readers use complete structured sources.
+    expect(fetcher).toHaveBeenCalledTimes(Object.keys(PUBLIC_PAGES).length - 7);
   });
 
   it.each([
     ['/rules.md', PLAY_GUIDE],
     ['/creating.md', CREATING_GUIDE],
+    ['/creating-a-character.md', ADVANCED_CHARACTER_GUIDE],
     ['/tutorials/create-a-primitive.md', PRIMITIVE_TUTORIAL],
   ] as const)('exports every chapter of %s without depending on a selected HTML chapter', async (path, topics) => {
     const fetcher = vi.fn();

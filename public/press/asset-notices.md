@@ -16,6 +16,8 @@ The book-preview files are unmodified exports from the published illustrated Pla
 
 Existing book credit: “AI-generated illustrations created with OpenAI image-generation tools under Marius Ion’s direction.”
 
+The Neris companion embeds the existing Ashlung, Field Surgeon Apprentice and Thread Surgeon heritage portraits beside their explanations. They were created with OpenAI image-generation tools under Marius Ion’s direction. Their public portrait references, approved-master identities and embedded-export hashes are recorded with the companion in the manifest. The companion text’s CC BY 4.0 license does not license these separately identified portraits.
+
 The publication’s existing notice permits sharing the complete illustrated book noncommercially and printing it for personal or table use. Other reuse of separately identified illustrations requires permission. The creator does not assert exclusive copyright in purely generated expression. An exported page or screenshot does not put its embedded illustration under CC BY 4.0.
 
 Ask [contact@swordweave.quest](mailto:contact@swordweave.quest) about extracting, adapting or otherwise reusing artwork beyond the existing notices. No standalone illustration pack is supplied.
@@ -30,7 +32,7 @@ Where included in the manifest, tool screenshots depict actual public demonstrat
 
 Icons from game-icons.net are individually credited at https://www.swordweave.quest/attributions. Most use CC BY 3.0; identified CC0 contributions keep that dedication. Follow the individual source credit when reusing an extracted icon. The official Discord mark follows Discord’s own branding terms and is not included as a standalone kit asset.
 
-The published book fonts—Unica One, Aubrey, Syne, Oxanium and IBM Plex Mono—use the SIL Open Font License 1.1. This archive contains no font software. Text rendered in a preview does not change the license on the text.
+The published book fonts—Unica One, Aubrey, Syne, Oxanium and IBM Plex Mono—use the SIL Open Font License 1.1. No standalone font files are supplied; companion PDFs embed font subsets under their existing font licenses. Text rendered in a preview does not change the license on the text.
 
 ## AI disclosure
 

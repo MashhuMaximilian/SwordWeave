@@ -2,12 +2,18 @@
 """Build original, interactive alpha companions from their checked public sources.
 
 Run scripts/export-companion-source.ts with tsx first. Use the bundled Python
-runtime (reportlab/pypdf); fontTools is used only to convert existing OFL WOFF2
-fonts if the local temporary TTFs do not already exist. No network or DB access.
+runtime (reportlab/pypdf). For uncached OFL WOFF2 conversion, use fontTools in
+the current interpreter or, if available, the system PATH python3. This supports
+the bundled PDF runtime and separately installed fontTools without installs.
+Use --font-dir tmp/pdfs/fonts-clean-review to exercise an empty font cache.
+No network or DB access.
 """
 from pathlib import Path
 from html import escape
+import argparse
+from hashlib import sha256
 import json
+import shutil
 import subprocess
 import sys
 
@@ -22,27 +28,79 @@ from reportlab.platypus import Paragraph
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / 'output/pdf'
-FONT_DIR = ROOT / 'tmp/pdfs/fonts'
+# Separate cache version preserves legacy companions' fonts for comparison.
+FONT_DIR = ROOT / 'tmp/pdfs/companion-fonts-source-time-v1'
 WIDTH, HEIGHT = A4
 MARGIN = 39
 CONTENT = WIDTH - MARGIN * 2
-INK = colors.HexColor('#111817')
-TEAL = colors.HexColor('#245c53')
-RULE = colors.HexColor('#a8b5ac')
+PAPER = colors.HexColor('#f8f3e7')
+INK = colors.HexColor('#173331')
+TEAL = colors.HexColor('#1e706a')
+GOLD = colors.HexColor('#876323')
+RULE = colors.HexColor('#adbcb0')
+PANEL = colors.HexColor('#e9eadc')
+DEEP_TEAL = colors.HexColor('#102c30')
+PALE_GOLD = colors.HexColor('#e9c574')
+FIELD = colors.HexColor('#fffdf7')
+GOLD_STOPS = ('#87632b', '#c5a45e', '#f0d99b', '#b9944f', '#87632b')
+SILVER_STOPS = ('#637b80', '#bacdca', '#f2f2df', '#96b1b0', '#637b80')
+ASSET_DIR = ROOT / 'scripts/companion-assets'
 SITE = 'https://www.swordweave.quest'
 
 
-def prepare_fonts():
+def metallic_rule(c, x, y, width, height=.65, stops=GOLD_STOPS):
+    """Native simulated-metal shading, from the accepted PHB graphic vocabulary.
+
+    Stops and clipping method: scripts/phb_art_edition_graphics.py in the
+    accepted Interwoven production source. No reflective-foil finish is implied.
+    """
+    c.saveState()
+    path = c.beginPath()
+    path.rect(x, y, width, height)
+    c.clipPath(path, stroke=0, fill=0)
+    c.linearGradient(x, y, x + width, y,
+                     [colors.HexColor(value) for value in stops], extend=True)
+    c.restoreState()
+
+
+def terminal(c, x, y, size=2.2):
+    c.saveState()
+    c.setStrokeColor(GOLD)
+    c.setLineWidth(.45)
+    path = c.beginPath()
+    path.moveTo(x, y + size)
+    for point in ((x + size, y), (x, y - size), (x - size, y)):
+        path.lineTo(*point)
+    path.close()
+    c.drawPath(path, stroke=1, fill=0)
+    c.restoreState()
+
+
+def prepare_fonts(font_dir=FONT_DIR):
     names = [('SwordBody', 'aubrey-400-latin-e006e0e2.woff2'),
              ('SwordTitle', 'unica-one-400-latin-f1708315.woff2'),
              ('SwordLabel', 'syne-600-latin-48dc6652.woff2')]
-    FONT_DIR.mkdir(parents=True, exist_ok=True)
-    if not all((FONT_DIR / f'{name}.ttf').exists() for name, _ in names):
-        code = "from fontTools.ttLib import TTFont; import sys; f=TTFont(sys.argv[1]); f.flavor=None; f.save(sys.argv[2])"
+    font_dir.mkdir(parents=True, exist_ok=True)
+    if not all((font_dir / f'{name}.ttf').exists() for name, _ in names):
+        converter = None
+        for interpreter in dict.fromkeys([sys.executable, shutil.which('python3')]):
+            if not interpreter:
+                continue
+            probe = subprocess.run([interpreter, '-c', 'import fontTools.ttLib'],
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if probe.returncode == 0:
+                converter = interpreter
+                break
+        if converter is None:
+            raise RuntimeError('Uncached WOFF2 conversion requires fontTools in the current Python or PATH python3.')
+        print('Preparing companion fonts with '+converter)
+        # Keep source head timestamps: fontTools otherwise stamps the conversion
+        # time into the embedded subset, changing PDF bytes on a cold rebuild.
+        code = "from fontTools.ttLib import TTFont; import sys; f=TTFont(sys.argv[1], recalcTimestamp=False); f.flavor=None; f.save(sys.argv[2])"
         for name, source in names:
-            subprocess.run(['python3', '-c', code, str(ROOT / 'src/app/fonts' / source), str(FONT_DIR / f'{name}.ttf')], check=True)
+            subprocess.run([converter, '-c', code, str(ROOT / 'src/app/fonts' / source), str(font_dir / f'{name}.ttf')], check=True)
     for name, _ in names:
-        pdfmetrics.registerFont(TTFont(name, str(FONT_DIR / f'{name}.ttf')))
+        pdfmetrics.registerFont(TTFont(name, str(font_dir / f'{name}.ttf')))
 
 
 def clean(text):
@@ -57,18 +115,37 @@ class Page:
         self.companion = companion
         self.blocks = []
         self.title = title
-        self.c.setFillColor(TEAL)
-        self.c.setFont('SwordLabel', 9)
-        self.c.drawString(MARGIN, self.y, 'SwordWeave / v0.1 alpha / original companion')
+        self.c.setFillColor(PAPER)
+        self.c.rect(0, 0, WIDTH, HEIGHT, fill=1, stroke=0)
+        self.c.setFillColor(DEEP_TEAL)
+        self.c.rect(MARGIN, HEIGHT - 46, CONTENT, 20, fill=1, stroke=0)
+        self.c.setFillColor(PALE_GOLD)
+        self.c.setFont('SwordLabel', 7.8)
+        self.c.drawString(MARGIN + 9, HEIGHT - 39,
+                          'SWORDWEAVE / v0.1 ALPHA / ORIGINAL COMPANION')
+        metallic_rule(self.c, MARGIN, HEIGHT - 48, CONTENT, 1)
         self.y -= 28
-        self.p(title, size=25, leading=28, font='SwordTitle', after=9, record=False)
+        # A single gradient spans the complete native display title, as in the PHB.
+        title_width = pdfmetrics.stringWidth(title, 'SwordTitle', 25)
+        if title_width > CONTENT:
+            raise ValueError('Display title needs intentional reflow: '+title)
+        self.c.saveState()
+        text = self.c.beginText(MARGIN, self.y - 25)
+        text.setFont('SwordTitle', 25)
+        text.setTextRenderMode(7)
+        text.textOut(title)
+        self.c.drawText(text)
+        self.c.linearGradient(MARGIN, self.y - 25, MARGIN + title_width, self.y - 25,
+                              [TEAL, GOLD], extend=True)
+        self.c.restoreState()
+        self.y -= 37
         self.p(purpose, size=11.5, leading=15, after=16)
 
-    def p(self, text, size=11.5, leading=15, font='SwordBody', after=8, width=CONTENT, x=MARGIN, record=True, kind='paragraph'):
+    def p(self, text, size=11.6, leading=15.6, font='SwordBody', after=8, width=CONTENT, x=MARGIN, record=True, kind='paragraph', color=INK):
         if record:
             self.blocks.append({'type': kind, 'text': clean(text)})
         style = ParagraphStyle('companion', fontName=font, fontSize=size, leading=leading,
-                               textColor=INK, alignment=TA_LEFT, spaceBefore=0, spaceAfter=0)
+                               textColor=color, alignment=TA_LEFT, spaceBefore=0, spaceAfter=0)
         paragraph = Paragraph(escape(clean(text)), style)
         _, height = paragraph.wrap(width, HEIGHT)
         if self.y - height < 62:
@@ -79,7 +156,7 @@ class Page:
 
     def section(self, title, hint=None):
         self.y -= 4
-        self.p(title, size=12, leading=15, font='SwordLabel', after=7, kind='heading')
+        self.p(title, size=12, leading=15, font='SwordLabel', after=7, kind='heading', color=GOLD)
         if hint:
             self.p(hint, size=10.5, leading=13.5, after=8)
 
@@ -91,7 +168,7 @@ class Page:
             raise ValueError(f'Field {name} crosses the footer')
         self.c.acroForm.textfield(name=name, tooltip=clean(label), x=x, y=self.y-height,
             width=width, height=height, value='', fontName='Helvetica', fontSize=10,
-            textColor=INK, fillColor=colors.white, borderColor=RULE, borderWidth=.5,
+            textColor=INK, fillColor=FIELD, borderColor=RULE, borderWidth=.5,
             borderStyle='underlined', forceBorder=True, fieldFlags='multiline' if lines > 1 else '',
             maxlen=1200 if lines > 1 else 300)
         self.y -= height + 6
@@ -102,7 +179,7 @@ class Page:
         for index, label in enumerate(labels):
             self.c.acroForm.checkbox(name=f'{prefix}_check_{index+1}', tooltip=clean(label),
                 x=MARGIN, y=self.y-9, size=10, checked=False, buttonStyle='check',
-                borderWidth=.6, borderColor=TEAL, fillColor=colors.white, textColor=INK,
+                borderWidth=.6, borderColor=TEAL, fillColor=FIELD, textColor=INK,
                 forceBorder=True)
             self.p(label, size=9.5, leading=12, after=5, x=MARGIN+17, width=CONTENT-17, record=False)
 
@@ -110,13 +187,14 @@ class Page:
         self.blocks.append({'type':'table','headers':[clean(value) for value in headers], 'rows':[[clean(value) for value in row] for row in rows]})
         x = MARGIN
         header_y = self.y
+        self.c.setFillColor(PANEL)
+        self.c.rect(MARGIN, header_y-17, CONTENT, 20, fill=1, stroke=0)
         for label, width in zip(headers, widths):
-            self.p(label, size=9, leading=12, font='SwordLabel', after=0, width=width-10, x=x+5, record=False)
+            self.p(label, size=9, leading=12, font='SwordLabel', after=0, width=width-10, x=x+5, record=False, color=TEAL)
             self.y = header_y
             x += width
         self.y -= 18
-        self.c.setStrokeColor(TEAL)
-        self.c.line(MARGIN, self.y+3, MARGIN+CONTENT, self.y+3)
+        metallic_rule(self.c, MARGIN, self.y+3, CONTENT, .75, SILVER_STOPS)
         for row in rows:
             top = self.y
             bottom = top
@@ -132,15 +210,34 @@ class Page:
             self.c.line(MARGIN, self.y+3, MARGIN+CONTENT, self.y+3)
         self.y -= 9
 
+    def foundations(self, rows):
+        """Whole existing portraits teach the three saved origins beside their text."""
+        self.blocks.append({'type':'table', 'headers':['Foundation','What it contributes to this concept'],
+                            'rows':[[row['name'],row['text']] for row in rows]})
+        for row in rows:
+            top = self.y
+            self.c.drawImage(str(ASSET_DIR / (row['key']+'.jpg')),
+                             MARGIN, top-64, width=64, height=64)
+            metallic_rule(self.c, MARGIN, top-66, 64, 1.2)
+            self.p(row['name'], size=10.5, leading=13.5, font='SwordLabel',
+                   after=5, x=MARGIN+78, width=CONTENT-78, record=False, color=GOLD)
+            self.p(row['text'], size=11, leading=14.5, after=0,
+                   x=MARGIN+78, width=CONTENT-78, record=False)
+            self.y = min(self.y, top-66) - 9
+        self.p('Existing heritage illustrations: AI-generated with OpenAI tools under Marius Ion\'s direction. Artwork retains separate notices; companion text CC BY 4.0 does not license these portraits.',
+               size=8.5, leading=11, after=10)
+
     def footer(self, links):
         if self.y < 59:
             raise ValueError(f'Page {self.number} has no footer clearance')
-        self.c.setStrokeColor(RULE)
-        self.c.line(MARGIN, 53, WIDTH-MARGIN, 53)
+        metallic_rule(self.c, MARGIN, 53, CONTENT, .7)
+        terminal(self.c, MARGIN, 53.35)
+        terminal(self.c, WIDTH-MARGIN, 53.35)
         self.c.setFillColor(INK)
         self.c.setFont('SwordLabel', 7)
         self.c.drawString(MARGIN, 39, 'Marius Ion / SwordWeave | CC BY 4.0 original companion text | 20 Oct 2026')
         self.c.linkURL('https://creativecommons.org/licenses/by/4.0/', (MARGIN, 34, WIDTH-MARGIN-40, 47), relative=0, thickness=0)
+        self.c.setFillColor(GOLD)
         self.c.drawRightString(WIDTH-MARGIN, 39, f'{self.number} / {self.total}')
         self.c.setFont('SwordBody', 8.5)
         x = MARGIN
@@ -211,6 +308,10 @@ def session_sheet():
 
 def neris_companion():
     data = json.loads((ROOT / 'tmp/pdfs/neris-source.json').read_text())
+    art_sources = json.loads((ASSET_DIR / 'sources.json').read_text())
+    for art in art_sources['assets']:
+        if sha256((ASSET_DIR / art['file']).read_bytes()).hexdigest() != art['exportSha256']:
+            raise ValueError('Companion portrait differs from its source record: '+art['name'])
     e, acquisitions, stages, treatment = data['example'], data['acquisitions'], data['stages'], data['treatment']
     path = OUTPUT / 'swordweave-build-with-neris.pdf'
     c = new_document(path, 'Build with Neris Cinderthread')
@@ -225,11 +326,11 @@ def neris_companion():
     page.table(['Physical','Mental','Magical','Proficiency','Vitality'],
                [[str(e['attributes']['physical']),str(e['attributes']['mental']),str(e['attributes']['magical']),f"+{e['pb']} / Mental",f"{e['maxVitality']} maximum"]], [80,80,80,139,CONTENT-379])
     page.section('Read the three foundations')
-    page.table(['Foundation','What it contributes to this concept'],[
-        ['Ashlung','Fire Resistance and Ordinary Smoke Filtration. Light ordinary smoke is different from heat, toxic gas or magical fumes.'],
-        ['Field Surgeon Apprentice','Training, careful handling, carrying support and Splint and Rally. Appropriate supplies and a reachable patient still matter.'],
-        ['Thread Surgeon','Finesse and Knowledge training, useful bonuses, material patching and familiar treatment pieces. Shared acquisitions are counted once.'],
-    ],[145,CONTENT-145],size=11)
+    page.foundations([
+        {'name':'Ashlung', 'key':'ashlung', 'text':'Fire Resistance and Ordinary Smoke Filtration. Light ordinary smoke is different from heat, toxic gas or magical fumes.'},
+        {'name':'Field Surgeon Apprentice', 'key':'field-surgeon-apprentice', 'text':'Training, careful handling, carrying support and Splint and Rally. Appropriate supplies and a reachable patient still matter.'},
+        {'name':'Thread Surgeon', 'key':'thread-surgeon', 'text':'Finesse and Knowledge training, useful bonuses, material patching and familiar treatment pieces. Shared acquisitions are counted once.'},
+    ])
     page.section('Keep access and budgets distinct')
     page.p(f"Level 8 contributes {e['progressionBu']} BU. This saved demo adds {e['dmBonusBu']} DM BU: {e['budgetBu']} total. Its {e['uniqueCharacterAcquisitions']} unique character acquisitions cost {e['spentBu']} BU, leaving {e['remainingBu']}. Items cost {e['itemBu']} Item BU separately.")
     page.p('No separate Domain acquisition is stored in this snapshot. Read its bounded authored physical treatments; do not infer unrestricted magical healing. When you fork or build a new character, review the current required access, foundation and budget before applying changes.',size=10.5,leading=13.5)
@@ -283,14 +384,21 @@ def neris_companion():
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--no-site-data', action='store_true',
+                        help='Build only PDF/Markdown companions; leave website content data unchanged.')
+    parser.add_argument('--font-dir', type=Path, default=FONT_DIR,
+                        help='TTF cache directory; an empty temporary directory verifies fresh font conversion.')
+    args = parser.parse_args()
     OUTPUT.mkdir(parents=True, exist_ok=True)
-    prepare_fonts()
+    prepare_fonts(args.font_dir)
     paths=[session_sheet()]
     if (ROOT / 'tmp/pdfs/neris-source.json').exists():
         paths.append(neris_companion())
     for path in paths:
         print(path.relative_to(ROOT))
-    (ROOT/'src/lib/marketing/companion-content.json').write_text(json.dumps(READABLE,ensure_ascii=False,indent=2)+'\n')
+    if not args.no_site_data:
+        (ROOT/'src/lib/marketing/companion-content.json').write_text(json.dumps(READABLE,ensure_ascii=False,indent=2)+'\n')
 
 
 if __name__ == '__main__':

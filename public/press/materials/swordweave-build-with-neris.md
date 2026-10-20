@@ -28,6 +28,8 @@ One way to read these choices: trained hands and knowledge support treatment; sm
 | Field Surgeon Apprentice | Training, careful handling, carrying support and Splint and Rally. Appropriate supplies and a reachable patient still matter. |
 | Thread Surgeon | Finesse and Knowledge training, useful bonuses, material patching and familiar treatment pieces. Shared acquisitions are counted once. |
 
+Existing heritage illustrations: AI-generated with OpenAI tools under Marius Ion's direction. Artwork retains separate notices; companion text CC BY 4.0 does not license these portraits.
+
 ### Keep access and budgets distinct
 
 Level 8 contributes 99 BU. This saved demo adds 1 DM BU: 100 total. Its 19 unique character acquisitions cost 86 BU, leaving 14. Items cost 14 Item BU separately.

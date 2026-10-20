@@ -47,6 +47,7 @@ const NAV_ITEMS: readonly NavItem[] = [
 
 const CREATE_ITEMS = [
   { href: "/character", label: "Character guide" },
+  { href: "/creating-a-character", label: "Character from scratch" },
   { href: "/characters/new", label: "Build a character" },
   { href: "/creating", label: "Abilities & primitives" },
   { href: "/tutorials/create-a-primitive", label: "Primitive editor tutorial" },

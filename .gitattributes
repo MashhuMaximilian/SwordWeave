@@ -1,0 +1,2 @@
+# Generated PDF streams must retain their exact bytes, even when ASCII encoded.
+public/press/materials/*.pdf binary
