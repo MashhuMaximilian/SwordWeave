@@ -43,7 +43,7 @@ export function stopGoogleAnalytics() {
   // Stop pending analytics commands, too. Do not replay them on a later acceptance.
   if (target.dataLayer) target.dataLayer.length = 0;
   lastPage = '';
-  try { sessionStorage.removeItem('sw-auth-measured'); } catch {}
+  try { sessionStorage.removeItem('sw-auth-measured'); sessionStorage.removeItem('sw-auth-pending'); } catch {}
   for (const cookie of document.cookie.split(';')) {
     const name = cookie.split('=')[0]?.trim();
     if (!name || !/^_ga(?:_|$)|^_gid$|^_gat/.test(name)) continue;
