@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const budgets = {
-  page: 110_000,
+  page: 75_000,
   "rules/page": 110_000,
   "books/page": 110_000,
   "contact/page": 110_000,

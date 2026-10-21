@@ -13,7 +13,7 @@ function evaluate(code: string) {
   return JSON.parse(result.stdout) as unknown;
 }
 
-describe('independent reader and tool CSS', () => {
+describe('independent home, reader and tool CSS', () => {
   it('guards the original subject, including html, root, theme ancestors and pseudo-elements', () => {
     expect(evaluate(`
       const values=[':root','html:not(.dark) body','body[data-ui="v12"] .chip::before',
@@ -30,8 +30,8 @@ describe('independent reader and tool CSS', () => {
 
   it('uses zero-specificity conditions and excludes reader rules from tool portal subjects', () => {
     const result = evaluate(`
-      console.log(JSON.stringify({reader:surface.surfaceGuard('reader'),tool:surface.surfaceGuard('tool'),contract:surface.contract}));
-    `) as { reader: string; tool: string; contract: { surfaceAttribute: string; overlayAttribute: string } };
+      console.log(JSON.stringify({home:surface.surfaceGuard('home'),reader:surface.surfaceGuard('reader'),tool:surface.surfaceGuard('tool'),contract:surface.contract}));
+    `) as { home: string; reader: string; tool: string; contract: { surfaceAttribute: string; overlayAttribute: string } };
     expect(result.reader).toContain(':not(:where(');
     expect(result.reader).toContain(`[${result.contract.overlayAttribute}="tool"]`);
     expect(result.tool).toContain(`[${result.contract.overlayAttribute}="tool"]`);
@@ -39,6 +39,9 @@ describe('independent reader and tool CSS', () => {
     expect(result.reader).toContain(`[${result.contract.surfaceAttribute}="reader"]`);
     expect(result.reader).not.toContain(':has(');
     expect(result.tool).not.toContain(':has(');
+    expect(result.home).toContain(`[${result.contract.surfaceAttribute}="home"]`);
+    expect(result.home).toContain(':not(:where(');
+    expect(result.home).not.toContain(':has(');
   });
 
   it('proves every OR branch and ignores negation/descendant queries as ownership evidence', () => {
@@ -82,6 +85,66 @@ describe('independent reader and tool CSS', () => {
     expect(result.roots).not.toContain('src/app/characters/[id]/page.tsx');
   });
 
+  it('limits homepage roots and excludes only the unreachable editor/guide lazy edges', () => {
+    const result = evaluate(`
+      const graph=surface.homeSourceGraph();
+      console.log(JSON.stringify({files:graph.files,prefixes:[...graph.dynamicPrefixes]}));
+    `) as { files: string[]; prefixes: string[] };
+    expect(result.files).toContain('src/app/layout.tsx');
+    expect(result.files).toContain('src/app/page.tsx');
+    expect(result.files).toContain('src/components/layout/global-controls.tsx');
+    expect(result.files).toContain('src/components/publications/book-cards.tsx');
+    expect(result.files).not.toContain('src/components/rules/play-guide.tsx');
+    expect(result.files).not.toContain('src/components/character-modal/tabbed-character-form.tsx');
+    expect(result.files).not.toContain('src/app/books/[slug]/page.tsx');
+    expect(result.prefixes).toEqual(expect.arrayContaining(['sw-forge-node--','sw-home-piece--','sw-book-card--']));
+  });
+
+  it('prunes home rules only when every selector positively requires an absent owned namespace class', () => {
+    const selectors = ['.sw-other-reader','.v12-unknown-new-widget','.third-party-widget',
+      '.sw-public-title','.sw-other-reader,.sw-public-title',':is(.sw-other-reader,.sheet-away)',
+      ':where(.sw-other-reader,.third-party-widget)',':not(.sw-other-reader)',
+      'body:has(.sw-other-reader)','.sw-other-reader + .sw-public-title',
+      '.sw-public-title + .sw-other-reader','.sw-forge-node--gold','.sw-book-card--teal'];
+    expect(evaluate(`
+      const graph=surface.homeSourceGraph();
+      console.log(JSON.stringify(${JSON.stringify(selectors)}.map(value=>surface.absentFromHome(value,graph))));
+    `)).toEqual([true,true,false,false,false,true,false,false,false,false,true,false,false]);
+  });
+
+  it('fails closed when new opaque HTML or nonliteral lazy dependencies enter the homepage graph', () => {
+    expect(evaluate(`
+      const samples=['export const View=()=> <div dangerouslySetInnerHTML={{__html:content}}/>;',
+        'export const View=()=>import(moduleName);'];
+      console.log(JSON.stringify(samples.map(source=>{
+        try {surface.homeSourceGraph(['entry.tsx'],()=>source,()=>null);return false;}
+        catch(error){return /Review/.test(error.message);}
+      })));
+    `)).toEqual([true,true]);
+  });
+
+  it('replays only retained plain homepage component sheets in their import order', () => {
+    expect(evaluate(`
+      const graph=surface.homeSourceGraph();
+      const actual=surface.homeComponentSources(graph);
+      // Explicitly include excluded styles in a fixture, without needing an
+      // ignored generated file to exist in a fresh clone.
+      const fixture=surface.homeComponentSources({cssImports:[
+        {from:'src/app/layout.tsx',specifier:'./globals.css'},
+        {from:'src/app/layout.tsx',specifier:'./v12.css'},
+        {from:'src/app/page.tsx',specifier:'./generated/home-surface.css'},
+        {from:'src/app/page.tsx',specifier:'../components/icons/discord-icon.module.css'},
+        {from:'src/app/page.tsx',specifier:'./books/books.css'},
+        {from:'src/components/home/public-nav.tsx',specifier:'./public-nav.css'},
+        {from:'src/app/page.tsx',specifier:'./books/books.css'},
+      ]});
+      console.log(JSON.stringify({actual:actual.map(source=>source.specifier),fixture:fixture.map(source=>source.specifier),
+        relativeUrls:actual.some(source=>[...source.css.matchAll(/url\\(\\s*(['"]?)(.*?)\\1\\s*\\)/g)]
+          .some(match=>!/^(?:\\/|#|data:|https?:)/.test(match[2])))}));
+    `)).toEqual({ actual: ['src/app/books/books.css','src/components/home/public-nav.css'],
+      fixture: ['src/app/books/books.css','src/components/home/public-nav.css'], relativeUrls: false });
+  });
+
   it('retains keyframes, font faces, unknown selectors and conditional context', () => {
     const original = '@font-face{font-family:demo;src:url(/demo.woff2)}@media(max-width:767px){.v12-character-page{padding:9px}.unknown-new{padding:3px}}@keyframes spin{to{transform:rotate(1turn)}}';
     const result = evaluate(`
@@ -122,19 +185,32 @@ describe('independent reader and tool CSS', () => {
       }
       const original=records(surface.canonicalSources().map(source=>source.css).join('\\n'));
       const tool=records(result.outputs['src/app/generated/tool-surface.css'],'tool');
-      const reader=records(result.outputs['src/app/generated/reader-surface.css'],'reader');
+      const readerCss=result.outputs['src/app/generated/reader-surface.css'];
+      const boundary=readerCss.indexOf('/* Retained homepage component:');
+      const reader=records(readerCss.slice(0,boundary),'reader');
+      const componentReplay=records(readerCss.slice(boundary),'reader');
+      const componentOriginal=records(surface.homeComponentSources(result.homeGraph).map(source=>source.css).join('\\n'));
+      const home=records(result.outputs['src/app/generated/home-surface.css'],'home');
       let at=0;for(const record of original)if(reader[at]===record)at++;
+      let homeAt=0;for(const record of original)if(home[homeAt]===record)homeAt++;
       const sha=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
       console.log(JSON.stringify({sources:result.report.sourceCount,originalCount:original.length,
         toolCount:tool.length,originalSha:sha(original),toolSha:sha(tool),
-        readerCount:reader.length,readerMatched:at}));
-    `) as { sources: number; originalCount: number; toolCount: number; originalSha: string; toolSha: string; readerCount: number; readerMatched: number };
+        readerCount:reader.length,readerMatched:at,homeCount:home.length,homeMatched:homeAt,
+        componentOriginalCount:componentOriginal.length,componentReplayCount:componentReplay.length,
+        componentOriginalSha:sha(componentOriginal),componentReplaySha:sha(componentReplay)}));
+    `) as { sources: number; originalCount: number; toolCount: number; originalSha: string; toolSha: string; readerCount: number; readerMatched: number; homeCount: number; homeMatched: number; componentOriginalCount: number; componentReplayCount: number; componentOriginalSha: string; componentReplaySha: string };
     expect(result.sources).toBe(44);
     expect(result.originalCount).toBeGreaterThan(20000);
     expect(result.toolCount).toBe(result.originalCount);
     expect(result.toolSha).toBe(result.originalSha);
     expect(result.readerMatched).toBe(result.readerCount);
     expect(result.readerCount).toBeLessThan(result.originalCount / 2);
+    expect(result.homeMatched).toBe(result.homeCount);
+    expect(result.homeCount).toBeLessThan(result.readerCount);
+    expect(result.componentOriginalCount).toBeGreaterThan(200);
+    expect(result.componentReplayCount).toBe(result.componentOriginalCount);
+    expect(result.componentReplaySha).toBe(result.componentOriginalSha);
   });
 
   it('adds no selector specificity for ids, attributes, pseudo-elements or functional selectors', () => {
@@ -155,7 +231,7 @@ describe('independent reader and tool CSS', () => {
       }return result;}
       const values=[':root','.dark body .x::before','#cc-main [type="button"]:hover',
         'body :is(.x,#y):not([hidden])','.a:first-letter'];
-      console.log(JSON.stringify(values.every(value=>['reader','tool'].every(kind=>
+      console.log(JSON.stringify(values.every(value=>['home','reader','tool'].every(kind=>
         JSON.stringify(parse(value).map(score))===JSON.stringify(parse(surface.guardSelector(value,kind)).map(score))))));
     `)).toBe(true);
   });
@@ -163,19 +239,19 @@ describe('independent reader and tool CSS', () => {
   it('keeps globals and Tailwind in the common root rather than replaying them in either bundle', () => {
     const result = evaluate(`
       const result=surface.generate({measure:false});
-      console.log(JSON.stringify(['reader','tool'].map(kind=>{
+      console.log(JSON.stringify(['home','reader','tool'].map(kind=>{
         const css=result.outputs['src/app/generated/'+kind+'-surface.css'];
         return {compilerInput:/Canonical source: \\.\\/globals\\.css|@import|@theme\\b|@custom-variant\\b/.test(css),
           sources:[...css.matchAll(/Canonical source:/g)].length};
       })));
     `);
-    expect(result).toEqual([{ compilerInput: false, sources: 44 }, { compilerInput: false, sources: 44 }]);
+    expect(result).toEqual(Array.from({ length: 3 }, () => ({ compilerInput: false, sources: 44 })));
   });
 
   it('emits identical CSS without measuring compression during development', () => {
     expect(evaluate(`
       const measured=surface.generate(),quick=surface.generate({measure:false});
-      console.log(JSON.stringify({same:['reader','tool'].every(kind=>
+      console.log(JSON.stringify({same:['home','reader','tool'].every(kind=>
         measured.outputs['src/app/generated/'+kind+'-surface.css']===quick.outputs['src/app/generated/'+kind+'-surface.css']),
         measured:typeof measured.report.surfaces.reader.gzip,quick:quick.report.surfaces.reader}));
     `)).toEqual({ same: true, measured: 'number', quick: { bytes: expect.any(Number) } });

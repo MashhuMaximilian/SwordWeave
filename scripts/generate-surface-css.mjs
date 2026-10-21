@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Build independent reader/tool CSS. Canonical sources and their order stay intact. */
+/** Build independent home/reader/tool CSS. Canonical source order stays intact. */
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -38,12 +38,12 @@ export function surfaceGuard(surface) {
   const overlay = `[${contract.overlayAttribute}="${contract.tool}"]`;
   return surface === contract.tool
     ? `:where(${marker},${marker} *,${overlay},${overlay} *)`
-    : surface === contract.reader
+    : [contract.home, contract.reader].includes(surface)
       ? `:where(${marker},${marker} *):not(:where(${overlay},${overlay} *))`
       : (() => { throw new Error(`Unknown CSS surface: ${surface}`); })();
 }
 
-const guardTokens = Object.fromEntries([contract.reader, contract.tool].map(surface =>
+const guardTokens = Object.fromEntries([contract.home, contract.reader, contract.tool].map(surface =>
   [surface, selector.parse(surfaceGuard(surface))[0]]));
 
 export function guardSelector(value, surface) {
@@ -92,27 +92,44 @@ export function publicSourceRoots() {
     `src/app${route === '/' ? '' : route}/page.tsx`), 'src/app/books/[slug]/page.tsx'];
 }
 
-export function publicSourceGraph(roots = publicSourceRoots(), reader = read, resolve = localModule) {
+export function publicSourceGraph(roots = publicSourceRoots(), reader = read, resolve = localModule, { home = false } = {}) {
   const files = new Set();
   const classes = new Set();
   const dynamicPrefixes = new Set();
+  const cssImports = [];
   function visit(file) {
     if (files.has(file)) return;
     files.add(file);
     const text = reader(file);
+    // Home contains authored JSX, not a CMS/Markdown body. A new opaque HTML
+    // renderer must be reviewed before absent namespace classes can be pruned.
+    // JSON-LD is nonvisual script data and cannot produce element subjects.
+    if (home && /dangerouslySetInnerHTML/.test(text)
+      && file !== 'src/components/analytics/structured-data.tsx') {
+      throw new Error(`Review opaque HTML in the homepage CSS graph: ${file}`);
+    }
     for (const match of text.matchAll(namespaceToken)) classes.add(match[0]);
     const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
     function walk(node) {
       if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node))
         && node.moduleSpecifier && ts.isStringLiteralLike(node.moduleSpecifier)) {
+        if (ts.isImportDeclaration(node) && /\.css$/.test(node.moduleSpecifier.text)) {
+          cssImports.push({ from: file, specifier: node.moduleSpecifier.text });
+        }
         const dependency = resolve(file, node.moduleSpecifier.text);
         if (dependency) visit(dependency);
       } else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword
-        && node.arguments.length === 1 && ts.isStringLiteralLike(node.arguments[0])) {
+        && node.arguments.length === 1) {
+        if (!ts.isStringLiteralLike(node.arguments[0])) {
+          if (home) throw new Error(`Review nonliteral lazy import in the homepage CSS graph: ${file}`);
+          return;
+        }
         const dependency = resolve(file, node.arguments[0].text);
         const editorEdge = file === 'src/components/character-modal/character-modal.tsx'
           && dependency === 'src/components/character-modal/tabbed-character-form.tsx';
-        if (dependency && !editorEdge) visit(dependency);
+        const guideEdge = home && file === 'src/components/layout/global-controls.tsx'
+          && dependency === 'src/components/rules/play-guide.tsx';
+        if (dependency && !editorEdge && !guideEdge) visit(dependency);
       } else if (ts.isTemplateExpression(node)) {
         for (const literal of [node.head, ...node.templateSpans.map(span => span.literal)]) {
           // A namespace fragment immediately before a hole may construct an
@@ -130,21 +147,25 @@ export function publicSourceGraph(roots = publicSourceRoots(), reader = read, re
     walk(source);
   }
   roots.forEach(visit);
-  return { files: [...files].sort(), classes, dynamicPrefixes };
+  return { files: [...files].sort(), classes, dynamicPrefixes, cssImports };
 }
 
-export function requiresTool(value, graph) {
-  const tool = token => token.type === 'attribute' && token.name === 'class'
+export function homeSourceGraph(roots = ['src/app/layout.tsx', 'src/app/page.tsx'], reader = read, resolve = localModule) {
+  return publicSourceGraph(roots, reader, resolve, { home: true });
+}
+
+function requiresAbsentClass(value, graph, eligible) {
+  const absent = token => token.type === 'attribute' && token.name === 'class'
     && token.namespace === null && token.action === 'element'
     && !graph.classes.has(token.value)
     && ![...graph.dynamicPrefixes].some(prefix => token.value.startsWith(prefix))
-    && (toolPrefix.test(token.value) || toolAuxiliary.test(token.value));
+    && eligible(token.value);
   const branch = tokens => {
     // A preceding tool sibling does not make the matching public subject a
     // tool descendant. Use only subject/ancestor evidence after the last
     // sibling combinator; discarding earlier evidence is intentionally safe.
     const sibling = tokens.findLastIndex(token => ['sibling', 'adjacent', 'column-combinator', 'parent'].includes(token.type));
-    return tokens.slice(sibling + 1).some(token => tool(token)
+    return tokens.slice(sibling + 1).some(token => absent(token)
       || (token.type === 'pseudo' && ['is', 'where'].includes(token.name)
         && Array.isArray(token.data) && token.data.length > 0 && token.data.every(branch)));
   };
@@ -154,6 +175,16 @@ export function requiresTool(value, graph) {
   } catch { return false; }
 }
 
+export function requiresTool(value, graph) {
+  return requiresAbsentClass(value, graph, name => toolPrefix.test(name) || toolAuxiliary.test(name));
+}
+
+export function absentFromHome(value, graph) {
+  // Only closed, project-owned namespaces qualify. Generic/third-party classes
+  // and unknown selector syntax stay present. Every OR branch must prove it.
+  return requiresAbsentClass(value, graph, name => /^(?:v12-|sw-|sheet-|monster-|procedural-|generated-)/.test(name));
+}
+
 function keyframeStep(rule) {
   for (let parent = rule.parent; parent; parent = parent.parent) {
     if (parent.type === 'atrule' && /(?:^|-)keyframes$/.test(parent.name)) return true;
@@ -161,18 +192,18 @@ function keyframeStep(rule) {
   return false;
 }
 
-export function transformCss(css, surface, graph) {
-  if (![contract.reader, contract.tool].includes(surface)) throw new Error(`Unknown CSS surface: ${surface}`);
+export function transformCss(css, surface, graph, { retainAll = false } = {}) {
+  if (![contract.home, contract.reader, contract.tool].includes(surface)) throw new Error(`Unknown CSS surface: ${surface}`);
   const root = postcss.parse(css);
   let removed = 0;
   root.walkRules(rule => {
     if (keyframeStep(rule)) return;
-    const owned = requiresTool(rule.selector, graph);
-    if (surface === contract.reader && owned) { rule.remove(); removed++; }
+    const owned = !retainAll && (surface === contract.home ? absentFromHome(rule.selector, graph) : requiresTool(rule.selector, graph));
+    if (surface !== contract.tool && owned) { rule.remove(); removed++; }
     // Tool-only subject/ancestor rules cannot affect public reader subjects.
     // Shared rules need a guard: a retained tool sheet must not replay them
     // after reader page/component CSS and thereby change its source order.
-    else if (surface === contract.reader || !owned) rule.selector = guardSelector(rule.selector, surface);
+    else if (surface !== contract.tool || !owned) rule.selector = guardSelector(rule.selector, surface);
   });
   root.walkAtRules(rule => { if (rule.nodes?.length === 0) rule.remove(); });
   return { css: root.toString(), removed };
@@ -196,25 +227,78 @@ export function canonicalSources() {
   });
 }
 
+export function homeComponentSources(graph = homeSourceGraph()) {
+  const canonical = new Set(canonicalSources().map(source => styleFilename('src/app/root-styles.css', source.specifier)));
+  const seen = new Set();
+  const result = [];
+  for (const imported of graph.cssImports) {
+    if (/\.module\.css$/.test(imported.specifier)) continue;
+    const filename = styleFilename(imported.from, imported.specifier);
+    const relative = path.relative(project, filename);
+    if (seen.has(filename) || canonical.has(filename) || relative === 'src/app/globals.css'
+      || relative.startsWith('src/app/generated/')) continue;
+    seen.add(filename);
+    const css = fs.readFileSync(filename, 'utf8');
+    // These plain component sheets have normal CSS semantics. Replaying them
+    // must not relocate compiler inputs or change relative asset resolution.
+    postcss.parse(css).walkAtRules(rule => {
+      if (['import', 'theme', 'custom-variant', 'apply'].includes(rule.name)) {
+        throw new Error(`Review compiler directive in retained homepage CSS: ${relative}: @${rule.name}`);
+      }
+    });
+    for (const match of css.matchAll(/url\(\s*(['"]?)(.*?)\1\s*\)/g)) {
+      if (!/^(?:\/|#|data:|https?:)/.test(match[2])) throw new Error(`CSS URL requires explicit rebasing: ${relative}: ${match[2]}`);
+    }
+    result.push({ specifier: relative, css });
+  }
+  return result;
+}
+
+function styleFilename(from, specifier) {
+  return specifier.startsWith('@/') ? path.join(project, 'src', specifier.slice(2))
+    : specifier.startsWith('.') ? path.resolve(project, path.dirname(from), specifier)
+      : require.resolve(specifier);
+}
+
 export function generate({ measure = true } = {}) {
   const graph = publicSourceGraph();
+  const homeGraph = homeSourceGraph();
   const sources = canonicalSources();
+  const retainedComponents = homeComponentSources(homeGraph);
   const outputs = {};
   const report = { sourceCount: sources.length, publicFiles: graph.files, protectedClasses: [...graph.classes].sort(),
-    dynamicPrefixes: [...graph.dynamicPrefixes].sort(), removedReaderRules: 0, surfaces: {} };
-  for (const surface of [contract.reader, contract.tool]) {
+    dynamicPrefixes: [...graph.dynamicPrefixes].sort(), removedReaderRules: 0,
+    homeFiles: homeGraph.files, homeClasses: [...homeGraph.classes].sort(),
+    homeDynamicPrefixes: [...homeGraph.dynamicPrefixes].sort(), removedHomeRules: 0,
+    retainedHomeComponents: retainedComponents.map(({ specifier, css }) => ({ specifier, bytes: Buffer.byteLength(css) })),
+    readerComponentReplayBytes: 0, surfaces: {} };
+  for (const surface of [contract.home, contract.reader, contract.tool]) {
     let css = '/* GENERATED by scripts/generate-surface-css.mjs; edit canonical sources. */\n';
     for (const source of sources) {
-      const transformed = transformCss(source.css, surface, graph);
+      const transformed = transformCss(source.css, surface, surface === contract.home ? homeGraph : graph);
       css += `\n/* Canonical source: ${source.specifier} */\n${transformed.css}\n`;
       if (surface === contract.reader) report.removedReaderRules += transformed.removed;
+      if (surface === contract.home) report.removedHomeRules += transformed.removed;
+    }
+    if (surface === contract.reader) {
+      // On the first home→reader navigation, Next retains Books/Nav component
+      // sheets already loaded by home, then appends the new reader cascade.
+      // Restore canonical→component order inside that new sheet. This repeats
+      // only those small plain shared sheets, not a full theme, and keeps their
+      // original specificity and declaration order. New page-owned CSS still
+      // follows the reader layout as usual. Module sheets keep Next's hashing.
+      for (const source of retainedComponents) {
+        const replay = `\n/* Retained homepage component: ${source.specifier} */\n${transformCss(source.css, surface, graph, { retainAll: true }).css}\n`;
+        css += replay;
+        report.readerComponentReplayBytes += Buffer.byteLength(replay);
+      }
     }
     outputs[`src/app/generated/${surface}-surface.css`] = css;
     report.surfaces[surface] = { bytes: Buffer.byteLength(css),
       ...(measure ? { gzip: gzipSync(css).length, brotli: brotliCompressSync(css).length } : {}) };
   }
   outputs['src/app/generated/surface-report.json'] = JSON.stringify(report, null, 2) + '\n';
-  return { outputs, graph, report };
+  return { outputs, graph, homeGraph, report };
 }
 
 if (path.resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url)) {

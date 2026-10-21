@@ -13,9 +13,10 @@ function pageFiles(dir: string): string[] {
 }
 
 describe("CSS surface ownership", () => {
-  it("gives every curated reader and book a reader surface", () => {
+  it("gives the homepage its own surface and every other curated reader/book a reader surface", () => {
+    expect(cssSurface("/")).toBe("home");
     for (const route of [...Object.keys(pages), "/books/players-handbook", "/books/game-masters-guide", "/books/srd"]) {
-      expect(cssSurface(route), route).toBe("reader");
+      expect(cssSurface(route), route).toBe(route === "/" ? "home" : "reader");
     }
     expect(cssSurface("/characters/demo")).toBe("tool");
     expect(cssSurface("/characters/new")).toBe("tool");
@@ -27,7 +28,7 @@ describe("CSS surface ownership", () => {
       const route = "/" + relative(app, dirname(file)).replaceAll("\\", "/").replace(/^\.$/, "");
       const family = cssSurface(route);
       if (route === "/") {
-        expect(readFileSync(file, "utf8")).toContain("./generated/reader-surface.css");
+        expect(readFileSync(file, "utf8")).toContain("./generated/home-surface.css");
         continue;
       }
       let parent = dirname(file);
@@ -49,5 +50,6 @@ describe("CSS surface ownership", () => {
     expect(readFileSync(join(app, "not-found.tsx"), "utf8")).not.toContain("generated/");
     const fallback = readFileSync(join(process.cwd(), "src/components/layout/not-found-theme.tsx"), "utf8");
     expect(fallback).toContain('dynamic(() => import("./tool-theme"))');
+    expect(fallback).toContain('dynamic(() => import("./home-theme"))');
   });
 });

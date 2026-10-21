@@ -102,3 +102,58 @@ this pass does not claim a full green suite.
 4. Reconcile existing test/lint maintenance separately. Founder playtests,
    itch.io polish and personal outreach remain on the founder's timetable.
    Video production remains deferred.
+
+## Homepage follow-up and Books scrolling
+
+The first published split (`9af53a39`) measured mobile **67–73**, LCP
+**5.4–7.4 s**, across two fresh lab reports; desktop was **98**, LCP **1.0 s**.
+The mobile work remains open: fewer transferred bytes alone did not establish
+an acceptable loading result. A separate Books observation measured **71**,
+LCP **7.0 s**. Its LCP element is the intro paragraph, rendered in the already
+preloaded Aubrey font; adding more font preloads is not an evidenced fix.
+
+The next candidate gives the homepage a third generated surface. Its closed
+graph follows 48 local modules and protects 202 project classes plus constructed
+class prefixes. It excludes only the unreachable lazy editor body and sheet-only
+Play guide. Unknown classes and selector alternatives remain; opaque visual HTML
+and nonliteral lazy imports require review. Reader/tool ownership is unchanged.
+
+Actual home → Books navigation exposed a cascade regression that a fresh Books
+load did not: retained component CSS preceded the newly loaded reader cascade.
+The reader now restores the two small shared plain component sheets (Books and
+PublicNav), with their original declaration order/specificity and reader guards.
+The source gzip cost is 4,876 B. This is deliberately not a full-theme replay.
+Generation discovers these imports, rejects unsafe relocation, skips CSS modules,
+and watches both source sheets in development.
+
+Six existing below-screen homepage sections also use supported automatic content
+visibility with remembered intrinsic heights. The hero, navigation, overlays and
+ending remain fully rendered. Expanded clipping preserves existing card glows;
+print and unsupported browsers retain normal layout. Jump links, section content
+and reaching the ending are browser checked. This follows the browser's
+[documented automatic rendering behavior](https://web.dev/articles/content-visibility),
+without removing content from the server HTML or Markdown.
+
+The founder reported Books clipping on localhost:3181, whose server was stopped
+when checked. Fresh canonical Books sessions reach the full final paragraph and
+footer in dark mode at 390×844 and 1440×812, with 90 px bottom padding. Thirteen
+public pages reach their footer without horizontal overflow at both phone and
+desktop widths. The reported state-specific cutoff has not been reproduced;
+it is not marked fixed and no speculative global overflow override was added.
+
+The concurrent compact-core book release `b142bc47` was fetched and preserved
+before the final integrated build. Its downloads, page copy, schema/Markdown
+updates and analytics contract are included in the regression checks.
+
+Integrated production-build gzip totals: Home **71,451 B** (68.0% below the
+original 223,177 B); Rules/Books **106,723 B**, Contact **103,783 B**, Press
+**105,001 B**, Atelier **241,149 B**, public character **228,972 B**. All ten
+route budgets pass; Home now has a 75 KB ceiling. The build and 76 focused tests
+pass, as does scoped lint. All 17 local HTML/Markdown/schema/surface pairs pass;
+unknown/private Markdown probes return 404. Generated artifacts remain ignored.
+
+Final desktop and 390 px phone browser checks confirm Books card margins
+(`h2: 0 0 12px`, description `0 0 24px`), normal bottom scrolling after the
+editor/dialog journey, homepage deep-link position, interactive approach
+selection and full page ending. No draft or game record was saved. The new
+candidate's live performance measurement is still required after deployment.

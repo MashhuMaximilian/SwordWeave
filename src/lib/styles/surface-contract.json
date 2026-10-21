@@ -1,6 +1,7 @@
 {
   "surfaceAttribute": "data-sw-css-surface",
   "overlayAttribute": "data-sw-css-overlay",
+  "home": "home",
   "reader": "reader",
   "tool": "tool"
 }

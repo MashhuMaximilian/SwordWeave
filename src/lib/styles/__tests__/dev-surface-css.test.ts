@@ -30,12 +30,13 @@ describe('surface CSS development watcher', () => {
 
   it('watches source CSS, public graph modules and JSON policies, excluding generated/dependency/build files', () => {
     const filenames = ['src/app/v12.css', 'src/app/root-styles.css', 'src/app/page.tsx',
+      'src/app/books/books.css', 'src/components/home/public-nav.css',
       'src/lib/styles/surface-contract.json', 'src/components/rules/guide.ts',
       'src/app/generated/reader-surface.css', 'src/app/generated/surface-report.json',
       '.next/static/chunks/test.css', 'node_modules/package/test.css', 'src/node_modules/test.css',
       'src/app/README.md', 'src\\app\\generated\\tool-surface.css'];
     expect(evaluate(`console.log(JSON.stringify(${JSON.stringify(filenames)}.map(dev.isRelevantSource)));`))
-      .toEqual([true, true, true, true, true, false, false, false, false, false, false, false]);
+      .toEqual([true, true, true, true, true, true, true, false, false, false, false, false, false, false]);
   });
 
   it('writes only changed artifact bytes atomically and rejects paths outside the generated directory', () => {

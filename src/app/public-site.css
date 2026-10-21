@@ -628,3 +628,34 @@ body[data-ui="v12"] .sw-public-site .sw-intent__choices button[aria-pressed="tru
 .sw-creating-guide > article {padding:24px 0;border-bottom:1px solid var(--border);}
 .sw-creating-guide > article h2 {font:600 clamp(22px,3vw,32px)/1.2 var(--font-system);color:var(--sw-text-gold);margin:8px 0 14px;}
 .sw-creating-guide > article > p:not(.sw-public-kicker) {font:400 18px/1.6 var(--font-body);color:var(--foreground);max-width:70ch;}
+
+/* Let the homepage paint its first viewport before laying out distant sections.
+ * These are existing section boundaries; the hero, navigation and overlays stay
+ * fully rendered. The clip allowance preserves card shadows and focus outlines.
+ * Intrinsic content heights are rounded from the 1280px / 390px captures; auto
+ * remembers each section's real height after its first render. Print and browsers
+ * without both containment sizing and expanded paint clips keep normal layout.
+ */
+@supports (content-visibility:auto) and (contain-intrinsic-block-size:auto 1px) and (overflow-clip-margin:128px) {
+  @media screen {
+    .sw-home-hero ~ section:is(.sw-public-section,.sw-home-books) {
+      content-visibility:auto;
+      contain-intrinsic-block-size:auto var(--sw-home-intrinsic-block,900px);
+      overflow-clip-margin:128px;
+    }
+    .sw-home-hero ~ section[aria-labelledby="play-stage-title"] {--sw-home-intrinsic-block:631px;}
+    .sw-home-hero ~ section[aria-labelledby="composition-title"] {--sw-home-intrinsic-block:1045px;}
+    .sw-home-hero ~ section[aria-labelledby="table-title"] {--sw-home-intrinsic-block:665px;}
+    .sw-home-hero ~ section[aria-labelledby="tenets-title"] {--sw-home-intrinsic-block:915px;}
+    .sw-home-hero ~ section[aria-labelledby="tools-title"] {--sw-home-intrinsic-block:566px;}
+    .sw-home-hero ~ section[aria-labelledby="home-books-title"] {--sw-home-intrinsic-block:611px;}
+  }
+  @media screen and (max-width:767px) {
+    .sw-home-hero ~ section[aria-labelledby="play-stage-title"] {--sw-home-intrinsic-block:984px;}
+    .sw-home-hero ~ section[aria-labelledby="composition-title"] {--sw-home-intrinsic-block:2390px;}
+    .sw-home-hero ~ section[aria-labelledby="table-title"] {--sw-home-intrinsic-block:1256px;}
+    .sw-home-hero ~ section[aria-labelledby="tenets-title"] {--sw-home-intrinsic-block:1755px;}
+    .sw-home-hero ~ section[aria-labelledby="tools-title"] {--sw-home-intrinsic-block:1297px;}
+    .sw-home-hero ~ section[aria-labelledby="home-books-title"] {--sw-home-intrinsic-block:1175px;}
+  }
+}

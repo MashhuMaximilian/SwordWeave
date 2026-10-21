@@ -1,5 +1,5 @@
 import { TrackLink } from "@/components/analytics/track-link";
-import "./generated/reader-surface.css";
+import "./generated/home-surface.css";
 import { StructuredData } from "@/components/analytics/structured-data";
 import { publicPageMetadata } from "@/lib/seo/metadata";
 import Link from "next/link";

@@ -9,7 +9,9 @@ import { cssSurface } from "@/lib/ui/css-surface";
 // theme only when the not-found component itself is rendered (including SSR).
 const ToolTheme = dynamic(() => import("./tool-theme"));
 const ReaderTheme = dynamic(() => import("./reader-theme"));
+const HomeTheme = dynamic(() => import("./home-theme"));
 
 export function NotFoundTheme() {
-  return cssSurface(usePathname()) === "reader" ? <ReaderTheme /> : <ToolTheme />;
+  const surface = cssSurface(usePathname());
+  return surface === "home" ? <HomeTheme /> : surface === "reader" ? <ReaderTheme /> : <ToolTheme />;
 }

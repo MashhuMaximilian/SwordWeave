@@ -19,9 +19,11 @@ values before using protected routes or account-owned writes.
 ### Stylesheet delivery
 
 Edit the canonical CSS files listed in `src/app/root-styles.css`. Development
-regenerates the reader/tool delivery bundles as CSS or reader components change;
+regenerates the home/reader/tool delivery bundles as CSS or public components change;
 production builds generate them before Next compiles. Do not edit or commit
-`src/app/generated/`. New public routes need reader ownership in
+`src/app/generated/`. The reader bundle restores shared homepage component styles
+after its canonical rules to preserve their order during client navigation.
+New public routes need reader ownership in
 `src/lib/ui/css-surface.ts` and a reader layout. After `npm run build`, run
 `npm run perf:css` to check complete route stylesheet budgets. See
 `docs/marketing/mobile-css-release-2026-10-21.md` for the cascade and portal rules.
