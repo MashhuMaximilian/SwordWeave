@@ -10,7 +10,7 @@ The public Google measurement ID is **G-LXKDVDEHQZ**. The parent's live UI check
 
 The same dated home check showed the last-seven-days period **14–20 October**: **5 active users, 57 events, 3 key events and 16 views**. The property contains founder/internal QA; these are configuration-baseline counts, not evidence of discovery growth, independent players or real creator leads. The separate saved-report snapshot below uses a different date range and a sessions metric; those two denominators must not be interchanged.
 
-Saved 20 October evidence establishes live receipt of signup, login, both guided character-creation flows, contact success, PDF clicks and Discord invitation clicks. All were internal QA. Eight custom dimensions and three key events were configured. `media_kit_download` was added later and has contract/consent evidence, but its receipt in GA4 remains unverified after today's bounded attempt. The acquisition report and identifiable-AI comparison are now saved; a dedicated context-actions/contact report and signup/build funnel have not been created.
+Saved 20 October evidence establishes live receipt of signup, login, both guided character-creation flows, contact success, PDF clicks and Discord invitation clicks. All were internal QA. Eight custom dimensions and three key events were configured. `media_kit_download` was added later; live receipt was confirmed in the reconnected follow-up below after an earlier incomplete attempt. The acquisition report and identifiable-AI comparison are saved; a dedicated context-actions/contact report and signup/build funnel have not been created.
 
 ## Saved live report and comparison
 
@@ -20,6 +20,17 @@ Saved 20 October evidence establishes live receipt of signup, login, both guided
 - Evidence: `output/marketing/ga-acquisition-ai-2026-10-21.png` and `.json`, captured from the actual saved report. Its comparison parameters and IDs are recorded in the JSON. No account credentials or advertising configuration changed; the live account changes were this saved report and comparison.
 
 At approximately **13:23 Bucharest**, the production press page initially had Essential only consent. After accepting analytics, the parent clicked the creator-kit ZIP. Realtime displayed one user with `page_view`, `first_visit` and `session_start`, but **did not establish receipt of `media_kit_download`**. A second click hit a browser-connection timeout. This is an incomplete verification, not proof that the application event is broken or that a download completed. No speculative tracking fix was made.
+
+**Follow-up after reconnection, approximately 13:49–13:53:** the current press
+page was reloaded and its consent dialog confirmed analytics checked. The
+visible Google script referenced **G-LXKDVDEHQZ**. Keyboard activation of the
+creator-kit ZIP link was followed by the correct property's Realtime table
+showing **`media_kit_download`: 1**. Its drill-down also showed one event and
+twelve parameter keys. This confirms live receipt and closes the earlier gap
+without a tracking-code change. The browser disconnected while paging the
+parameters, before the custom `placement` / `release_version` values could be
+read back. Their source contract/tests remain separate evidence. This is an
+internal QA event, not an independent creator download or proof of ZIP transfer.
 
 Focused verification today: **11 tests pass across four files**: analytics auth, event/URL contract, client lifecycle and cookie-consent filtering. No full build was run for this documentation review. Unit tests do not replace live collection or processed-report evidence.
 
@@ -36,9 +47,9 @@ Focused verification today: **11 tests pass across four files**: analytics auth,
 
 | Priority | Finding | Bounded next action |
 | --- | --- | --- |
-| 1 | Kit-event receipt remains unverified after the 13:23 attempt. | At the next bounded check, verify the deployed click and its request/DebugView outcome with consent granted. Expected fields are `media_kit_download`, `placement=press`, `release_version=v0.1-alpha`. Record evidence before changing app code; the current timeout/nonappearance does not isolate a cause. |
+| Closed for receipt | Kit event appeared in Realtime after the reconnected check. | Event count 1 is confirmed. Custom parameter values remain a separate readback task if useful; no speculative event-code change was made. |
 | 1 | Acquisition report is saved; context-actions/contact report and activation funnel remain proposals. | Use the saved report now. Create additional views only when processed events support the decision. Keep an empty or QA-only baseline explicit rather than implying those unfinished reports exist. |
-| 1 | The previous GM Guide helper labeled every GM PDF `light`/`dark`. | The scoped GM release now maps current reading/full PDFs to `gm_organic` / `gm_organic_full`, with the prior dark edition `earlier_dark`; contract and download tests pass. Versioned PDF bytes are publicly verified. Parent still owns application deployment and its live event receipt. |
+| Corrected mapping | The previous book helper classified current releases as light/dark. | GM reading/full use `gm_organic` / `gm_organic_full`; the new SRD Reference edition uses `srd_reference`. Earlier dark releases use `earlier_dark`. Contract/download tests and PDF byte checks are separate from live receipt of each new edition event. |
 | 2 | No dated live test of an identifiable AI referral's final source/medium. | Confirm registered `utm_source=chatgpt.com` survives a fresh consented landing. Separately observe a genuine provider referrer when available; a tagged QA link is not evidence that ChatGPT referred a player. |
 | 2 | Creator campaign example in the older plan uses an unregistered placeholder. | Do not issue `utm_source=example_creator` or a new creator slug until it is explicitly added to `CAMPAIGNS`. Current sources are discord, itch.io, youtube, instagram, reddit, newsletter, chatgpt.com, perplexity.ai and claude.ai. |
 | 2 | Individual companion PDF/JPEG/logo links are ordinary links, not tracked download events. | Keep this disclosed scope: `media_kit_download` measures the ZIP CTA only and `file_download` measures official books. Add a separate bounded companion contract only if deciding between materials becomes useful; do not pretend existing events measure every kit asset. |
@@ -62,7 +73,7 @@ If there are too few processed events for useful funnels, keep using the saved a
 This is a manual procedure, not a scheduled automation.
 
 1. Open **SwordWeave · Acquisition & actions** using the saved link above. Use the last **28 complete days**, ending yesterday, and record the exact dates. During this alpha, note the 20–21 October QA window alongside every comparison; do not relabel test actions as independent interest.
-2. Begin with **All Users** and **Session source / medium**. Write down sessions and engaged sessions as separate counts. Check Event count for book/Discord/kit events only where they exist, then use the Key events selector for signup, character-created and accepted-contact counts separately. Empty processed data and unverified kit receipt remain explicit.
+2. Begin with **All Users** and **Session source / medium**. Write down sessions and engaged sessions as separate counts. Check Event count for book/Discord/kit events only where they exist, then use the Key events selector for signup, character-created and accepted-contact counts separately. Empty processed data remains explicit; Realtime verification of one kit QA event does not guarantee it has already reached a processed report.
 3. Apply **AI Assistants · identified traffic** beside All Users. If it has rows, inspect the actual source/medium and landing destinations before describing a provider. If it has none, write “no identifiable AI-channel sessions recorded in this period,” not “no AI discovery.”
 4. Inspect **desktop and mobile**, then **United States and United Kingdom**, using available comparisons/secondary dimensions or the existing device/country reports. Keep the worldwide total visible. If those cuts are unavailable in this report, use the standard reports; they were not silently added as new saved reports here. At a few sessions per segment, report counts and examples rather than unstable percentage changes or country/device winners.
 5. Compare Search Console queries/pages/countries only when its aggregate reports have processed. Google indexing is a separate check. Search Console totals need not equal consented GA4 sessions, and its aggregate data was still processing in this pass.

@@ -33,7 +33,7 @@ describe("verified book release delivery", () => {
     for (const book of ["players-handbook", "game-masters-guide", "srd"]) {
       for (const suffix of ["", "-dark"]) expect(rules).toContainEqual({
         source: `/books/v0.1-alpha/${book}${suffix}.pdf`,
-        destination: `https://swordweave-public-art.ionmariusc97.workers.dev/documents/swordweave/v0.1-alpha/${book === "players-handbook" && !suffix ? "interwoven-2026-10-19/" : book === "game-masters-guide" && !suffix ? "organic-2026-10-20/" : book === "srd" ? "" : "print-r2/"}${book}${suffix}.pdf`,
+        destination: `https://swordweave-public-art.ionmariusc97.workers.dev/documents/swordweave/v0.1-alpha/${book === "players-handbook" && !suffix ? "interwoven-2026-10-19/" : book === "game-masters-guide" && !suffix ? "organic-2026-10-20/" : book === "srd" && !suffix ? "reference-2026-10-21/" : book === "srd" ? "" : "print-r2/"}${book}${suffix}.pdf`,
         permanent: false,
       });
     }

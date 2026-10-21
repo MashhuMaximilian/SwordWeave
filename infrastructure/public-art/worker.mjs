@@ -14,7 +14,8 @@ export default {
     const isBook = /^documents\/swordweave\/v0\.1-alpha\/(players-handbook|game-masters-guide|srd)(-dark)?\.pdf$/.test(key)
       || /^documents\/swordweave\/v0\.1-alpha\/print-r2\/(players-handbook|game-masters-guide)(-dark)?\.pdf$/.test(key)
       || /^documents\/swordweave\/v0\.1-alpha\/interwoven-2026-10-19\/players-handbook(-full)?\.pdf$/.test(key)
-      || /^documents\/swordweave\/v0\.1-alpha\/organic-2026-10-20\/game-masters-guide(-full)?\.pdf$/.test(key);
+      || /^documents\/swordweave\/v0\.1-alpha\/organic-2026-10-20\/game-masters-guide(-full)?\.pdf$/.test(key)
+      || key === 'documents/swordweave/v0.1-alpha/reference-2026-10-21/srd.pdf';
     if ((!isImage && !isBookArt && !isBook)
         || key.split('/').some(segment => segment === '..' || segment === '.')) {
       return new Response('Not found', { status: 404 });

@@ -32,7 +32,7 @@ export function publicBookRedirects(origin: string = PUBLIC_ART_ORIGIN) {
   return [
     ...filenames.map(filename => ({
       source: `/books/v0.1-alpha/${filename}`,
-      destination: `${assetOrigin}/documents/swordweave/v0.1-alpha/${filename === "players-handbook.pdf" ? "interwoven-2026-10-19/" : filename === "game-masters-guide.pdf" ? "organic-2026-10-20/" : filename.startsWith("srd") ? "" : "print-r2/"}${filename}`,
+      destination: `${assetOrigin}/documents/swordweave/v0.1-alpha/${filename === "players-handbook.pdf" ? "interwoven-2026-10-19/" : filename === "game-masters-guide.pdf" ? "organic-2026-10-20/" : filename === "srd.pdf" ? "reference-2026-10-21/" : filename.startsWith("srd") ? "" : "print-r2/"}${filename}`,
       permanent: false,
     })),
     {

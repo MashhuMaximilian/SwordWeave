@@ -1,0 +1,28 @@
+{
+  "edition": "v0.1 alpha",
+  "revision": "reference-2026-10-21",
+  "publicationDate": "2026-10-21",
+  "releaseAuthority": "Founder explicitly identified the supplied SRD Reference edition as ready and requested website publication on 21 October 2026.",
+  "reviewScope": "Publish the unchanged founder-supplied SRD. Existing independent verification and agent visual-review records checked; no new PDF generation, editorial reread or synchronized three-book audit.",
+  "sourceRootHint": "/Users/max/dev/SwordWeave",
+  "sourceEvidence": [
+    {
+      "path": "output/publications/srd-reference-edition/verification.json",
+      "sha256": "e9015902a7458ca661d47bfd94352725423838b9f0ec5beac88e215e64950dd0"
+    },
+    {
+      "path": "output/publications/srd-reference-edition/visual-review-final.json",
+      "sha256": "55894a730c5cc7356e198eb3a79c3158d83deb6494869eadde6e5cb6d4eb39b1"
+    }
+  ],
+  "pdf": {
+    "filename": "srd.pdf",
+    "sourcePath": "output/pdf/swordweave-system-reference-document-v0.1-alpha-reference-edition.pdf",
+    "key": "documents/swordweave/v0.1-alpha/reference-2026-10-21/srd.pdf",
+    "bytes": 14522400,
+    "sha256": "f356c7bd603812781954a6fabe5cedff792f3f6ca97c446c81cc54425bca39a1",
+    "pages": 78,
+    "role": "default standalone reference PDF",
+    "analyticsEdition": "srd_reference"
+  }
+}

@@ -75,7 +75,7 @@ export const PLAY_GUIDE: GuideTopic[] = [
             [
               "Optional",
               "Current PHB download or online reader",
-              "Use the PHB for fuller explanations and the current GM Guide for preparation and rulings. The SRD revision is still pending. Check the Books page for actual available versions."
+              "Use the PHB for fuller explanations, the current GM Guide for preparation and rulings, and the standalone SRD Reference edition for lookup. Online readers and PDFs can differ; check the Books page for actual available editions."
             ],
             [
               "Optional",

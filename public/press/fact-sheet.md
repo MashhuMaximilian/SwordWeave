@@ -8,11 +8,11 @@ SwordWeave is a free modular tabletop roleplaying game with browser tools for bu
 
 ## Short description
 
-SwordWeave is a free modular tabletop RPG by Marius Ion (Mashu). Players build characters and abilities from shared rules, then agree intent, scope, costs and consequences with their table. The v0.1 alpha includes public rules, browser tools and illustrated Player’s Handbook and Game Master’s Guide PDFs; the SRD revision is still pending.
+SwordWeave is a free modular tabletop RPG by Marius Ion (Mashu). Players build characters and abilities from shared rules, then agree intent, scope, costs and consequences with their table. The v0.1 alpha includes public rules, browser tools and illustrated Player’s Handbook and Game Master’s Guide PDFs, plus the standalone SRD Reference edition.
 
 ## Longer description
 
-SwordWeave is a free modular tabletop roleplaying game and a set of browser tools by Marius Ion (Mashu). Characters, effects and capabilities draw on a shared vocabulary of primitives. The same owned ingredients can support several actions: players and the GM agree what is being attempted, which permissions apply, and the costs and consequences in the scene. Public rules and books can be read without an account; an account is used to save work in the browser tools. The illustrated Player’s Handbook and Game Master’s Guide are available for the current v0.1 alpha. The GM Guide’s organic-edge revision is supplied as a reading PDF and a full-resolution PDF. The System Reference Document revision remains pending, and current online readers can differ from downloadable PDF editions. This is a one-person project in active development. Questions, independent assessments and feedback from actual sessions are welcome.
+SwordWeave is a free modular tabletop roleplaying game and a set of browser tools by Marius Ion (Mashu). Characters, effects and capabilities draw on a shared vocabulary of primitives. The same owned ingredients can support several actions: players and the GM agree what is being attempted, which permissions apply, and the costs and consequences in the scene. Public rules and books can be read without an account; an account is used to save work in the browser tools. The illustrated Player’s Handbook and Game Master’s Guide are available for the current v0.1 alpha. The GM Guide’s organic-edge revision is supplied as a reading PDF and a full-resolution PDF. The standalone System Reference Document is now available in its 78-page Reference edition, and current online readers can differ from downloadable PDF editions. This is a one-person project in active development. Questions, independent assessments and feedback from actual sessions are welcome.
 
 ## Facts
 
@@ -28,7 +28,7 @@ SwordWeave is a free modular tabletop roleplaying game and a set of browser tool
 
 - **Game Master’s Guide:** Illustrated current alpha · 268 pages · organic-edge revision
 
-- **System Reference Document:** Earlier draft available · revision pending
+- **System Reference Document:** Current alpha · 78 pages · Reference edition
 
 - **Accounts:** Public reading needs no account; saving work uses an account
 
@@ -56,7 +56,7 @@ SwordWeave is a free modular tabletop roleplaying game and a set of browser tool
 
 - [Game Master’s Guide](https://www.swordweave.quest/books/game-masters-guide): For preparing and running the table. The illustrated current-alpha organic-edge revision has reading and full-resolution PDFs; the online reader may differ.
 
-- [System Reference Document](https://www.swordweave.quest/books/srd): For mechanical reference and compatible creation. An earlier draft is available; the revised SRD is still pending.
+- [System Reference Document](https://www.swordweave.quest/books/srd): For mechanical reference and compatible creation. The current-alpha standalone Reference edition is available as a 78-page PDF; the online reader may differ.
 
 ## Official links
 

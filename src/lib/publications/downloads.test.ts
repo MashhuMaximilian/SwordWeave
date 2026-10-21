@@ -15,8 +15,23 @@ describe('current GM Guide publication downloads', () => {
     expect(events.map(event => event.params.edition)).toEqual(['gm_organic', 'gm_organic_full', 'earlier_dark']);
     expect(events.every(event => event.params.book_id === 'gm_guide' && validEvent(event))).toBe(true);
   });
-  it('preserves the existing PHB and earlier SRD delivery definitions', () => {
+  it('preserves the existing PHB and distinguishes the earlier SRD edition', () => {
     expect(bookDownloadEvent('players-handbook', '/books/v0.1-alpha/players-handbook.pdf', 'reader').params.edition).toBe('interwoven');
-    expect(bookDownloadEvent('srd', '/books/v0.1-alpha/srd-dark.pdf', 'books').params.edition).toBe('dark');
+    expect(bookDownloadEvent('srd', '/books/v0.1-alpha/srd-dark.pdf', 'books').params.edition).toBe('earlier_dark');
+  });
+});
+
+describe('current SRD reference publication', () => {
+  const book = { slug: 'srd', lightPdf: '/books/v0.1-alpha/srd.pdf', darkPdf: '/books/v0.1-alpha/srd-dark.pdf' };
+  it('offers the standalone reference with its size/page count and keeps the prior dark file', () => {
+    expect(bookPdfDownloads(book)).toEqual([
+      { href: book.lightPdf, label: 'Reference PDF (14.5 MB)', detail: '78 pages · Reference edition' },
+      { href: book.darkPdf, label: 'Earlier dark PDF', detail: 'Previous edition' },
+    ]);
+  });
+  it('sends the actual reference edition through the existing closed consented event contract', () => {
+    const event = bookDownloadEvent(book.slug, book.lightPdf, 'reader');
+    expect(event.params).toEqual({ book_id: 'srd', edition: 'srd_reference', release_version: 'v0.1-alpha', placement: 'reader' });
+    expect(validEvent(event)).toBe(true);
   });
 });

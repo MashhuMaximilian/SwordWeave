@@ -153,3 +153,42 @@ character/library records merely for this visual smoke check. After the accepted
 release, run one comparable mobile and desktop PageSpeed measurement; record
 laboratory results separately from field data and avoid rerunning for a preferred
 score.
+
+## Reconnected follow-up · 13:48 Bucharest
+
+After the founder reopened the browser, one fresh PageSpeed analysis completed
+for both devices in report
+[`zdo2aw7uqc`](https://pagespeed.web.dev/analysis/https-www-swordweave-quest/zdo2aw7uqc?form_factor=mobile).
+This supersedes the earlier inability to obtain post-release scores; the API's
+429 result remains historical evidence of that failed route.
+
+| Laboratory metric | Mobile before → after | Desktop before → after |
+| --- | ---: | ---: |
+| Performance | 61 → **63** | 62 → **97** |
+| FCP | 4.0 → 4.1 s | 0.8 → 0.7 s |
+| LCP | 8.8 → 7.8 s | 1.4 → 1.1 s |
+| TBT | 80 → 40 ms | 980 → 50 ms |
+| CLS | 0 → 0 | 0 → 0 |
+| Speed Index | 6.4 → 5.6 s | 2.5 → 1.1 s |
+| Accessibility / Best practices | 100 / 100 → 100 / 100 | 100 / 100 → 100 / 100 |
+| Lighthouse SEO | 92 → **100** | 92 → **100** |
+
+Both runs use Lighthouse 13.5.0 and Chrome 153.0.8010.36; mobile uses the same
+emulated Moto G Power / Slow 4G profile. These are one before/after lab pair,
+not repeated medians or field performance. The large desktop TBT change is not
+isolated causal proof of the stylesheet change. No extra run was made to obtain
+a preferred score. Mobile LCP remains poor despite the approximately one-second
+reduction; public/editor CSS separation remains the main follow-up. CrUX still
+has insufficient field data.
+
+Actual report screenshots are saved as
+`output/marketing/psi-{mobile,desktop}-after-2026-10-21.png`; their short `.txt`
+files contain AX diffs rather than complete reports. The full figures above
+were read from visible metric cards and score-calculator links. The measurement
+predates the separate SRD publication, which does not change global styles or
+the JavaScript architecture.
+
+The current production press page reloaded with the new GM status/date and
+correct analytics script/consent. The browser failed again while inspecting
+GA parameters, before full post-release desktop/mobile authoring smoke checks.
+Those checks remain open; a successful lab run does not complete interactive QA.
