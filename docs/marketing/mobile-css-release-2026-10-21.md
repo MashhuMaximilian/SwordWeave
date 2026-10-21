@@ -157,3 +157,41 @@ Final desktop and 390 px phone browser checks confirm Books card margins
 editor/dialog journey, homepage deep-link position, interactive approach
 selection and full page ending. No draft or game record was saved. The new
 candidate's live performance measurement is still required after deployment.
+
+### Published result: performance still open
+
+Application commit `e7e2b316` is live in Ready deployment
+`dpl_Bba3GvWfj5LKKCm3W2fWTnstprWH`. The Git push did not create an automatic
+deployment within the verification period. A Git-based redeployment of the exact
+commit was started through the existing project; its settings and environment
+were inherited. Do not claim that the automatic push trigger is verified.
+
+Both canonical HTML/Markdown/schema/CSS matrices pass (17 pairs), as do the four
+compact-PDF HTTP checks. Production Home serves the `home` marker and 71,372 B
+of gzip-compressed stylesheet bodies (local manifest counting: 71,451 B).
+Actual published Books reaches the full ending/footer at 1440×812 and 390×844
+with 90 px bottom padding and normal body overflow. Original theme/viewport are
+restored, the temporary server is stopped and no game record was saved.
+
+Two new mobile reports, **18:02** (`xgpeqi56am`) and **18:07** (`0e5t83xp7r`),
+measure **68 / 65** Performance, FCP **2.8 / 3.3 s**, LCP **7.2 / 8.6 s**,
+TBT **0 / 25 ms**, CLS **0 / 0** and Speed Index **5.2 / 5.3 s**. Desktop in
+the first report is **98**, FCP **0.32 s**, LCP **1.06 s**, TBT **50 ms**,
+CLS **0**, Speed Index **0.58 s**. Accessibility, Best Practices and SEO stay
+**100**; Agentic Browsing is **3/3**. There is still no field dataset.
+
+The smaller payload is established, but **better mobile loading is not**.
+The first new audit's render-blocking estimate is 150 ms and unused CSS falls
+from 59 KiB to 31 KiB. Its remaining LCP element is the hero H1. The raw audit
+render delay is 2,430 ms; that and raw network dependency times must not be
+subtracted from simulated Lighthouse metrics. No hidden ancestor, reveal
+animation, font wait or explicit auth/content gate was found in source or SSR.
+
+The second report's visible script treemap totals 628.2 KiB transferred.
+Clerk core and UI entries account for roughly 340.6 KiB, including UI chunks
+unused on the landing page. This is a measured delivery candidate, not proof
+that Clerk causes the LCP delay. Headless Clerk was previously rejected because
+it breaks native account UI; no speculative auth rewrite is included here.
+The next mobile task needs a throttled performance trace identifying pre-paint
+work and resource timing before changing bootstrap or shared application state.
+Evidence is saved under `output/marketing/mobile-second-pass/`.
