@@ -6,11 +6,13 @@
 // =============================================================================
 
 import Link from "next/link";
+import { NotFoundTheme } from "@/components/layout/not-found-theme";
 import { Compass, Home, Library, Search } from "lucide-react";
 
 export default function NotFound() {
   return (
     <div className="mx-auto flex min-h-[70vh] w-full max-w-2xl flex-col items-center justify-center px-5 py-16 text-center">
+      <NotFoundTheme />
       <Compass
         className="mb-4 size-12 text-muted-foreground"
         aria-hidden="true"

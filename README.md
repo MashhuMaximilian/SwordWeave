@@ -16,6 +16,16 @@ npm run dev
 Copy `.env.example` to `.env.local` and fill in the generated Neon and Clerk
 values before using protected routes or account-owned writes.
 
+### Stylesheet delivery
+
+Edit the canonical CSS files listed in `src/app/root-styles.css`. Development
+regenerates the reader/tool delivery bundles as CSS or reader components change;
+production builds generate them before Next compiles. Do not edit or commit
+`src/app/generated/`. New public routes need reader ownership in
+`src/lib/ui/css-surface.ts` and a reader layout. After `npm run build`, run
+`npm run perf:css` to check complete route stylesheet budgets. See
+`docs/marketing/mobile-css-release-2026-10-21.md` for the cascade and portal rules.
+
 ## Auth
 
 SwordWeave uses Clerk for authentication. The public sandbox can still be

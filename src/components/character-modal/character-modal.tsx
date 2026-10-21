@@ -216,7 +216,7 @@ export function CharacterModal({ children }: CharacterModalProps) {
   // Render the UnsavedChangesModal at document.body level so it appears above everything
   if (pendingNav) {
     return createPortal(
-      <UnsavedChangesModal
+      <div data-sw-css-overlay="tool" style={{ display: "contents" }}><UnsavedChangesModal
         isOpen={!!pendingNav}
         onCancel={() => setPendingNav(null)}
         onConfirm={() => {
@@ -228,7 +228,7 @@ export function CharacterModal({ children }: CharacterModalProps) {
           window.location.assign(href);
         }}
         description={modalDescRef.current ?? "You have unsaved changes. Leaving will discard them. Continue?"}
-      />,
+      /></div>,
       document.body,
     );
   }
@@ -239,6 +239,7 @@ export function CharacterModal({ children }: CharacterModalProps) {
       aria-modal="true"
       aria-label={editCharacterId ? "Edit character" : "Character creation"}
       data-character-modal="true"
+      data-sw-css-overlay="tool"
       ref={panelRef}
       className={cn(
         "fixed inset-0 z-[70] flex justify-center bg-black/60 sm:items-center sm:p-4",

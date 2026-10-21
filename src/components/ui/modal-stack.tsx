@@ -30,6 +30,7 @@ import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { InstrumentDialogFrame } from "@/components/ui/instrument-dialog";
+import { useCharacterModal } from "@/components/character-modal/character-modal-store";
 
 const MAX_DEPTH = 4;
 
@@ -189,6 +190,7 @@ export function ModalStackScope() {
 
 function ModalStackRenderer() {
   const { stack, pop, popTo, scopeHost: registeredScope } = useModalStack();
+  const { isOpen: characterEditorOpen } = useCharacterModal();
   const scopeHost = stack.some(entry => entry.global) ? null : registeredScope;
   const isDesktop = useSyncExternalStore(
     subscribeDesktopViewport,
@@ -248,6 +250,7 @@ function ModalStackRenderer() {
               aria-hidden={!isTop}
               inert={!isTop}
               data-modal-stack-depth={idx}
+              data-sw-css-overlay={characterEditorOpen ? "tool" : undefined}
               data-modal-stack-top={isTop ? "true" : "false"}
               className={cn(
                 "v12-modal-backdrop inset-0 flex items-center justify-center",
@@ -293,6 +296,7 @@ function ModalStackRenderer() {
             aria-hidden={!isTop}
             inert={!isTop}
             data-modal-stack-depth={idx}
+            data-sw-css-overlay={characterEditorOpen ? "tool" : undefined}
             data-modal-stack-top={isTop ? "true" : "false"}
             className={cn(
               "v12-modal-backdrop inset-0 z-50 flex justify-center bg-black/80 sm:items-center sm:p-4",

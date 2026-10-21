@@ -697,6 +697,7 @@ function FiltersModal({
       role="dialog"
       aria-modal="true"
       aria-label="Filter icons by category"
+      data-sw-css-overlay="tool"
       // Phase 12: full-screen backdrop with z-[11000] (above
       // IconSlot's z-[9999]). Clicking the backdrop closes the
       // modal; clicks on the inner card stopPropagation to prevent
@@ -882,6 +883,7 @@ function ColorTrigger({
             role="dialog"
             aria-modal="true"
             aria-label="Choose icon color"
+            data-sw-css-overlay="tool"
             // Phase 12: portal to body at z-[11000] so the picker is
             // never clipped by IconSlot's overflow-hidden inner card
             // or any ancestor stacking context. Backdrop click

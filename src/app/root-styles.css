@@ -1,7 +1,8 @@
-/* Preserve the established global cascade in one root CSS entry.
- * These files remain canonical; public pages and embedded tools share them.
- * Keep this order when adding styles: later files deliberately refine earlier
- * component rules. Route-owned CSS stays with its page/component imports.
+/* Canonical stylesheet order, consumed by generate-surface-css.mjs.
+ * globals.css is the shared root; reader/tool layouts import generated delivery
+ * bundles. Edit these source files, not generated CSS. Keep this order: later
+ * files deliberately refine earlier rules. Route/component CSS stays with its
+ * owner and follows the appropriate surface layout.
  */
 @import "./globals.css";
 @import "./v12.css";

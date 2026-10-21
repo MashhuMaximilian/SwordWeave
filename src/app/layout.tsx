@@ -7,7 +7,8 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { CookieConsentManager } from "@/components/privacy/cookie-consent";
 import { AppShell } from "@/components/layout/app-shell";
 import { MobileViewport } from "@/components/layout/mobile-viewport";
-import "./root-styles.css";
+import { RootHtml } from "@/components/layout/root-html";
+import "./globals.css";
 
 // Retain the previous typefaces behind the data-ui switch so setting
 // NEXT_PUBLIC_SW_UI_VERSION=legacy is a complete visual rollback.
@@ -95,7 +96,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <RootHtml>
       <head>
         <link rel="describedby" href="/llms.txt" type="text/plain" />
         {/* Logo assets shipped 2026-07-14 in public/: logo-light.png
@@ -159,6 +160,6 @@ try {
           <CookieConsentManager />
         </ClerkProvider>
       </body>
-    </html>
+    </RootHtml>
   );
 }
