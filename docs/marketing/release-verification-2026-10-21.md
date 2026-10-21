@@ -112,5 +112,11 @@ The rebuilt 20-entry kit is 3,255,537 bytes, SHA-256
 both companions, their previews and all image hashes remain unchanged. Its
 publication validation passed 9 worker, 14 publication/analytics and 28
 Rules/discovery/Markdown tests plus scoped lint. The SRD application follow-up
-is verified separately from the earlier `2007ef3b` release; its final canonical
-receipt belongs in `output/marketing/srd-live-2026-10-21.json` after deployment.
+is live in commit `40a0536ce1c549e0b524e7a271fd034b5a88e16e`, Ready Vercel
+deployment `dpl_7WJFLEBcMTcP1dVHGBFebNk8oWeC`. At **11:05:26 UTC**, Books,
+the SRD reader, Press, llms and Rules Markdown returned 200 with current
+Reference-edition wording. The stable PDF route redirected to the exact
+versioned object; its complete streamed bytes/hash and the live kit matched
+their sources. Receipt: `output/marketing/srd-live-2026-10-21.json`. These
+checks establish canonical delivery; final visual smoke remains open after
+the browser connection dropped.

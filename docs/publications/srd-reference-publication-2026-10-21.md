@@ -41,4 +41,6 @@ The creator kit was rebuilt twice identically: **20 entries**, **3,255,537 bytes
 - **28 Rules/discovery/Markdown tests** pass, including the retained online-reader/PDF qualification.
 - Scoped ESLint and `git diff --check` pass.
 
-The versioned Cloudflare PDF is publicly verified. The parent owns the application build, Git push, Vercel deployment and final canonical-page check. No app server or build was started by this subtask; no Git commit/push was made here.
+The publication subtask verified the versioned Cloudflare PDF; the parent then pushed application commit `40a0536ce1c549e0b524e7a271fd034b5a88e16e` to `origin/main`. Vercel deployment `dpl_7WJFLEBcMTcP1dVHGBFebNk8oWeC` reached **Ready**, including compilation, TypeScript and static generation. No local app server was started.
+
+At **11:05:26 UTC**, the canonical Books, SRD reader, Press, llms and Rules Markdown destinations returned 200 with current Reference-edition wording. The stable `/books/v0.1-alpha/srd.pdf` route returned 307 to the exact selected object; the complete followed GET matched the source bytes, hash and PDF MIME. The live kit matched its current hash and byte count above. Receipt: `output/marketing/srd-live-2026-10-21.json`. Browser disconnection prevented a new post-release visual screenshot; the recorded checks are HTTP/content/integrity proof.
