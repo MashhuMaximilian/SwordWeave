@@ -195,3 +195,11 @@ it breaks native account UI; no speculative auth rewrite is included here.
 The next mobile task needs a throttled performance trace identifying pre-paint
 work and resource timing before changing bootstrap or shared application state.
 Evidence is saved under `output/marketing/mobile-second-pass/`.
+
+### Founder confirmation
+
+After confirming the cutoff had also affected production, the founder checked
+the current live build on 21 October and replied “all good now.” Close the
+reported Books symptom as user-verified on the current release. Its exact
+original cause was not established; no additional scroll-lock refactor or
+global overflow override was made. Mobile performance remains open.
