@@ -1,3 +1,4 @@
+import { QuickCoreDownloads } from '@/components/publications/quick-core-downloads';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { StructuredData } from '@/components/analytics/structured-data';
@@ -23,6 +24,7 @@ export default function CreatingACharacterPage() {
         <Link href="/creating-a-character.md">Read as Markdown →</Link>
       </div>
     </header>
+    <QuickCoreDownloads placement="character_guide" ids={['create']} title="Keep the character rules beside you" description="A compact PDF covering the foundation, primitive families, price anchors, equipment and one complete character. Use it with Play for the shared rules." />
     <LearningGuide
       topics={ADVANCED_CHARACTER_GUIDE}
       basePath="/creating-a-character"

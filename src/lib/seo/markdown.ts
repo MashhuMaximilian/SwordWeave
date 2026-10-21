@@ -1,3 +1,4 @@
+import { quickCoreMarkdown } from '@/lib/publications/quick-core';
 import { load } from 'cheerio';
 import TurndownService from 'turndown';
 import { CORE_BOOKS, type CoreBook, type BookBlock } from '@/lib/publications/books';
@@ -63,13 +64,13 @@ function topicMarkdown(topic: GuideTopic): string {
   ].filter(Boolean).join('\n\n');
 }
 export function guideMarkdown() {
-  return `# Rules & play guide\n\nAll chapters from the same source as the interactive [play guide](${SITE_URL}/rules).\n\n${PLAY_GUIDE.map(topic => topicMarkdown({ ...topic, sources: guideBookLinks(topic.id) })).join('\n\n')}\n`;
+  return `# Rules & play guide\n\nAll chapters from the same source as the interactive [play guide](${SITE_URL}/rules).\n\n${quickCoreMarkdown(['play', 'run', 'create'])}\n${PLAY_GUIDE.map(topic => topicMarkdown({ ...topic, sources: guideBookLinks(topic.id) })).join('\n\n')}\n`;
 }
 export function creatingMarkdown() {
-  return `# ${CREATING_GUIDE_INTRO.title}\n\n${CREATING_GUIDE_INTRO.summary}\n\nSource: ${SITE_URL}/creating\n\n${CREATING_GUIDE.map(topicMarkdown).join('\n\n')}\n`;
+  return `# ${CREATING_GUIDE_INTRO.title}\n\n${CREATING_GUIDE_INTRO.summary}\n\nSource: ${SITE_URL}/creating\n\n${quickCoreMarkdown(['create', 'create-and-publish'])}\n${CREATING_GUIDE.map(topicMarkdown).join('\n\n')}\n`;
 }
 export function advancedCharacterMarkdown() {
-  return `# ${ADVANCED_CHARACTER_INTRO.title}\n\n${ADVANCED_CHARACTER_INTRO.summary}\n\nSource: ${SITE_URL}/creating-a-character\n\n${ADVANCED_CHARACTER_GUIDE.map(topicMarkdown).join('\n\n')}\n`;
+  return `# ${ADVANCED_CHARACTER_INTRO.title}\n\n${ADVANCED_CHARACTER_INTRO.summary}\n\nSource: ${SITE_URL}/creating-a-character\n\n${quickCoreMarkdown(['create'])}\n${ADVANCED_CHARACTER_GUIDE.map(topicMarkdown).join('\n\n')}\n`;
 }
 export function primitiveTutorialMarkdown() {
   return `# ${PRIMITIVE_TUTORIAL_INTRO.title}\n\n${PRIMITIVE_TUTORIAL_INTRO.summary}\n\n${PRIMITIVE_TUTORIAL_INTRO.editionNote}\n\nSource: ${SITE_URL}/tutorials/create-a-primitive\n\n${PRIMITIVE_TUTORIAL.map(topicMarkdown).join('\n\n')}\n`;

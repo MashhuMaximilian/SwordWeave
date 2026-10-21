@@ -1,2 +1,6 @@
 # Generated PDF streams must retain their exact bytes, even when ASCII encoded.
 public/press/materials/*.pdf binary
+public/books/v0.1-alpha/quick-core-2026-10-21/*.pdf binary
+
+# Preserve the upstream formatting of supplied font license notices.
+docs/publications/quick-core/font-notices/*.txt whitespace=-blank-at-eol

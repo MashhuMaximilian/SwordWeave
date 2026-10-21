@@ -1,3 +1,4 @@
+import { QuickCoreDownloads } from '@/components/publications/quick-core-downloads';
 import { StructuredData } from "@/components/analytics/structured-data";
 import { publicPageMetadata } from "@/lib/seo/metadata";
 import type { Metadata } from 'next';
@@ -23,6 +24,7 @@ export default function CreatingPage() {
         <Link href="/creating.md">Read as Markdown →</Link>
       </div>
     </header>
+    <QuickCoreDownloads placement="creating" ids={['create', 'create-and-publish']} title="Create something of your own" description="Build characters and reusable rules with Create. Use Create & Publish when you want to share or sell compatible work, on paper, digitally or with the platform." />
     <LearningGuide topics={CREATING_GUIDE} basePath="/creating" indexTitle="Create, then explore" indexDescription="Follow the creation path or find help for the step you are on." searchLabel="Search the creating guide" searchPlaceholder="Find a step or example…" emptyHint="Try “fork”, “price”, “range”, or “visibility”." endLink={{ title: 'Create your first primitive', url: '/tutorials/create-a-primitive' }} />
   </div>;
 }

@@ -1,0 +1,78 @@
+{
+  "edition": "v0.1 alpha",
+  "releaseDate": "2026-10-21",
+  "authorization": "Creator approved the four review PDFs and explicitly requested website publication.",
+  "releaseChanges": [
+    "Remove LOCAL REVIEW running labels and review-only title metadata.",
+    "Change publishing-guide review status to edition wording and remove the obsolete local-only delivery sentence.",
+    "No gameplay, numerical, artwork or license-policy change."
+  ],
+  "verification": {
+    "pages": 17,
+    "tableCells": 258,
+    "copyBoundsFontsArithmetic": "pass",
+    "approvedCreatorNote": "exact"
+  },
+  "pdfs": [
+    {
+      "id": "play",
+      "path": "public/books/v0.1-alpha/quick-core-2026-10-21/play.pdf",
+      "href": "/books/v0.1-alpha/quick-core-2026-10-21/play.pdf",
+      "pages": 4,
+      "bytes": 65997,
+      "sha256": "bd0dd178452f978cb6c8a991bf469a934ebae5c89b5a3878892a9f7f1031327c",
+      "approvedReviewSha256": "9a1e9b263a1c50c0f3e67df4b87b6196b967add039552dabcada5557c751ce0a",
+      "source": "docs/publications/quick-core/play.md",
+      "sourceSha256": "92320f51321cd5956ad38c750cafaa7865dbc5d429866d00166ed1c07c275bd6"
+    },
+    {
+      "id": "run",
+      "path": "public/books/v0.1-alpha/quick-core-2026-10-21/run.pdf",
+      "href": "/books/v0.1-alpha/quick-core-2026-10-21/run.pdf",
+      "pages": 4,
+      "bytes": 74873,
+      "sha256": "7564a6d067c3d53bffe239ec68611e3ad7a262fbbf323060bd4dd3cef65b84e3",
+      "approvedReviewSha256": "3ceb6f534e52ca5c59646be7d394ad424631881803eb0ffe976ba2217cf9b7b1",
+      "source": "docs/publications/quick-core/run.md",
+      "sourceSha256": "16dee5d5f9a487b36111c3e9e50835d02a4d8e69677e8df9a5ee4f506b9476f6"
+    },
+    {
+      "id": "create",
+      "path": "public/books/v0.1-alpha/quick-core-2026-10-21/create.pdf",
+      "href": "/books/v0.1-alpha/quick-core-2026-10-21/create.pdf",
+      "pages": 5,
+      "bytes": 78984,
+      "sha256": "c2f8ed259eda5e6ab854a562f139ae58f662a1ed5585559d2d586b187b337825",
+      "approvedReviewSha256": "22cb2ce3ef9fc56edbb62a217495d93ccc3360099d1ee47063d6c87b6dd0c9e7",
+      "source": "docs/publications/quick-core/create.md",
+      "sourceSha256": "8445475071f827652cdd3a14cfba9baf5f80b09eb469d799434766697ed13656"
+    },
+    {
+      "id": "create-and-publish",
+      "path": "public/books/v0.1-alpha/quick-core-2026-10-21/create-and-publish.pdf",
+      "href": "/books/v0.1-alpha/quick-core-2026-10-21/create-and-publish.pdf",
+      "pages": 4,
+      "bytes": 65478,
+      "sha256": "b7336d026057b2611d3efe7a05a5aa720368ab57348119c3bad7d06b284f84bb",
+      "approvedReviewSha256": "4d78c1bccb072305d21bda3f8a64094c95154855a990c5d0caa618e1bb002abb",
+      "source": "docs/publications/quick-core/create-and-publish.md",
+      "sourceSha256": "87b5bc7820ed3ed1aae80bcc1b14b472c1b82e7a8862cded36aaf587f02ac6af"
+    }
+  ],
+  "websiteBaseCommit": "9af53a39",
+  "websitePages": [
+    "/books",
+    "/rules",
+    "/creating",
+    "/creating-a-character",
+    "/combat",
+    "/press"
+  ],
+  "websiteChecks": {
+    "focusedTests": 34,
+    "scopedLint": "pass",
+    "productionBuild": "pass",
+    "responsiveCases": 12,
+    "browserDownloadedPdfHashes": "all four match"
+  }
+}

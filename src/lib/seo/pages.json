@@ -46,7 +46,7 @@
   },
   "/books": {
     "title": "Free rulebooks · SwordWeave v0.1 alpha",
-    "description": "Read SwordWeave's free rulebooks. Download the illustrated Player's Handbook and Game Master's Guide, plus the standalone SRD Reference edition.",
+    "description": "Free compact Play, Run, Create and Create & Publish PDFs, plus the illustrated PHB and GM Guide and the standalone SRD Reference edition.",
     "group": "books"
   },
   "/about": {
