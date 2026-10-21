@@ -59,7 +59,7 @@ body[data-ui="v12"] .sw-fab .sw-fab__utility-strip>.sw-fab__destination {flex:no
 body[data-ui="v12"] .sw-fab .sw-fab__utility-strip .sw-fab__copy strong {font:400 10px/1.2 Arial,sans-serif!important}
 body[data-ui="v12"] .sw-fab .sw-fab__utility-strip .sw-fab__destination-icon {width:18px;height:22px;color:inherit!important}
 .sw-fab__utility-strip .sw-fab__chevron {display:none}
-.sw-fab__home-logo {display:block;width:17px;height:22px;background:currentColor;mask:url('/logo-dark.png') center/contain no-repeat;-webkit-mask:url('/logo-dark.png') center/contain no-repeat}
+.sw-fab__home-logo {display:block;width:17px;height:22px;background:currentColor;mask:url('/logo-dark-mask.png') center/contain no-repeat;-webkit-mask:url('/logo-dark-mask.png') center/contain no-repeat}
 body[data-ui="v12"] .sw-fab .sw-fab__utility-grid {display:flex;align-items:center;gap:0;margin-left:auto}
 body[data-ui="v12"] .sw-fab .sw-fab__utility-grid [data-fab-action] {
   flex:none;justify-content:center;width:44px;min-height:44px!important;padding:8px!important;gap:0!important;

@@ -80,3 +80,20 @@ test('only the two reviewed Interwoven release PDFs are exposed', async () => {
   assert.equal((await worker.fetch(new Request(`https://art.example/documents/swordweave/v0.1-alpha/interwoven-2026-10-19/${path}`), makeEnv())).status, 404);
  }
 });
+
+test('only the two founder-supplied organic GM PDFs are exposed without new write access', async () => {
+ const prefix = 'https://art.example/documents/swordweave/v0.1-alpha/organic-2026-10-20/';
+ for (const name of ['game-masters-guide.pdf', 'game-masters-guide-full.pdf']) {
+  const response = await worker.fetch(new Request(prefix + name), makeEnv());
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('Content-Type'), 'application/pdf');
+  assert.equal((await worker.fetch(new Request(prefix + name, { method: 'HEAD' }), makeEnv())).headers.get('Content-Length'), '3');
+  assert.equal((await worker.fetch(new Request(prefix + name, { method: 'PUT' }), makeEnv())).status, 405);
+ }
+ for (const name of ['players-handbook.pdf', 'srd.pdf', 'game-masters-guide-dark.pdf', 'draft.pdf', '../notes.pdf', '%2e%2e%2fprivate.pdf']) {
+  let read = false;
+  assert.equal((await worker.fetch(new Request(prefix + name), { ART: { get: () => { read = true; } } })).status, 404);
+  assert.equal(read, false);
+ }
+ assert.equal((await worker.fetch(new Request(prefix.replace('2026-10-20', '2026-10-21') + 'game-masters-guide.pdf'), makeEnv())).status, 404);
+});

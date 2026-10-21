@@ -25,7 +25,7 @@ export default function PressPage() {
         <div>
           <h1 className="sw-public-title">The SwordWeave<br /><em>creator kit.</em></h1>
           <p className="sw-public-deck">Descriptions, current books, real previews and project facts for reviewers, streamers and curious tables.</p>
-          <p className="sw-press__intro-note">{PRESS_KIT.version} · An independent project by {PRESS_KIT.creator}. Updated <time dateTime={PRESS_KIT.updated}>20 October 2026</time>.</p>
+          <p className="sw-press__intro-note">{PRESS_KIT.version} · An independent project by {PRESS_KIT.creator}. Updated <time dateTime={PRESS_KIT.updated}>{new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(PRESS_KIT.updated))}</time>.</p>
           <div className="sw-public-actions">
             <TrackLink event={{ name: 'media_kit_download', params: { placement: 'press', release_version: 'v0.1-alpha' } }} className="sw-cta-primary" href={PRESS_KIT_ZIP} download><Download aria-hidden="true" /> Download the creator kit</TrackLink>
             <Link className="sw-cta-ghost" href="/contact"><Mail aria-hidden="true" /> Contact Mashu <ArrowRight aria-hidden="true" /></Link>

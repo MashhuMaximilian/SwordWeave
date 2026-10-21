@@ -262,7 +262,7 @@ export function PublicNav() {
               Sign in
             </Link>
             <Link href="/sign-up" className="sw-public-nav__signup" onClick={closeNavigation}>
-              Start
+              Sign up
             </Link>
             <button
               ref={toggleRef}
@@ -305,7 +305,7 @@ export function PublicNav() {
               Sign in
             </Link>
             <Link href="/sign-up" className="sw-public-nav__signup sw-public-nav__signup--block" onClick={closeNavigation}>
-              Start
+              Sign up
             </Link>
           </div>
         </nav>

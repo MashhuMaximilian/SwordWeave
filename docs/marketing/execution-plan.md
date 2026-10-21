@@ -1,6 +1,6 @@
 # SwordWeave execution plan
 
-20 October 2026. The founder asked for an actionable plan and delegation. This plan defines order, ownership, dependencies and acceptance. The [implementation board](implementation-board.md) is the single source of task status; the [delivery review](delivery-review-2026-10-20.md) explains why the earlier release needs correction.
+Updated 21 October 2026. The founder asked for an actionable plan and delegation. This plan defines order, ownership, dependencies and acceptance. The [implementation board](implementation-board.md) is the single source of task status; the [delivery review](delivery-review-2026-10-20.md) explains why the earlier release needs correction. The active work is SEO, AI discovery and desktop/mobile performance. Video production is deferred by the founder.
 
 ## Working agreement
 
@@ -8,7 +8,7 @@
 - Preserve the existing gold/silver/teal materials, fonts, mail delivery, authentication, consent and private workspaces. Work in the discovery worktree; the primary checkout contains unrelated ongoing book work.
 - Use the approved PHB/editorial rules and actual selected public examples. Neris is primary; Orren is advanced. Never turn illustrative numbers into universal rules or silently settle pending rules.
 - No paid advertising, new purchases/accounts or automated creator messages. The founder conducts personal outreach.
-- Founder book reconciliation, all-three-book itch upload and personal playtests remain separate dependencies. Make progress on independent work while those continue.
+- Founder book consistency, all-three-book itch upload and personal playtests remain separate dependencies. Revised full/compressed organic-edges GM Guide PDFs were supplied on 21 October; the SRD is still pending. The supplied paths, byte sizes and SHA-256 hashes are recorded in the implementation board. Full/compressed does not mean light/dark, and public readiness changes only when the selected file is actually published. Make progress on independent work while those continue.
 - A delegated task is a bounded deliverable with owned files. The parent integrates and checks the whole user journey; agent completion is not product acceptance.
 
 ## Status and release evidence
@@ -69,13 +69,13 @@ On 20 October the founder requested a separate advanced authoring page and Creat
 | Measurement | Live proof of remaining event hooks and a small useful report connecting discovery, reading, trying tools and saving work. | Consented events carry no private text/PII. Existing events retained; kit click is not a completed download or partnership, invite click is not a Discord join. No GTM added by default. |
 | Performance | Address the large shared public/app CSS dependency and measure a concrete before/after. | Preserve material styles, FAB and embedded tools; compare production assets and representative mobile loading. Keep lab variability and lack of field data explicit. |
 
-## Batch 5 — finished demonstration pilot, then videos
+## Batch 5 — videos, deferred by founder
 
-**Owners:** production agent and parent; founder reviews the finished pilot. **Depends on:** accurate, stable teaching sequence and actual editor behavior. Tasks VIDEO-03/04.
+**Current state, 21 October:** deferred. The founder no longer requires a pilot and may record tutorials personally later. Do not begin recording, synthesis or editing as part of the active SEO/performance work. Tasks VIDEO-03/04 are retained as optional future work; no video is a prerequisite for discovery or publication.
 
-The latest faster conversational voice direction is approved. Produce one finished 20–30 second excerpt using actual editor footage, legible framing, deliberate cursor/cuts, accurate captions and the proposed voice. Review the finished combination before producing a long recording. Founder talking points and screen actions remain the primary recording guide.
+**Earlier proposed workflow, retained for context:** the latest faster conversational voice direction was approved. A short excerpt would have used actual editor footage, legible framing, deliberate cursor/cuts, accurate captions and the proposed voice, followed by founder review before a longer recording. Founder talking points and screen actions remain available if useful later.
 
-After the pilot works, produce the chaptered mechanical-rule tutorial and selected Neris/reuse/encounter clips. Supply actual timed captions and a transcript of the final edit; planned text is not a finished transcript. Embed beside the matching written lesson and reference from the kit. Do not generate fictional UI footage or publish an unreviewed video.
+If the founder resumes video work, agree its scope then. Any future captions/transcript must match the final actual edit; planned text is not a finished transcript. Do not generate fictional UI footage or publish an unreviewed video.
 
 ## Batch 6 — distribution and community preparation
 
@@ -108,4 +108,4 @@ Batches 2–3 have been implemented with bounded agent scopes for the Neris cons
 
 Fifty-four focused tests, scoped lint, actual desktop/phone reading flows and browser downloads pass. Every companion PDF page and all fillable fields were checked. The implementation board records source evidence, archive hashes, final build/preview status and the production-mode Markdown caveat. These checks establish a reviewable result; founder acceptance is still separate.
 
-The founder-requested logo layout, PHB-style companion revision and separate original-character guide are implemented; see the board for release evidence. Next active implementation batch is discovery/measurement/performance (Batch 4), followed by the finished video pilot (Batch 5) once teaching is accepted. Book reconciliation, all-three-book upload and real playtest feedback remain founder dependencies. No claim is made that the entire marketing program is finished.
+The founder-requested logo layout, PHB-style companion revision and separate original-character guide are implemented; see the board for release evidence. The active implementation batch is discovery/measurement/performance (Batch 4), with SEO, AI discovery and desktop/mobile performance prioritized. Batch 5 is deferred; no pilot is currently required. The founder supplied revised GM Guide PDFs, but publication verification, pending SRD, all-three-book upload and real playtest feedback remain separate dependencies. No claim is made that the entire marketing program is finished.

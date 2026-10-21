@@ -1,13 +1,13 @@
 {
   "name": "SwordWeave",
   "version": "v0.1 alpha",
-  "updated": "2026-10-20",
+  "updated": "2026-10-21",
   "creator": "Marius Ion (Mashu)",
   "website": "https://www.swordweave.quest/",
   "email": "contact@swordweave.quest",
   "oneLine": "SwordWeave is a free modular tabletop roleplaying game with browser tools for building characters and abilities from shared rules.",
-  "shortDescription": "SwordWeave is a free modular tabletop RPG by Marius Ion (Mashu). Players build characters and abilities from shared rules, then agree intent, scope, costs and consequences with their table. The v0.1 alpha includes public rules, browser tools and an illustrated Player’s Handbook; the GM Guide and SRD are still being revised.",
-  "longDescription": "SwordWeave is a free modular tabletop roleplaying game and a set of browser tools by Marius Ion (Mashu). Characters, effects and capabilities draw on a shared vocabulary of primitives. The same owned ingredients can support several actions: players and the GM agree what is being attempted, which permissions apply, and the costs and consequences in the scene. Public rules and books can be read without an account; an account is used to save work in the browser tools. The illustrated Player’s Handbook is complete for the current v0.1 alpha. The Game Master’s Guide and System Reference Document remain in revision, and current online readers can differ from downloadable PDF editions. This is a one-person project in active development. Questions, independent assessments and feedback from actual sessions are welcome.",
+  "shortDescription": "SwordWeave is a free modular tabletop RPG by Marius Ion (Mashu). Players build characters and abilities from shared rules, then agree intent, scope, costs and consequences with their table. The v0.1 alpha includes public rules, browser tools and illustrated Player’s Handbook and Game Master’s Guide PDFs; the SRD revision is still pending.",
+  "longDescription": "SwordWeave is a free modular tabletop roleplaying game and a set of browser tools by Marius Ion (Mashu). Characters, effects and capabilities draw on a shared vocabulary of primitives. The same owned ingredients can support several actions: players and the GM agree what is being attempted, which permissions apply, and the costs and consequences in the scene. Public rules and books can be read without an account; an account is used to save work in the browser tools. The illustrated Player’s Handbook and Game Master’s Guide are available for the current v0.1 alpha. The GM Guide’s organic-edge revision is supplied as a reading PDF and a full-resolution PDF. The System Reference Document revision remains pending, and current online readers can differ from downloadable PDF editions. This is a one-person project in active development. Questions, independent assessments and feedback from actual sessions are welcome.",
   "facts": [
     {
       "label": "Created by",
@@ -30,8 +30,12 @@
       "value": "Illustrated alpha complete · 268 pages"
     },
     {
-      "label": "GM Guide and SRD",
-      "value": "Available drafts · revisions in progress"
+      "label": "Game Master’s Guide",
+      "value": "Illustrated current alpha · 268 pages · organic-edge revision"
+    },
+    {
+      "label": "System Reference Document",
+      "value": "Earlier draft available · revision pending"
     },
     {
       "label": "Accounts",
@@ -62,12 +66,12 @@
     {
       "title": "Game Master’s Guide",
       "path": "/books/game-masters-guide",
-      "status": "For preparing and running the table. The available draft is being revised."
+      "status": "For preparing and running the table. The illustrated current-alpha organic-edge revision has reading and full-resolution PDFs; the online reader may differ."
     },
     {
       "title": "System Reference Document",
       "path": "/books/srd",
-      "status": "For mechanical reference and compatible creation. The available draft is being revised."
+      "status": "For mechanical reference and compatible creation. An earlier draft is available; the revised SRD is still pending."
     }
   ],
   "links": [

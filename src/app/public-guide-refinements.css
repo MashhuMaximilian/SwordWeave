@@ -1,6 +1,6 @@
 /* Public guide only; app navigation and authoring surfaces remain independent. */
 .sw-public-site .sw-public-nav__logo { display:flex;align-items:center;gap:9px;flex-shrink:0; }
-.sw-public-nav__brandmark { display:block;width:36px;height:44px;flex-shrink:0;background:linear-gradient(145deg,#fff2be,#d8af5f 40%,#98e2d4 76%,#fff0b3);mask:url('/logo-light.png') center/contain no-repeat;-webkit-mask:url('/logo-light.png') center/contain no-repeat;filter:drop-shadow(0 0 8px #73dbc82b); }
+.sw-public-nav__brandmark { display:block;width:36px;height:44px;flex-shrink:0;background:linear-gradient(145deg,#fff2be,#d8af5f 40%,#98e2d4 76%,#fff0b3);mask:url('/logo-light-mask.png') center/contain no-repeat;-webkit-mask:url('/logo-light-mask.png') center/contain no-repeat;filter:drop-shadow(0 0 8px #73dbc82b); }
 .sw-public-nav__wordmark { display:flex;align-items:center;white-space:nowrap; }
 .sw-public-site .sw-guide-hero { display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;gap:clamp(30px,5vw,80px);max-width:none;padding:48px 0 42px; }
 .sw-guide-hero > div { min-width:0; }

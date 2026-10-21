@@ -13,7 +13,8 @@ export default {
       || /^images\/books\/v0\.1-alpha\/print-r2\/(phb-cover|gm-cover|party-cutout|custodian-cutout|skyborn-cutout|surgeon-cutout|guardian-cutout|artificer-cutout)(-master\.png|\.webp)$/.test(key);
     const isBook = /^documents\/swordweave\/v0\.1-alpha\/(players-handbook|game-masters-guide|srd)(-dark)?\.pdf$/.test(key)
       || /^documents\/swordweave\/v0\.1-alpha\/print-r2\/(players-handbook|game-masters-guide)(-dark)?\.pdf$/.test(key)
-      || /^documents\/swordweave\/v0\.1-alpha\/interwoven-2026-10-19\/players-handbook(-full)?\.pdf$/.test(key);
+      || /^documents\/swordweave\/v0\.1-alpha\/interwoven-2026-10-19\/players-handbook(-full)?\.pdf$/.test(key)
+      || /^documents\/swordweave\/v0\.1-alpha\/organic-2026-10-20\/game-masters-guide(-full)?\.pdf$/.test(key);
     if ((!isImage && !isBookArt && !isBook)
         || key.split('/').some(segment => segment === '..' || segment === '.')) {
       return new Response('Not found', { status: 404 });

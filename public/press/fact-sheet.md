@@ -1,6 +1,6 @@
 # SwordWeave creator fact sheet
 
-v0.1 alpha · Updated 2026-10-20
+v0.1 alpha · Updated 2026-10-21
 
 ## One sentence
 
@@ -8,11 +8,11 @@ SwordWeave is a free modular tabletop roleplaying game with browser tools for bu
 
 ## Short description
 
-SwordWeave is a free modular tabletop RPG by Marius Ion (Mashu). Players build characters and abilities from shared rules, then agree intent, scope, costs and consequences with their table. The v0.1 alpha includes public rules, browser tools and an illustrated Player’s Handbook; the GM Guide and SRD are still being revised.
+SwordWeave is a free modular tabletop RPG by Marius Ion (Mashu). Players build characters and abilities from shared rules, then agree intent, scope, costs and consequences with their table. The v0.1 alpha includes public rules, browser tools and illustrated Player’s Handbook and Game Master’s Guide PDFs; the SRD revision is still pending.
 
 ## Longer description
 
-SwordWeave is a free modular tabletop roleplaying game and a set of browser tools by Marius Ion (Mashu). Characters, effects and capabilities draw on a shared vocabulary of primitives. The same owned ingredients can support several actions: players and the GM agree what is being attempted, which permissions apply, and the costs and consequences in the scene. Public rules and books can be read without an account; an account is used to save work in the browser tools. The illustrated Player’s Handbook is complete for the current v0.1 alpha. The Game Master’s Guide and System Reference Document remain in revision, and current online readers can differ from downloadable PDF editions. This is a one-person project in active development. Questions, independent assessments and feedback from actual sessions are welcome.
+SwordWeave is a free modular tabletop roleplaying game and a set of browser tools by Marius Ion (Mashu). Characters, effects and capabilities draw on a shared vocabulary of primitives. The same owned ingredients can support several actions: players and the GM agree what is being attempted, which permissions apply, and the costs and consequences in the scene. Public rules and books can be read without an account; an account is used to save work in the browser tools. The illustrated Player’s Handbook and Game Master’s Guide are available for the current v0.1 alpha. The GM Guide’s organic-edge revision is supplied as a reading PDF and a full-resolution PDF. The System Reference Document revision remains pending, and current online readers can differ from downloadable PDF editions. This is a one-person project in active development. Questions, independent assessments and feedback from actual sessions are welcome.
 
 ## Facts
 
@@ -26,7 +26,9 @@ SwordWeave is a free modular tabletop roleplaying game and a set of browser tool
 
 - **Player’s Handbook:** Illustrated alpha complete · 268 pages
 
-- **GM Guide and SRD:** Available drafts · revisions in progress
+- **Game Master’s Guide:** Illustrated current alpha · 268 pages · organic-edge revision
+
+- **System Reference Document:** Earlier draft available · revision pending
 
 - **Accounts:** Public reading needs no account; saving work uses an account
 
@@ -52,9 +54,9 @@ SwordWeave is a free modular tabletop roleplaying game and a set of browser tool
 
 - [Player’s Handbook](https://www.swordweave.quest/books/players-handbook): Start here. The illustrated alpha teaches the player procedures and includes examples and worksheets.
 
-- [Game Master’s Guide](https://www.swordweave.quest/books/game-masters-guide): For preparing and running the table. The available draft is being revised.
+- [Game Master’s Guide](https://www.swordweave.quest/books/game-masters-guide): For preparing and running the table. The illustrated current-alpha organic-edge revision has reading and full-resolution PDFs; the online reader may differ.
 
-- [System Reference Document](https://www.swordweave.quest/books/srd): For mechanical reference and compatible creation. The available draft is being revised.
+- [System Reference Document](https://www.swordweave.quest/books/srd): For mechanical reference and compatible creation. An earlier draft is available; the revised SRD is still pending.
 
 ## Official links
 

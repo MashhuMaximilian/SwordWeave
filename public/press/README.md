@@ -1,6 +1,6 @@
 # SwordWeave creator kit
 
-v0.1 alpha · 20 October 2026
+v0.1 alpha · 21 October 2026
 
 Created by Marius Ion (Mashu). Official kit: https://www.swordweave.quest/press
 
@@ -18,7 +18,7 @@ Created by Marius Ion (Mashu). Official kit: https://www.swordweave.quest/press
 
 ## Current books
 
-Visit https://www.swordweave.quest/books to choose a reader and current PDF edition. Full book PDFs are not duplicated in this archive; the two original companion PDFs are included. The illustrated PHB is complete for the current alpha; the GM Guide and SRD are being revised. Online readers and PDFs can differ, so identify the book and edition when quoting rules.
+Visit https://www.swordweave.quest/books to choose a reader and current PDF edition. Full book PDFs are not duplicated in this archive; the two original companion PDFs are included. The illustrated PHB and GM Guide PDFs are available for the current alpha. The GM Guide’s 268-page organic-edge revision has a 76.5 MB reading PDF and a 309 MB full-resolution PDF. The revised SRD is still pending; its earlier draft remains available. Online readers and PDFs can differ, and the three books are not yet a synchronized final set, so identify the book and edition when quoting rules.
 
 ## Coverage and contact
 

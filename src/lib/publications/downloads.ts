@@ -1,8 +1,13 @@
-/** The illustrated PHB supersedes its light PDF; the earlier dark edition remains available. */
+/** Current illustrated books supersede their light PDFs; earlier dark editions remain available. */
 export function bookPdfDownloads(book: { slug: string; lightPdf: string; darkPdf: string }) {
   if (book.slug === 'players-handbook') return [
     { href: book.lightPdf, label: 'Illustrated PDF (25.7 MB)', detail: '268 pages · Interwoven edition' },
     { href: '/books/v0.1-alpha/players-handbook-full.pdf', label: 'High-resolution PDF (202 MB)', detail: '268 pages · Interwoven edition' },
+    { href: book.darkPdf, label: 'Earlier dark PDF', detail: 'Previous edition' },
+  ];
+  if (book.slug === 'game-masters-guide') return [
+    { href: book.lightPdf, label: 'Illustrated PDF (76.5 MB)', detail: '268 pages · Organic-edge revision' },
+    { href: '/books/v0.1-alpha/game-masters-guide-full.pdf', label: 'High-resolution PDF (309 MB)', detail: '268 pages · Organic-edge revision' },
     { href: book.darkPdf, label: 'Earlier dark PDF', detail: 'Previous edition' },
   ];
   return [
@@ -13,6 +18,10 @@ export function bookPdfDownloads(book: { slug: string; lightPdf: string; darkPdf
 
 export function bookDownloadEvent(slug: string, href: string, placement: 'home' | 'books' | 'reader') {
   const book_id = slug === 'players-handbook' ? 'phb' : slug === 'game-masters-guide' ? 'gm_guide' : 'srd';
-  const edition = slug === 'players-handbook' ? (href.endsWith('-full.pdf') ? 'interwoven_full' : href.includes('-dark') ? 'earlier_dark' : 'interwoven') : href.includes('-dark') ? 'dark' : 'light';
+  const edition = slug === 'players-handbook'
+    ? (href.endsWith('-full.pdf') ? 'interwoven_full' : href.includes('-dark') ? 'earlier_dark' : 'interwoven')
+    : slug === 'game-masters-guide'
+      ? (href.endsWith('-full.pdf') ? 'gm_organic_full' : href.includes('-dark') ? 'earlier_dark' : 'gm_organic')
+      : href.includes('-dark') ? 'dark' : 'light';
   return { name: 'file_download', params: { book_id, edition, release_version: 'v0.1-alpha', placement } } as const;
 }

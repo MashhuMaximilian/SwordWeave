@@ -1,0 +1,40 @@
+{
+  "edition": "v0.1 alpha",
+  "revision": "organic-2026-10-20",
+  "publicationDate": "2026-10-21",
+  "releaseAuthority": "Founder identified both supplied organic-edges PDFs as the current DMG in the marketing/discovery chat on 21 October 2026.",
+  "reviewScope": "Publication of unchanged founder-supplied files. Existing preservation and visual-review records checked; not a fresh editorial reread or a new artistic-acceptance claim.",
+  "sourceRootHint": "/Users/max/dev/SwordWeave",
+  "sourceEvidence": [
+    {
+      "path": "output/publications/gm-organic-edges/preservation-checks.json",
+      "sha256": "3e7eccaf5090bed289ef29b34299ece20b8b529951a28444b3fd5cf4055145d0"
+    },
+    {
+      "path": "output/publications/gm-organic-edges/visual-review-final.json",
+      "sha256": "c7b0b326442d64bca695f3ffcb1b17123bec53091e64257f8a3b781ef2b6954f"
+    }
+  ],
+  "pdfs": [
+    {
+      "filename": "game-masters-guide.pdf",
+      "sourcePath": "output/pdf/swordweave-game-masters-guide-v0.1-alpha-organic-edges-compressed.pdf",
+      "key": "documents/swordweave/v0.1-alpha/organic-2026-10-20/game-masters-guide.pdf",
+      "bytes": 76525806,
+      "sha256": "2e039d0193d87235cebdc693acc3dbc8adf685fb44bd34977a54f8581b1651c7",
+      "pages": 268,
+      "role": "default reading PDF",
+      "analyticsEdition": "gm_organic"
+    },
+    {
+      "filename": "game-masters-guide-full.pdf",
+      "sourcePath": "output/pdf/swordweave-game-masters-guide-v0.1-alpha-organic-edges.pdf",
+      "key": "documents/swordweave/v0.1-alpha/organic-2026-10-20/game-masters-guide-full.pdf",
+      "bytes": 309136538,
+      "sha256": "80ccaed3aa3fc40f4fd317ec54271fff88940bbb58468411ff317cdce6940f44",
+      "pages": 268,
+      "role": "full-resolution PDF",
+      "analyticsEdition": "gm_organic_full"
+    }
+  ]
+}

@@ -428,7 +428,7 @@ body[data-ui="v12"] .sw-public-site .sw-intent__choices button[aria-pressed="tru
 .sw-arcane-forge__drawing::before { content:"";position:absolute;inset:9%;border-radius:50%;background:radial-gradient(circle,#51c2aa2e,#ca98491c 46%,transparent 68%);box-shadow:0 0 95px #4dd5b91c;z-index:-1; }
 .sw-arcane-forge__rings { width:100%;height:100%;filter:drop-shadow(0 8px 12px #0008); }
 .sw-arcane-forge__heart { position:absolute;inset:28% 28%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center; }
-.sw-arcane-forge__brand { width:62%;aspect-ratio:1;background:linear-gradient(125deg,#5b9188 3%,#9ffff0 20%,#e1fff1 37%,#57bbae 45%,#afe9d5 66%,#347e83 84%,#c0f8d5);mask:url('/logo-mono.png') center/contain no-repeat;-webkit-mask:url('/logo-mono.png') center/contain no-repeat;filter:drop-shadow(0 0 12px #74c3b040);margin-top:-8%; }
+.sw-arcane-forge__brand { width:62%;aspect-ratio:1;background:linear-gradient(125deg,#5b9188 3%,#9ffff0 20%,#e1fff1 37%,#57bbae 45%,#afe9d5 66%,#347e83 84%,#c0f8d5);mask:url('/logo-mono-mask.png') center/contain no-repeat;-webkit-mask:url('/logo-mono-mask.png') center/contain no-repeat;filter:drop-shadow(0 0 12px #74c3b040);margin-top:-8%; }
 .sw-arcane-forge__heart > span:not(.sw-arcane-forge__brand) { font-family:var(--font-subtitle,sans-serif);color:var(--sw-text-gold);font-size:clamp(17px,1.5vw,22px);letter-spacing:-.02em;margin-top:5px; }
 .sw-arcane-forge__heart small { font-size:17px;color:var(--sw-text-teal);margin-top:3px; }
 .sw-forge-node { position:absolute;display:flex;flex-direction:column;align-items:center;gap:10px;transform:translate(-50%,-50%);width:115px;color:var(--sw-text-gold); }

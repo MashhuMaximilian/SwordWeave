@@ -1,6 +1,6 @@
 # Image captions and credits
 
-SwordWeave v0.1 alpha · 2026-10-20
+SwordWeave v0.1 alpha · 2026-10-21
 
 ## Mark for a light background
 
