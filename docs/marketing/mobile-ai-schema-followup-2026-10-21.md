@@ -34,3 +34,24 @@ Screenshots and detailed computed comparisons are ignored local evidence under `
 3. Review processed Search Console/Google AI and Bing evidence, plus consented identifiable referrals and the existing acquisition/actions report. Sparse data is not a reason to invent more pages or rankings.
 4. Separate engineering maintenance: reconcile the pre-existing failing test suite with current rules/data/mocks. Keep it outside this discovery patch.
 5. Founder workstreams remain book/reader consistency, itch.io release preparation, real table feedback and later personal creator outreach. No new distribution or video work is necessary to finish this technical batch.
+
+## Production outcome
+
+Application commit **`e93eef333996a81f6dd055d7a69f1eeb070a36bd`** was pushed after the checks above. Vercel **`dpl_3j4gwhV3y7GehCCwZDUZ2PVafj6h`** reached **Ready** and aliases the canonical host. Final canonical checks pass for all **17 HTML pages and 17 Markdown alternatives**, including connected schema, canonical links, inline Markdown delivery and the expected resource hints. Evidence: `production-verification.json` in the evidence folder.
+
+A new [PageSpeed report](https://pagespeed.web.dev/analysis/https-www-swordweave-quest/xe83kvm4ai?form_factor=mobile), **15:32:18 Bucharest**, records:
+
+| Lab metric | Previous mobile → current | Previous desktop → current |
+| --- | --- | --- |
+| Performance | 63 → **68** | 97 → **97** |
+| First Contentful Paint | 4.1 → **2.9 s** | 0.7 → **0.7 s** |
+| Largest Contentful Paint | 7.8 → **5.9 s** | 1.1 → **1.1 s** |
+| Total Blocking Time | 40 → **240 ms** | 50 → **50 ms** |
+| Cumulative Layout Shift | 0 → **0** | 0 → **0** |
+| Speed Index | 5.6 → **3.9 s** | 1.1 → **1.3 s** |
+
+Both devices remain **100 Accessibility / 100 Best Practices / 100 Lighthouse SEO**. This is one Lighthouse 13.5 / Chrome 153 lab observation against the previous run, not a median or isolated causal experiment. No CrUX field data exists. Mobile paint improved in this sample, but its blocking time worsened and its LCP remains slow. Do not present this as all mobile performance solved or as field/INP evidence. Actual calculator values and screenshots are saved in `pagespeed-release.json` and `pagespeed-*-release.jpg`.
+
+A fresh external-reader probe at **12:30:43 UTC** still fails for the exact home and llms URLs without HTTP diagnostics; the bounded CDN query again identifies no matching OpenAI-named user agent. This does not establish that the tool contacted the site under an identifiable identity. The retrieval issue remains open; no firewall bypass was added.
+
+The local production test server is stopped. Temporary responsive overrides were reset. No outreach, account settings, live game records or publication PDFs were changed through the UI.
