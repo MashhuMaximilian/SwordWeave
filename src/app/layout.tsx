@@ -25,11 +25,14 @@ const legacyBody = Magra({
   preload: false,
 });
 
+// The public hero uses Syne and Aubrey. Other faces load when their text is
+// used, rather than competing with those two first-viewport fonts.
 const unicaOne = localFont({
   src: "./fonts/unica-one-400-latin-f1708315.woff2",
   variable: "--font-v12-title",
   weight: "400",
   display: "swap",
+  preload: false,
 });
 
 const oxanium = localFont({
@@ -37,6 +40,7 @@ const oxanium = localFont({
   variable: "--font-v12-subtitle",
   weight: "500",
   display: "swap",
+  preload: false,
 });
 
 const aubrey = localFont({
@@ -123,66 +127,12 @@ export default function RootLayout({
           href="/apple-touch-icon.png"
           sizes="180x180"
         />
-        {/* Phase 18J (2026-07-14, perf): preload Clerk's browser
-            bundle. Verified by inspecting /sandbox/grammar's <head>
-            on production: Clerk preloads `ui.browser.js` but injects
-            `clerk.browser.js` as a <script async> LATE in the HTML
-            (after ~15 Next chunks). The browser can't fetch
-            clerk.browser.js until it parses that late <script>, which
-            adds ~200-400ms of serial delay on Slow 4G real-user
-            mobile. With this link rel=preload, the browser starts
-            fetching clerk.browser.js in parallel with the very first
-            Next chunk. The crossorigin attribute matches Clerk's
-            `<script crossorigin="anonymous">` declaration so the
-            preload resolves to the same cache entry as the script.
-
-            Why this URL is stable: `clerk.swordweave.quest` is our
-            Clerk proxy subdomain (your account's instance URL); the
-            /npm path is what `@clerk/nextjs` injects across all v6
-            versions. Major-version bumps update the path; we'd notice
-            via 404s in browser console after a Vercel deploy and
-            update this. */}
-        <link
-          rel="preload"
-          href="https://clerk.swordweave.quest/npm/@clerk/clerk-js@6/dist/clerk.browser.js"
-          as="script"
-          crossOrigin="anonymous"
-        />
-        {/* Phase 18F (2026-07-14, perf): early-connect hints for
-            third-party origins that gate the LCP path.
-
-            Why each one matters:
-            - clerk.swordweave.quest: Clerk's client bundle
-              (clerk.browser.js + clerk-ui) is render-blocking for
-              any signed-in route. Without preconnect the browser
-              doesn't even START the DNS/TLS handshake until it
-              sees a <script src=> pointing at it, adding ~150ms
-              on Slow 4G. Three of them: dns-prefetch (cheap, runs
-              in parallel), preconnect (does full handshake but
-              parallelized with the rest of the HTML parse),
-              preload (no — we don't preload because we don't know
-              which Clerk script the user needs yet).
-            - cdn.jsdelivr.net: the game-icons.net SVGs are proxied
-              through jsDelivr's GitHub mirror at first-paint when
-              a row of icons becomes visible (lazy-img under the
-              fold). Preconnecting warms the connection so the first
-              scroll triggers IO with no RTT penalty.
-            - fonts.gstatic.com + fonts.googleapis.com: Teko and
-              Magra come from next/font/google, which already
-              self-hosts via next/font's optimization. The browser
-              only ever contacts our domain for the static font
-              files, so we don't need a hint here. Documented for
-              the next person who reads this comment.
-
-            Why we don't use crossOrigin="anonymous": preconnect
-            without crossOrigin does the bare TCP/TLS handshake,
-            which is the slow part. The actual GET comes later and
-            will add its own headers if needed.
-        */}
+        {/* Clerk emits its own versioned async script. Warm the matching CORS
+            connection without preloading a second major-version alias. Clerk
+            keeps its default UI loading for sign-in and Manage account. */}
         <link rel="dns-prefetch" href="https://clerk.swordweave.quest" />
-        <link rel="preconnect" href="https://clerk.swordweave.quest" />
+        <link rel="preconnect" href="https://clerk.swordweave.quest" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
-        <link rel="preconnect" href="https://cdn.jsdelivr.net" />
       </head>
       <body
         data-ui={process.env["NEXT_PUBLIC_SW_UI_VERSION"] ?? "v12"}
