@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { homeIconSources } from "@/lib/icons/home-icons";
 
 
 const NODES = [
@@ -33,7 +34,7 @@ export function ArcaneForge() {
         {[0,72,144,216,288].map(angle=><g key={angle} transform={`rotate(${angle} 300 300)`}><path d="m300 107 5 10-5 10-5-10Z" fill="#f5d489"/><circle cx="300" cy="135" r="2" fill="#98e4d7"/></g>)}
       </svg>
       <div className="sw-arcane-forge__heart"><span className="sw-arcane-forge__brand" aria-hidden="true"/><span>Your character</span><small>One of a kind.</small></div>
-      {NODES.map(node=><Link key={node.kind} className={`sw-forge-node sw-forge-node--${node.tone}`} href={`#piece-${node.kind}`} style={{left:`${node.x}%`,top:`${node.y}%`}}><span><i className="sw-forge-node__metal-icon" aria-hidden="true" style={{maskImage:`url(/api/icons/game/${node.icon})`,WebkitMaskImage:`url(/api/icons/game/${node.icon})`}} /></span><strong>{node.name}</strong></Link>)}
+      {NODES.map(node=><Link key={node.kind} className={`sw-forge-node sw-forge-node--${node.tone}`} href={`#piece-${node.kind}`} style={{left:`${node.x}%`,top:`${node.y}%`}}><span><i className="sw-forge-node__metal-icon" aria-hidden="true" style={{maskImage:`url(${homeIconSources(node.icon).mask})`,WebkitMaskImage:`url(${homeIconSources(node.icon).mask})`}} /></span><strong>{node.name}</strong></Link>)}
     </div>
     <figcaption><span />Your rules. Your story. Your weave.<span /></figcaption>
   </figure>;

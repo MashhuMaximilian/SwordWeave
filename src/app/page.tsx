@@ -2,7 +2,8 @@ import { TrackLink } from "@/components/analytics/track-link";
 import "./generated/home-surface.css";
 import { StructuredData } from "@/components/analytics/structured-data";
 import { publicPageMetadata } from "@/lib/seo/metadata";
-import Link from "next/link";
+import NextLink from "next/link";
+import type { ComponentProps } from "react";
 import { BookCards } from "@/components/publications/book-cards";
 import "./books/books.css";
 import type { Metadata } from "next";
@@ -10,11 +11,18 @@ import { ArrowRight, ArrowUpRight, BookOpen, Check, GitFork, Hammer, Layers, Mes
 import { PublicNav } from "@/components/home/public-nav";
 import { TableIntent } from "@/components/home/table-intent";
 import { ArcaneForge } from "@/components/home/arcane-forge";
-import { IconDisplay } from "@/components/icons/icon-display";
+import { HomePieceIcon } from "@/components/home/home-piece-icon";
 import { DISCORD_INVITE_URL } from "@/lib/community";
 import { DiscordIcon } from "@/components/icons/discord-icon";
 
 export const metadata: Metadata = publicPageMetadata("/");
+
+// The landing page has many possible destinations. Do not download their
+// reader/editor bundles while its first viewport is still loading. Navigation
+// remains a normal Next client transition after the visitor chooses a link.
+function Link(props: ComponentProps<typeof NextLink>) {
+  return <NextLink {...props} prefetch={false} />;
+}
 
 const PIECES = [
   { number: "01", name: "Primitives", label: "Reusable building blocks", icon: "delapouite/cube", description: "Buy the rules your character owns with Build Units: a domain, a verb tier, a die, a range, a bonus, a permission. Pieces can change numbers, grant permissions or describe a particular fictional ability.", example: "A rule you can point to.", kind: "primitive" },
@@ -38,7 +46,7 @@ const CORE_TENETS = [
 export default function HomePage() {
   return (
     <div className="sw-home sw-public-site sw-public-site--arcane"><StructuredData path="/" />
-      <PublicNav />
+      <PublicNav prefetch={false} />
       <section className="sw-public-hero sw-home-hero" aria-labelledby="home-title">
         <div className="sw-home-hero__copy">
           <div className="sw-public-kicker"><span className="sw-public-sigil">✦</span> SwordWeave · A modular roleplaying engine</div>
@@ -65,7 +73,7 @@ export default function HomePage() {
       <section className="sw-public-section" aria-labelledby="composition-title">
         <header className="sw-public-section-head"><div><p className="sw-public-kicker">01 / The pieces of possibility</p><h2 id="composition-title">Build the rules<br /><em>your character needs.</em></h2></div><p>Begin with one rule. Combine it with another. Build a character whose mechanics belong to their story, instead of fitting a story around a fixed class.</p></header>
         <div className="sw-home-pieces">
-          {PIECES.map(piece => <Link key={piece.kind} id={`piece-${piece.kind}`} href={`/atelier?build=${piece.kind}`} className={`sw-home-piece sw-home-piece--${piece.kind}`}><div className="sw-home-piece__head"><span className="sw-home-piece__icon"><IconDisplay iconSource="GAME_ICONS" iconKey={piece.icon} iconColor={piece.kind === "capability" ? "#94e9d8" : piece.kind === "effect" ? "#efb88e" : piece.kind === "item" ? "#e2e6de" : "#f6dc9d"} size={38} alt="" /></span><span className="sw-public-number">{piece.number}</span><ArrowUpRight aria-hidden="true" /></div><p className="sw-public-kicker">{piece.label}</p><h3>{piece.name}</h3><p>{piece.description}</p><div className="sw-home-piece__example">{piece.example}</div></Link>)}
+          {PIECES.map(piece => <Link key={piece.kind} id={`piece-${piece.kind}`} href={`/atelier?build=${piece.kind}`} className={`sw-home-piece sw-home-piece--${piece.kind}`}><div className="sw-home-piece__head"><span className="sw-home-piece__icon"><HomePieceIcon iconKey={piece.icon} /></span><span className="sw-public-number">{piece.number}</span><ArrowUpRight aria-hidden="true" /></div><p className="sw-public-kicker">{piece.label}</p><h3>{piece.name}</h3><p>{piece.description}</p><div className="sw-home-piece__example">{piece.example}</div></Link>)}
         </div>
         <div className="sw-public-note"><Check aria-hidden="true" /><p><strong>Build Units buy mechanics.</strong> Compositions make those mechanics easier to author, understand, and use. An owned primitive can be reused without buying it twice. Execution has its own agreed costs; a new capability card is not a new purchase of every ingredient.</p></div>
       </section>

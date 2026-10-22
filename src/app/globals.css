@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Local reports/books/build artifacts are excluded from deployment inputs.
+ * Do not turn their HTML snippets into accidental application utilities. */
+@source not "../../output";
+
 /* ---------------------------------------------------------------------------
  * COLOR CONTRAST AUDIT (last verified: 2026-07-05, Phase 6.5 item 15)
  *

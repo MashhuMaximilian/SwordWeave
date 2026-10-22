@@ -56,7 +56,7 @@ const CREATE_ITEMS = [
 
 const DESKTOP_QUERY = "(min-width: 1200px)";
 
-export function PublicNav() {
+export function PublicNav({ prefetch = null }: { prefetch?: false | null } = {}) {
   const disclosureItems = {
     create: CREATE_ITEMS,
     library: [
@@ -204,6 +204,7 @@ export function PublicNav() {
           {links.map((link) => (
             <li key={link.href}>
               <Link
+                prefetch={prefetch}
                 href={link.href}
                 className={`sw-public-nav__group-link ${isActive(link.href) ? "is-active" : ""}`}
                 aria-current={isActive(link.href) ? "page" : undefined}
@@ -228,6 +229,7 @@ export function PublicNav() {
         <div className="sw-public-nav__inner">
           {/* Logo */}
           <Link
+            prefetch={prefetch}
             href="/"
             className="sw-public-nav__logo"
             aria-label="SwordWeave home"
@@ -245,6 +247,7 @@ export function PublicNav() {
             {NAV_ITEMS.map((item) => item.disclosure ? groupedNavigation({ ...item, disclosure: item.disclosure }, false) : (
               <li key={item.href}>
                 <Link
+                  prefetch={prefetch}
                   href={item.href}
                   className={`sw-public-nav__link ${isActive(item.href) ? "is-active" : ""}`}
                   aria-current={isActive(item.href) ? "page" : undefined}
@@ -258,10 +261,10 @@ export function PublicNav() {
 
           {/* Right side: sign-in chip + mobile toggle */}
           <div className="sw-public-nav__cta">
-            <Link href="/sign-in" className="sw-public-nav__signin" onClick={closeNavigation}>
+            <Link prefetch={prefetch} href="/sign-in" className="sw-public-nav__signin" onClick={closeNavigation}>
               Sign in
             </Link>
-            <Link href="/sign-up" className="sw-public-nav__signup" onClick={closeNavigation}>
+            <Link prefetch={prefetch} href="/sign-up" className="sw-public-nav__signup" onClick={closeNavigation}>
               Sign up
             </Link>
             <button
@@ -289,6 +292,7 @@ export function PublicNav() {
             {NAV_ITEMS.map((item) => item.disclosure ? groupedNavigation({ ...item, disclosure: item.disclosure }, true) : (
               <li key={item.href}>
                 <Link
+                  prefetch={prefetch}
                   href={item.href}
                   onClick={closeNavigation}
                   className={`sw-public-nav__drawer-link ${isActive(item.href) ? "is-active" : ""}`}
@@ -301,10 +305,10 @@ export function PublicNav() {
             ))}
           </ul>
           <div className="sw-public-nav__drawer-foot">
-            <Link href="/sign-in" className="sw-public-nav__signin sw-public-nav__signin--block" onClick={closeNavigation}>
+            <Link prefetch={prefetch} href="/sign-in" className="sw-public-nav__signin sw-public-nav__signin--block" onClick={closeNavigation}>
               Sign in
             </Link>
-            <Link href="/sign-up" className="sw-public-nav__signup sw-public-nav__signup--block" onClick={closeNavigation}>
+            <Link prefetch={prefetch} href="/sign-up" className="sw-public-nav__signup sw-public-nav__signup--block" onClick={closeNavigation}>
               Sign up
             </Link>
           </div>
