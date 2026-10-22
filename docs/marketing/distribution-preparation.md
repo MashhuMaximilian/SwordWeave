@@ -20,7 +20,7 @@ This section supersedes the older PHB-first/readiness notes below. All three cur
 
 Optional tenth download: **Creator kit — logos, screenshots & facts (ZIP)**, `public/press/swordweave-creator-kit-v0.1-alpha.zip` (3.26 MB). It includes both companions and their previews, but not the three full books or four compact guides. Label that scope clearly. The complete ten-file selection totals **121,258,199 bytes**; no new combined archive is necessary.
 
-- [ ] Inspect the existing [project editor](https://itch.io/game/edit/5189295) before changing it; the saved 19–20 October draft observations below are historical, not a fresh UI check.
+- [x] Read-only inspection of the existing [project editor](https://itch.io/game/edit/5189295), 22 October: still Draft / No payments, no uploaded downloads; its description and public creator profile still say the GM Guide/SRD are pending. No edits, uploads or publication performed. Earlier saved observations below remain historical.
 - [ ] Give the four compact guides and three books their distinct labels above. Put Play/Create first for players; Run is the additional DM guide. Keep the original companion PDFs separate from their preview JPEGs.
 - [ ] Replace any stale “GM Guide and SRD pending” text with the current editions. Explain that online readers can differ from revised PDFs, and that this is an evolving alpha rather than a claimed final synchronized rules audit.
 - [ ] If the gallery still presents PHB pages 7/53 as the standalone worksheets, replace those entries with `public/press/previews/first-session-run-sheet.jpg` and `public/press/previews/build-with-neris.jpg`, using their actual two-/three-page PDF captions. Retain the PHB cover and approved credits/disclosure.
