@@ -61,6 +61,16 @@ For SwordWeave's existing source-reading URLs, serving the **unchanged Markdown 
 
 Prefer retaining the existing `.md` URLs and body bytes over adding another duplicate endpoint. Update their declared alternate/link MIME hints to match the response, while preserving the Markdown labels/syntax, canonical HTML targets, `noindex, follow`, inline delivery and existing public allowlist. The same behavior should apply to everyone; no user-agent sniffing or security exception is needed. A link's type hint represents its linked resource's media type. [HTML link type documentation](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/link#type)
 
-The parent is implementing and testing that bounded transport change. **Post-change Markdown retrieval has not yet been verified in this artifact.** Acceptance requires the new response type and unchanged text/access boundaries to pass source/HTTP tests, followed by a fresh consumer source-only Markdown attempt and its actual answer/citation, ideally correlated with a new allowed CDN request. A cached previous error must not be reported as a new origin failure.
+The bounded transport change is now deployed and verified, as the post-release evidence below records. A cached previous error is distinguished from a new origin failure.
 
 No indexing, search ranking, citation frequency or general AI-discovery outcome is established by this single successful HTML test. It closes the concrete question of whether a user-triggered consumer ChatGPT request can reach and read this public HTML page.
+
+## Deployed Markdown acceptance
+
+Commit **0079de59cb665724da15f2b0e0be350f5bebc796** automatically produced Ready deployment **dpl_8BWm7HiuY2WiggKtoonWQ8sgegVJ**. All 17 live HTML/Markdown pairs pass: plain-text MIME and matching alternates, inline Markdown syntax, canonical HTML, noindex/follow, one H1 and parseable JSON-LD. The four complete structured teaching exports byte-match their previous production bodies. Unknown and arbitrary saved-record Markdown still returns 404.
+
+A fresh temporary consumer conversation with Search explicitly selected first tried the exact `/rules.md` URL. It reported the obsolete text/markdown error, but the completed **08:51:00–08:52:10 UTC** CDN window contains **zero requests** for that path, without pagination/exclusions. This is a stale reader-side result, not a fresh origin response.
+
+One cache-distinct retry at `/rules.md?retrieval_check=20261022-0853` **succeeded**. ChatGPT returned **Rules & play guide**, **Compact PDF guides** and **Your first game** with source line numbers 0, 3 and 7, and cited the exact requested source. The matched request is **08:52:15.667 UTC**, ID **h84f2-1792659135667-c4e4f67f689c**, HTTP **200 / WAF allow / MISS / ChatGPT-User/1.0**, on the new Ready deployment. The **08:52:10–08:53:00 UTC** window has exactly one record, no further page/excluded interval. The CDN normalizes the path; query text comes from the actual consumer citation. The query label is a cache marker, not the clock time.
+
+This confirms actual live consumer Markdown compatibility as well as HTML access. It does not claim that every provider cache has refreshed or promise a refresh deadline, automatic discovery, ranking or citation frequency. The temporary marker is absent from sitemap, canonical URLs and normal navigation. No support message was necessary or sent. Filtered evidence and consumer transcripts are under `/tmp/swordweave-discovery-followup/` and `/tmp/swordweave-chatgpt-markdown-after-2026-10-22.json`.
