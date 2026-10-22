@@ -19,13 +19,13 @@ afterEach(() => {
 });
 
 describe('public Markdown delivery', () => {
-  it('serves every curated page with the Markdown type, HTML canonical and index discovery link', async () => {
+  it('serves every curated page as inline plain text with Markdown syntax, HTML canonical and index discovery link', async () => {
     const fetcher = vi.fn(async () => new Response('<div class="sw-public-site"><h1>Public source</h1><p>Published page text.</p></div>'));
     vi.stubGlobal('fetch', fetcher);
     for (const path of Object.keys(PUBLIC_PAGES)) {
       const response = await requestMarkdown(markdownPath(path));
       expect(response.status).toBe(200);
-      expect(response.headers.get('Content-Type')).toBe('text/markdown; charset=utf-8');
+      expect(response.headers.get('Content-Type')).toBe('text/plain; charset=utf-8');
       expect(response.headers.get('Link')).toBe(`<${SITE_URL}${path}>; rel="canonical", <${SITE_URL}/llms.txt>; rel="describedby"`);
       expect(response.headers.get('X-Robots-Tag')).toBe('noindex, follow');
       const markdown = await response.text();

@@ -78,3 +78,8 @@
 .sw-forge-node--copper { --icon-metal:linear-gradient(135deg,#9a5331,#eaa074 20%,#ffead1 32%,#a45c38 40%,#f4bd94 55%,#fff5e5 62%,#cd8257 73%,#ffe1bc 90%,#9b603f); }
 .sw-forge-node--silver { --icon-metal:linear-gradient(135deg,#657e7d,#c3d8d1 20%,#ffffff 32%,#7d9693 40%,#d9e7dd 55%,#ffffff 62%,#9ebbb5 73%,#f2fff8 90%,#667f80); }
 .sw-forge-node__metal-icon { display:block;width:34px;height:34px;background:var(--icon-metal);mask-position:center;mask-size:contain;mask-repeat:no-repeat;-webkit-mask-position:center;-webkit-mask-size:contain;-webkit-mask-repeat:no-repeat;filter:drop-shadow(0 1px 1px #000b); }
+
+/* Keep the original alpha mask outside feature detection as a true fallback. */
+@supports (mask-image: image-set(url("/logo-light-mask.png") 1x)) {
+ .sw-public-nav__brandmark { mask-image:image-set(url('/brand/masks/logo-light-36.png') 1x,url('/brand/masks/logo-light-72.png') 2x,url('/brand/masks/logo-light-108.png') 3x,url('/brand/masks/logo-light-144.png') 4x);-webkit-mask-image:image-set(url('/brand/masks/logo-light-36.png') 1x,url('/brand/masks/logo-light-72.png') 2x,url('/brand/masks/logo-light-108.png') 3x,url('/brand/masks/logo-light-144.png') 4x); }
+}

@@ -2,6 +2,9 @@ import pages from './pages.json';
 import catalogue from '@/lib/publications/catalogue.json';
 
 export const SITE_URL = 'https://www.swordweave.quest';
+// Markdown syntax and .md URLs are retained. Some live search readers reject
+// text/markdown, so use the broadly supported plain-text transport for exports.
+export const PUBLIC_MARKDOWN_MEDIA_TYPE = 'text/plain';
 export type PublicPage = { title: string; description: string; group: string };
 export const PUBLIC_PAGES: Record<string, PublicPage> = {
   ...pages,

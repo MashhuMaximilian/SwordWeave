@@ -16,6 +16,7 @@ describe('public discovery', () => {
     expect(PUBLIC_MARKDOWN_ASSETS.has('/characters/private.md')).toBe(false);
     for (const path of Object.keys(PUBLIC_PAGES)) {
       expect(publicPageMetadata(path).alternates?.canonical).toBe(`https://www.swordweave.quest${path === '/' ? '' : path}`);
+      expect(publicPageMetadata(path).alternates?.types).toEqual({ 'text/plain': `https://www.swordweave.quest${markdownPath(path)}` });
       expect(markdownPath(path)).toMatch(/\.md$/);
     }
     expect(robots().rules).toEqual([{ userAgent: '*', allow: '/', disallow: ['/api/'] }]);

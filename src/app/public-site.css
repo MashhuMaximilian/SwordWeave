@@ -659,3 +659,8 @@ body[data-ui="v12"] .sw-public-site .sw-intent__choices button[aria-pressed="tru
     .sw-home-hero ~ section[aria-labelledby="home-books-title"] {--sw-home-intrinsic-block:1175px;}
   }
 }
+
+/* Keep the original alpha mask outside feature detection as a true fallback. */
+@supports (mask-image: image-set(url("/logo-mono-mask.png") 1x)) {
+ .sw-arcane-forge__brand { mask-image:image-set(url('/brand/masks/logo-mono-192.png') 1x,url('/brand/masks/logo-mono-384.png') 2x,url('/brand/masks/logo-mono-576.png') 3x,url('/brand/masks/logo-mono-768.png') 4x);-webkit-mask-image:image-set(url('/brand/masks/logo-mono-192.png') 1x,url('/brand/masks/logo-mono-384.png') 2x,url('/brand/masks/logo-mono-576.png') 3x,url('/brand/masks/logo-mono-768.png') 4x); }
+}

@@ -1,5 +1,7 @@
 # AI retrieval follow-through · 22 October 2026
 
+**Later consumer test supersedes the broad access concern:** ChatGPT Search successfully reads the HTML Rules page. Its Markdown request reaches Vercel with HTTP 200, then the reader rejects `text/markdown`. See [the concrete compatibility diagnosis](chatgpt-retrieval-compatibility-2026-10-22.md) and [current follow-up](discovery-followup-2026-10-22.md). The no-request observations below remain specific to the earlier Codex tool surface.
+
 The external web reader still reports that SwordWeave's canonical pages are inaccessible, while ordinary requests succeed. Today's clean, timed log comparison found **no canonical-host request at all during the reader attempt**. The concrete unresolved blocker is therefore missing provider-side retrieval diagnostics: there is no response status, request identity or matched site-side failure to repair. No application, firewall, DNS or hosting change is justified by that error alone.
 
 This continues the [21 October review](ai-retrieval-review-2026-10-21.md). It is a read-only retrieval and CDN-log check; this document is the only file authored by the subtask. No browser/account UI, security changes, external support message, installation or deployment was used. Current design and existing indexing/access boundaries remain intact.

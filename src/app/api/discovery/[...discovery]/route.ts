@@ -1,4 +1,4 @@
-import { PUBLIC_PAGES, SITE_URL, markdownPath } from '@/lib/seo/public-pages';
+import { PUBLIC_PAGES, SITE_URL, markdownPath, PUBLIC_MARKDOWN_MEDIA_TYPE } from '@/lib/seo/public-pages';
 import { bookMarkdown, guideMarkdown, creatingMarkdown, advancedCharacterMarkdown, primitiveTutorialMarkdown, publicHtmlMarkdown, CORE_BOOKS } from '@/lib/seo/markdown';
 export const dynamic = 'force-dynamic';
 export async function GET(_request: Request, { params }: { params: Promise<{ discovery: string[] }> }) {
@@ -29,7 +29,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ dis
     return new Response('The public text source is temporarily unavailable. Please use the HTML page.', { status: 503, headers: { 'Retry-After': '60' } });
   }
   return new Response(markdown, { headers: {
-    'Content-Type': 'text/markdown; charset=utf-8',
+    'Content-Type': `${PUBLIC_MARKDOWN_MEDIA_TYPE}; charset=utf-8`,
     'Link': `<${SITE_URL}${path}>; rel="canonical", <${SITE_URL}/llms.txt>; rel="describedby"`,
     'X-Robots-Tag': 'noindex, follow',
     'Cache-Control': 'public, max-age=60, s-maxage=300',
