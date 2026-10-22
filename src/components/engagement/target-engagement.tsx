@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useAuth } from "@clerk/nextjs";
+import { useAppAuth } from "@/components/auth/app-auth-provider";
 import { LikeForkBar, type LikeForkBarProps } from "./like-fork-bar";
 
 type Snapshot = { likes: number; dislikes: number; forks: number; flags: number; userReaction: "LIKE" | "DISLIKE" | null; currentUserInternalId: string | null };
@@ -8,7 +8,7 @@ type Props = { targetType: LikeForkBarProps["targetType"]; targetId: string; com
 
 /** Standalone cards share the same action bar and permission-checked viewer state. */
 export function TargetEngagement(props: Props) {
-  const { userId, isLoaded } = useAuth();
+  const { userId, isLoaded } = useAppAuth();
   if (!isLoaded) return <span role="status" className="sw-engagement-loading">Loading actions…</span>;
   return <AccountTargetEngagement key={`${userId ?? "anonymous"}:${props.targetType}:${props.targetId}`} {...props}/>;
 }

@@ -12,8 +12,7 @@
 import {useAccount} from "@/components/account/account-provider";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useUser, useClerk } from "@clerk/nextjs";
+import { useAppAuth } from "@/components/auth/app-auth-provider";
 import { LogOut, Settings, User as UserIcon } from "lucide-react";
 
 interface UserMenuProfile {
@@ -23,9 +22,7 @@ interface UserMenuProfile {
 }
 
 export function UserMenu() {
-  const router = useRouter();
-  const { user, isSignedIn, isLoaded } = useUser();
-  const { signOut, openUserProfile } = useClerk();
+  const { identity, isSignedIn, isLoaded, signOut, openAccount } = useAppAuth();
   const [open, setOpen] = useState(false);
   const {profile}=useAccount();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -52,21 +49,19 @@ export function UserMenu() {
   if (!isLoaded) {
     return <div className="size-9 animate-pulse rounded-full bg-card" />;
   }
-  if (!isSignedIn || !user) {
+  if (!isSignedIn || !identity) {
     return null; // AppShell handles signed-out state with SignIn/SignUp buttons
   }
 
   const clerkUsername =
-    user.username ?? user.primaryEmailAddress?.emailAddress?.split("@")[0] ?? "user";
+    identity.username ?? "user";
   // Prefer our DB profile when available (fresh display name + avatar),
   // fall back to Clerk session if the fetch is still loading or failed.
   const username = profile?.username ?? clerkUsername;
   const displayName =
     profile?.displayName ??
-    ([user.firstName, user.lastName].filter(Boolean).join(" ") ||
-      user.username ||
-      clerkUsername);
-  const avatarUrl = profile?.avatarUrl ?? user.imageUrl;
+    identity.displayName ?? identity.username ?? clerkUsername;
+  const avatarUrl = profile?.avatarUrl ?? identity.avatarUrl;
 
   const profileHref = `/u/${username}`;
 
@@ -119,7 +114,7 @@ export function UserMenu() {
               type="button"
               onClick={() => {
                 setOpen(false);
-                openUserProfile();
+                void openAccount();
               }}
               className="flex items-center gap-2 px-4 py-2.5 text-left text-sm hover:bg-panel"
             >
@@ -130,7 +125,7 @@ export function UserMenu() {
               type="button"
               onClick={() => {
                 setOpen(false);
-                signOut(() => router.push("/"));
+                void signOut({ redirectUrl: "/" });
               }}
               className="flex items-center gap-2 px-4 py-2.5 text-left text-sm text-destructive hover:bg-panel"
             >

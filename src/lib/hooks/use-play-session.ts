@@ -1,12 +1,12 @@
 "use client";
-import { useAuth } from "@clerk/nextjs";
+import { useAppAuth } from "@/components/auth/app-auth-provider";
 import { useLayoutEffect, useState } from "react";
 import { connectPlayState, emptyPlaySessionSnapshot, getPlaySession, setPlaySessionAccount, subscribePlaySession, type PlaySessionSnapshot } from "@/lib/play-state/client-sync";
 import type { SubjectKind } from "@/lib/play-state/model";
 
 /** Every sheet consumer shares one coordinator for the signed-in account. */
 export function usePlaySession(kind: SubjectKind, id: string | null, endpoint?: string, buildRefs?: string[], options: { method?: "POST" | "PATCH"; enabled?: boolean } = {}) {
-  const { isLoaded, userId } = useAuth();
+  const { isLoaded, userId } = useAppAuth();
   const accountId = isLoaded ? userId ?? null : null;
   const { method, enabled = true } = options;
   const [value, setValue] = useState<{ accountId: string; id: string; kind: SubjectKind; session: PlaySessionSnapshot } | null>(null);

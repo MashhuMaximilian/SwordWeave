@@ -1,7 +1,7 @@
 "use client";
 import {TargetEngagement} from "@/components/engagement/target-engagement";
 import { useRef, useState } from "react";
-import { useAuth } from "@clerk/nextjs";
+import { useAppAuth } from "@/components/auth/app-auth-provider";
 import Link from "next/link";
 import {
   Swords,
@@ -39,7 +39,7 @@ export function EncounterActions({
     | "latestRunId"
   >;
 }) {
-  const { userId } = useAuth();
+  const { userId } = useAppAuth();
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const operation = useRef<string | null>(null);

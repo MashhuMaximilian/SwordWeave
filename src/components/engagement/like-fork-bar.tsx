@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useSession, useClerk } from "@clerk/nextjs";
+import { useAppAuth } from "@/components/auth/app-auth-provider";
 import { createPortal } from "react-dom";
 import { useModalStack } from "@/components/ui/modal-stack";
 import {
@@ -95,8 +95,7 @@ const FLAG_REASONS: { value: FlagReason; label: string }[] = [
 
 export function LikeForkBar(props: LikeForkBarProps) {
   const router = useRouter();
-  const { session } = useSession();
-  const clerk = useClerk();
+  const { isSignedIn, openSignIn, refreshSession } = useAppAuth();
   // Modal stack holds the preview popup. When forking, the pathname stays
   // on the current sandbox route (e.g. /sandbox/atelier), so ModalStackHost's
   // pathname-change auto-clear won't fire — clear it explicitly so the
@@ -108,9 +107,9 @@ export function LikeForkBar(props: LikeForkBarProps) {
   // and the API returns 401. `getToken({ skipCache: true })` forces a
   // refresh before the engagement call goes out.
   async function withFreshToken<T>(fn: () => Promise<T>): Promise<T> {
-    if (session) {
+    if (isSignedIn) {
       try {
-        await session.getToken({ skipCache: true });
+        await refreshSession();
       } catch {
         // Ignore — fetch below will surface auth errors with a clearer message.
       }
@@ -198,20 +197,13 @@ export function LikeForkBar(props: LikeForkBarProps) {
     // Don't hard-redirect — that's hostile to browsing. Open the
     // sign-in modal via Clerk (it preserves the current URL as the
     // post-signin redirect target so the user lands back on this page
-    // and can resume liking). The `useClerk()` hook gives us a stable
-    // reference client-side; the previous global `window.Clerk` lookup
-    // was unreliable on mobile browsers and would fall through to a
-    // full page redirect to /sign-in (which is what the user reported).
-    try {
-      clerk.openSignIn({});
-      return false;
-    } catch {
-      // Clerk not mounted yet (rare). Hard nav as last resort.
-      if (typeof window !== "undefined") {
-        window.location.href = "/sign-in";
-      }
-      return false;
-    }
+    // and can resume liking). A failed runtime load keeps this page open
+    // and uses the existing error alert so the same action can retry.
+    setError(null);
+    void openSignIn().catch(() => {
+      setError("Sign-in could not load. Please try again.");
+    });
+    return false;
   };
 
   useEffect(() => {

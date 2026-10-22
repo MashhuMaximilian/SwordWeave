@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useAuth } from "@clerk/nextjs";
+import { useAppAuth } from "@/components/auth/app-auth-provider";
 import Link from "next/link";
 import type { PlayOverrides, PlayMutation } from "@/lib/play-state/model";
 import type { PlaySessionSnapshot } from "@/lib/play-state/client-sync";
@@ -52,7 +52,7 @@ export type RunData = {
   partyLinks: { id: string; name: string }[];
 };
 export function EncounterRun({ id }: { id: string }) {
-  const { userId, isLoaded } = useAuth();
+  const { userId, isLoaded } = useAppAuth();
   return (
     <AccountRun
       key={`${userId ?? "anonymous"}:${id}`}

@@ -1,5 +1,36 @@
 # SwordWeave distribution preparation
 
+## Current itch.io upload checklist · 22 October 2026
+
+This section supersedes the older PHB-first/readiness notes below. All three current alpha book PDFs, four compact guides and two original companions are ready files on the website. This is an upload/review checklist; no itch upload or publication is claimed here.
+
+**Select these nine PDFs.** Book sources below are relative to `/Users/max/dev/SwordWeave/output/pdf/` (read-only). Guide and companion sources are relative to the discovery-measurement worktree. Local bytes/hashes were checked against the approved release manifests on 22 October; do not rebuild or substitute similarly named proof files.
+
+| Download label | Exact source file | Pages · size |
+| --- | --- | --- |
+| Start here — Play SwordWeave · v0.1 alpha | `public/books/v0.1-alpha/quick-core-2026-10-21/play.pdf` | 4 · 66 KB |
+| Create SwordWeave · v0.1 alpha | `public/books/v0.1-alpha/quick-core-2026-10-21/create.pdf` | 5 · 79 KB |
+| Run SwordWeave · v0.1 alpha | `public/books/v0.1-alpha/quick-core-2026-10-21/run.pdf` | 4 · 74.9 KB |
+| Player’s Handbook — illustrated reading edition | `swordweave-players-handbook-v0.1-alpha-interwoven-edition-compressed.pdf` | 268 · 25.7 MB |
+| GM Guide — illustrated reading edition | `swordweave-game-masters-guide-v0.1-alpha-organic-edges-compressed.pdf` | 268 · 76.5 MB |
+| SRD — Reference edition | `swordweave-system-reference-document-v0.1-alpha-reference-edition.pdf` | 78 · 14.5 MB |
+| First-session run sheet — fillable | `public/press/materials/swordweave-first-session-run-sheet.pdf` | 2 · 54.9 KB |
+| Build with Neris — fillable worked companion | `public/press/materials/swordweave-build-with-neris.pdf` | 3 · 897.9 KB |
+| Create & Publish — creator guide · v0.1 alpha | `public/books/v0.1-alpha/quick-core-2026-10-21/create-and-publish.pdf` | 4 · 65.5 KB |
+
+Optional tenth download: **Creator kit — logos, screenshots & facts (ZIP)**, `public/press/swordweave-creator-kit-v0.1-alpha.zip` (3.26 MB). It includes both companions and their previews, but not the three full books or four compact guides. Label that scope clearly. The complete ten-file selection totals **121,258,199 bytes**; no new combined archive is necessary.
+
+- [ ] Inspect the existing [project editor](https://itch.io/game/edit/5189295) before changing it; the saved 19–20 October draft observations below are historical, not a fresh UI check.
+- [ ] Give the four compact guides and three books their distinct labels above. Put Play/Create first for players; Run is the additional DM guide. Keep the original companion PDFs separate from their preview JPEGs.
+- [ ] Replace any stale “GM Guide and SRD pending” text with the current editions. Explain that online readers can differ from revised PDFs, and that this is an evolving alpha rather than a claimed final synchronized rules audit.
+- [ ] If the gallery still presents PHB pages 7/53 as the standalone worksheets, replace those entries with `public/press/previews/first-session-run-sheet.jpg` and `public/press/previews/build-with-neris.jpg`, using their actual two-/three-page PDF captions. Retain the PHB cover and approved credits/disclosure.
+- [ ] Keep the **202 MB PHB / 309 MB GM high-resolution** versions and earlier dark editions as optional website links, outside the main itch file list. Exclude local review/proof versions and obsolete unlabeled alternatives.
+- [ ] Preserve the existing free-download setup, version labels and per-book/art/brand notices. Check the download instructions, selected file bytes and private preview before a separate public-publish decision. This checklist authorizes no external action by itself.
+
+Release sources: [four-guide manifest](../publications/quick-core-release-manifest.json), [GM release manifest](../publications/gm-organic-release-manifest.json), [SRD release manifest](../publications/srd-reference-release-manifest.json), primary checkout `docs/publications/interwoven-release-manifest.json`, and the [current kit source](../../public/press/press-kit.json). Complete companion PDF hashes are recorded in the [asset manifest](../../public/press/asset-manifest.json). The verified optional ZIP SHA-256 is `ce3a499709122c411f22fc099a6f6afae644496c898978fee624cd7a09ee34fb`.
+
+## Historical preparation · 19–20 October
+
 19 October 2026 · Working copy for founder review. Website content changes are deferred. This pack prepares an itch.io draft, a creator kit and one simple demonstration from existing material.
 
 **20 October planning update:** Keep the itch.io project private until the three final PDFs are ready for a combined release review. The [current content and creator proposal](content-distribution-plan.md#exact-page-plan-one-new-page-focused-changes-to-existing-pages) expands the briefs for a first-session checklist, checked character/ability/scene examples, a `/press` kit and three captioned demonstrations. These are proposals and production plans; none of those new website additions or recordings is published. Founder-led creator outreach follows personal group playtests and feedback, potentially a month or more later. The older PHB-first instructions below are historical and do not override the combined release decision.

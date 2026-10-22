@@ -2,7 +2,7 @@
 import {useAccount} from "@/components/account/account-provider";
 import {TargetEngagement} from "@/components/engagement/target-engagement";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useUser, useClerk } from "@clerk/nextjs";
+import { useAppAuth } from "@/components/auth/app-auth-provider";
 import { LibraryCatalogueCard, LibraryCatalogueSurface } from "@/components/library/library-catalogue-card";
 import { useRouter } from "next/navigation";
 import { CatalogueQuickLook } from "@/components/library/catalogue-quick-look";
@@ -26,14 +26,13 @@ type Collection = {
 };
 type CollectionPageProps = { collectionId?: string; ownerId?: string; embedded?: boolean; startCreating?: boolean };
 export function CollectionsClient(props: CollectionPageProps) {
-  const { user, isLoaded } = useUser();
+  const { userId, isLoaded } = useAppAuth();
   if (!isLoaded) return props.embedded ? <div className="sw-collections-loading" role="status">Loading account…</div> : <main className="sw-collections-loading" role="status">Loading account…</main>;
-  return <AccountCollectionsClient key={`${user?.id ?? "anonymous"}:${props.collectionId ?? ""}:${props.ownerId ?? ""}:${props.embedded?"embedded":"page"}:${Boolean(props.startCreating)}`} {...props} />;
+  return <AccountCollectionsClient key={`${userId ?? "anonymous"}:${props.collectionId ?? ""}:${props.ownerId ?? ""}:${props.embedded?"embedded":"page"}:${Boolean(props.startCreating)}`} {...props} />;
 }
 function AccountCollectionsClient({collectionId, ownerId, embedded=false, startCreating=false}: CollectionPageProps) {
-  const { user } = useUser();
+  const { userId, openSignIn } = useAppAuth();
   const internalUserId = useAccount().profile?.id ?? null;
-  const clerk = useClerk();
   const router = useRouter();
   const stack = useModalStack();
   const [rows, setRows] = useState<Collection[]>([]),
@@ -163,11 +162,16 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false, startC
       {!collectionId && (
         <>
           {indexRows.some(c => c.system_kind) && <section className="sw-collections-section"><p className="sw-collections-eyebrow">Automatic collections</p><div className={entryView === "LIST" ? "sw-catalogue-list" : "sw-collections-grid v12-creation-grid"}>{indexRows.filter(c => c.system_kind).map(c => <LibraryCatalogueSurface className={entryView === "LIST" ? "sw-catalogue-row" : ""} key={c.id} title={c.name} onSelect={() => router.push(`/collections/${c.id}`)} glyph={c.system_kind?.includes("FORK") ? <GitFork size={24} /> : c.system_kind === "ORIGINAL" ? <Hammer size={24} /> : <Bookmark size={24} />} footer={<div onClick={event=>event.stopPropagation()} className="sw-collection-engagement"><TargetEngagement targetType="COLLECTION" targetId={c.id}/></div>} badge={<span className="v12-tag">{c.visibility.replaceAll("_", " ").toLowerCase()}</span>}><p className="v12-entry-summary">{c.system_kind?.includes("FORK") ? "Forks of existing entries" : c.system_kind === "ORIGINAL" ? "Entries you authored" : "Entries you saved"}</p></LibraryCatalogueSurface>)}</div></section>}
-          <section className="sw-collections-section"><div className="sw-collections-section-heading"><h2>Collection branches</h2>{user && <a href="#create-collection" className="sw-metal-button sw-metal-button--primary sw-collections-button" onClick={() => {setParent("");setCreating(true);}}><Plus size={14} /> Create collection</a>}</div><div className={entryView === "GRID" ? "sw-collections-branch-grid" : ""}><CollectionTree rows={indexRows.filter(c => !c.system_kind)} /></div>{!rows.some(c => !c.system_kind) && !search && !activeFilters && <EmptyState compact icon={FolderTree} title="Start a collection branch" description="Create a root for a campaign, theme, or project. Add child collections to organize its entries." />}</section>
+          <section className="sw-collections-section"><div className="sw-collections-section-heading"><h2>Collection branches</h2>{userId && <a href="#create-collection" className="sw-metal-button sw-metal-button--primary sw-collections-button" onClick={() => {setParent("");setCreating(true);}}><Plus size={14} /> Create collection</a>}</div><div className={entryView === "GRID" ? "sw-collections-branch-grid" : ""}><CollectionTree rows={indexRows.filter(c => !c.system_kind)} /></div>{!rows.some(c => !c.system_kind) && !search && !activeFilters && <EmptyState compact icon={FolderTree} title="Start a collection branch" description="Create a root for a campaign, theme, or project. Add child collections to organize its entries." />}</section>
           {!indexRows.length && (search || activeFilters) && <EmptyState compact icon={FolderTree} title="No matching collections" description="Try another name or clear the collection filters." />}
-          {!user && (
+          {!userId && (
             <button
-              onClick={() => clerk.openSignIn()}
+              onClick={() => {
+                setError("");
+                void openSignIn().catch(() => {
+                  if (alive.current) setError("Sign-in could not load. Please try again.");
+                });
+              }}
               className="sw-metal-button sw-collections-button"
             >
               Sign in to create collections
@@ -183,13 +187,13 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false, startC
           >
             Browse in Library
           </Link>
-          {user && current.owner_id === user.id && <a className="sw-metal-button sw-collections-button" href="#create-collection" onClick={() => {setParent(current.system_kind ? "" : current.id);setCreating(true);}}>＋ {current.system_kind ? "Create collection" : "Add child collection"}</a>}</div>
+          {userId && current.owner_id === userId && <a className="sw-metal-button sw-collections-button" href="#create-collection" onClick={() => {setParent(current.system_kind ? "" : current.id);setCreating(true);}}>＋ {current.system_kind ? "Create collection" : "Add child collection"}</a>}</div>
           <nav aria-label="Collection path" className="sw-collections-path"><Link href="/collections">Collections</Link>{collectionAncestors(current, rows).map(c => <span key={c.id}><span aria-hidden="true"> / </span><Link href={`/collections/${c.id}`}>{c.name}</Link></span>)}<span aria-hidden="true"> / </span><strong>{current.name}</strong></nav>
           {children.length > 0 && <details className="sw-collections-branch-panel sw-collections-panel" open><summary>Child collections <span className="v12-tag">{children.length}</span></summary><CollectionTree rows={rows.filter(c => !c.system_kind)} parentId={current.id} /></details>}
 
           <TargetEngagement targetType="COLLECTION" targetId={current.id} compact={false}/>
-          {user && current.owner_id === user.id && current.system_kind && <details className="sw-collections-management"><summary>Manage collection</summary><div className="sw-collections-manage"><Visibility value={current.visibility} onChange={v=>void mutate(`/api/collections/${current.id}`,"PATCH",{visibility:v})}/></div></details>}
-          {user && current.owner_id === user.id && !current.system_kind && (
+          {userId && current.owner_id === userId && current.system_kind && <details className="sw-collections-management"><summary>Manage collection</summary><div className="sw-collections-manage"><Visibility value={current.visibility} onChange={v=>void mutate(`/api/collections/${current.id}`,"PATCH",{visibility:v})}/></div></details>}
+          {userId && current.owner_id === userId && !current.system_kind && (
             <details className="sw-collections-management"><summary>Manage collection</summary><div className="sw-collections-manage">
               <select
                 aria-label="Move collection to parent"
@@ -203,7 +207,7 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false, startC
               >
                 <option value="">Root collection</option>
                 {rows
-                  .filter((c) => c.owner_id === user.id && !c.system_kind && !isDescendant(c, current.id, rows))
+                  .filter((c) => c.owner_id === userId && !c.system_kind && !isDescendant(c, current.id, rows))
                   .map((c) => (
                     <option key={c.id} value={c.id}>
                       {collectionLabel(c, rows)}
@@ -256,7 +260,7 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false, startC
           </div>}
         </>
       )}
-          {user && creating && (!collectionId || (current && current.owner_id === user.id)) && (
+          {userId && creating && (!collectionId || (current && current.owner_id === userId)) && (
             <form
               id="create-collection" className="sw-collections-create sw-collections-panel"
               onSubmit={async (e) => {
@@ -292,7 +296,7 @@ function AccountCollectionsClient({collectionId, ownerId, embedded=false, startC
               >
                 <option value="">Root collection</option>
                 {rows
-                  .filter((c) => c.owner_id === user.id && !c.system_kind)
+                  .filter((c) => c.owner_id === userId && !c.system_kind)
                   .map((c) => (
                     <option key={c.id} value={c.id}>
                       {collectionLabel(c, rows)}

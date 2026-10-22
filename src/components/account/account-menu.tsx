@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
-import { useClerk } from "@clerk/nextjs";
+import { useState } from "react";
+import { useAppAuth } from "@/components/auth/app-auth-provider";
 import { ArrowLeft, User, Settings, LogOut } from "lucide-react";
 import { useAccount } from "./account-provider";
 export function AccountMenu({
@@ -14,7 +15,8 @@ export function AccountMenu({
   onLink: (e: React.MouseEvent<HTMLAnchorElement>, href: string) => void;
 }) {
   const { profile, isGameMaster, saving, error, setGameMaster } = useAccount();
-  const { openUserProfile, signOut } = useClerk();
+  const { openAccount, signOut } = useAppAuth();
+  const [actionError, setActionError] = useState("");
   return (
     <section className="sw-account-menu" aria-label="Account">
       <header>
@@ -53,7 +55,7 @@ export function AccountMenu({
             />
           </label>
           <p className="sw-account-status" role="status">
-            {saving ? "Saving…" : error}
+            {saving ? "Saving…" : actionError || error}
           </p>
           <Link
             href={`/u/${profile.username}`}
@@ -71,8 +73,8 @@ export function AccountMenu({
           </Link>
           <button
             onClick={() => {
-              close();
-              openUserProfile();
+              setActionError("");
+              void openAccount().then(close).catch(() => setActionError("Account controls could not load. Please try again."));
             }}
           >
             <Settings size={18} />
@@ -81,8 +83,8 @@ export function AccountMenu({
           <button
             className="sw-account-signout"
             onClick={() => {
-              close();
-              void signOut({ redirectUrl: "/" });
+              setActionError("");
+              void signOut({ redirectUrl: "/" }).then(close).catch(() => setActionError("Could not sign out. Please try again."));
             }}
           >
             <LogOut size={18} />

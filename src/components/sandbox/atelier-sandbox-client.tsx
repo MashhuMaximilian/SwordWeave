@@ -1,7 +1,7 @@
 "use client";
 import { EntityTypeIcon } from "@/components/icons/entity-type-icon";
 
-import { useUser } from "@clerk/nextjs";
+import { useAppAuth } from "@/components/auth/app-auth-provider";
 import { readCreationReturn,setCreationReturnResult } from "@/lib/character/creation-return/model";
 
 // /atelier — unified sandbox client.
@@ -446,12 +446,12 @@ export function AtelierSandboxClient({
   const router = useRouter();
   const pathname = usePathname();
   const currentSearchParams = useSearchParams();
-  const {user:creationReturnUser}=useUser();
+  const {userId:creationReturnAccountId}=useAppAuth();
   const creationReturnToken=useRef(currentSearchParams?.get("creationReturn")??null);
   const [creationReturnSaved,setCreationReturnSaved]=useState<string|null>(null);
   const [creationReturnError,setCreationReturnError]=useState("");
   useEffect(()=>{
-    const accountId=creationReturnUser?.id,token=creationReturnToken.current;if(!accountId||!token)return;
+    const accountId=creationReturnAccountId,token=creationReturnToken.current;if(!accountId||!token)return;
     const record=readCreationReturn(localStorage,token,accountId);if(!record)return;
     const onSaved=async(event:Event)=>{
       const detail=(event as CustomEvent<{kind:string;id:string;row?:{kind?:string;name?:string}}>).detail;
@@ -461,7 +461,7 @@ export function AtelierSandboxClient({
       catch(error){setCreationReturnError(error instanceof Error?error.message:"Unable to return this saved entry.");}
     };
     window.addEventListener("sw-sandbox-saved",onSaved);return()=>window.removeEventListener("sw-sandbox-saved",onSaved);
-  },[creationReturnUser?.id,heritageKind]);
+  },[creationReturnAccountId,heritageKind]);
 
   // Modal stack — the preview popup is pushed here. When we Load/Fork
   // into build we must clear it explicitly: the pathname stays

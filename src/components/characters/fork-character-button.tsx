@@ -25,7 +25,7 @@
 // - Double-click: disable button while in-flight.
 // =============================================================================
 
-import { useAuth, useClerk } from "@clerk/nextjs";
+import { useAppAuth } from "@/components/auth/app-auth-provider";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { GitFork, Loader2 } from "lucide-react";
@@ -46,14 +46,16 @@ export function ForkCharacterButton({
   label = "Fork as my own",
 }: ForkCharacterButtonProps) {
   const router = useRouter();
-  const { isSignedIn } = useAuth();
-  const { redirectToSignIn } = useClerk();
+  const { isSignedIn, redirectToSignIn } = useAppAuth();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
   const handleFork = () => {
     if (!isSignedIn) {
-      void redirectToSignIn({ redirectUrl: `/characters/${characterId}?view=public` });
+      setError(null);
+      void redirectToSignIn({ redirectUrl: `/characters/${characterId}?view=public` }).catch(() => {
+        setError("Sign-in could not load. Please try again.");
+      });
       return;
     }
     setError(null);

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState, useId } from "react";
-import { useClerk, useSession } from "@clerk/nextjs";
+import { useAppAuth } from "@/components/auth/app-auth-provider";
 import { Bookmark } from "lucide-react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
@@ -14,17 +14,16 @@ type Collection = {
 };
 type BookmarkProps = { targetType: string; targetId: string; compact?: boolean };
 export function BookmarkButton(props: BookmarkProps) {
-  const {session, isLoaded} = useSession();
+  const {userId, isLoaded} = useAppAuth();
   if (!isLoaded) return <button disabled aria-label="Loading collections" className="h-6 min-w-6"><Bookmark className="h-3 w-3" aria-hidden="true" /></button>;
-  return <AccountBookmarkButton key={`${session?.user.id ?? "anonymous"}:${props.targetType}:${props.targetId}`} {...props} />;
+  return <AccountBookmarkButton key={`${userId ?? "anonymous"}:${props.targetType}:${props.targetId}`} {...props} />;
 }
 function AccountBookmarkButton({targetType, targetId, compact = true}: BookmarkProps) {
-  const clerk = useClerk();
-  const { session } = useSession();
+  const { isSignedIn, userId, openSignIn, refreshSession } = useAppAuth();
   const { saved, setSaved } = useBookmarkSaved(
     targetType,
     targetId,
-    session?.user.id,
+    userId ?? undefined,
   );
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<Collection[]>([]);
@@ -85,14 +84,19 @@ function AccountBookmarkButton({targetType, targetId, compact = true}: BookmarkP
     };
   }, [open]);
   async function show() {
-    if (!session) {
-      clerk.openSignIn();
+    if (!isSignedIn) {
+      setError("");
+      try {
+        await openSignIn();
+      } catch {
+        if (alive.current) setError("Sign-in could not load. Please try again.");
+      }
       return;
     }
     setPending(true);
     setError("");
     try {
-      await session.getToken({ skipCache: true });
+      await refreshSession();
       if (!alive.current) return;
       requestController.current = new AbortController();
       const response = await fetch(
@@ -105,7 +109,7 @@ function AccountBookmarkButton({targetType, targetId, compact = true}: BookmarkP
       const editable = data.collections.filter(
         (c: Collection) =>
           (!c.system_kind || c.system_kind === "FAVORITES") &&
-          c.owner_id === session.user.id &&
+          c.owner_id === userId &&
           !(targetType === "COLLECTION" && c.id === targetId),
       );
       setRows(editable);

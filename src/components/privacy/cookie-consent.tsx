@@ -1,5 +1,4 @@
 "use client";
-import { AuthMeasurement } from "@/components/analytics/auth-measurement";
 import { GoogleAnalytics } from "@/components/analytics/google-analytics";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
@@ -15,7 +14,6 @@ export function CookieConsentManager() {
   }, []);
   return <>
     <GoogleAnalytics allowed={allowed} />
-    <AuthMeasurement allowed={allowed} />
     {allowed && <>
     <Analytics beforeSend={filterAnalyticsEvent} />
     <SpeedInsights beforeSend={filterAnalyticsEvent} />

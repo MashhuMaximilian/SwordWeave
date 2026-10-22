@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useAppAuth } from "@/components/auth/app-auth-provider";
 type Profile = {
   id?: string | undefined;
   username: string;
@@ -31,14 +31,14 @@ const Context = createContext<Account>({
 });
 export const useAccount = () => useContext(Context);
 export function AccountProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useUser();
+  const { userId } = useAppAuth();
   return (
-    <AccountSession key={user?.id ?? "signed-out"}>{children}</AccountSession>
+    <AccountSession key={userId ?? "signed-out"}>{children}</AccountSession>
   );
 }
 function AccountSession({ children }: { children: React.ReactNode }) {
-  const { user, isLoaded, isSignedIn } = useUser();
-  const id = user?.id ?? null;
+  const { userId, identity, isLoaded, isSignedIn } = useAppAuth();
+  const id = userId;
   const latest = useRef(id);
   useEffect(() => {
     latest.current = id;
@@ -75,13 +75,13 @@ function AccountSession({ children }: { children: React.ReactNode }) {
   }, [refresh]);
   const loaded = result?.id === id ? result.profile : null;
   const profile =
-    isLoaded && isSignedIn && user
+    isLoaded && isSignedIn && userId
       ? {
           id: loaded?.id,
-          username: loaded?.username ?? user.username ?? "user",
+          username: loaded?.username ?? identity?.username ?? "user",
           displayName:
-            loaded?.displayName ?? user.fullName ?? user.username ?? "Account",
-          avatarUrl: loaded?.avatarUrl ?? user.imageUrl,
+            loaded?.displayName ?? identity?.displayName ?? identity?.username ?? "Account",
+          avatarUrl: loaded?.avatarUrl ?? identity?.avatarUrl ?? null,
           isGameMaster: loaded?.isGameMaster ?? false,
         }
       : null;

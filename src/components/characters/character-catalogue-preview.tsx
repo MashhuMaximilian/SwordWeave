@@ -1,7 +1,7 @@
 "use client";
 import "@/components/library/catalogue-layout.css";
 import { useEffect, useState } from "react";
-import { useAuth } from "@clerk/nextjs";
+import { useAppAuth } from "@/components/auth/app-auth-provider";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { BookmarkButton } from "@/components/collections/bookmark-button";
@@ -22,7 +22,7 @@ type CharacterRecord = {
 };
 /** Permission-checked read summary; gameplay remains on the existing sheet. */
 export function CharacterCataloguePreview({ id }: { id: string }) {
-  const { userId, isLoaded } = useAuth();
+  const { userId, isLoaded } = useAppAuth();
   return isLoaded ? (
     <AccountCharacterPreview key={`${userId ?? "anonymous"}:${id}`} id={id} />
   ) : (

@@ -3,7 +3,7 @@ import { track } from "@/lib/analytics/client";
 import { CatalogueQuickLook } from "@/components/library/catalogue-quick-look";
 import { Markdown } from "@/components/ui/markdown";
 import { ForgeProgressRail, ForgeWorkbench, QuickbuildSection } from "./forge-section";
-import { useUser } from "@clerk/nextjs";
+import { useAppAuth } from "@/components/auth/app-auth-provider";
 import { CreationAtelierAction } from "./creation-atelier-action";
 import { availableLegacyCreationDrafts,claimLegacyCreationDraft,creationDraftKey,creationModeKey,readCreationReturn,writeCreationDraft } from "@/lib/character/creation-return/model";
 import { useCreationAuthoringReturn } from "@/lib/character/creation-return/client";
@@ -239,7 +239,7 @@ function clamp(value: number, min: number, max: number) {
   );
 }
 
-export function NewCharacterForm() { const {user}=useUser();return <AccountNewCharacterForm key={user?.id??"loading"} accountId={user?.id??null}/>; }
+export function NewCharacterForm() { const {userId}=useAppAuth();return <AccountNewCharacterForm key={userId??"loading"} accountId={userId}/>; }
 function AccountNewCharacterForm({accountId}:{accountId:string|null}) {
   const [legacyDrafts,setLegacyDrafts]=useState<("complete"|"quick")[]>([]);
   useEffect(()=>{

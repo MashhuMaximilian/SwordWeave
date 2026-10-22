@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useId, type FormEvent } from "react";
-import { useAuth, useClerk } from "@clerk/nextjs";
+import { useAppAuth } from "@/components/auth/app-auth-provider";
 import Link from "next/link";
 import {useAccount} from "@/components/account/account-provider";
 import { Swords, BookOpen, Layers, ArrowRight } from "lucide-react";
@@ -27,14 +27,13 @@ const signed = (value: number) => value >= 0 ? `+${value}` : String(value);
 
 /** A template is read-only here. Playing creates an independent, pinned copy. */
 export function MonsterTemplatePreview({ id, version, compact = false, actions, actionPlacement = "bottom", hideActions = false, showIdentity = true, initialSection = "practices" }: { id: string; version?:number; compact?: boolean; actions?: PreviewActionProps; actionPlacement?: "top" | "bottom"; hideActions?: boolean; showIdentity?: boolean; initialSection?: "practices"|"abilities"|"story" }) {
-  const { userId, isLoaded } = useAuth();
+  const { userId, isLoaded } = useAppAuth();
   return <AccountPreview key={`${userId ?? "anonymous"}:${id}`} id={id} {...(version?{version}:{})} compact={compact} {...(actions?{actions}:{})} actionPlacement={actionPlacement} hideActions={hideActions} showIdentity={showIdentity} initialSection={initialSection} ready={isLoaded} />;
 }
 
 function AccountPreview({ id, version, compact, ready, actions, actionPlacement, hideActions, showIdentity, initialSection }: { id: string; version?:number; compact: boolean; ready: boolean; actions?: PreviewActionProps; actionPlacement: "top" | "bottom"; hideActions: boolean; showIdentity: boolean; initialSection: "practices"|"abilities"|"story" }) {
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, redirectToSignIn } = useAppAuth();
   const {isGameMaster}=useAccount();
-  const { redirectToSignIn } = useClerk();
   const [data, setData] = useState<PreviewData | null>(null);
   const [error, setError] = useState("");
   const [copyOpen, setCopyOpen] = useState(false);
@@ -67,8 +66,14 @@ function AccountPreview({ id, version, compact, ready, actions, actionPlacement,
       if (!controller.signal.aborted) location.href = `/monsters/play/${body.id}`;
     } catch (reason) { if (!controller.signal.aborted) { setError(reason instanceof Error ? reason.message : "Unable to create a play copy."); setPending(false); } }
   }
+  function signIn() {
+    setError("");
+    void redirectToSignIn({ redirectUrl: `/monsters/${id}` }).catch(() => {
+      setError("Sign-in could not load. Please try again.");
+    });
+  }
   async function forkCreature() {
-    if (!isSignedIn) { void redirectToSignIn({ redirectUrl: `/monsters/${id}` }); return; }
+    if (!isSignedIn) { signIn(); return; }
     if (pending) return;
     setPending(true); setError("");
     const controller = new AbortController(); copyController.current = controller;
@@ -95,7 +100,7 @@ function AccountPreview({ id, version, compact, ready, actions, actionPlacement,
 
     {error && <p role="alert">{error}</p>}
     {hideActions ? null : actions ? (actionPlacement === "bottom" && <PreviewActions {...actions}/>) : <footer className="sw-creature-preview-actions">
-      {isGameMaster&&<button type="button" className="v12-metal-button v12-metal-button--primary" onClick={() => isSignedIn ? setCopyOpen(value => !value) : void redirectToSignIn({ redirectUrl: `/monsters/${id}` })}>Bring to the table <ArrowRight size={16}/></button>}
+      {isGameMaster&&<button type="button" className="v12-metal-button v12-metal-button--primary" onClick={() => isSignedIn ? setCopyOpen(value => !value) : signIn()}>Bring to the table <ArrowRight size={16}/></button>}
       <Link className="v12-metal-button" href={`/monsters/${id}${data.canEdit ? "?edit=1" : ""}`}>{data.canEdit ? "Edit creature" : "Open source"}</Link>
       {isGameMaster&&<button type="button" className="v12-metal-button" disabled={pending} onClick={() => void forkCreature()}>Fork creature</button>}
     </footer>}

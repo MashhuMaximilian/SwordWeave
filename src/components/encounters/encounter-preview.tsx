@@ -1,7 +1,7 @@
 "use client";
 import { TargetEngagement } from "@/components/engagement/target-engagement";
 import { useEffect, useId, useState } from "react";
-import { useAuth } from "@clerk/nextjs";
+import { useAppAuth } from "@/components/auth/app-auth-provider";
 import Link from "next/link";
 import { Swords, ArrowUpRight, BookOpen, Scale, History, AlertTriangle, Check } from "lucide-react";
 import { useModalStack } from "@/components/ui/modal-stack";
@@ -20,7 +20,7 @@ export type EncounterPreviewData = {
   appraisal: ReturnType<typeof appraiseEncounter>;
 };
 export function EncounterPreview({ id, initial }: { id: string; initial?: EncounterPreviewData }) {
-  const { userId, isLoaded } = useAuth();
+  const { userId, isLoaded } = useAppAuth();
   const [initialViewer] = useState(userId);
   if (!isLoaded) return <PreviewLoading/>;
   return <AccountEncounterPreview key={`${userId ?? "anonymous"}:${id}`} id={id} {...(initial && initialViewer === userId ? { initial } : {})}/>;

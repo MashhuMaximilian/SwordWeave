@@ -47,7 +47,7 @@ describe('checked Neris acquisition accounting', () => {
 
 function scopedTreatmentSheet(declared: boolean) {
   const condition = NERIS_REASSURANCE_MODIFIER.condition;
-  if (!condition || condition.kind !== 'tags') throw new Error('The checked reassurance condition changed.');
+  if (!condition || !('kind' in condition) || condition.kind !== 'tags') throw new Error('The checked reassurance condition changed.');
   const flag = condition.customTags[0]!.replace(/^actor:/, '');
   const context: ConditionContext = {
     character: {

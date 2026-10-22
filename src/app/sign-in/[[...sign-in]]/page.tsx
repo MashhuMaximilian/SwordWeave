@@ -1,4 +1,4 @@
-import { SignIn } from "@clerk/nextjs";
+import { NativeAuthFormHost } from "@/components/auth/app-auth-provider";
 
 /**
  * /sign-in — embedded Clerk SignIn with full OAuth/email/magic-link UI.
@@ -51,32 +51,7 @@ export default function SignInPage() {
           </p>
         </section>
 
-        <div className="flex justify-center">
-          <SignIn
-            signInUrl="/sign-in"
-            signUpUrl="/sign-up"
-            fallbackRedirectUrl="/atelier"
-            withSignUp
-            appearance={{
-              elements: {
-                cardBox: "shadow-none",
-                rootBox: "w-full",
-                card: "bg-card text-foreground border border-border shadow-none",
-                formButtonPrimary:
-                  "bg-primary text-primary-foreground hover:bg-primary/90",
-                socialButtonsBlockButton:
-                  "bg-background border-border hover:bg-secondary/40 text-foreground",
-                socialButtonsBlockButtonText: "font-medium",
-                dividerLine: "bg-border",
-                dividerText: "text-muted-foreground",
-                formFieldInput:
-                  "bg-background border-border text-foreground focus:border-primary",
-                formFieldLabel: "text-foreground",
-                footerActionLink: "text-primary hover:text-primary/80",
-              },
-            } as never}
-          />
-        </div>
+        <NativeAuthFormHost kind="sign-in" className="flex justify-center" />
       </div>
     </div>
   );

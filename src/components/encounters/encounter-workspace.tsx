@@ -1,7 +1,7 @@
 "use client";
 import { VisibilityChoices } from "@/components/library/visibility-choices";
 import { useEffect, useRef, useState } from "react";
-import { useAuth } from "@clerk/nextjs";
+import { useAppAuth } from "@/components/auth/app-auth-provider";
 import Link from "next/link";
 import {
   Plus,
@@ -95,7 +95,7 @@ export function EncounterWorkspace({
   id?: string;
   startNew?: boolean;
 }) {
-  const { userId } = useAuth();
+  const { userId } = useAppAuth();
   return (
     <AccountWorkspace
       key={`${userId ?? "anonymous"}:${id ?? "new"}`}
@@ -111,7 +111,7 @@ function AccountWorkspace({
   id?: string;
   startNew: boolean;
 }) {
-  const { userId, isLoaded } = useAuth();
+  const { userId, isLoaded } = useAppAuth();
   const { isGameMaster, setGameMaster } = useAccount();
   const [list, setList] = useState<{ id: string; name: string }[]>([]),
     [editing, setEditing] = useState(!!id || startNew),

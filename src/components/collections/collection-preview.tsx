@@ -1,14 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useAuth } from "@clerk/nextjs";
+import { useAppAuth } from "@/components/auth/app-auth-provider";
 import { TargetEngagement } from "@/components/engagement/target-engagement";
 import { EntityTypeIcon } from "@/components/icons/entity-type-icon";
 import "./collections.css";
 
 type CollectionData = { collection: { name: string; visibility: string }; entries: { name: string; targetType: string; targetId: string }[]; total: number };
 export function CollectionPreview({ id }: { id: string }) {
-  const { userId, isLoaded } = useAuth();
+  const { userId, isLoaded } = useAppAuth();
   if (!isLoaded) return <p role="status">Loading account…</p>;
   return <AccountCollectionPreview key={`${userId ?? "anonymous"}:${id}`} id={id}/>;
 }

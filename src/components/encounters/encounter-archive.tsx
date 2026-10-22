@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { useAuth } from "@clerk/nextjs";
+import { useAppAuth } from "@/components/auth/app-auth-provider";
 import Link from "next/link";
 import { Plus, Swords } from "lucide-react";
 import { GMOnly } from "@/components/account/account-provider";
@@ -19,7 +19,7 @@ export function EncounterArchive({
   onCount?: (count: number) => void;
   discovery?: boolean;
 }) {
-  const { userId } = useAuth();
+  const { userId } = useAppAuth();
   return (
     <AccountEncounterArchive
       key={`${userId ?? "anonymous"}:${discovery}`}

@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Magra, Teko } from "next/font/google";
 import Script from "next/script";
-import { ClerkProvider } from "@clerk/nextjs";
+import { AppAuthProvider } from "@/components/auth/app-auth-provider";
 import { CookieConsentManager } from "@/components/privacy/cookie-consent";
 import { AppShell } from "@/components/layout/app-shell";
 import { MobileViewport } from "@/components/layout/mobile-viewport";
@@ -128,9 +128,8 @@ export default function RootLayout({
           href="/apple-touch-icon.png"
           sizes="180x180"
         />
-        {/* Clerk emits its own versioned async script. Warm the matching CORS
-            connection without preloading a second major-version alias. Clerk
-            keeps its default UI loading for sign-in and Manage account. */}
+        {/* The account runtime loads on verified session/auth intent. Keep its
+            normal CORS connection hint without requesting the SDK or UI here. */}
         <link rel="dns-prefetch" href="https://clerk.swordweave.quest" />
         <link rel="preconnect" href="https://clerk.swordweave.quest" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
@@ -149,16 +148,11 @@ try {
 } catch {}
           `}
         </Script>
-        <ClerkProvider
-          signInUrl="/sign-in"
-          signUpUrl="/sign-up"
-          signInFallbackRedirectUrl="/atelier"
-          signUpFallbackRedirectUrl="/atelier"
-        >
+        <AppAuthProvider>
           <MobileViewport />
           <AppShell><LibraryRefresh />{children}</AppShell>
           <CookieConsentManager />
-        </ClerkProvider>
+        </AppAuthProvider>
       </body>
     </RootHtml>
   );
