@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Build independent home/reader/tool CSS. Canonical source order stays intact. */
+/** Build independent home/books/reader/tool CSS. Canonical source order stays intact. */
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -38,12 +38,12 @@ export function surfaceGuard(surface) {
   const overlay = `[${contract.overlayAttribute}="${contract.tool}"]`;
   return surface === contract.tool
     ? `:where(${marker},${marker} *,${overlay},${overlay} *)`
-    : [contract.home, contract.reader].includes(surface)
+    : [contract.home, contract.books, contract.reader].includes(surface)
       ? `:where(${marker},${marker} *):not(:where(${overlay},${overlay} *))`
       : (() => { throw new Error(`Unknown CSS surface: ${surface}`); })();
 }
 
-const guardTokens = Object.fromEntries([contract.home, contract.reader, contract.tool].map(surface =>
+const guardTokens = Object.fromEntries([contract.home, contract.books, contract.reader, contract.tool].map(surface =>
   [surface, selector.parse(surfaceGuard(surface))[0]]));
 
 export function guardSelector(value, surface) {
@@ -92,7 +92,7 @@ export function publicSourceRoots() {
     `src/app${route === '/' ? '' : route}/page.tsx`), 'src/app/books/[slug]/page.tsx'];
 }
 
-export function publicSourceGraph(roots = publicSourceRoots(), reader = read, resolve = localModule, { home = false } = {}) {
+export function publicSourceGraph(roots = publicSourceRoots(), reader = read, resolve = localModule, { home = false, books = false } = {}) {
   const files = new Set();
   const classes = new Set();
   const dynamicPrefixes = new Set();
@@ -101,12 +101,12 @@ export function publicSourceGraph(roots = publicSourceRoots(), reader = read, re
     if (files.has(file)) return;
     files.add(file);
     const text = reader(file);
-    // Home contains authored JSX, not a CMS/Markdown body. A new opaque HTML
+    // Home and Books render authored JSX/text, not a CMS/HTML body. Opaque HTML
     // renderer must be reviewed before absent namespace classes can be pruned.
     // JSON-LD is nonvisual script data and cannot produce element subjects.
-    if (home && /dangerouslySetInnerHTML/.test(text)
+    if ((home || books) && /dangerouslySetInnerHTML/.test(text)
       && file !== 'src/components/analytics/structured-data.tsx') {
-      throw new Error(`Review opaque HTML in the homepage CSS graph: ${file}`);
+      throw new Error(`Review opaque HTML in the ${books ? "books" : "homepage"} CSS graph: ${file}`);
     }
     for (const match of text.matchAll(namespaceToken)) classes.add(match[0]);
     const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
@@ -121,13 +121,13 @@ export function publicSourceGraph(roots = publicSourceRoots(), reader = read, re
       } else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword
         && node.arguments.length === 1) {
         if (!ts.isStringLiteralLike(node.arguments[0])) {
-          if (home) throw new Error(`Review nonliteral lazy import in the homepage CSS graph: ${file}`);
+          if (home || books) throw new Error(`Review nonliteral lazy import in the ${books ? "books" : "homepage"} CSS graph: ${file}`);
           return;
         }
         const dependency = resolve(file, node.arguments[0].text);
         const editorEdge = file === 'src/components/character-modal/character-modal.tsx'
           && dependency === 'src/components/character-modal/tabbed-character-form.tsx';
-        const guideEdge = home && file === 'src/components/layout/global-controls.tsx'
+        const guideEdge = (home || books) && file === 'src/components/layout/global-controls.tsx'
           && dependency === 'src/components/rules/play-guide.tsx';
         if (dependency && !editorEdge && !guideEdge) visit(dependency);
       } else if (ts.isTemplateExpression(node)) {
@@ -152,6 +152,11 @@ export function publicSourceGraph(roots = publicSourceRoots(), reader = read, re
 
 export function homeSourceGraph(roots = ['src/app/layout.tsx', 'src/app/page.tsx'], reader = read, resolve = localModule) {
   return publicSourceGraph(roots, reader, resolve, { home: true });
+}
+
+/** The hub and every book slug share a closed React text-rendering grammar. */
+export function booksSourceGraph(roots = ['src/app/layout.tsx', 'src/app/books/page.tsx', 'src/app/books/[slug]/page.tsx'], reader = read, resolve = localModule) {
+  return publicSourceGraph(roots, reader, resolve, { books: true });
 }
 
 function requiresAbsentClass(value, graph, eligible) {
@@ -193,12 +198,12 @@ function keyframeStep(rule) {
 }
 
 export function transformCss(css, surface, graph, { retainAll = false } = {}) {
-  if (![contract.home, contract.reader, contract.tool].includes(surface)) throw new Error(`Unknown CSS surface: ${surface}`);
+  if (![contract.home, contract.books, contract.reader, contract.tool].includes(surface)) throw new Error(`Unknown CSS surface: ${surface}`);
   const root = postcss.parse(css);
   let removed = 0;
   root.walkRules(rule => {
     if (keyframeStep(rule)) return;
-    const owned = !retainAll && (surface === contract.home ? absentFromHome(rule.selector, graph) : requiresTool(rule.selector, graph));
+    const owned = !retainAll && ([contract.home, contract.books].includes(surface) ? absentFromHome(rule.selector, graph) : requiresTool(rule.selector, graph));
     if (surface !== contract.tool && owned) { rule.remove(); removed++; }
     // Tool-only subject/ancestor rules cannot affect public reader subjects.
     // Shared rules need a guard: a retained tool sheet must not replay them
@@ -263,6 +268,7 @@ function styleFilename(from, specifier) {
 export function generate({ measure = true } = {}) {
   const graph = publicSourceGraph();
   const homeGraph = homeSourceGraph();
+  const booksGraph = booksSourceGraph();
   const sources = canonicalSources();
   const retainedComponents = homeComponentSources(homeGraph);
   const outputs = {};
@@ -271,26 +277,31 @@ export function generate({ measure = true } = {}) {
     homeFiles: homeGraph.files, homeClasses: [...homeGraph.classes].sort(),
     homeDynamicPrefixes: [...homeGraph.dynamicPrefixes].sort(), removedHomeRules: 0,
     retainedHomeComponents: retainedComponents.map(({ specifier, css }) => ({ specifier, bytes: Buffer.byteLength(css) })),
-    readerComponentReplayBytes: 0, surfaces: {} };
-  for (const surface of [contract.home, contract.reader, contract.tool]) {
+    booksFiles: booksGraph.files, booksClasses: [...booksGraph.classes].sort(),
+    booksDynamicPrefixes: [...booksGraph.dynamicPrefixes].sort(), removedBooksRules: 0,
+    readerComponentReplayBytes: 0, booksComponentReplayBytes: 0, surfaces: {} };
+  for (const surface of [contract.home, contract.books, contract.reader, contract.tool]) {
+    const surfaceGraph = surface === contract.home ? homeGraph : surface === contract.books ? booksGraph : graph;
     let css = '/* GENERATED by scripts/generate-surface-css.mjs; edit canonical sources. */\n';
     for (const source of sources) {
-      const transformed = transformCss(source.css, surface, surface === contract.home ? homeGraph : graph);
+      const transformed = transformCss(source.css, surface, surfaceGraph);
       css += `\n/* Canonical source: ${source.specifier} */\n${transformed.css}\n`;
       if (surface === contract.reader) report.removedReaderRules += transformed.removed;
       if (surface === contract.home) report.removedHomeRules += transformed.removed;
+      if (surface === contract.books) report.removedBooksRules += transformed.removed;
     }
-    if (surface === contract.reader) {
-      // On the first home→reader navigation, Next retains Books/Nav component
-      // sheets already loaded by home, then appends the new reader cascade.
+    if ([contract.reader, contract.books].includes(surface)) {
+      // On the first home→reader/Books navigation, Next retains Books/Nav component
+      // sheets already loaded by home, then appends the new surface cascade.
       // Restore canonical→component order inside that new sheet. This repeats
       // only those small plain shared sheets, not a full theme, and keeps their
       // original specificity and declaration order. New page-owned CSS still
       // follows the reader layout as usual. Module sheets keep Next's hashing.
       for (const source of retainedComponents) {
-        const replay = `\n/* Retained homepage component: ${source.specifier} */\n${transformCss(source.css, surface, graph, { retainAll: true }).css}\n`;
+        const replay = `\n/* Retained homepage component: ${source.specifier} */\n${transformCss(source.css, surface, surfaceGraph, { retainAll: true }).css}\n`;
         css += replay;
-        report.readerComponentReplayBytes += Buffer.byteLength(replay);
+        if (surface === contract.reader) report.readerComponentReplayBytes += Buffer.byteLength(replay);
+        else report.booksComponentReplayBytes += Buffer.byteLength(replay);
       }
     }
     outputs[`src/app/generated/${surface}-surface.css`] = css;
@@ -298,7 +309,7 @@ export function generate({ measure = true } = {}) {
       ...(measure ? { gzip: gzipSync(css).length, brotli: brotliCompressSync(css).length } : {}) };
   }
   outputs['src/app/generated/surface-report.json'] = JSON.stringify(report, null, 2) + '\n';
-  return { outputs, graph, homeGraph, report };
+  return { outputs, graph, homeGraph, booksGraph, report };
 }
 
 if (path.resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url)) {

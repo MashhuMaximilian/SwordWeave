@@ -13,7 +13,7 @@ function evaluate(code: string) {
   return JSON.parse(result.stdout) as unknown;
 }
 
-describe('independent home, reader and tool CSS', () => {
+describe('independent home, books, reader and tool CSS', () => {
   it('guards the original subject, including html, root, theme ancestors and pseudo-elements', () => {
     expect(evaluate(`
       const values=[':root','html:not(.dark) body','body[data-ui="v12"] .chip::before',
@@ -123,6 +123,72 @@ describe('independent home, reader and tool CSS', () => {
     `)).toEqual([true,true]);
   });
 
+  it('covers the Books hub and every React-rendered book block without authoring or opaque HTML', () => {
+    const result = evaluate(`
+      const graph=surface.booksSourceGraph();
+      const values=['.sw-books-hub','.sw-book-reader','.sw-book-sheet','.sw-book-map',
+        '.sw-book-card--teal','.sw-book-title--silver','.sw-book-art--spot',
+        '.sw-public-nav__drawer','.v12-site-footer','.sw-other-reader',
+        '.third-party-widget',':not(.sw-other-reader)',
+        '.sw-other-reader,.sw-book-reader'];
+      console.log(JSON.stringify({files:graph.files,prefixes:[...graph.dynamicPrefixes],
+        absent:values.map(value=>surface.absentFromHome(value,graph))}));
+    `) as {files:string[];prefixes:string[];absent:boolean[]};
+    expect(result.files).toEqual(expect.arrayContaining(['src/app/layout.tsx','src/app/books/page.tsx',
+      'src/app/books/[slug]/page.tsx','src/components/publications/book-reader.tsx',
+      'src/components/publications/quick-core-downloads.tsx']));
+    expect(result.files).not.toContain('src/components/rules/play-guide.tsx');
+    expect(result.files).not.toContain('src/components/character-modal/tabbed-character-form.tsx');
+    expect(result.prefixes).toEqual(expect.arrayContaining(['sw-book-card--','sw-book-title--','sw-book-art']));
+    expect(result.absent).toEqual([false,false,false,false,false,false,false,false,false,true,false,false,false]);
+    expect(evaluate(`
+      const samples=['export const View=()=> <div dangerouslySetInnerHTML={{__html:content}}/>;',
+        'export const View=()=>import(moduleName);'];
+      console.log(JSON.stringify(samples.map(source=>{
+        try {surface.booksSourceGraph(['entry.tsx'],()=>source,()=>null);return false;}
+        catch(error){return /Review.*books/.test(error.message);}
+      })));
+    `)).toEqual([true,true]);
+  });
+
+  it('keeps retained reader/home sheets inactive on Books and tool portal subjects separate after navigation', () => {
+    expect(evaluate(`
+      const {createRequire}=await import('node:module');const path=await import('node:path');
+      const require=createRequire(path.resolve('package.json'));const {load}=require('cheerio');
+      const html='<html data-sw-css-surface="books"><body><div class="sw-public-site sw-books-hub"><article class="sw-book-card"><h2>PHB</h2></article></div><div data-sw-css-overlay="tool"><article class="sw-book-card"><h2>Workshop</h2></article></div></body></html>';
+      const $=load(html);const selection='.sw-book-card h2';
+      const count=kind=>$(surface.guardSelector(selection,kind)).length;
+      const states=['books','home','reader','tool'].map(kind=>{
+        $('html').attr('data-sw-css-surface',kind);
+        return {kind,books:count('books'),home:count('home'),reader:count('reader'),tool:count('tool')};
+      });console.log(JSON.stringify(states));
+    `)).toEqual([
+      {kind:'books',books:1,home:0,reader:0,tool:1},
+      {kind:'home',books:0,home:1,reader:0,tool:1},
+      {kind:'reader',books:0,home:0,reader:1,tool:1},
+      {kind:'tool',books:0,home:0,reader:0,tool:2},
+    ]);
+  });
+
+  it('bounds Books CSS without removing the shared-component replay that protects card margins', () => {
+    const result=evaluate(`
+      const result=surface.generate();const css=result.outputs['src/app/generated/books-surface.css'];
+      console.log(JSON.stringify({gzip:result.report.surfaces.books.gzip,
+        ratio:result.report.surfaces.books.gzip/result.report.surfaces.reader.gzip,
+        replay:result.report.booksComponentReplayBytes,
+        booksAt:css.indexOf('/* Retained homepage component: src/app/books/books.css */'),
+        navAt:css.indexOf('/* Retained homepage component: src/components/home/public-nav.css */'),
+        margin:css.includes('margin:0 0 12px'),surface:css.includes('data-sw-css-surface="books"')}));
+    `) as {gzip:number;ratio:number;replay:number;booksAt:number;navAt:number;margin:boolean;surface:boolean};
+    expect(result.gzip).toBeLessThan(60_000);
+    expect(result.ratio).toBeLessThan(.65);
+    expect(result.replay).toBeGreaterThan(1000);
+    expect(result.booksAt).toBeGreaterThan(0);
+    expect(result.navAt).toBeGreaterThan(result.booksAt);
+    expect(result.margin).toBe(true);
+    expect(result.surface).toBe(true);
+  });
+
   it('replays only retained plain homepage component sheets in their import order', () => {
     expect(evaluate(`
       const graph=surface.homeSourceGraph();
@@ -191,21 +257,30 @@ describe('independent home, reader and tool CSS', () => {
       const componentReplay=records(readerCss.slice(boundary),'reader');
       const componentOriginal=records(surface.homeComponentSources(result.homeGraph).map(source=>source.css).join('\\n'));
       const home=records(result.outputs['src/app/generated/home-surface.css'],'home');
+      const booksCss=result.outputs['src/app/generated/books-surface.css'];
+      const booksBoundary=booksCss.indexOf('/* Retained homepage component:');
+      const books=records(booksCss.slice(0,booksBoundary),'books');
+      const booksReplay=records(booksCss.slice(booksBoundary),'books');
       let at=0;for(const record of original)if(reader[at]===record)at++;
       let homeAt=0;for(const record of original)if(home[homeAt]===record)homeAt++;
+      let booksAt=0;for(const record of original)if(books[booksAt]===record)booksAt++;
       const sha=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
       console.log(JSON.stringify({sources:result.report.sourceCount,originalCount:original.length,
         toolCount:tool.length,originalSha:sha(original),toolSha:sha(tool),
         readerCount:reader.length,readerMatched:at,homeCount:home.length,homeMatched:homeAt,
+        booksCount:books.length,booksMatched:booksAt,booksReplaySha:sha(booksReplay),
         componentOriginalCount:componentOriginal.length,componentReplayCount:componentReplay.length,
         componentOriginalSha:sha(componentOriginal),componentReplaySha:sha(componentReplay)}));
-    `) as { sources: number; originalCount: number; toolCount: number; originalSha: string; toolSha: string; readerCount: number; readerMatched: number; homeCount: number; homeMatched: number; componentOriginalCount: number; componentReplayCount: number; componentOriginalSha: string; componentReplaySha: string };
+    `) as { sources: number; originalCount: number; toolCount: number; originalSha: string; toolSha: string; readerCount: number; readerMatched: number; homeCount: number; homeMatched: number; booksCount: number; booksMatched: number; booksReplaySha: string; componentOriginalCount: number; componentReplayCount: number; componentOriginalSha: string; componentReplaySha: string };
     expect(result.sources).toBe(44);
     expect(result.originalCount).toBeGreaterThan(20000);
     expect(result.toolCount).toBe(result.originalCount);
     expect(result.toolSha).toBe(result.originalSha);
     expect(result.readerMatched).toBe(result.readerCount);
     expect(result.readerCount).toBeLessThan(result.originalCount / 2);
+    expect(result.booksMatched).toBe(result.booksCount);
+    expect(result.booksCount).toBeLessThan(result.readerCount);
+    expect(result.booksReplaySha).toBe(result.componentOriginalSha);
     expect(result.homeMatched).toBe(result.homeCount);
     expect(result.homeCount).toBeLessThan(result.readerCount);
     expect(result.componentOriginalCount).toBeGreaterThan(200);
@@ -231,7 +306,7 @@ describe('independent home, reader and tool CSS', () => {
       }return result;}
       const values=[':root','.dark body .x::before','#cc-main [type="button"]:hover',
         'body :is(.x,#y):not([hidden])','.a:first-letter'];
-      console.log(JSON.stringify(values.every(value=>['home','reader','tool'].every(kind=>
+      console.log(JSON.stringify(values.every(value=>['home','books','reader','tool'].every(kind=>
         JSON.stringify(parse(value).map(score))===JSON.stringify(parse(surface.guardSelector(value,kind)).map(score))))));
     `)).toBe(true);
   });
@@ -239,19 +314,19 @@ describe('independent home, reader and tool CSS', () => {
   it('keeps globals and Tailwind in the common root rather than replaying them in either bundle', () => {
     const result = evaluate(`
       const result=surface.generate({measure:false});
-      console.log(JSON.stringify(['home','reader','tool'].map(kind=>{
+      console.log(JSON.stringify(['home','books','reader','tool'].map(kind=>{
         const css=result.outputs['src/app/generated/'+kind+'-surface.css'];
         return {compilerInput:/Canonical source: \\.\\/globals\\.css|@import|@theme\\b|@custom-variant\\b/.test(css),
           sources:[...css.matchAll(/Canonical source:/g)].length};
       })));
     `);
-    expect(result).toEqual(Array.from({ length: 3 }, () => ({ compilerInput: false, sources: 44 })));
+    expect(result).toEqual(Array.from({ length: 4 }, () => ({ compilerInput: false, sources: 44 })));
   });
 
   it('emits identical CSS without measuring compression during development', () => {
     expect(evaluate(`
       const measured=surface.generate(),quick=surface.generate({measure:false});
-      console.log(JSON.stringify({same:['home','reader','tool'].every(kind=>
+      console.log(JSON.stringify({same:['home','books','reader','tool'].every(kind=>
         measured.outputs['src/app/generated/'+kind+'-surface.css']===quick.outputs['src/app/generated/'+kind+'-surface.css']),
         measured:typeof measured.report.surfaces.reader.gzip,quick:quick.report.surfaces.reader}));
     `)).toEqual({ same: true, measured: 'number', quick: { bytes: expect.any(Number) } });

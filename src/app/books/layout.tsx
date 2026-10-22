@@ -1,5 +1,5 @@
-import "../generated/reader-surface.css";
+import "../generated/books-surface.css";
 
-export default function ReaderLayout({ children }: { children: React.ReactNode }) {
+export default function BooksLayout({ children }: { children: React.ReactNode }) {
   return children;
 }

@@ -3,5 +3,6 @@
   "overlayAttribute": "data-sw-css-overlay",
   "home": "home",
   "reader": "reader",
-  "tool": "tool"
+  "tool": "tool",
+  "books": "books"
 }

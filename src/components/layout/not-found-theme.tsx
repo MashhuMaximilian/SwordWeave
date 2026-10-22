@@ -10,8 +10,9 @@ import { cssSurface } from "@/lib/ui/css-surface";
 const ToolTheme = dynamic(() => import("./tool-theme"));
 const ReaderTheme = dynamic(() => import("./reader-theme"));
 const HomeTheme = dynamic(() => import("./home-theme"));
+const BooksTheme = dynamic(() => import("./books-theme"));
 
 export function NotFoundTheme() {
   const surface = cssSurface(usePathname());
-  return surface === "home" ? <HomeTheme /> : surface === "reader" ? <ReaderTheme /> : <ToolTheme />;
+  return surface === "home" ? <HomeTheme /> : surface === "books" ? <BooksTheme /> : surface === "reader" ? <ReaderTheme /> : <ToolTheme />;
 }

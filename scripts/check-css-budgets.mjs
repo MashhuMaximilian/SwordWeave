@@ -11,7 +11,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const budgets = {
   page: 75_000,
   "rules/page": 110_000,
-  "books/page": 110_000,
+  "books/page": 75_000,
+  "books/[slug]/page": 75_000,
   "contact/page": 110_000,
   "press/page": 110_000,
   "atelier/page": 250_000,
