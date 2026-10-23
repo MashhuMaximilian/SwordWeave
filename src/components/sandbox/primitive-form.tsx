@@ -1,4 +1,5 @@
 "use client";
+import { useAtelierExperiment } from "./atelier-experiment";
 import { readJsonResponse } from "@/lib/http/read-json-response";
 import { EditableNumberInput } from "@/components/ui/editable-number-input";
 import { MODIFIER_RULE_FORMATS, modifierRuleFormatPatch, identifyModifierRuleFormat } from "@/lib/primitives/rule-formats";
@@ -957,6 +958,7 @@ export function PrimitiveForm({
   initialModifierDrafts?: ReadonlyArray<Partial<ModifierDraft>> | null;
 }) {
   const characterAuthoring = useCharacterAuthoring();
+  const experiment = useAtelierExperiment();
   const contextualBlankForm = useMemo<PrimitiveFormState>(() => {
     const family = initialCategory
       ? MARKET_FAMILIES.find((item) => item.key === initialCategory)
@@ -994,11 +996,11 @@ export function PrimitiveForm({
   const [showJsonPreview, setShowJsonPreview] = useState(false);
   const [sourceCollectionId, setSourceCollectionId] = useState<string | null>(null);
   useEffect(()=>{
-    if(!initialPrimitive?.id){setSourceCollectionId(null);return;}
+    if(experiment?.anonymous || !initialPrimitive?.id){setSourceCollectionId(null);return;}
     const type="PRIMITIVE"; const ctrl=new AbortController();
     fetch(`/api/collections/source?targetType=${type}&targetId=${initialPrimitive.id}`,{signal:ctrl.signal}).then(r=>r.json()).then(d=>setSourceCollectionId(d.collection?.id??null)).catch(()=>{});
     return()=>ctrl.abort();
-  },[initialPrimitive?.id]);
+  },[initialPrimitive?.id, experiment?.anonymous]);
   const [message, setMessage] = useState("");
   // Local pending flag — independent of useTransition. The previous
   // implementation wrapped the save flow in startTransition() which
@@ -1015,7 +1017,7 @@ export function PrimitiveForm({
   const router = useRouter();
   const recovery = useCharacterFormRecovery("primitive", { form, familyKey, ruleKind, composition, modifierCounter, modifiers }, isDirty, (saved) => {
     setForm(saved.form); setFamilyKey(saved.familyKey); setRuleKind(saved.ruleKind); setComposition(saved.composition); setModifierCounter(saved.modifierCounter); setModifiers(saved.modifiers);
-    setIsDirty(true); setMessage("Restored your unfinished character piece.");
+    setIsDirty(true); setMessage(characterAuthoring ? "Restored your unfinished character piece." : "Restored your unfinished Atelier draft.");
   });
   // Pre-load from initialPrimitive — only on mount or when the user
   // loads a different primitive (id changes). Without the id check,
@@ -1244,6 +1246,7 @@ export function PrimitiveForm({
 
   function submitPrimitive(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (experiment && !experiment.requireAccount("save this draft")) return;
     setMessage("");
 
     // Phase 8.I i1 (Mashu 2026-08-04): validate sub-target selection

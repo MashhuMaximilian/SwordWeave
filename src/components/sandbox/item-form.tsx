@@ -1,4 +1,5 @@
 "use client";
+import { useAtelierExperiment } from "./atelier-experiment";
 import { PhonePiecePicker } from "./phone-piece-picker";
 import { PhonePieceDetails } from "./phone-piece-details";
 import { readJsonResponse } from "@/lib/http/read-json-response";
@@ -192,6 +193,7 @@ export function ItemForm({
   onReset?: () => void;
 }) {
   const characterAuthoring = useCharacterAuthoring();
+  const experiment = useAtelierExperiment();
   const [recoveredCatalog, setRecoveredCatalog] = useState<{ primitives: typeof sourcePrimitives; capabilities: typeof sourceCapabilities; effects: typeof sourceEffects } | null>(null);
   const availablePrimitives = useMemo(() => [...sourcePrimitives, ...(recoveredCatalog?.primitives ?? []).filter((entry) => !sourcePrimitives.some((current) => current.id === entry.id))], [sourcePrimitives, recoveredCatalog]);
   const availableCapabilities = useMemo(() => [...sourceCapabilities, ...(recoveredCatalog?.capabilities ?? []).filter((entry) => !sourceCapabilities.some((current) => current.id === entry.id))], [sourceCapabilities, recoveredCatalog]);
@@ -210,18 +212,18 @@ export function ItemForm({
   const [effectIds, setEffectIds] = useState<string[]>(initialEffectIds);
   const [sourceCollectionId, setSourceCollectionId] = useState<string | null>(null);
   useEffect(()=>{
-    if(!initialItem?.id){setSourceCollectionId(null);return;}
+    if(experiment?.anonymous || !initialItem?.id){setSourceCollectionId(null);return;}
     const type="ITEM"; const ctrl=new AbortController();
     fetch(`/api/collections/source?targetType=${type}&targetId=${initialItem.id}`,{signal:ctrl.signal}).then(r=>r.json()).then(d=>setSourceCollectionId(d.collection?.id??null)).catch(()=>{});
     return()=>ctrl.abort();
-  },[initialItem?.id]);
+  },[initialItem?.id, experiment?.anonymous]);
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const [isDirty, setIsDirty] = useState(false);
   const router = useRouter();
   const recovery = useCharacterFormRecovery("item", { catalog: { primitives: availablePrimitives.filter((entry) => primitiveIds.includes(entry.id)), capabilities: availableCapabilities.filter((entry) => capabilityIds.includes(entry.id)), effects: availableEffects.filter((entry) => effectIds.includes(entry.id)) }, form, primitiveIds, capabilityIds, effectIds, mirroredIds: [...isMirroredIds], orderChanged }, isDirty, (saved) => {
     setRecoveredCatalog(saved.catalog); setForm(saved.form); setPrimitiveIds(saved.primitiveIds); setCapabilityIds(saved.capabilityIds); setEffectIds(saved.effectIds); setIsMirroredIds(new Set(saved.mirroredIds)); setOrderChanged(saved.orderChanged);
-    setIsDirty(true); setMessage("Restored your unfinished character piece.");
+    setIsDirty(true); setMessage(characterAuthoring ? "Restored your unfinished character piece." : "Restored your unfinished Atelier draft.");
   });
 
   const bootstrappedRef = useRef<string | null>(null);
@@ -474,6 +476,7 @@ export function ItemForm({
 
   function submitItem(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (experiment && !experiment.requireAccount("save this draft")) return;
     setMessage("");
 
     if (!form.name.trim()) {

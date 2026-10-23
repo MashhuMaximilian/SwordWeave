@@ -1,4 +1,5 @@
 "use client";
+import { useAtelierExperiment } from "./atelier-experiment";
 import { PhonePiecePicker } from "./phone-piece-picker";
 import {readTableGuidance,writeTableGuidance,type TableGuidance} from "@/lib/capabilities/table-guidance";
 import { RollResolutionEditor } from "./roll-resolution-editor";
@@ -145,6 +146,7 @@ export function EffectForm({
   onReset?: () => void;
 }) {
   const characterAuthoring = useCharacterAuthoring();
+  const experiment = useAtelierExperiment();
   const [recoveredCatalog, setRecoveredCatalog] = useState<{ primitives: typeof sourcePrimitives } | null>(null);
   const availablePrimitives = useMemo(() => [...sourcePrimitives, ...(recoveredCatalog?.primitives ?? []).filter((entry) => !sourcePrimitives.some((current) => current.id === entry.id))], [sourcePrimitives, recoveredCatalog]);
 
@@ -155,18 +157,18 @@ export function EffectForm({
   const [slots, setSlots] = useState<EffectFormSlot[]>(() => initialPrimitiveIds.flatMap((id, index) => { const primitive = availablePrimitives.find(p => p.id === id); return primitive ? [{ primitiveId: id, primitive, quantity: 1, isMirrored: false, ...initialPrimitiveSlots[id] }] : []; }));
   const [sourceCollectionId, setSourceCollectionId] = useState<string | null>(null);
   useEffect(()=>{
-    if(!initialEffect?.id){setSourceCollectionId(null);return;}
+    if(experiment?.anonymous || !initialEffect?.id){setSourceCollectionId(null);return;}
     const type="EFFECT"; const ctrl=new AbortController();
     fetch(`/api/collections/source?targetType=${type}&targetId=${initialEffect.id}`,{signal:ctrl.signal}).then(r=>r.json()).then(d=>setSourceCollectionId(d.collection?.id??null)).catch(()=>{});
     return()=>ctrl.abort();
-  },[initialEffect?.id]);
+  },[initialEffect?.id, experiment?.anonymous]);
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const [isDirty, setIsDirty] = useState(false);
   const router = useRouter();
   const recovery = useCharacterFormRecovery("effect", { catalog: { primitives: availablePrimitives.filter((entry) => slots.some((slot) => slot.primitiveId === entry.id)) }, form, slots, resolution, table, orderChanged }, isDirty, (saved) => {
     setTable(saved.table ?? null); setRecoveredCatalog(saved.catalog); setForm(saved.form); setResolution(saved.resolution ?? {...EMPTY_RESOLUTION}); setSlots(saved.slots); setOrderChanged(saved.orderChanged);
-    setIsDirty(true); setMessage("Restored your unfinished character piece.");
+    setIsDirty(true); setMessage(characterAuthoring ? "Restored your unfinished character piece." : "Restored your unfinished Atelier draft.");
   });
 
   // Pre-load from initialEffect — only on mount or when the user loads
@@ -311,6 +313,7 @@ export function EffectForm({
 
   function submitEffect(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (experiment && !experiment.requireAccount("save this draft")) return;
     setMessage("");
 
     const body: Record<string, unknown> = {

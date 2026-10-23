@@ -1,6 +1,7 @@
 "use client";
 
 import { useCharacterAuthoring } from "./character-authoring-context";
+import { useAtelierExperiment } from "./atelier-experiment";
 import { VisibilitySelect } from "@/components/library/visibility-select";
 import { useState, useEffect, useId } from "react";
 
@@ -31,7 +32,8 @@ export function AuthorPublishFields({
   sourcePlaceholder = "World, book, or setting",
 }: AuthorPublishFieldsProps) {
   const [sourceCollections,setSourceCollections]=useState<{id:string;name:string}[]>([]);
-  useEffect(()=>{fetch("/api/collections?own=true").then(r=>r.json()).then(d=>setSourceCollections((d.collections??[]).filter((c:{system_kind:string|null})=>!c.system_kind))).catch(()=>{});},[]);
+  const experiment = useAtelierExperiment();
+  useEffect(()=>{if(experiment?.anonymous)return;fetch("/api/collections?own=true").then(r=>r.json()).then(d=>setSourceCollections((d.collections??[]).filter((c:{system_kind:string|null})=>!c.system_kind))).catch(()=>{});},[experiment?.anonymous]);
   const visibilityLabelId = useId();
   const characterAuthoring = useCharacterAuthoring();
   if (characterAuthoring) return <section className="v12-character-author-finish">

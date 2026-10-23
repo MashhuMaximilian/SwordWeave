@@ -1,4 +1,5 @@
 "use client";
+import { useAtelierExperiment } from "@/components/sandbox/atelier-experiment";
 
 // =============================================================================
 // IconPicker — modal for selecting + configuring an icon on an entity.
@@ -175,6 +176,7 @@ export function IconPicker({
   // not buying us anything visible.
   const deferredSearch = search;
   const [uploading, setUploading] = useState(false);
+  const experiment = useAtelierExperiment();
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const gridScrollRef = useRef<HTMLDivElement>(null);
@@ -283,13 +285,15 @@ export function IconPicker({
   );
 
   const handleUploadClick = useCallback(() => {
+    if (experiment && !experiment.requireAccount("upload artwork")) return;
     fileInputRef.current?.click();
-  }, []);
+  }, [experiment]);
 
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
+      if (experiment && !experiment.requireAccount("upload artwork")) return;
       setUploading(true);
       setUploadError(null);
       try {
@@ -319,7 +323,7 @@ export function IconPicker({
         if (fileInputRef.current) fileInputRef.current.value = "";
       }
     },
-    [color, onSelect],
+    [color, onSelect, experiment],
   );
 
   return (

@@ -76,3 +76,7 @@ t4.tsx
 
 # Private planning notes and production repair snapshots
 /.local-plans/
+
+# Native character-PDF Python runtime and verification caches
+__pycache__/
+*.py[cod]

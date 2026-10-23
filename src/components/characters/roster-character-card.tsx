@@ -6,6 +6,7 @@ import { aggregateRosterSheet } from "@/lib/character/roster-sheet";
 import type { PrimitiveLinkSnapshot, ItemLinkSnapshot, CapabilityLinkSnapshot } from "@/lib/engine/sheet";
 import { rosterComposition } from "@/lib/character/roster-composition";
 import { portraitFrameStyle } from "@/lib/character/portrait-frame";
+import { CharacterPdfActions } from "./character-pdf-actions";
 
 export function RosterCharacterCard({
   character,
@@ -187,9 +188,7 @@ export function RosterCharacterCard({
         >
           Open sheet <ArrowRight aria-hidden="true" />
         </Link>}
-        {/* Original page had CharacterEditButton + Clone button here.
-            Edit/clone affordances live on the sheet itself in the
-            PDF-aligned layout — list-page keeps just Open Sheet. */}
+        <CharacterPdfActions characterId={character.id} characterName={character.name} compact />
       </div>
     </article>
   );

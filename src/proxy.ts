@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isPublicPage, PUBLIC_PAGES, PUBLIC_MARKDOWN_ASSETS, markdownPath, PUBLIC_MARKDOWN_MEDIA_TYPE } from "@/lib/seo/public-pages";
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { isGuestAtelierPath } from "@/lib/sandbox/atelier-public-catalog";
 
 // Routes that require authentication
 const isProtectedRoute = createRouteMatcher([
@@ -43,7 +44,7 @@ export default clerkMiddleware(async (auth, req) => {
   }
   const isSheet = /^\/characters\/[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\/?$/i.test(req.nextUrl.pathname);
   // The sheet server page checks publication/share access. Editing routes stay protected.
-  if (isProtectedRoute(req) && !isSheet) {
+  if (isProtectedRoute(req) && !isSheet && !isGuestAtelierPath(req.nextUrl.pathname)) {
     await auth.protect();
   }
   const response = NextResponse.next();

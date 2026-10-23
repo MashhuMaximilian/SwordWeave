@@ -1,4 +1,5 @@
 "use client";
+import { useAtelierExperiment } from "./atelier-experiment";
 import { CHARACTER_SIZES } from "@/lib/heritage/lineage-size";
 import { SIZE_BASE_SPEED, SIZE_CAPACITY } from "@/lib/engine/encumbrance";
 import "@/app/heritage-author-identity.css";
@@ -185,6 +186,7 @@ export function HeritageForm({
   onReset?: () => void;
 }) {
   const characterAuthoring = useCharacterAuthoring();
+  const experiment = useAtelierExperiment();
   const [recoveredCatalog, setRecoveredCatalog] = useState<{ primitives: typeof sourcePrimitives; capabilities: typeof sourceCapabilities } | null>(null);
   const availablePrimitives = useMemo(() => [...sourcePrimitives, ...(recoveredCatalog?.primitives ?? []).filter((entry) => !sourcePrimitives.some((current) => current.id === entry.id))], [sourcePrimitives, recoveredCatalog]);
   const availableCapabilities = useMemo(() => [...sourceCapabilities, ...(recoveredCatalog?.capabilities ?? []).filter((entry) => !sourceCapabilities.some((current) => current.id === entry.id))], [sourceCapabilities, recoveredCatalog]);
@@ -208,18 +210,18 @@ export function HeritageForm({
   const [mirroredSet, setMirroredSet] = useState<Set<string>>(new Set());
   const [sourceCollectionId, setSourceCollectionId] = useState<string | null>(null);
   useEffect(()=>{
-    if(!initialTemplate?.id){setSourceCollectionId(null);return;}
+    if(experiment?.anonymous || !initialTemplate?.id){setSourceCollectionId(null);return;}
     const type=`${initialTemplate.kind}_TEMPLATE`; const ctrl=new AbortController();
     fetch(`/api/collections/source?targetType=${type}&targetId=${initialTemplate.id}`,{signal:ctrl.signal}).then(r=>r.json()).then(d=>setSourceCollectionId(d.collection?.id??null)).catch(()=>{});
     return()=>ctrl.abort();
-  },[initialTemplate?.id]);
+  },[initialTemplate?.id, experiment?.anonymous]);
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const [isDirty, setIsDirty] = useState(false);
   const router = useRouter();
   const recovery = useCharacterFormRecovery("heritage", { catalog: { primitives: availablePrimitives.filter((entry) => primitiveIds.includes(entry.id)), capabilities: availableCapabilities.filter((entry) => capabilityIds.includes(entry.id)) }, form, primitiveIds, capabilityIds, mirroredIds: [...isMirroredIds], orderChanged }, isDirty, (saved) => {
     setRecoveredCatalog(saved.catalog); setForm(saved.form); setPrimitiveIds(saved.primitiveIds); setCapabilityIds(saved.capabilityIds); setIsMirroredIds(new Set(saved.mirroredIds)); setOrderChanged(saved.orderChanged);
-    setIsDirty(true); setMessage("Restored your unfinished character piece.");
+    setIsDirty(true); setMessage(characterAuthoring ? "Restored your unfinished character piece." : "Restored your unfinished Atelier draft.");
   });
 
   const bootstrappedRef = useRef<string | null>(null);
@@ -462,6 +464,7 @@ export function HeritageForm({
 
   function submitTemplate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (experiment && !experiment.requireAccount("save this draft")) return;
     setMessage("");
 
     if (!form.name.trim()) {

@@ -1,4 +1,5 @@
 "use client";
+import { useAtelierExperiment } from "@/components/sandbox/atelier-experiment";
 
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import { ImagePlus, Link2, Loader2, Minus, Move, Plus, RotateCcw, Upload, X } from "lucide-react";
@@ -30,6 +31,7 @@ export function PortraitInput({
   layout = "stacked",
 }: PortraitInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const experiment = useAtelierExperiment();
   const previewRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const panRef = useRef<{ pointerId: number; clientX: number; clientY: number; frame: PortraitFrame } | null>(null);
@@ -39,6 +41,7 @@ export function PortraitInput({
   const [error, setError] = useState<string | null>(null);
 
   const upload = useCallback(async (file: File) => {
+    if (experiment && !experiment.requireAccount("upload artwork")) return;
     setUploading(true);
     setError(null);
     try {
@@ -59,7 +62,7 @@ export function PortraitInput({
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
     }
-  }, [onChange]);
+  }, [onChange, experiment]);
 
   return (
     <div className={`sw-portrait-input${layout === "identity" ? " sw-portrait-input--identity" : ""} ${className}`}>
@@ -133,7 +136,7 @@ export function PortraitInput({
       <div className="sw-portrait-input__details">
       {identityFields}
       <div className="sw-portrait-input__controls">
-        <button type="button" className="sw-metal-button sw-metal-button--secondary" onClick={() => inputRef.current?.click()} disabled={uploading}>
+        <button type="button" className="sw-metal-button sw-metal-button--secondary" onClick={() => { if (!experiment || experiment.requireAccount("upload artwork")) inputRef.current?.click(); }} disabled={uploading}>
           {uploading ? <Loader2 className="animate-spin" aria-hidden /> : <Upload aria-hidden />}
           {uploading ? "Uploading…" : "Upload image"}
         </button>

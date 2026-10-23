@@ -80,6 +80,7 @@ import {
 } from "@/components/characters/workspace/dnd-primitives";
 import { useCharacterDnd } from "@/components/characters/workspace/use-character-dnd";
 import { SheetIdentityHeader } from "@/components/characters/sheet-identity-header";
+import { CharacterPdfActions } from "@/components/characters/character-pdf-actions";
 import { CoreStatsCard } from "@/components/characters/core-stats-card";
 import { onCharacterLogAdded, onVitalityChanged } from "@/lib/character/character-events";
 import { TabErrorBoundary } from "@/components/characters/tab-error-boundary";
@@ -1199,6 +1200,7 @@ function CharacterSheetContent(initialProps: CharacterSheetProps) {
             Clone
           </Link>
           ) : <ForkCharacterButton characterId={props.id} roster label="Fork" />}
+          <CharacterPdfActions characterId={props.id} characterName={props.name} />
           {/* PLAN Eilxina Part A (Mashu 2026-09-09): visibility tier
               picker on the character sheet header. Posts to
               /api/creations/visibility with targetType='CHARACTER'.

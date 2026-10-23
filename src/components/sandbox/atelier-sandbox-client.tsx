@@ -1,5 +1,6 @@
 "use client";
 import { EntityTypeIcon } from "@/components/icons/entity-type-icon";
+import { AtelierExperimentScope, useAtelierDraftRecovery, useAtelierExperiment } from "./atelier-experiment";
 
 import { useAppAuth } from "@/components/auth/app-auth-provider";
 import { readCreationReturn,setCreationReturnResult } from "@/lib/character/creation-return/model";
@@ -895,8 +896,16 @@ export function AtelierSandboxClient({
     [],
   );
 
+  useAtelierDraftRecovery("primary", { build, editing, mechanicsDraftKind, heritageKind: heritageKind ?? null, itemDraftStarted, buildStarted, monsterDraft, monsterId: monsterId ?? null, liveIntent, tabCache }, formIsDirty || editing !== null || buildStarted || monsterDraft, saved => {
+    setBuild(saved.build); setEditing(saved.editing); setMechanicsDraftKind(saved.mechanicsDraftKind);
+    setHeritageKind(saved.heritageKind ?? undefined); setItemDraftStarted(saved.itemDraftStarted);
+    setBuildStarted(saved.buildStarted); setMonsterDraft(saved.monsterDraft); setMonsterId(saved.monsterId ?? undefined);
+    setLiveIntent(saved.liveIntent); setTabCache(saved.tabCache);
+  }, "workspace");
+  const guestMonsterCatalog = useMemo(() => ({ primitives, effects, capabilities, items }), [primitives, effects, capabilities, items]);
+
   const builderNode = useMemo(() => {
-    if(monsterDraft)return <MonsterWorkbench key={monsterId??"new-monster"} {...(monsterId?{id:monsterId}:{})} embedded intent={liveIntent} onPreview={handleMonsterPreview} onDirty={setFormIsDirty} onSaved={handleMonsterSaved}/>;
+    if(monsterDraft)return <MonsterWorkbench key={monsterId??"new-monster"} {...(monsterId?{id:monsterId}:{})} embedded publicCatalog={guestMonsterCatalog} intent={liveIntent} onPreview={handleMonsterPreview} onDirty={setFormIsDirty} onSaved={handleMonsterSaved}/>;
     const urlIntent = (currentSearchParams?.get("intent") ?? null) as
       | "fork"
       | "load"
@@ -1161,7 +1170,7 @@ export function AtelierSandboxClient({
     }
     return <p className="p-4 text-sm text-muted-foreground">Choose an entity to start building.</p>;
   }, [
-    monsterDraft, monsterId, handleMonsterPreview, handleMonsterSaved,
+    monsterDraft, monsterId, handleMonsterPreview, handleMonsterSaved, guestMonsterCatalog,
     editing,
     buildStarted,
     mechanicsDraftKind,
@@ -1746,12 +1755,12 @@ export function AtelierSandboxClient({
             onPickNew={guardedStartNewEntity}
             onCloseNew={() => setShowNewModal(false)}
           >
-            {builderNode}
+            <AtelierExperimentScope key={`primary:${editing?.row.id ?? monsterId ?? "new"}`} scope={`primary:${editing?.row.id ?? monsterId ?? "new"}`}>{builderNode}</AtelierExperimentScope>
           </BuilderPane>
         }
         preview={previewNode}
       />
-      <SecondaryBuildWorkspace primitives={primitives} effects={effects} capabilities={capabilities} />
+      <SecondaryBuildWorkspace primitives={primitives} effects={effects} capabilities={capabilities} items={items} />
       <UnsavedChangesModal
         isOpen={pendingAction !== null || pendingNav !== null}
         onCancel={() => {
@@ -1785,12 +1794,16 @@ function SecondaryBuildWorkspace({
   primitives,
   effects,
   capabilities,
+  items,
 }: {
   primitives: PrimitiveRow[];
   effects: EffectRow[];
   capabilities: CapabilityRow[];
+  items: ItemRow[];
 }) {
   const { openDrawer } = useGlobalControls();
+  const experiment = useAtelierExperiment();
+  const guestMonsterCatalog = useMemo(() => ({ primitives, effects, capabilities, items }), [primitives, effects, capabilities, items]);
   const [initialEntry, setInitialEntry] = useState<EditingState>(null);
   const [kind, setKind] = useState<"primitive" | "effect" | "capability" | "heritage" | "item" | "monster" | null>(null);
   const [secondaryMonsterId,setSecondaryMonsterId]=useState<string|undefined>();
@@ -1864,8 +1877,14 @@ function SecondaryBuildWorkspace({
   };
   const primitiveOptions = primitives.map(({id,name,category,buCost,mechanicalOutputText,narrativeRule})=>({id,name,category,buCost,mechanicalOutputText,narrativeRule}));
 
+  useAtelierDraftRecovery("secondary", { kind, initialEntry, heritageKind, secondaryMonsterId: secondaryMonsterId ?? null }, kind !== null, recovered => {
+    setKind(recovered.kind); setInitialEntry(recovered.initialEntry); setHeritageKind(recovered.heritageKind);
+    setSecondaryMonsterId(recovered.secondaryMonsterId ?? undefined);
+    if (recovered.kind) openDrawer("build");
+  }, "workspace");
+
   const content = (
-    <div className="v12-secondary-build" key={revision}>
+    <AtelierExperimentScope scope={`secondary:${initialEntry?.row.id ?? secondaryMonsterId ?? "new"}`} experiment={experiment}><div className="v12-secondary-build" key={revision}>
       <button type="button" data-drawer-reset hidden onClick={requestReset}>Reset modal build</button>
       <header><div><p className="v12-kicker">Persistent build modal</p><h2>{initialEntry ? initialEntry.row.name : kind==="monster" ? secondaryMonsterName||"New monster" : kind ? `New ${kind}` : "Choose a long-running build"}</h2></div>{kind ? <button type="button" className="v12-metal-button" onClick={requestReset}>Change build</button> : null}</header>
       {!kind ? (
@@ -1895,7 +1914,7 @@ function SecondaryBuildWorkspace({
           }}
         />
       ) : null}
-      {kind === "monster" ? <MonsterWorkbench key={`monster-${revision}`} {...(secondaryMonsterId?{id:secondaryMonsterId}:{})} embedded slotEvents={slotBus} onReady={onMonsterReady} onPreview={onMonsterState} onSaved={id=>{setSecondaryMonsterId(id);commonSaved({id,name:"Creature"},"monster");}}/> : null}
+      {kind === "monster" ? <MonsterWorkbench key={`monster-${revision}`} {...(secondaryMonsterId?{id:secondaryMonsterId}:{})} embedded publicCatalog={guestMonsterCatalog} slotEvents={slotBus} onReady={onMonsterReady} onPreview={onMonsterState} onSaved={id=>{setSecondaryMonsterId(id);commonSaved({id,name:"Creature"},"monster");}}/> : null}
       {kind === "primitive" ? <PrimitiveForm key={`primitive-${revision}`} initialPrimitive={initialEntry?.kind === "primitive" ? initialEntry.row : null} intent={initialEntry ? "fork" : null} onStateChange={onPrimitiveState} onSaved={row=>commonSaved({id:String(row.id),name:row.name},"primitive")} /> : null}
       {kind === "capability" ? <CapabilityForm {...(phone ? {onStateChange:onCapabilityState} : {})} key={`cap-${revision}`} slotEvents={slotBus} initialCapability={initialEntry?.kind === "capability" ? initialEntry.row : null} intent={initialEntry ? "fork" : null} availablePrimitives={primitiveOptions} availableEffects={effects} onSaved={(row)=>commonSaved(row,"capability")} /> : null}
       {kind === "effect" ? <EffectForm {...(phone ? {onStateChange:onEffectState} : {})} key={`eff-${revision}`} slotEvents={slotBus} initialEffect={initialEntry?.kind === "effect" ? initialEntry.row : null} intent={initialEntry ? "fork" : null} availablePrimitives={primitiveOptions} onSaved={(row)=>commonSaved(row,"effect")} /> : null}
@@ -1911,7 +1930,7 @@ function SecondaryBuildWorkspace({
         if(saved.kind === "heritage" && saved.heritageKind) characterModal.queueSlot({kind:"heritage",heritageId:saved.id,heritageKind:saved.heritageKind,name:saved.name});
         characterModal.openForSlot();
       }}>Slot into character</button>}</div> : null}
-    </div>
+    </div></AtelierExperimentScope>
   );
   useDrawerSlot(useMemo(() => ({ build: content, preview: phone || kind==="monster" ? modalPreview ?? <p className="p-4">Choose a build and add its rules to see the preview.</p> : null }), [content, phone, modalPreview, kind]));
   return <UnsavedChangesModal isOpen={pendingReplacement!==null} title="Replace the modal build?" description="This replaces the draft in Build & Preview. Your primary editor stays unchanged." onCancel={()=>setPendingReplacement(null)} onConfirm={()=>{pendingReplacement?.();setPendingReplacement(null);}}/>;

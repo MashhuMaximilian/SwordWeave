@@ -1,0 +1,632 @@
+{
+  "public_example": "Orren Vaultwright",
+  "color": true,
+  "source_sha256": "0087b7eb460d804fe1a469810832b1f9e360efb058cd101495c4dcfa32a669d4",
+  "renderer_sha256": "ed63762d9a55fc3d4e32ca08116ba6b379ef52f4992b4e621f7bbcb44e89f333",
+  "images": [
+    {
+      "style": "aegis",
+      "orientation": "portrait",
+      "density": "normal",
+      "color": true,
+      "path": "aegis-portrait-normal-color.webp",
+      "sha256": "106573257909e42aeac9b561f9c4a6b4ec92be7d10d1ee2819931a557843fb61",
+      "size": [
+        840,
+        1188
+      ],
+      "bytes": 121960
+    },
+    {
+      "style": "aegis",
+      "orientation": "portrait",
+      "density": "compact",
+      "color": true,
+      "path": "aegis-portrait-compact-color.webp",
+      "sha256": "41060781e712cb4b3a7b0ff214c36345c066afcb08ef883b9e5e12c83de8229f",
+      "size": [
+        840,
+        1188
+      ],
+      "bytes": 143248
+    },
+    {
+      "style": "aegis",
+      "orientation": "landscape",
+      "density": "normal",
+      "color": true,
+      "path": "aegis-landscape-normal-color.webp",
+      "sha256": "f422580d9866609d4337a926b14d153c84ad785a6505b58a8c633651de435e4c",
+      "size": [
+        1188,
+        841
+      ],
+      "bytes": 147900
+    },
+    {
+      "style": "aegis",
+      "orientation": "landscape",
+      "density": "compact",
+      "color": true,
+      "path": "aegis-landscape-compact-color.webp",
+      "sha256": "bbfaf6d0f2c8ab23cf7228431acaad63e7b0eeaaccb24f1608e8f34ffdea7b97",
+      "size": [
+        1188,
+        841
+      ],
+      "bytes": 149710
+    },
+    {
+      "style": "vesper",
+      "orientation": "portrait",
+      "density": "normal",
+      "color": true,
+      "path": "vesper-portrait-normal-color.webp",
+      "sha256": "19a866d40bedc60f820a56dcd2d6facbb8c587d24d08ef1215365c9dc5ec2863",
+      "size": [
+        840,
+        1188
+      ],
+      "bytes": 129534
+    },
+    {
+      "style": "vesper",
+      "orientation": "portrait",
+      "density": "compact",
+      "color": true,
+      "path": "vesper-portrait-compact-color.webp",
+      "sha256": "b37ff181ef1afa429b21cce41d902047eca0cc7a5b94752b5b4fa500d223d0cb",
+      "size": [
+        840,
+        1188
+      ],
+      "bytes": 154576
+    },
+    {
+      "style": "vesper",
+      "orientation": "landscape",
+      "density": "normal",
+      "color": true,
+      "path": "vesper-landscape-normal-color.webp",
+      "sha256": "33a58e0cdd9ebbffd35a4b87b85deb009bde1b62655e5c815749ee62fa92e653",
+      "size": [
+        1188,
+        841
+      ],
+      "bytes": 165658
+    },
+    {
+      "style": "vesper",
+      "orientation": "landscape",
+      "density": "compact",
+      "color": true,
+      "path": "vesper-landscape-compact-color.webp",
+      "sha256": "95c16cc8bf0f118313221a771e9f6d5eaaba388388572a0f3a1173bbac4cbff7",
+      "size": [
+        1188,
+        841
+      ],
+      "bytes": 168598
+    },
+    {
+      "style": "orrery",
+      "orientation": "portrait",
+      "density": "normal",
+      "color": true,
+      "path": "orrery-portrait-normal-color.webp",
+      "sha256": "f108b892ea0b56e5f17dc3aebc43f1c5ca643645b9fe5b0d2a92484009dccf5a",
+      "size": [
+        840,
+        1188
+      ],
+      "bytes": 128952
+    },
+    {
+      "style": "orrery",
+      "orientation": "portrait",
+      "density": "compact",
+      "color": true,
+      "path": "orrery-portrait-compact-color.webp",
+      "sha256": "6a07803888216a49556b56791c8013832d7c53de5239c21acbc45ec43394a2a4",
+      "size": [
+        840,
+        1188
+      ],
+      "bytes": 151198
+    },
+    {
+      "style": "orrery",
+      "orientation": "landscape",
+      "density": "normal",
+      "color": true,
+      "path": "orrery-landscape-normal-color.webp",
+      "sha256": "4db0cb323380507aa0d46a9c72b78cffbfea3be3d6b39a27ffcc68442275c213",
+      "size": [
+        1188,
+        841
+      ],
+      "bytes": 159830
+    },
+    {
+      "style": "orrery",
+      "orientation": "landscape",
+      "density": "compact",
+      "color": true,
+      "path": "orrery-landscape-compact-color.webp",
+      "sha256": "dc957335f132a6ac7facdcdc82f516c96727ab0ebd383dfed7206211eb8a695d",
+      "size": [
+        1188,
+        841
+      ],
+      "bytes": 161752
+    },
+    {
+      "style": "moire",
+      "orientation": "portrait",
+      "density": "normal",
+      "color": true,
+      "path": "moire-portrait-normal-color.webp",
+      "sha256": "63afc5aac14cd887686948dac57f687698c1d9d1907c229732512f0a94482f28",
+      "size": [
+        840,
+        1188
+      ],
+      "bytes": 135466
+    },
+    {
+      "style": "moire",
+      "orientation": "portrait",
+      "density": "compact",
+      "color": true,
+      "path": "moire-portrait-compact-color.webp",
+      "sha256": "07fcb10c7ed17d8ab64820dbe982cd36eb2ac4c14ecbf66ae9945b2f6a335233",
+      "size": [
+        840,
+        1188
+      ],
+      "bytes": 156282
+    },
+    {
+      "style": "moire",
+      "orientation": "landscape",
+      "density": "normal",
+      "color": true,
+      "path": "moire-landscape-normal-color.webp",
+      "sha256": "759ae9d687507102cef3025682d893c835cb291f6cb95a8c0baebb0eb1888c30",
+      "size": [
+        1188,
+        841
+      ],
+      "bytes": 166720
+    },
+    {
+      "style": "moire",
+      "orientation": "landscape",
+      "density": "compact",
+      "color": true,
+      "path": "moire-landscape-compact-color.webp",
+      "sha256": "3e4455e3e6d889f13fd9df24c4616a1023805fb4fb009e028ab319d506eaec60",
+      "size": [
+        1188,
+        841
+      ],
+      "bytes": 170132
+    },
+    {
+      "style": "serein",
+      "orientation": "portrait",
+      "density": "normal",
+      "color": true,
+      "path": "serein-portrait-normal-color.webp",
+      "sha256": "4e3e1d8b3836583c45adcb1d4e959f6194ad02686976d82359a2ccd066d242f6",
+      "size": [
+        840,
+        1188
+      ],
+      "bytes": 126382
+    },
+    {
+      "style": "serein",
+      "orientation": "portrait",
+      "density": "compact",
+      "color": true,
+      "path": "serein-portrait-compact-color.webp",
+      "sha256": "1929a6166784db9f9ff7d25a6ba07736815049e213cb73f0164bf693cf262e76",
+      "size": [
+        840,
+        1188
+      ],
+      "bytes": 146942
+    },
+    {
+      "style": "serein",
+      "orientation": "landscape",
+      "density": "normal",
+      "color": true,
+      "path": "serein-landscape-normal-color.webp",
+      "sha256": "670588177b651747801260067da0cdb91cc6ecd9607a5d0ac37ada372585275d",
+      "size": [
+        1188,
+        841
+      ],
+      "bytes": 154220
+    },
+    {
+      "style": "serein",
+      "orientation": "landscape",
+      "density": "compact",
+      "color": true,
+      "path": "serein-landscape-compact-color.webp",
+      "sha256": "f885bcbf27431d11266040c95707a052fd2a3bff0b7f297059849468f2a749a7",
+      "size": [
+        1188,
+        841
+      ],
+      "bytes": 156152
+    },
+    {
+      "style": "prism",
+      "orientation": "portrait",
+      "density": "normal",
+      "color": true,
+      "path": "prism-portrait-normal-color.webp",
+      "sha256": "e209614b49c4b6ebb2eb0849c9f6c2b7cbfb6953dbf4ad47647d14fe6db2d065",
+      "size": [
+        840,
+        1188
+      ],
+      "bytes": 127174
+    },
+    {
+      "style": "prism",
+      "orientation": "portrait",
+      "density": "compact",
+      "color": true,
+      "path": "prism-portrait-compact-color.webp",
+      "sha256": "fcace7f5379920950138b2a9c7d9a75d9867b3eb88778bc9dd1052f08bdbbafb",
+      "size": [
+        840,
+        1188
+      ],
+      "bytes": 148052
+    },
+    {
+      "style": "prism",
+      "orientation": "landscape",
+      "density": "normal",
+      "color": true,
+      "path": "prism-landscape-normal-color.webp",
+      "sha256": "d1ea20bcb77b8c503ce01da4b6dafd90096cd6c6f756d246d446e89a071c8708",
+      "size": [
+        1188,
+        841
+      ],
+      "bytes": 156720
+    },
+    {
+      "style": "prism",
+      "orientation": "landscape",
+      "density": "compact",
+      "color": true,
+      "path": "prism-landscape-compact-color.webp",
+      "sha256": "5d44ba76f5651dc92873b1555485e6accffa3cab35f846dc2101b691bf0aa18c",
+      "size": [
+        1188,
+        841
+      ],
+      "bytes": 158562
+    },
+    {
+      "style": "cipher",
+      "orientation": "portrait",
+      "density": "normal",
+      "color": true,
+      "path": "cipher-portrait-normal-color.webp",
+      "sha256": "e68c639db8f7196c081101341bc183418b4b7a58533eae3743b186b62618558b",
+      "size": [
+        840,
+        1188
+      ],
+      "bytes": 129186
+    },
+    {
+      "style": "cipher",
+      "orientation": "portrait",
+      "density": "compact",
+      "color": true,
+      "path": "cipher-portrait-compact-color.webp",
+      "sha256": "2338596d43f8feb1680ac9492cb1e49d73b9cca17bf6a656f46f3afafdc81708",
+      "size": [
+        840,
+        1188
+      ],
+      "bytes": 149366
+    },
+    {
+      "style": "cipher",
+      "orientation": "landscape",
+      "density": "normal",
+      "color": true,
+      "path": "cipher-landscape-normal-color.webp",
+      "sha256": "7eb47a4c403b55923001655c59e12189348ff95d1e26d8348c3ceaff0caea6bd",
+      "size": [
+        1188,
+        841
+      ],
+      "bytes": 159306
+    },
+    {
+      "style": "cipher",
+      "orientation": "landscape",
+      "density": "compact",
+      "color": true,
+      "path": "cipher-landscape-compact-color.webp",
+      "sha256": "d2e08eb460d5479cc23aac8963d6f8ee0f46c096ae304746ac17aceb8d474ee6",
+      "size": [
+        1188,
+        841
+      ],
+      "bytes": 160934
+    },
+    {
+      "style": "helix",
+      "orientation": "portrait",
+      "density": "normal",
+      "color": true,
+      "path": "helix-portrait-normal-color.webp",
+      "sha256": "aaa805c2650bac2481c3eb6dae78d7c9459fabf7e3d07457abecfdaeffa00f25",
+      "size": [
+        840,
+        1188
+      ],
+      "bytes": 138976
+    },
+    {
+      "style": "helix",
+      "orientation": "portrait",
+      "density": "compact",
+      "color": true,
+      "path": "helix-portrait-compact-color.webp",
+      "sha256": "86b821ce17a890a17212a4829f838cc94f55007fab3c9b31e463c6830de69f3d",
+      "size": [
+        840,
+        1188
+      ],
+      "bytes": 165628
+    },
+    {
+      "style": "helix",
+      "orientation": "landscape",
+      "density": "normal",
+      "color": true,
+      "path": "helix-landscape-normal-color.webp",
+      "sha256": "b98132099b62ce1b722c81f56b26ca03e04f34106f08ef0cd53652879aa8c280",
+      "size": [
+        1188,
+        841
+      ],
+      "bytes": 179690
+    },
+    {
+      "style": "helix",
+      "orientation": "landscape",
+      "density": "compact",
+      "color": true,
+      "path": "helix-landscape-compact-color.webp",
+      "sha256": "7e3eda57ca327a98155bc92cde802485be886a8903f749f0a6e682bde519faea",
+      "size": [
+        1188,
+        841
+      ],
+      "bytes": 180286
+    },
+    {
+      "style": "cinder",
+      "orientation": "portrait",
+      "density": "normal",
+      "color": true,
+      "path": "cinder-portrait-normal-color.webp",
+      "sha256": "332aa9c23484d8b8c79efae739f7c6d86dbb763689bfd085649433ea5240dc5b",
+      "size": [
+        840,
+        1188
+      ],
+      "bytes": 126858
+    },
+    {
+      "style": "cinder",
+      "orientation": "portrait",
+      "density": "compact",
+      "color": true,
+      "path": "cinder-portrait-compact-color.webp",
+      "sha256": "f25dc8ad431a7bf342fd49bb9c788f781e5be3e18d0b7ec24fa2a287f492b2cd",
+      "size": [
+        840,
+        1188
+      ],
+      "bytes": 149652
+    },
+    {
+      "style": "cinder",
+      "orientation": "landscape",
+      "density": "normal",
+      "color": true,
+      "path": "cinder-landscape-normal-color.webp",
+      "sha256": "172ed9b3903cb54e8b37501fd0031ca66467bdc7b52af217407c409085a23ac6",
+      "size": [
+        1188,
+        841
+      ],
+      "bytes": 158772
+    },
+    {
+      "style": "cinder",
+      "orientation": "landscape",
+      "density": "compact",
+      "color": true,
+      "path": "cinder-landscape-compact-color.webp",
+      "sha256": "9bd90d8eff4c6aa8c496792e6ab2af81c9d8358e0b6e8a07148edf592d7ec188",
+      "size": [
+        1188,
+        841
+      ],
+      "bytes": 160440
+    },
+    {
+      "style": "nocturne",
+      "orientation": "portrait",
+      "density": "normal",
+      "color": true,
+      "path": "nocturne-portrait-normal-color.webp",
+      "sha256": "3750c43ec39bd266fdc3fd1e381725395588c1c3bed4bd368795cf5e7f1a355e",
+      "size": [
+        840,
+        1188
+      ],
+      "bytes": 131322
+    },
+    {
+      "style": "nocturne",
+      "orientation": "portrait",
+      "density": "compact",
+      "color": true,
+      "path": "nocturne-portrait-compact-color.webp",
+      "sha256": "7191e0f40c904cb913756f2551346aebbfe40e04166bc39d1d689439439f7f2c",
+      "size": [
+        840,
+        1188
+      ],
+      "bytes": 152100
+    },
+    {
+      "style": "nocturne",
+      "orientation": "landscape",
+      "density": "normal",
+      "color": true,
+      "path": "nocturne-landscape-normal-color.webp",
+      "sha256": "9668e4f21900ec2d2740b08caf926e7f96631a190844187f957701739a46304a",
+      "size": [
+        1188,
+        841
+      ],
+      "bytes": 161558
+    },
+    {
+      "style": "nocturne",
+      "orientation": "landscape",
+      "density": "compact",
+      "color": true,
+      "path": "nocturne-landscape-compact-color.webp",
+      "sha256": "52c3eb7c5e4bc504e3ecbb24026d55edf35ad989c2c41e63ac1e3bd1387c7861",
+      "size": [
+        1188,
+        841
+      ],
+      "bytes": 163248
+    },
+    {
+      "style": "tidal",
+      "orientation": "portrait",
+      "density": "normal",
+      "color": true,
+      "path": "tidal-portrait-normal-color.webp",
+      "sha256": "2f40e6315185294ba99b38dc4825f87aa6fdf86d8339de6c551e58e2fb1e7f48",
+      "size": [
+        840,
+        1188
+      ],
+      "bytes": 133454
+    },
+    {
+      "style": "tidal",
+      "orientation": "portrait",
+      "density": "compact",
+      "color": true,
+      "path": "tidal-portrait-compact-color.webp",
+      "sha256": "c48fd46717a38deacb12a9ef7ec0d42df52b6696c8b375a03da049d3fedec491",
+      "size": [
+        840,
+        1188
+      ],
+      "bytes": 159310
+    },
+    {
+      "style": "tidal",
+      "orientation": "landscape",
+      "density": "normal",
+      "color": true,
+      "path": "tidal-landscape-normal-color.webp",
+      "sha256": "020c1580006d63971ee870a3bf4bedba63fe28dab01f237779ca379bf32bd341",
+      "size": [
+        1188,
+        841
+      ],
+      "bytes": 170562
+    },
+    {
+      "style": "tidal",
+      "orientation": "landscape",
+      "density": "compact",
+      "color": true,
+      "path": "tidal-landscape-compact-color.webp",
+      "sha256": "2512db36840611d48055be1c9d47ff5648068e19fb08e214fadfc6f8752cbdee",
+      "size": [
+        1188,
+        841
+      ],
+      "bytes": 172336
+    },
+    {
+      "style": "solstice",
+      "orientation": "portrait",
+      "density": "normal",
+      "color": true,
+      "path": "solstice-portrait-normal-color.webp",
+      "sha256": "522dfe58bdada9409f26f5d750de71d911958003b10378bd90f5fdc458a90601",
+      "size": [
+        840,
+        1188
+      ],
+      "bytes": 123988
+    },
+    {
+      "style": "solstice",
+      "orientation": "portrait",
+      "density": "compact",
+      "color": true,
+      "path": "solstice-portrait-compact-color.webp",
+      "sha256": "6e01224b7dcecd46ad891d6fcb68ca60190e9a08629b69367e951ffc6bb376a0",
+      "size": [
+        840,
+        1188
+      ],
+      "bytes": 145454
+    },
+    {
+      "style": "solstice",
+      "orientation": "landscape",
+      "density": "normal",
+      "color": true,
+      "path": "solstice-landscape-normal-color.webp",
+      "sha256": "002f6daea02d9b0e4e98e2ce6c59f2d90d4584664d05e635208ff94238465732",
+      "size": [
+        1188,
+        841
+      ],
+      "bytes": 151302
+    },
+    {
+      "style": "solstice",
+      "orientation": "landscape",
+      "density": "compact",
+      "color": true,
+      "path": "solstice-landscape-compact-color.webp",
+      "sha256": "6f604b4ce339b736e58cce387da7b50c475acc5d1661b861322245652229cea4",
+      "size": [
+        1188,
+        841
+      ],
+      "bytes": 153048
+    }
+  ]
+}

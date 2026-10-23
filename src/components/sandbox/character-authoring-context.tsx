@@ -11,6 +11,7 @@ export interface CharacterSlotMetadata {
 }
 
 import { characterFormRecoveryKey, decodeCharacterFormRecovery } from "@/lib/sandbox/character-form-recovery";
+import { useAtelierDraftRecovery } from "./atelier-experiment";
 
 interface CharacterAuthoringContextValue {
   /** Isolates temporary form state from standalone Atelier and other characters. */
@@ -37,6 +38,7 @@ export function useCharacterAuthoring() { return useContext(CharacterAuthoringCo
 /** Complete, private-browser recovery for sheet authoring. Standalone Atelier is untouched. */
 export function useCharacterFormRecovery<T extends Record<string, unknown>>(kind: string, state: T, dirty: boolean, restore: (state: T) => void, namespaceOverride?: string) {
   const context = useCharacterAuthoring();
+  const atelier = useAtelierDraftRecovery(kind, state, dirty, restore, undefined, !context && !namespaceOverride);
   const namespace = namespaceOverride ?? context?.namespace;
   const key = namespace ? characterFormRecoveryKey(namespace, kind) : null;
   const [saved] = useState<T | null>(() => {
@@ -64,5 +66,5 @@ export function useCharacterFormRecovery<T extends Record<string, unknown>>(kind
     cleared.current = current;
     if (key) try { window.localStorage.removeItem(key); } catch { /* Optional recovery. */ }
   }
-  return { restored: saved !== null, clear };
+  return !context && !namespaceOverride && atelier.active ? atelier : { restored: saved !== null, clear };
 }

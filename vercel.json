@@ -2,6 +2,12 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["fra1"],
   "buildCommand": "pnpm run build",
+  "functions": {
+    "api/character-pdf-render.py": {
+      "maxDuration": 60,
+      "excludeFiles": "{!(api|scripts|assets){,/**},api/!(character-pdf-render.py){,/**},scripts/!(character_pdf|build-character-sheet-v@(6|7|8|9|10|11).py){,/**},assets/!(character-pdf){,/**},**/{test_*,__pycache__}{,/**}}"
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/soft-delete-purge",

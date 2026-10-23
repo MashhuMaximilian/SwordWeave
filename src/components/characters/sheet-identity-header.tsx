@@ -1,5 +1,6 @@
 "use client";
 import { ForkCharacterButton } from "./fork-character-button";
+import { CharacterPdfActions } from "./character-pdf-actions";
 import { useCharacterReadOnly } from "./character-read-only";
 
 /**
@@ -586,6 +587,9 @@ export function SheetIdentityHeader({
                   Level Up
                 </button>
               ) : null}
+            </div>
+            <div className="v12-identity-action-group is-pdf">
+              <CharacterPdfActions characterId={characterId} characterName={name} compact />
             </div>
             <div className="v12-identity-action-group is-access">
             {/* PLAN Eilxina Part A (Mashu 2026-09-09): mobile visibility

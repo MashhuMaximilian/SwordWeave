@@ -11,6 +11,8 @@
 
 import { asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
+import { AtelierExperimentProvider } from "@/components/sandbox/atelier-experiment";
+import { restrictAtelierRelations, canLoadAtelierHistory } from "@/lib/sandbox/atelier-public-catalog";
 
 import {
   AtelierSandboxClient,
@@ -644,6 +646,12 @@ export default async function AtelierSandboxPage({
     })()
   ]);
 
+  // A public parent never authorizes its private children. Apply the same
+  // catalog gate to every nested relation before any row enters client props.
+  const safeCatalog = restrictAtelierRelations({ primitives: primitiveRows, effects: effectRows, capabilities: capabilityRows, heritage: heritageRows, items: itemRows });
+  primitiveRows = safeCatalog.primitives; effectRows = safeCatalog.effects;
+  capabilityRows = safeCatalog.capabilities; heritageRows = safeCatalog.heritage; itemRows = safeCatalog.items;
+
   // Resolve ?edit=<id> into initial editing row (across all kinds).
   let initialEditing:
     | { kind: "primitive"; row: { id: number } }
@@ -658,7 +666,7 @@ export default async function AtelierSandboxPage({
       const numId = Number(editId);
       if (Number.isFinite(numId)) {
         let baseRow: Record<string, unknown> | null = null;
-        if (Number.isFinite(versionNumber)) {
+        if (Number.isFinite(versionNumber) && canLoadAtelierHistory(sandboxViewerClerkId, primitiveRows.some(p => (p as { id: number }).id === numId))) {
           try {
             const ver = await getVersionPayload("PRIMITIVE", String(numId), versionNumber);
             if (ver) baseRow = ver.payload;
@@ -682,7 +690,7 @@ export default async function AtelierSandboxPage({
       if (row) initialEditing = { kind: "capability", row: row as { id: string } };
     } else if (build === "heritage") {
       let baseRow: Record<string, unknown> | null = null;
-      if (Number.isFinite(versionNumber)) {
+      if (Number.isFinite(versionNumber) && canLoadAtelierHistory(sandboxViewerClerkId, heritageRows.some(row => (row as { id: string }).id === editId))) {
         const targetType =
           kind === "UPBRINGING"
             ? "UPBRINGING_TEMPLATE"
@@ -878,7 +886,7 @@ export default async function AtelierSandboxPage({
   }
 
   return (
-    <AtelierSandboxClient
+    <AtelierExperimentProvider initialSignedIn={Boolean(sandboxViewerClerkId)}><AtelierSandboxClient
       initialBuild={build}
       initialKind={kind}
       initialEditing={initialEditing as never}
@@ -898,6 +906,7 @@ export default async function AtelierSandboxPage({
           isPublic: boolean;
           costTier: string;
           mechanicalOutputText: string;
+          mechanicalRule?: unknown;
           narrativeRule: string;
           isMirrorable: boolean;
           mirrorVector: string;
@@ -920,6 +929,7 @@ export default async function AtelierSandboxPage({
           isPublic: row.isPublic,
           costTier: row.costTier,
           mechanicalOutputText: row.mechanicalOutputText,
+          mechanicalRule: row.mechanicalRule,
           narrativeRule: row.narrativeRule,
           isMirrorable: row.isMirrorable,
           mirrorVector: row.mirrorVector,
@@ -1195,6 +1205,6 @@ export default async function AtelierSandboxPage({
       currentUserInternalId={currentUserInternalId}
       currentUser={currentUser}
       versionMap={Object.fromEntries(versionMap)}
-    />
+    /></AtelierExperimentProvider>
   );
 }

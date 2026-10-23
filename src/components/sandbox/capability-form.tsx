@@ -1,4 +1,5 @@
 "use client";
+import { useAtelierExperiment } from "./atelier-experiment";
 import { PhonePiecePicker } from "./phone-piece-picker";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { DetailModal } from "@/components/ui/detail-modal";
@@ -207,6 +208,7 @@ export function CapabilityForm({
   const phone = useIsMobile();
   const [phoneSlot, setPhoneSlot] = useState<DedicatedRole | null>(null);
   const characterAuthoring = useCharacterAuthoring();
+  const experiment = useAtelierExperiment();
   const [recoveredCatalog, setRecoveredCatalog] = useState<{ primitives: typeof sourcePrimitives; effects: typeof sourceEffects } | null>(null);
   const availablePrimitives = useMemo(() => [...sourcePrimitives, ...(recoveredCatalog?.primitives ?? []).filter((entry) => !sourcePrimitives.some((current) => current.id === entry.id))], [sourcePrimitives, recoveredCatalog]);
   const availableEffects = useMemo(() => [...sourceEffects, ...(recoveredCatalog?.effects ?? []).filter((entry) => !sourceEffects.some((current) => current.id === entry.id))], [sourceEffects, recoveredCatalog]);
@@ -233,18 +235,18 @@ export function CapabilityForm({
   });
   const [sourceCollectionId, setSourceCollectionId] = useState<string | null>(null);
   useEffect(()=>{
-    if(!initialCapability?.id){setSourceCollectionId(null);return;}
+    if(experiment?.anonymous || !initialCapability?.id){setSourceCollectionId(null);return;}
     const type="CAPABILITY"; const ctrl=new AbortController();
     fetch(`/api/collections/source?targetType=${type}&targetId=${initialCapability.id}`,{signal:ctrl.signal}).then(r=>r.json()).then(d=>setSourceCollectionId(d.collection?.id??null)).catch(()=>{});
     return()=>ctrl.abort();
-  },[initialCapability?.id]);
+  },[initialCapability?.id, experiment?.anonymous]);
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const [isDirty, setIsDirty] = useState(false);
   const router = useRouter();
   const recovery = useCharacterFormRecovery("capability", { catalog: { primitives: availablePrimitives.filter((entry) => slots.some((slot) => slot.primitiveId === entry.id)), effects: availableEffects.filter((entry) => effectIds.includes(entry.id)) }, form, slots, effectIds, tableDraft, includeTable, resolution, orderChanged }, isDirty, (saved) => {
     setRecoveredCatalog(saved.catalog); setForm(saved.form); setSlots(saved.slots); setEffectIds(saved.effectIds); setTableDraft(saved.tableDraft); setIncludeTable(saved.includeTable ?? false); setResolution(saved.resolution ?? {...EMPTY_RESOLUTION}); setOrderChanged(saved.orderChanged);
-    setIsDirty(true); setMessage("Restored your unfinished character piece.");
+    setIsDirty(true); setMessage(characterAuthoring ? "Restored your unfinished character piece." : "Restored your unfinished Atelier draft.");
   });
 
   const bootstrappedRef = useRef<string | number | null>(null);
@@ -495,6 +497,7 @@ export function CapabilityForm({
 
   function submitCapability(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (experiment && !experiment.requireAccount("save this draft")) return;
     setMessage("");
 
     if (!form.name.trim()) {

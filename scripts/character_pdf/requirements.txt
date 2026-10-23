@@ -1,0 +1,4 @@
+# Native runtime; fontTools[woff] is needed only to rebuild the prepared assets.
+reportlab==4.4.9
+Pillow==12.3.0
+pypdf==6.10.0

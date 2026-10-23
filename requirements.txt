@@ -1,0 +1,5 @@
+# Native Vercel runtime. Keep pins aligned with scripts/character_pdf/requirements.txt.
+# The build dependency parser requires these declarations at project root.
+reportlab==4.4.9
+Pillow==12.3.0
+pypdf==6.10.0
