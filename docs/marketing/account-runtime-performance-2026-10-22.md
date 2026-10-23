@@ -55,6 +55,8 @@ A separate saved **ChatGPT · identified source** comparison (`16180362027`) exa
 
 ## itch.io next release
 
+**Later same-day update:** this historical inspection is superseded by the [completed public nine-file release](itch-release-2026-10-22.md).
+
 Read-only inspection of the existing project editor confirms **Draft**, **No payments**, no uploaded downloads, and stale description text saying the GM Guide/SRD are still being revised. The public creator profile has the same stale readiness wording. No upload, edit or publication occurred in this run.
 
 The [current upload checklist](distribution-preparation.md#current-itchio-upload-checklist--22-october-2026) identifies nine ready PDFs: three current reading books, four compact guides, and the two original fillable companions. The creator-kit ZIP is an optional tenth file; it is not a replacement for the books/guides. Update readiness text and replace old PHB-page gallery previews with the actual companion previews during that separate release preparation. Keep high-resolution/old editions outside the main file list. Founder playtests, cross-book reconciliation and outreach remain separate workstreams.

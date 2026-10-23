@@ -1,0 +1,45 @@
+SwordWeave - Aegis character-sheet print pack
+v0.1 alpha / 23 October 2026
+
+START HERE
+Choose ONE blank front: portrait normal, portrait dense, landscape normal,
+or landscape dense. Then print only the matching supporting leaves you need.
+The supporting PDFs include primitives, compositions/reusable effects,
+equipment/item rules, identity/story, full-rule continuation and a workbench.
+Repeat a supporting leaf whenever you need more space. Reuse the same P/C/E/I
+references across leaves; writing a reference does not purchase it again.
+
+PRINTING
+A4 portrait fronts are one page. A4 landscape fronts have two separately
+composed halves. Print landscape at 100% / actual size and fold through the
+clear centre gutter. Matching landscape supporting pages also fold centrally.
+Review your printer preview before printing: scaling to Fit changes the size.
+These are printable pencil-and-paper sheets, NOT interactive fillable PDFs.
+All numerical values and ownership choices on the blank sheets are empty.
+
+EXAMPLES
+Tarn Emberpost is a level-one public demonstration character: portrait normal,
+24 of 25 Character BU, separate Item BU. Orren Vaultwright is a level-sixteen
+public demonstration: landscape dense, 191 of 200 Character BU. Their full
+owned rules and continuation references are included, rather than only a
+front-page summary. Current tracking fields remain available for pencil.
+These are existing example records, not independent playtest endorsements.
+
+The supplied sheets passed digital layout, font, content and fold-gutter checks.
+A physical printer, pencil and fold proof remains pending. This alpha may change.
+
+WEBSITE AND RULES
+https://www.swordweave.quest/books#character-sheets
+https://www.swordweave.quest/rules
+https://www.swordweave.quest/character
+https://www.swordweave.quest/characters/aae2fea8-e17b-4887-afbe-a59bea94ad97?view=public
+https://www.swordweave.quest/characters/1da4e351-da76-4822-bf1f-632d2e657145?view=public
+
+Created by Marius Ion (Mashu). Keep a copy, print it for your table and share
+these complete, free sheets with friends. Support is optional:
+https://buymeacoffee.com/mashhul
+
+Designated original game text uses CC BY 4.0; software uses MIT. Artwork,
+branding, fonts and icons retain their separate notices. These print files
+do not grant a standalone artwork or trademark license. See CREDITS.txt,
+the font notices and any image/icon notices attached to the example PDFs.

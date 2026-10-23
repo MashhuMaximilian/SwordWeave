@@ -1,6 +1,10 @@
 # SwordWeave discovery and teaching work
 
+**23 October:** the [Aegis static download release](aegis-print-pack-release-2026-10-23.md) adds four blank fronts, matching portrait/landscape supports, two filled examples and a complete ZIP to Books, the creator kit and itch.io. Its digital checks and release inventory are recorded separately from the still-pending physical print/fold proof and interactive generator hosting.
+
 Updated 22 October 2026. This is the current task list; older proposals in the planning documents are historical. Preserve the homepage hero and the Rules page. Current focus is SEO, AI discovery and desktop/mobile performance. The founder has deferred videos and supplied the revised GM Guide and ready reference-edition SRD. Their public PDF objects and canonical downloads are verified; the GM and SRD website releases are live. Book consistency remains a separate workstream. The founder confirms GitHub-main automatic deployment works; leave its settings alone.
+
+**Distribution update, later 22 October:** the nine-file combined itch.io release is [public, saved and reviewed](itch-release-2026-10-22.md). The founder separately authorized publication. Search indexing is pending; further downloads were limited by the in-app browser. No video or outreach message was published.
 
 **Acceptance correction:** the founder rejected the teaching/UI and material completeness of this release. The [delivery review](delivery-review-2026-10-20.md) supersedes earlier “Live; verified” labels for product quality. Live deployment and technical tests are retained as evidence, not acceptance.
 

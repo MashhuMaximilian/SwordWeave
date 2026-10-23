@@ -1,6 +1,10 @@
 # SwordWeave distribution preparation
 
+**23 October addition:** [Aegis print-pack release](aegis-print-pack-release-2026-10-23.md) adds a complete ZIP and eight individual printable PDFs. The original nine books/guides/fillable companions remain; the itch list now has eighteen downloads. See that record for scope, source checks and physical-print limits.
+
 ## Current itch.io upload checklist · 22 October 2026
+
+**Later same-day completion:** all nine PDFs below are uploaded and the founder approved public publication. The [combined release record](itch-release-2026-10-22.md) contains the saved labels, file IDs, checks and download-test limitation. The project is live at https://mashhul.itch.io/swordweave; itch search indexing is still pending. The checklist below is the preserved pre-upload inventory, superseded for action status by that record.
 
 This section supersedes the older PHB-first/readiness notes below. All three current alpha book PDFs, four compact guides and two original companions are ready files on the website. This is an upload/review checklist; no itch upload or publication is claimed here.
 

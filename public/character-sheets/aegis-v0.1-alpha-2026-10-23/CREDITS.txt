@@ -1,0 +1,16 @@
+SwordWeave / Aegis print pack
+Created by Marius Ion (Mashu).
+AI-generated frame, character and heritage illustrations were created with
+OpenAI image-generation tools under Marius Ion's direction. Original Aegis
+frames are retained with their native transparency; print rendering converts
+them to grayscale. No new artwork was generated for this pack.
+
+Aubrey, Syne, Unica One and Oxanium retain their embedded OFL notices.
+Game-icons.net artwork retains its source authors and CC BY 3.0 notices;
+the exact used image/icon credits are attached to each example PDF.
+
+Original rules/explanatory game text: CC BY 4.0.
+https://creativecommons.org/licenses/by/4.0/
+Software: https://github.com/MashhuMaximilian/SwordWeave/blob/main/LICENSE
+For asset reuse not covered by the existing notices:
+https://www.swordweave.quest/contact

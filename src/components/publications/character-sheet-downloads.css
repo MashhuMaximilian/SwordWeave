@@ -1,0 +1,6 @@
+.sw-character-sheets{scroll-margin-top:100px}
+.sw-character-sheets__preview summary,.sw-character-sheets__examples summary{cursor:pointer;min-height:44px;padding:12px 0;font:16px/1.5 var(--font-v12-system)}
+.sw-character-sheets__preview img{display:block;width:100%;height:auto;max-width:900px;margin:18px auto}
+.sw-character-sheets__examples{margin-top:20px}
+.sw-character-sheets__notes{font:15px/1.5 var(--font-v12-body);margin-top:20px}
+.sw-character-sheets__notes a{text-decoration:underline;text-underline-offset:4px}

@@ -12,7 +12,7 @@ export const DEFINITIONS = {
   generate_lead: { form_id: ['contact'] }, contact_form_started: { form_id: ['contact'] },
   contact_form_error: { form_id: ['contact'], error_type: ['validation', 'rate_limited', 'unavailable', 'delivery_unconfirmed'] },
   discord_invite_click: { placement: ['hero', 'fab', 'footer', 'about', 'contact', 'playtest'] },
-  file_download: { book_id: ['phb', 'gm_guide', 'srd', 'play_core', 'run_core', 'create_core', 'creator_guide'], edition: ['interwoven', 'interwoven_full', 'gm_organic', 'gm_organic_full', 'srd_reference', 'earlier_dark', 'light', 'dark', 'quick_core'], release_version: ['v0.1-alpha'], placement: ['home', 'books', 'reader', 'rules', 'creating', 'combat', 'press', 'character_guide'] },
+  file_download: { book_id: ['phb', 'gm_guide', 'srd', 'play_core', 'run_core', 'create_core', 'creator_guide', 'character_sheet_pack', 'character_sheet_front', 'character_sheet_support', 'character_sheet_example'], edition: ['interwoven', 'interwoven_full', 'gm_organic', 'gm_organic_full', 'srd_reference', 'earlier_dark', 'light', 'dark', 'quick_core', 'aegis_pack', 'aegis_portrait_normal', 'aegis_portrait_dense', 'aegis_landscape_normal', 'aegis_landscape_dense', 'aegis_supporting_portrait', 'aegis_supporting_landscape', 'aegis_example_tarn', 'aegis_example_orren'], release_version: ['v0.1-alpha'], placement: ['home', 'books', 'reader', 'rules', 'creating', 'combat', 'press', 'character_guide'] },
   media_kit_download: { placement: ['press'], release_version: ['v0.1-alpha'] },
   support_click: { placement: ['fab', 'book', 'footer', 'other'] },
   copy_contact_email: { placement: ['contact'] },

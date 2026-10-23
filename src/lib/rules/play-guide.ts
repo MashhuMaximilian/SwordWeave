@@ -148,6 +148,10 @@ export const PLAY_GUIDE: GuideTopic[] = [
             "url": "/press/materials/swordweave-build-with-neris.pdf"
           },
           {
+            "title": "Download empty printable character sheets or the complete Aegis ZIP",
+            "url": "/books#character-sheets"
+          },
+          {
             "title": "Send actionable session feedback",
             "url": "/contact"
           },

@@ -1,3 +1,4 @@
+import { CharacterSheetDownloads } from '@/components/publications/character-sheet-downloads';
 import { QuickCoreDownloads } from '@/components/publications/quick-core-downloads';
 import type { Metadata } from 'next';
 import Image from 'next/image';
@@ -42,7 +43,7 @@ export default function PressPage() {
       </header>
 
       <nav className="sw-press__contents" aria-label="Creator kit sections">
-        <a href="#descriptions">Descriptions</a><a href="#facts">Facts &amp; alpha status</a><a href="#books">Books &amp; examples</a><a href="#materials">Table companions</a><a href="#quick-core">Publish your work</a><a href="#screenshots">Previews</a><a href="#logos">Logos</a><a href="#credits">Credits &amp; AI use</a>
+        <a href="#descriptions">Descriptions</a><a href="#facts">Facts &amp; alpha status</a><a href="#books">Books &amp; examples</a><a href="#materials">Table companions</a><a href="#character-sheets">Character sheets</a><a href="#quick-core">Publish your work</a><a href="#screenshots">Previews</a><a href="#logos">Logos</a><a href="#credits">Credits &amp; AI use</a>
       </nav>
 
       <section className="sw-public-section sw-press__editorial" id="descriptions" aria-labelledby="press-descriptions">
@@ -79,6 +80,7 @@ export default function PressPage() {
       </section>
 
       <CompanionMaterials />
+      <CharacterSheetDownloads placement="press" />
       <QuickCoreDownloads placement="press" ids={['create-and-publish']} title="Create and publish your own work" description="You can make and sell compatible adventures, characters, creatures and more. This guide explains attribution, license boundaries, asset permissions and selling; it creates no new platform-store agreement." />
 
       <section className="sw-public-section" id="screenshots" aria-labelledby="press-screenshots">
