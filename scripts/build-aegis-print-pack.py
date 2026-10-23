@@ -23,7 +23,10 @@ def main():
     parser.add_argument('--snapshots', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--review', type=Path, required=True)
+    parser.add_argument('--color', action='store_true', help='Gold/teal Aegis edition')
+    parser.add_argument('--zip-filename', default='swordweave-aegis-character-sheets-v0.1-alpha.zip')
     args = parser.parse_args()
+    edition = 'Gold / teal color' if args.color else 'Monochrome'
     sys.path.insert(0, str(args.renderer_root / 'scripts'))
     from character_pdf.renderer import RuntimeFolio, render, ASSETS
     from pypdf import PdfReader, PdfWriter
@@ -153,7 +156,7 @@ def main():
         path = Path(result['path'])
         writer = PdfWriter()
         writer.clone_document_from_reader(PdfReader(path))
-        writer.add_metadata({'/Title': f'SwordWeave / Aegis / {label} / v0.1 alpha',
+        writer.add_metadata({'/Title': f'SwordWeave / Aegis / {edition} / {label} / v0.1 alpha',
                              '/Author': 'Marius Ion (Mashu)',
                              '/Subject': 'Printable character-sheet '+('example' if group == 'example' else 'blank template'),
                              '/Creator': 'SwordWeave'})
@@ -163,7 +166,7 @@ def main():
             'Printable pencil-and-paper PDF; no interactive form fields.\n'
             'Original game text: CC BY 4.0, https://creativecommons.org/licenses/by/4.0/\n'
             'Artwork, branding, fonts and icons retain their separate notices.\n'
-            'AI-generated illustrations: OpenAI image tools under Marius Ion\'s direction; rendered in grayscale.\n'
+            f'AI-generated illustrations: OpenAI image tools under Marius Ion\'s direction; {"source color preserved" if args.color else "rendered in grayscale"}.\n'
             'Font notices and any used image/icon credits are attached to this PDF.\n'
             'This does not grant a standalone artwork or trademark license.\n'
             'https://www.swordweave.quest/books#character-sheets\n'
@@ -181,26 +184,33 @@ def main():
     for orientation in ('portrait', 'landscape'):
         for density in ('normal', 'compact'):
             ident = f'aegis-blank-{orientation}-'+('dense' if density == 'compact' else 'normal')
-            options = {'style': 'aegis', 'orientation': orientation, 'density': density, 'workbench': False}
+            options = {'style': 'aegis', 'orientation': orientation, 'density': density, 'workbench': False, 'color': args.color}
             result = BlankFolio(options, args.output/(ident+'.pdf')).generate()
             save_result(result, ident, f'{orientation.title()} - '+('Dense' if density == 'compact' else 'Normal'), 'blank-front')
         ident = f'aegis-blank-supporting-{orientation}'
-        options = {'style': 'aegis', 'orientation': orientation, 'density': 'normal', 'workbench': False}
+        options = {'style': 'aegis', 'orientation': orientation, 'density': 'normal', 'workbench': False, 'color': args.color}
         result = BlankFolio(options, args.output/(ident+'.pdf'), supporting=True).generate()
         save_result(result, ident, f'Blank supporting pages - {orientation}', 'blank-support')
 
+    examples = {}
     for key, orientation, density in [('tarn', 'portrait', 'normal'), ('orren', 'landscape', 'compact')]:
         source = json.loads((args.snapshots/(key+'-public-snapshot.json')).read_text())
         assert source['viewerPermission'] == 'VIEWER' and not source.get('notes') and not source.get('dmNotes')
         assert not source['buBalance']['overBudget']
         assert source['level'] == (1 if key == 'tarn' else 16)
+        examples[key] = source
         ident = 'aegis-example-'+key
         result = render({'character': source, 'options': {'style': 'aegis', 'orientation': orientation,
-                        'density': density, 'workbench': False}}, args.output/(ident+'.pdf'))
+                        'density': density, 'workbench': False, 'color': args.color}}, args.output/(ident+'.pdf'))
         save_result(result, ident, source['name']+f" - level {source['level']} example", 'example')
 
-    readme = '''SwordWeave - Aegis character-sheet print pack
-v0.1 alpha / 23 October 2026
+    readme = f'''SwordWeave - Aegis character-sheet print pack
+v0.1 alpha / 23 October 2026 / refreshed from generator release ef2ceb3f
+{edition} edition
+
+The standard individual downloads and complete pack use the gold/teal color
+edition. The separate monochrome ZIP provides the same sheets for economical
+printing. Other styles and personalized sheets are in the website generator.
 
 START HERE
 Choose ONE blank front: portrait normal, portrait dense, landscape normal,
@@ -212,16 +222,17 @@ references across leaves; writing a reference does not purchase it again.
 
 PRINTING
 A4 portrait fronts are one page. A4 landscape fronts have two separately
-composed halves. Print landscape at 100% / actual size and fold through the
-clear centre gutter. Matching landscape supporting pages also fold centrally.
+composed halves, with two primitive columns in BOTH normal and dense formats.
+Print landscape at 100% / actual size and fold through the protected 16 pt
+centre clearance. Matching landscape supporting pages also fold centrally.
 Review your printer preview before printing: scaling to Fit changes the size.
 These are printable pencil-and-paper sheets, NOT interactive fillable PDFs.
 All numerical values and ownership choices on the blank sheets are empty.
 
 EXAMPLES
 Tarn Emberpost is a level-one public demonstration character: portrait normal,
-24 of 25 Character BU, separate Item BU. Orren Vaultwright is a level-sixteen
-public demonstration: landscape dense, 191 of 200 Character BU. Their full
+{examples['tarn']['buBalance']['progressionSpent']} of {examples['tarn']['buBalance']['progressionPool']} Character BU, separate Item BU. Orren Vaultwright is a level-sixteen
+public demonstration: landscape dense, {examples['orren']['buBalance']['progressionSpent']} of {examples['orren']['buBalance']['progressionPool']} Character BU. Their full
 owned rules and continuation references are included, rather than only a
 front-page summary. Current tracking fields remain available for pencil.
 These are existing example records, not independent playtest endorsements.
@@ -244,14 +255,17 @@ Designated original game text uses CC BY 4.0; software uses MIT. Artwork,
 branding, fonts and icons retain their separate notices. These print files
 do not grant a standalone artwork or trademark license. See CREDITS.txt,
 the font notices and any image/icon notices attached to the example PDFs.
-'''
+
+CONTENTS / {edition}
+'''+''.join(f"{file['filename']} - {file['pages']} page(s), {file['bytes']:,} bytes\n" for file in files)
     (args.output/'READ-ME.txt').write_text(readme)
-    (args.output/'CREDITS.txt').write_text('''SwordWeave / Aegis print pack
+    (args.output/'CREDITS.txt').write_text(f'''SwordWeave / Aegis print pack / {edition}
 Created by Marius Ion (Mashu).
 AI-generated frame, character and heritage illustrations were created with
 OpenAI image-generation tools under Marius Ion's direction. Original Aegis
-frames are retained with their native transparency; print rendering converts
-them to grayscale. No new artwork was generated for this pack.
+frames retain their native transparency. {"The renderer applies the approved simulated gold/teal/silver palette and preserves source illustration color." if args.color else "Print rendering converts artwork to grayscale."}
+No new artwork was generated for this pack. Metallic appearance is simulated
+with process color, not foil or metallic ink.
 
 Aubrey, Syne, Unica One and Oxanium retain their embedded OFL notices.
 Game-icons.net artwork retains its source authors and CC BY 3.0 notices;
@@ -263,7 +277,7 @@ Software: https://github.com/MashhuMaximilian/SwordWeave/blob/main/LICENSE
 For asset reuse not covered by the existing notices:
 https://www.swordweave.quest/contact
 ''')
-    archive = args.output/'swordweave-aegis-character-sheets-v0.1-alpha.zip'
+    archive = args.output/args.zip_filename
     with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as z:
         for file in files:
             folder = '01-blank-fronts' if file['group'] == 'blank-front' else '02-supporting-pages' if file['group'] == 'blank-support' else '03-filled-examples'
@@ -279,10 +293,11 @@ https://www.swordweave.quest/contact
             member = next(n for n in z.namelist() if n.endswith('/'+file['filename']))
             assert hashlib.sha256(z.read(member)).hexdigest() == file['sha256']
     manifest = {'release': 'v0.1-alpha', 'updated': '2026-10-23', 'style': 'Aegis',
-        'printable': True, 'fillable': False, 'physicalProof': 'pending', 'files': files,
+        'color': args.color, 'edition': edition, 'printable': True, 'fillable': False, 'physicalProof': 'pending', 'files': files,
         'zip': {'filename': archive.name, 'bytes': archive.stat().st_size, 'sha256': sha(archive)},
         'renderer': {str(p.relative_to(args.renderer_root)): sha(p) for p in
-            [args.renderer_root/'scripts/character_pdf/renderer.py', args.renderer_root/'scripts/character_pdf/design.py']}}
+            [args.renderer_root/'scripts/character_pdf/renderer.py', args.renderer_root/'scripts/character_pdf/design.py', args.renderer_root/'scripts/character_pdf/theme.py', args.renderer_root/'scripts/character_pdf/markdown.py']},
+        'source_snapshots': {key: sha(args.snapshots/(key+'-public-snapshot.json')) for key in examples}}
     (args.review/'manifest.json').write_text(json.dumps(manifest, indent=2)+'\n')
     print(json.dumps({'pdfs': len(files), 'pages': sum(f['pages'] for f in files),
                       'zip': str(archive), 'bytes': archive.stat().st_size}))

@@ -1,5 +1,7 @@
 # SwordWeave distribution preparation
 
+**23 October static refresh:** [Color-default Aegis refresh](aegis-static-refresh-2026-10-23.md) supersedes the earlier monochrome pack. It replaces the nine sheet downloads and adds one optional monochrome ZIP; the release record distinguishes verified website files from itch upload status.
+
 **23 October addition:** [Aegis print-pack release](aegis-print-pack-release-2026-10-23.md) adds a complete ZIP and eight individual printable PDFs. The original nine books/guides/fillable companions remain; the itch list now has eighteen downloads. See that record for scope, source checks and physical-print limits.
 
 ## Current itch.io upload checklist · 22 October 2026

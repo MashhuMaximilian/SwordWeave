@@ -1,107 +1,334 @@
 {
-  "release": "v0.1-alpha",
-  "updated": "2026-10-23",
-  "style": "Aegis",
-  "printable": true,
-  "fillable": false,
-  "physicalProof": "pending",
-  "zip": {
-    "filename": "swordweave-aegis-character-sheets-v0.1-alpha.zip",
-    "bytes": 11833101,
-    "sha256": "a5be94f3f95f335f95de3dbdfdc2b706268bd15dd45a530c355561d4817df3d2"
+  "current": {
+    "version": "v0.1-alpha",
+    "updated": "2026-10-23",
+    "revision": 2,
+    "defaultEdition": "gold_teal",
+    "sourceGeneratorCommit": "ef2ceb3fe9d5ebc5fc6847fcde85bc57ecae419f",
+    "printable": true,
+    "fillable": false,
+    "physicalProof": "pending",
+    "files": [
+      {
+        "id": "aegis-blank-portrait-normal",
+        "label": "Portrait - Normal",
+        "group": "blank-front",
+        "pages": 1,
+        "bytes": 2211082,
+        "sha256": "6d27a657114a2c748bd51f35649e6481e0e9629d7cdb5d5b436d4f70381b98f6",
+        "href": "/character-sheets/aegis-v0.1-alpha-2026-10-23-r2/aegis-blank-portrait-normal.pdf",
+        "edition": "aegis_portrait_normal",
+        "description": "One A4 front with a spacious ingredient record."
+      },
+      {
+        "id": "aegis-blank-portrait-dense",
+        "label": "Portrait - Dense",
+        "group": "blank-front",
+        "pages": 1,
+        "bytes": 2210817,
+        "sha256": "0f6b0a7a432635706c41c4d758a6422d995145e98c3335bf9dd2588eb6dfc91e",
+        "href": "/character-sheets/aegis-v0.1-alpha-2026-10-23-r2/aegis-blank-portrait-dense.pdf",
+        "edition": "aegis_portrait_dense",
+        "description": "One A4 front with two columns for owned ingredients."
+      },
+      {
+        "id": "aegis-blank-landscape-normal",
+        "label": "Landscape - Normal",
+        "group": "blank-front",
+        "pages": 1,
+        "bytes": 2210695,
+        "sha256": "a764d0bdb73ebb5c5be1a842a10d0dcdadda009473a91d941a3de1693f481503",
+        "href": "/character-sheets/aegis-v0.1-alpha-2026-10-23-r2/aegis-blank-landscape-normal.pdf",
+        "edition": "aegis_landscape_normal",
+        "description": "One A4 sheet with a core panel and two primitive columns; fold through the protected 16 pt centre clearance."
+      },
+      {
+        "id": "aegis-blank-landscape-dense",
+        "label": "Landscape - Dense",
+        "group": "blank-front",
+        "pages": 1,
+        "bytes": 2210683,
+        "sha256": "6b36f7dc95f4920057d5fa171a9f1115b41e15294e627e87d3f69d1575f1a50c",
+        "href": "/character-sheets/aegis-v0.1-alpha-2026-10-23-r2/aegis-blank-landscape-dense.pdf",
+        "edition": "aegis_landscape_dense",
+        "description": "One A4 sheet with a core panel and two denser primitive columns; fold through the protected 16 pt centre clearance."
+      },
+      {
+        "id": "aegis-blank-supporting-portrait",
+        "label": "Blank supporting pages - portrait",
+        "group": "blank-support",
+        "pages": 6,
+        "bytes": 2232953,
+        "sha256": "af67625af2dbd0bd4d676487b3ebec6b65705b4f74fbbd4aab5d802b3334327d",
+        "href": "/character-sheets/aegis-v0.1-alpha-2026-10-23-r2/aegis-blank-supporting-portrait.pdf",
+        "edition": "aegis_supporting_portrait",
+        "description": "Six repeatable A4 leaves: primitives, compositions/effects, equipment, identity, full rules and a workbench."
+      },
+      {
+        "id": "aegis-blank-supporting-landscape",
+        "label": "Blank supporting pages - landscape",
+        "group": "blank-support",
+        "pages": 3,
+        "bytes": 2218247,
+        "sha256": "dd56cb44cb47959d3c84444ab9c025fa3e5e4e9342e30d7c9ef74607a8da035f",
+        "href": "/character-sheets/aegis-v0.1-alpha-2026-10-23-r2/aegis-blank-supporting-landscape.pdf",
+        "edition": "aegis_supporting_landscape",
+        "description": "Three foldable A4 sheets containing six matching supporting panels. Print only the pages you need."
+      },
+      {
+        "id": "aegis-example-tarn",
+        "label": "Tarn Emberpost - level 1 example",
+        "group": "example",
+        "pages": 5,
+        "bytes": 2645090,
+        "sha256": "f11b3907cab33060217360caff8fecb56aecca748fd59ec743e11d24cd0a3042",
+        "href": "/character-sheets/aegis-v0.1-alpha-2026-10-23-r2/aegis-example-tarn.pdf",
+        "edition": "aegis_example_tarn",
+        "description": "A level-one public example in the normal portrait format, including full rules, equipment and identity."
+      },
+      {
+        "id": "aegis-example-orren",
+        "label": "Orren Vaultwright - level 16 example",
+        "group": "example",
+        "pages": 7,
+        "bytes": 2887065,
+        "sha256": "aa9bb5bb6896bce110a723074520c9cc45da3e222dccfe0b29e882bb0fa9312c",
+        "href": "/character-sheets/aegis-v0.1-alpha-2026-10-23-r2/aegis-example-orren.pdf",
+        "edition": "aegis_example_orren",
+        "description": "A level-sixteen public example in the dense landscape format, including its full continuation records."
+      }
+    ],
+    "pack": {
+      "filename": "swordweave-aegis-character-sheets-v0.1-alpha.zip",
+      "bytes": 15131333,
+      "sha256": "f8130e7bb5366741ec114e46361228907f6421a84c4f937ba0561ae2edd12cd1",
+      "href": "/character-sheets/aegis-v0.1-alpha-2026-10-23-r2/swordweave-aegis-character-sheets-v0.1-alpha.zip",
+      "color": true,
+      "pages": 25
+    },
+    "monochromePack": {
+      "filename": "swordweave-aegis-character-sheets-v0.1-alpha-monochrome.zip",
+      "bytes": 12076161,
+      "sha256": "589b9123ed4fcf11b4b2a7f33141c67335e76d9ed2524b91490c900b86134bd0",
+      "href": "/character-sheets/aegis-v0.1-alpha-2026-10-23-r2/swordweave-aegis-character-sheets-v0.1-alpha-monochrome.zip",
+      "color": false,
+      "pages": 25
+    },
+    "preview": "/character-sheets/aegis-v0.1-alpha-2026-10-23-r2/aegis-four-formats.webp",
+    "readme": "/character-sheets/aegis-v0.1-alpha-2026-10-23-r2/READ-ME.txt"
   },
-  "files": [
-    {
-      "id": "aegis-blank-portrait-normal",
-      "label": "Portrait - Normal",
-      "group": "blank-front",
-      "pages": 1,
-      "bytes": 1765983,
-      "sha256": "af1b8c875c354b680484cf8a6343f95ae9248d0b92496fb80c1ab7b4e9fe30f0",
-      "href": "/character-sheets/aegis-v0.1-alpha-2026-10-23/aegis-blank-portrait-normal.pdf",
-      "edition": "aegis_portrait_normal",
-      "description": "One A4 front with a spacious ingredient record."
+  "color": {
+    "release": "v0.1-alpha",
+    "updated": "2026-10-23",
+    "style": "Aegis",
+    "color": true,
+    "edition": "Gold / teal color",
+    "printable": true,
+    "fillable": false,
+    "physicalProof": "pending",
+    "files": [
+      {
+        "id": "aegis-blank-portrait-normal",
+        "label": "Portrait - Normal",
+        "group": "blank-front",
+        "filename": "aegis-blank-portrait-normal.pdf",
+        "pages": 1,
+        "bytes": 2211082,
+        "sha256": "6d27a657114a2c748bd51f35649e6481e0e9629d7cdb5d5b436d4f70381b98f6",
+        "manifest": "/Users/max/dev/SwordWeave/output/publications/aegis-print-pack-refresh/color/aegis-blank-portrait-normal.json"
+      },
+      {
+        "id": "aegis-blank-portrait-dense",
+        "label": "Portrait - Dense",
+        "group": "blank-front",
+        "filename": "aegis-blank-portrait-dense.pdf",
+        "pages": 1,
+        "bytes": 2210817,
+        "sha256": "0f6b0a7a432635706c41c4d758a6422d995145e98c3335bf9dd2588eb6dfc91e",
+        "manifest": "/Users/max/dev/SwordWeave/output/publications/aegis-print-pack-refresh/color/aegis-blank-portrait-dense.json"
+      },
+      {
+        "id": "aegis-blank-supporting-portrait",
+        "label": "Blank supporting pages - portrait",
+        "group": "blank-support",
+        "filename": "aegis-blank-supporting-portrait.pdf",
+        "pages": 6,
+        "bytes": 2232953,
+        "sha256": "af67625af2dbd0bd4d676487b3ebec6b65705b4f74fbbd4aab5d802b3334327d",
+        "manifest": "/Users/max/dev/SwordWeave/output/publications/aegis-print-pack-refresh/color/aegis-blank-supporting-portrait.json"
+      },
+      {
+        "id": "aegis-blank-landscape-normal",
+        "label": "Landscape - Normal",
+        "group": "blank-front",
+        "filename": "aegis-blank-landscape-normal.pdf",
+        "pages": 1,
+        "bytes": 2210695,
+        "sha256": "a764d0bdb73ebb5c5be1a842a10d0dcdadda009473a91d941a3de1693f481503",
+        "manifest": "/Users/max/dev/SwordWeave/output/publications/aegis-print-pack-refresh/color/aegis-blank-landscape-normal.json"
+      },
+      {
+        "id": "aegis-blank-landscape-dense",
+        "label": "Landscape - Dense",
+        "group": "blank-front",
+        "filename": "aegis-blank-landscape-dense.pdf",
+        "pages": 1,
+        "bytes": 2210683,
+        "sha256": "6b36f7dc95f4920057d5fa171a9f1115b41e15294e627e87d3f69d1575f1a50c",
+        "manifest": "/Users/max/dev/SwordWeave/output/publications/aegis-print-pack-refresh/color/aegis-blank-landscape-dense.json"
+      },
+      {
+        "id": "aegis-blank-supporting-landscape",
+        "label": "Blank supporting pages - landscape",
+        "group": "blank-support",
+        "filename": "aegis-blank-supporting-landscape.pdf",
+        "pages": 3,
+        "bytes": 2218247,
+        "sha256": "dd56cb44cb47959d3c84444ab9c025fa3e5e4e9342e30d7c9ef74607a8da035f",
+        "manifest": "/Users/max/dev/SwordWeave/output/publications/aegis-print-pack-refresh/color/aegis-blank-supporting-landscape.json"
+      },
+      {
+        "id": "aegis-example-tarn",
+        "label": "Tarn Emberpost - level 1 example",
+        "group": "example",
+        "filename": "aegis-example-tarn.pdf",
+        "pages": 5,
+        "bytes": 2645090,
+        "sha256": "f11b3907cab33060217360caff8fecb56aecca748fd59ec743e11d24cd0a3042",
+        "manifest": "/Users/max/dev/SwordWeave/output/publications/aegis-print-pack-refresh/color/aegis-example-tarn.json"
+      },
+      {
+        "id": "aegis-example-orren",
+        "label": "Orren Vaultwright - level 16 example",
+        "group": "example",
+        "filename": "aegis-example-orren.pdf",
+        "pages": 7,
+        "bytes": 2887065,
+        "sha256": "aa9bb5bb6896bce110a723074520c9cc45da3e222dccfe0b29e882bb0fa9312c",
+        "manifest": "/Users/max/dev/SwordWeave/output/publications/aegis-print-pack-refresh/color/aegis-example-orren.json"
+      }
+    ],
+    "zip": {
+      "filename": "swordweave-aegis-character-sheets-v0.1-alpha.zip",
+      "bytes": 15131333,
+      "sha256": "f8130e7bb5366741ec114e46361228907f6421a84c4f937ba0561ae2edd12cd1"
     },
-    {
-      "id": "aegis-blank-portrait-dense",
-      "label": "Portrait - Dense",
-      "group": "blank-front",
-      "pages": 1,
-      "bytes": 1765779,
-      "sha256": "c68d4fe18cb6935e65f43b1eb3f9ec6569b3ef43832f4298da95161b2edecc2d",
-      "href": "/character-sheets/aegis-v0.1-alpha-2026-10-23/aegis-blank-portrait-dense.pdf",
-      "edition": "aegis_portrait_dense",
-      "description": "One A4 front with two columns for owned ingredients."
+    "renderer": {
+      "scripts/character_pdf/renderer.py": "ed63762d9a55fc3d4e32ca08116ba6b379ef52f4992b4e621f7bbcb44e89f333",
+      "scripts/character_pdf/design.py": "f30df78a9aef103f3f3c6d010be2fddc516570d5c8f53ea07179024f9113779a",
+      "scripts/character_pdf/theme.py": "13d3e5d03d05ccaca0fb7e11cf00e4de39b60d838d5c88063df1d13e8e51e31c",
+      "scripts/character_pdf/markdown.py": "f8b885147f53605c3a9407e8516aa8ab2bf03d2afd9ed6a4f54ae98f15197bbe"
     },
-    {
-      "id": "aegis-blank-landscape-normal",
-      "label": "Landscape - Normal",
-      "group": "blank-front",
-      "pages": 1,
-      "bytes": 1765303,
-      "sha256": "bf6dd1aad546b151dc3da36a9ed0620c35ff7238e59f527cfc7ccc6995cfa693",
-      "href": "/character-sheets/aegis-v0.1-alpha-2026-10-23/aegis-blank-landscape-normal.pdf",
-      "edition": "aegis_landscape_normal",
-      "description": "One A4 sheet with a core panel and a wide ingredient panel; fold through the clear centre."
-    },
-    {
-      "id": "aegis-blank-landscape-dense",
-      "label": "Landscape - Dense",
-      "group": "blank-front",
-      "pages": 1,
-      "bytes": 1765565,
-      "sha256": "6f353c8432c47ab9047b5a6164b8ffc9724965fdfa9dca637f1c8366b857017a",
-      "href": "/character-sheets/aegis-v0.1-alpha-2026-10-23/aegis-blank-landscape-dense.pdf",
-      "edition": "aegis_landscape_dense",
-      "description": "One A4 sheet with a core panel and two ingredient columns; fold through the clear centre."
-    },
-    {
-      "id": "aegis-blank-supporting-portrait",
-      "label": "Blank supporting pages - portrait",
-      "group": "blank-support",
-      "pages": 6,
-      "bytes": 1782208,
-      "sha256": "e02491836a7fa9dcf71d30fd26876a64f8d24d05279cc027813de6a0ff245426",
-      "href": "/character-sheets/aegis-v0.1-alpha-2026-10-23/aegis-blank-supporting-portrait.pdf",
-      "edition": "aegis_supporting_portrait",
-      "description": "Six repeatable A4 leaves: primitives, compositions/effects, equipment, identity, full rules and a workbench."
-    },
-    {
-      "id": "aegis-blank-supporting-landscape",
-      "label": "Blank supporting pages - landscape",
-      "group": "blank-support",
-      "pages": 3,
-      "bytes": 1768250,
-      "sha256": "f76221da125d46ae5c277f5cdee2c22153778c13a620edecad10600adbb2a0e4",
-      "href": "/character-sheets/aegis-v0.1-alpha-2026-10-23/aegis-blank-supporting-landscape.pdf",
-      "edition": "aegis_supporting_landscape",
-      "description": "Three foldable A4 sheets containing six matching supporting panels. Print only the pages you need."
-    },
-    {
-      "id": "aegis-example-tarn",
-      "label": "Tarn Emberpost - level 1 example",
-      "group": "example",
-      "pages": 5,
-      "bytes": 1996309,
-      "sha256": "43b367b63c5c073b049c00251914e1ba5a04b147aa114c227729178562ba1a26",
-      "href": "/character-sheets/aegis-v0.1-alpha-2026-10-23/aegis-example-tarn.pdf",
-      "edition": "aegis_example_tarn",
-      "description": "A level-one public example in the normal portrait format, including full rules, equipment and identity."
-    },
-    {
-      "id": "aegis-example-orren",
-      "label": "Orren Vaultwright - level 16 example",
-      "group": "example",
-      "pages": 7,
-      "bytes": 2083888,
-      "sha256": "bbed40c3f6bdae3dbfe7f20bc87df74a91bc398f3337c92a897e8dce3a319ea4",
-      "href": "/character-sheets/aegis-v0.1-alpha-2026-10-23/aegis-example-orren.pdf",
-      "edition": "aegis_example_orren",
-      "description": "A level-sixteen public example in the dense landscape format, including its full continuation records."
+    "source_snapshots": {
+      "tarn": "baac7eb003a0085d0c2bb94ed390337b7eb1182ac63eed206f05f2981a12a065",
+      "orren": "0087b7eb460d804fe1a469810832b1f9e360efb058cd101495c4dcfa32a669d4"
     }
-  ],
-  "rendererSourceHashes": {
-    "scripts/character_pdf/renderer.py": "33c57f7a6d99d3d3f29cb69adb9b51fd6040ab9814ac3589f36857ce858ee8ef",
-    "scripts/character_pdf/design.py": "f30df78a9aef103f3f3c6d010be2fddc516570d5c8f53ea07179024f9113779a"
+  },
+  "monochrome": {
+    "release": "v0.1-alpha",
+    "updated": "2026-10-23",
+    "style": "Aegis",
+    "color": false,
+    "edition": "Monochrome",
+    "printable": true,
+    "fillable": false,
+    "physicalProof": "pending",
+    "files": [
+      {
+        "id": "aegis-blank-portrait-normal",
+        "label": "Portrait - Normal",
+        "group": "blank-front",
+        "filename": "aegis-blank-portrait-normal.pdf",
+        "pages": 1,
+        "bytes": 1765859,
+        "sha256": "da11c3a7f27dc99f9ad57155d6a84f8238c4d560137035c0c7e8ff7bd389df40",
+        "manifest": "/Users/max/dev/SwordWeave/output/publications/aegis-print-pack-refresh/monochrome/aegis-blank-portrait-normal.json"
+      },
+      {
+        "id": "aegis-blank-portrait-dense",
+        "label": "Portrait - Dense",
+        "group": "blank-front",
+        "filename": "aegis-blank-portrait-dense.pdf",
+        "pages": 1,
+        "bytes": 1765571,
+        "sha256": "a4b70107ceb2d41ebfb27320178dd03787777c60057773f3b528c1ea50dcdda7",
+        "manifest": "/Users/max/dev/SwordWeave/output/publications/aegis-print-pack-refresh/monochrome/aegis-blank-portrait-dense.json"
+      },
+      {
+        "id": "aegis-blank-supporting-portrait",
+        "label": "Blank supporting pages - portrait",
+        "group": "blank-support",
+        "filename": "aegis-blank-supporting-portrait.pdf",
+        "pages": 6,
+        "bytes": 1781990,
+        "sha256": "1585b2be15af3ff98092b6c16ee2f5a0205a6e1a0442114063a8479c4a45b541",
+        "manifest": "/Users/max/dev/SwordWeave/output/publications/aegis-print-pack-refresh/monochrome/aegis-blank-supporting-portrait.json"
+      },
+      {
+        "id": "aegis-blank-landscape-normal",
+        "label": "Landscape - Normal",
+        "group": "blank-front",
+        "filename": "aegis-blank-landscape-normal.pdf",
+        "pages": 1,
+        "bytes": 1765444,
+        "sha256": "ab9fdb98b802768544a8a784b04ac194ca3a1c2c30407cf2afa06eb6c41fe370",
+        "manifest": "/Users/max/dev/SwordWeave/output/publications/aegis-print-pack-refresh/monochrome/aegis-blank-landscape-normal.json"
+      },
+      {
+        "id": "aegis-blank-landscape-dense",
+        "label": "Landscape - Dense",
+        "group": "blank-front",
+        "filename": "aegis-blank-landscape-dense.pdf",
+        "pages": 1,
+        "bytes": 1765435,
+        "sha256": "9f1bc80d7a7a066646104121c0ac7115c0475c972ed957b7ccc37f00e7c13f79",
+        "manifest": "/Users/max/dev/SwordWeave/output/publications/aegis-print-pack-refresh/monochrome/aegis-blank-landscape-dense.json"
+      },
+      {
+        "id": "aegis-blank-supporting-landscape",
+        "label": "Blank supporting pages - landscape",
+        "group": "blank-support",
+        "filename": "aegis-blank-supporting-landscape.pdf",
+        "pages": 3,
+        "bytes": 1768106,
+        "sha256": "2aa2aa0ae868e2bac0a8cb8780d3d64f6b20f88baa40f32c4c77d7d418f8c583",
+        "manifest": "/Users/max/dev/SwordWeave/output/publications/aegis-print-pack-refresh/monochrome/aegis-blank-supporting-landscape.json"
+      },
+      {
+        "id": "aegis-example-tarn",
+        "label": "Tarn Emberpost - level 1 example",
+        "group": "example",
+        "filename": "aegis-example-tarn.pdf",
+        "pages": 5,
+        "bytes": 2097856,
+        "sha256": "263b140363dbb5d309cef5ea4a29fd5b7a868232d1369dec939ed84d854d2516",
+        "manifest": "/Users/max/dev/SwordWeave/output/publications/aegis-print-pack-refresh/monochrome/aegis-example-tarn.json"
+      },
+      {
+        "id": "aegis-example-orren",
+        "label": "Orren Vaultwright - level 16 example",
+        "group": "example",
+        "filename": "aegis-example-orren.pdf",
+        "pages": 7,
+        "bytes": 2280946,
+        "sha256": "9382f3a5d7b564e96aa42b0fe02e42a43c21baa27c5e0a00b3393cce4b2e7d16",
+        "manifest": "/Users/max/dev/SwordWeave/output/publications/aegis-print-pack-refresh/monochrome/aegis-example-orren.json"
+      }
+    ],
+    "zip": {
+      "filename": "swordweave-aegis-character-sheets-v0.1-alpha-monochrome.zip",
+      "bytes": 12076161,
+      "sha256": "589b9123ed4fcf11b4b2a7f33141c67335e76d9ed2524b91490c900b86134bd0"
+    },
+    "renderer": {
+      "scripts/character_pdf/renderer.py": "ed63762d9a55fc3d4e32ca08116ba6b379ef52f4992b4e621f7bbcb44e89f333",
+      "scripts/character_pdf/design.py": "f30df78a9aef103f3f3c6d010be2fddc516570d5c8f53ea07179024f9113779a",
+      "scripts/character_pdf/theme.py": "13d3e5d03d05ccaca0fb7e11cf00e4de39b60d838d5c88063df1d13e8e51e31c",
+      "scripts/character_pdf/markdown.py": "f8b885147f53605c3a9407e8516aa8ab2bf03d2afd9ed6a4f54ae98f15197bbe"
+    },
+    "source_snapshots": {
+      "tarn": "baac7eb003a0085d0c2bb94ed390337b7eb1182ac63eed206f05f2981a12a065",
+      "orren": "0087b7eb460d804fe1a469810832b1f9e360efb058cd101495c4dcfa32a669d4"
+    }
   }
 }

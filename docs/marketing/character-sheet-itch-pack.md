@@ -1,6 +1,10 @@
 # Proposed character-sheet addition for itch.io / 23 October 2026
 
-## Published / 23 October 2026
+## Latest refresh / 23 October 2026
+
+The founder requested gold/teal as the default. See [the refreshed static release](aegis-static-refresh-2026-10-23.md) for the regenerated eight PDFs and ZIP, optional monochrome ZIP, updated preview and exact publication status. The older pack and initial proposal below are history.
+
+## Initial publication / 23 October 2026
 
 The founder subsequently requested individual files as well as the complete ZIP.
 That release is now live on [Books](https://www.swordweave.quest/books#character-sheets),
