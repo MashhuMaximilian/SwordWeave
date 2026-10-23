@@ -20,7 +20,7 @@ export function bookPdfDownloads(book: { slug: string; lightPdf: string; darkPdf
   ];
 }
 
-export function bookDownloadEvent(slug: string, href: string, placement: 'home' | 'books' | 'reader') {
+export function bookDownloadEvent(slug: string, href: string, placement: 'home' | 'books' | 'reader' | 'press') {
   const book_id = slug === 'players-handbook' ? 'phb' : slug === 'game-masters-guide' ? 'gm_guide' : 'srd';
   const edition = slug === 'players-handbook'
     ? (href.endsWith('-full.pdf') ? 'interwoven_full' : href.includes('-dark') ? 'earlier_dark' : 'interwoven')

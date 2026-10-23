@@ -1,7 +1,7 @@
 {
   "name": "SwordWeave",
   "version": "v0.1 alpha",
-  "updated": "2026-10-21",
+  "updated": "2026-10-23",
   "creator": "Marius Ion (Mashu)",
   "website": "https://www.swordweave.quest/",
   "email": "contact@swordweave.quest",
@@ -146,12 +146,12 @@
       "file": "previews/phb-cover.jpg",
       "kind": "book",
       "label": "Player’s Handbook cover",
-      "width": 894,
-      "height": 1200,
+      "width": 739,
+      "height": 1000,
       "caption": "Cover of the illustrated v0.1-alpha Player’s Handbook, Interwoven edition, 19 October 2026. Actual PDF page 1.",
       "credit": "SwordWeave / Marius Ion. AI-generated illustration made with OpenAI image-generation tools under Marius Ion’s direction.",
       "source": "Player’s Handbook, Interwoven edition, PDF page 1",
-      "sourcePdfSha256": "6215d7461b8fe5748898b586d6b89fde52a17a208d555eaea941345422fc39ae",
+      "sourcePdfSha256": "974a278a88f34ceb18670ec1688fa709ab5b7cdcee22d4c1cd0bb82276b700d9",
       "rights": "Existing book preview, not an open artwork license. The complete-book notice and separately identified art, branding and font notices apply; ask before other standalone artwork reuse."
     },
     {

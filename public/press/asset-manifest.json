@@ -1,7 +1,7 @@
 {
   "project": "SwordWeave",
   "version": "v0.1 alpha",
-  "updated": "2026-10-21",
+  "updated": "2026-10-23",
   "source": "https://www.swordweave.quest/press",
   "notice": "Read asset-notices.md. These files do not share one blanket license.",
   "assets": [
@@ -48,15 +48,15 @@
       "file": "previews/phb-cover.jpg",
       "kind": "book",
       "label": "Player’s Handbook cover",
-      "width": 894,
-      "height": 1200,
+      "width": 739,
+      "height": 1000,
       "caption": "Cover of the illustrated v0.1-alpha Player’s Handbook, Interwoven edition, 19 October 2026. Actual PDF page 1.",
       "credit": "SwordWeave / Marius Ion. AI-generated illustration made with OpenAI image-generation tools under Marius Ion’s direction.",
       "source": "Player’s Handbook, Interwoven edition, PDF page 1",
-      "sourcePdfSha256": "6215d7461b8fe5748898b586d6b89fde52a17a208d555eaea941345422fc39ae",
+      "sourcePdfSha256": "974a278a88f34ceb18670ec1688fa709ab5b7cdcee22d4c1cd0bb82276b700d9",
       "rights": "Existing book preview, not an open artwork license. The complete-book notice and separately identified art, branding and font notices apply; ask before other standalone artwork reuse.",
-      "bytes": 302874,
-      "sha256": "89952a610b9e1f271a876eecb4b9dc12f6d067b3f4129637ae1ea47e176fa122"
+      "bytes": 174908,
+      "sha256": "1505fe93c3efe2814148a3f2f5c3776b286808053a257465b55341c6bc724fb8"
     },
     {
       "file": "previews/first-session-run-sheet.jpg",

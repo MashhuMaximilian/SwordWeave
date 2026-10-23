@@ -1,6 +1,6 @@
 # SwordWeave creator fact sheet
 
-v0.1 alpha · Updated 2026-10-21
+v0.1 alpha · Updated 2026-10-23
 
 ## One sentence
 

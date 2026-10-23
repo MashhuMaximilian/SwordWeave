@@ -1,0 +1,354 @@
+{
+  "players-handbook": {
+    "sourcePdfSha256": "974a278a88f34ceb18670ec1688fa709ab5b7cdcee22d4c1cd0bb82276b700d9",
+    "previews": [
+      {
+        "src": "/publications/previews/2026-10-23/players-handbook-1.webp",
+        "width": 739,
+        "height": 1000,
+        "page": 1,
+        "bytes": 115108
+      },
+      {
+        "src": "/publications/previews/2026-10-23/players-handbook-18.webp",
+        "width": 739,
+        "height": 1000,
+        "page": 18,
+        "bytes": 95356
+      },
+      {
+        "src": "/publications/previews/2026-10-23/players-handbook-69.webp",
+        "width": 739,
+        "height": 1000,
+        "page": 69,
+        "bytes": 83882
+      }
+    ]
+  },
+  "game-masters-guide": {
+    "sourcePdfSha256": "2e039d0193d87235cebdc693acc3dbc8adf685fb44bd34977a54f8581b1651c7",
+    "previews": [
+      {
+        "src": "/publications/previews/2026-10-23/game-masters-guide-1.webp",
+        "width": 745,
+        "height": 1000,
+        "page": 1,
+        "bytes": 86358
+      },
+      {
+        "src": "/publications/previews/2026-10-23/game-masters-guide-21.webp",
+        "width": 745,
+        "height": 1000,
+        "page": 21,
+        "bytes": 197606
+      },
+      {
+        "src": "/publications/previews/2026-10-23/game-masters-guide-65.webp",
+        "width": 745,
+        "height": 1000,
+        "page": 65,
+        "bytes": 106844
+      }
+    ]
+  },
+  "srd": {
+    "sourcePdfSha256": "f356c7bd603812781954a6fabe5cedff792f3f6ca97c446c81cc54425bca39a1",
+    "previews": [
+      {
+        "src": "/publications/previews/2026-10-23/srd-1.webp",
+        "width": 745,
+        "height": 1000,
+        "page": 1,
+        "bytes": 40448
+      },
+      {
+        "src": "/publications/previews/2026-10-23/srd-12.webp",
+        "width": 745,
+        "height": 1000,
+        "page": 12,
+        "bytes": 63212
+      },
+      {
+        "src": "/publications/previews/2026-10-23/srd-26.webp",
+        "width": 745,
+        "height": 1000,
+        "page": 26,
+        "bytes": 60742
+      }
+    ]
+  },
+  "play": {
+    "sourcePdfSha256": "bd0dd178452f978cb6c8a991bf469a934ebae5c89b5a3878892a9f7f1031327c",
+    "previews": [
+      {
+        "src": "/publications/previews/2026-10-23/play-1.webp",
+        "width": 708,
+        "height": 1000,
+        "page": 1,
+        "bytes": 100276
+      },
+      {
+        "src": "/publications/previews/2026-10-23/play-2.webp",
+        "width": 708,
+        "height": 1000,
+        "page": 2,
+        "bytes": 109962
+      }
+    ]
+  },
+  "run": {
+    "sourcePdfSha256": "7564a6d067c3d53bffe239ec68611e3ad7a262fbbf323060bd4dd3cef65b84e3",
+    "previews": [
+      {
+        "src": "/publications/previews/2026-10-23/run-1.webp",
+        "width": 708,
+        "height": 1000,
+        "page": 1,
+        "bytes": 122556
+      },
+      {
+        "src": "/publications/previews/2026-10-23/run-2.webp",
+        "width": 708,
+        "height": 1000,
+        "page": 2,
+        "bytes": 85320
+      }
+    ]
+  },
+  "create": {
+    "sourcePdfSha256": "c2f8ed259eda5e6ab854a562f139ae58f662a1ed5585559d2d586b187b337825",
+    "previews": [
+      {
+        "src": "/publications/previews/2026-10-23/create-1.webp",
+        "width": 708,
+        "height": 1000,
+        "page": 1,
+        "bytes": 97526
+      },
+      {
+        "src": "/publications/previews/2026-10-23/create-2.webp",
+        "width": 708,
+        "height": 1000,
+        "page": 2,
+        "bytes": 100560
+      }
+    ]
+  },
+  "create-and-publish": {
+    "sourcePdfSha256": "b7336d026057b2611d3efe7a05a5aa720368ab57348119c3bad7d06b284f84bb",
+    "previews": [
+      {
+        "src": "/publications/previews/2026-10-23/create-and-publish-1.webp",
+        "width": 708,
+        "height": 1000,
+        "page": 1,
+        "bytes": 109138
+      },
+      {
+        "src": "/publications/previews/2026-10-23/create-and-publish-2.webp",
+        "width": 708,
+        "height": 1000,
+        "page": 2,
+        "bytes": 117906
+      }
+    ]
+  },
+  "first-session-run-sheet": {
+    "sourcePdfSha256": "7e5ee5497d7a21bdf8f5eaa12158bed053145f50845083952cbc7158e4281379",
+    "previews": [
+      {
+        "src": "/publications/previews/2026-10-23/first-session-run-sheet-1.webp",
+        "width": 708,
+        "height": 1000,
+        "page": 1,
+        "bytes": 38218
+      },
+      {
+        "src": "/publications/previews/2026-10-23/first-session-run-sheet-2.webp",
+        "width": 708,
+        "height": 1000,
+        "page": 2,
+        "bytes": 41730
+      }
+    ]
+  },
+  "build-with-neris": {
+    "sourcePdfSha256": "a09bc03a8c11c625ff227a608fa8127262183ce8ac33f81244974eca357f719a",
+    "previews": [
+      {
+        "src": "/publications/previews/2026-10-23/build-with-neris-1.webp",
+        "width": 708,
+        "height": 1000,
+        "page": 1,
+        "bytes": 68256
+      },
+      {
+        "src": "/publications/previews/2026-10-23/build-with-neris-2.webp",
+        "width": 708,
+        "height": 1000,
+        "page": 2,
+        "bytes": 48906
+      }
+    ]
+  },
+  "aegis-blank-supporting-portrait": {
+    "sourcePdfSha256": "af67625af2dbd0bd4d676487b3ebec6b65705b4f74fbbd4aab5d802b3334327d",
+    "previews": [
+      {
+        "src": "/publications/previews/2026-10-23/aegis-blank-supporting-portrait-1.webp",
+        "width": 708,
+        "height": 1000,
+        "page": 1,
+        "bytes": 37618
+      },
+      {
+        "src": "/publications/previews/2026-10-23/aegis-blank-supporting-portrait-2.webp",
+        "width": 708,
+        "height": 1000,
+        "page": 2,
+        "bytes": 34530
+      }
+    ]
+  },
+  "aegis-blank-landscape-dense": {
+    "sourcePdfSha256": "6b36f7dc95f4920057d5fa171a9f1115b41e15294e627e87d3f69d1575f1a50c",
+    "previews": [
+      {
+        "src": "/publications/previews/2026-10-23/aegis-blank-landscape-dense-1.webp",
+        "width": 1000,
+        "height": 708,
+        "page": 1,
+        "bytes": 63752
+      }
+    ]
+  },
+  "aegis-example-tarn": {
+    "sourcePdfSha256": "f11b3907cab33060217360caff8fecb56aecca748fd59ec743e11d24cd0a3042",
+    "previews": [
+      {
+        "src": "/publications/previews/2026-10-23/aegis-example-tarn-1.webp",
+        "width": 708,
+        "height": 1000,
+        "page": 1,
+        "bytes": 70984
+      },
+      {
+        "src": "/publications/previews/2026-10-23/aegis-example-tarn-2.webp",
+        "width": 708,
+        "height": 1000,
+        "page": 2,
+        "bytes": 52654
+      }
+    ]
+  },
+  "aegis-example-orren": {
+    "sourcePdfSha256": "aa9bb5bb6896bce110a723074520c9cc45da3e222dccfe0b29e882bb0fa9312c",
+    "previews": [
+      {
+        "src": "/publications/previews/2026-10-23/aegis-example-orren-1.webp",
+        "width": 1000,
+        "height": 708,
+        "page": 1,
+        "bytes": 124482
+      },
+      {
+        "src": "/publications/previews/2026-10-23/aegis-example-orren-2.webp",
+        "width": 1000,
+        "height": 708,
+        "page": 2,
+        "bytes": 78432
+      }
+    ]
+  },
+  "aegis-blank-supporting-landscape": {
+    "sourcePdfSha256": "dd56cb44cb47959d3c84444ab9c025fa3e5e4e9342e30d7c9ef74607a8da035f",
+    "previews": [
+      {
+        "src": "/publications/previews/2026-10-23/aegis-blank-supporting-landscape-1.webp",
+        "width": 1000,
+        "height": 708,
+        "page": 1,
+        "bytes": 42692
+      },
+      {
+        "src": "/publications/previews/2026-10-23/aegis-blank-supporting-landscape-2.webp",
+        "width": 1000,
+        "height": 708,
+        "page": 2,
+        "bytes": 47394
+      }
+    ]
+  },
+  "aegis-blank-portrait-normal": {
+    "sourcePdfSha256": "6d27a657114a2c748bd51f35649e6481e0e9629d7cdb5d5b436d4f70381b98f6",
+    "previews": [
+      {
+        "src": "/publications/previews/2026-10-23/aegis-blank-portrait-normal-1.webp",
+        "width": 708,
+        "height": 1000,
+        "page": 1,
+        "bytes": 55742
+      }
+    ]
+  },
+  "aegis-blank-portrait-dense": {
+    "sourcePdfSha256": "0f6b0a7a432635706c41c4d758a6422d995145e98c3335bf9dd2588eb6dfc91e",
+    "previews": [
+      {
+        "src": "/publications/previews/2026-10-23/aegis-blank-portrait-dense-1.webp",
+        "width": 708,
+        "height": 1000,
+        "page": 1,
+        "bytes": 53896
+      }
+    ]
+  },
+  "aegis-blank-landscape-normal": {
+    "sourcePdfSha256": "a764d0bdb73ebb5c5be1a842a10d0dcdadda009473a91d941a3de1693f481503",
+    "previews": [
+      {
+        "src": "/publications/previews/2026-10-23/aegis-blank-landscape-normal-1.webp",
+        "width": 1000,
+        "height": 708,
+        "page": 1,
+        "bytes": 63844
+      }
+    ]
+  },
+  "players-handbook-dark": {
+    "sourcePdfSha256": "806bdd66aea9f313853942691d89ffda2e4a81f3f55676f1f954c9544a461d75",
+    "previews": [
+      {
+        "src": "/publications/previews/2026-10-23/players-handbook-dark-1.webp",
+        "width": 739,
+        "height": 1000,
+        "page": 1,
+        "bytes": 261832
+      }
+    ]
+  },
+  "game-masters-guide-dark": {
+    "sourcePdfSha256": "8f2b37de1dc321220b61859a1b1ec1520137221eae7d74dbf1bc663f7c50dadc",
+    "previews": [
+      {
+        "src": "/publications/previews/2026-10-23/game-masters-guide-dark-1.webp",
+        "width": 739,
+        "height": 1000,
+        "page": 1,
+        "bytes": 200952
+      }
+    ]
+  },
+  "srd-dark": {
+    "sourcePdfSha256": "e37df17a7f32e6bd6076913c7b5ca4073dd2c574b02d48e501c3c0052ddcea0f",
+    "previews": [
+      {
+        "src": "/publications/previews/2026-10-23/srd-dark-1.webp",
+        "width": 723,
+        "height": 1000,
+        "page": 1,
+        "bytes": 41566
+      }
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 # Image captions and credits
 
-SwordWeave v0.1 alpha · 2026-10-21
+SwordWeave v0.1 alpha · 2026-10-23
 
 ## Mark for a light background
 
@@ -40,7 +40,7 @@ Rights: Project identity; no trademark, endorsement or new standalone reuse lice
 
 ## Player’s Handbook cover
 
-File: `previews/phb-cover.jpg` · 894 × 1200 nominal dimensions
+File: `previews/phb-cover.jpg` · 739 × 1000 nominal dimensions
 
 Cover of the illustrated v0.1-alpha Player’s Handbook, Interwoven edition, 19 October 2026. Actual PDF page 1.
 
