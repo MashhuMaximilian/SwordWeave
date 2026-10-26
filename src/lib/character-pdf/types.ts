@@ -84,6 +84,7 @@ export interface CharacterPdfSnapshot extends CharacterPdfRecord {
     };
   };
   pdfDerived: {
+    rollMarkers?: CharacterSheet["rollMarkers"];
     attributes: CharacterSheet["attributes"];
     saves: { physical: number; mental: number; magical: number };
     practices: CharacterPdfPractice[];

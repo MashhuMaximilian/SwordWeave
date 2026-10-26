@@ -63,6 +63,7 @@ import {
   operationValue,
   operationVerb,
 } from "@/components/characters/operator-symbol";
+import { axisMarkerState, findFloor, findCeiling } from "@/lib/engine/axis-markers";
 import type { ResolvedModifiers } from "@/lib/engine/resolve-modifiers";
 console.log("PHASE8_L20_BUILD_MARKER:", "-5090448014643774033");
 
@@ -85,36 +86,6 @@ function roundUp(value: number): number {
  * - hasCondition=true AND conditionComputable=false (can't evaluate at
  *   sheet time → bonus included with * for table-side resolution)
  * Computable-false conditions do NOT trigger * (bonus is suppressed). */
-function hasConditionalMarker(
-  byTarget: ResolvedModifiers["byTarget"],
-  target: string,
-): boolean {
-  return (byTarget[target] ?? []).some(
-    (c) => c.hasCondition === true && (c.conditionActive === true || c.conditionComputable === false),
-  );
-}
-
-/** Phase 8.I i3: count advantage/disadvantage stacks from
- * contributions that used `op: grant` with matching tags. */
-function countStacks(
-  byTarget: ResolvedModifiers["byTarget"],
-  target: string,
-  tag: string,
-): number {
-  // Phase 8.K K8: count from BOTH the local byTarget (legacy op=grant + tag)
-  // AND the per-axis counter at behavior.advantage.<target> /
-  // behavior.disadvantage.<target>.
-  const local = (byTarget[target] ?? []).filter((c) =>
-    c.op === "grant" && c.tags.includes(tag) && !c.inhibited && c.conditionActive !== false,
-  ).length;
-  const advKey = `behavior.${tag}.${target}`;
-  const perAxis = (byTarget[advKey] ?? []).reduce(
-    (sum, c) => sum + (!c.inhibited && c.conditionActive !== false && (c.op === "add" || c.op === "subtract") ? c.value : 0),
-    0,
-  );
-  return Math.max(0, local + perAxis);
-}
-
 /** Phase 8.I i3: find min/max floor/ceiling values from contributions
  * that used `op: set` with min/max operations. */
 /**
@@ -206,34 +177,6 @@ function formatViaFromProvenance(p: { heritageName: string | null; capabilityNam
   return parts.join(" → ");
 }
 
-function findFloor(
-  byTarget: ResolvedModifiers["byTarget"],
-  target: string,
-): number | null {
-  // Phase 8.L round 45: skip inhibited contributions.
-  const vals = (byTarget[target] ?? []).filter(
-    (c) =>
-      !c.inhibited &&
-      (c.op === "min" || (c.op === "set" && c.tags.includes("min"))),
-  );
-  if (vals.length === 0) return null;
-  return Math.min(...vals.map((c) => c.value));
-}
-
-function findCeiling(
-  byTarget: ResolvedModifiers["byTarget"],
-  target: string,
-): number | null {
-  // Phase 8.L round 45: skip inhibited contributions.
-  const vals = (byTarget[target] ?? []).filter(
-    (c) =>
-      !c.inhibited &&
-      (c.op === "max" || (c.op === "set" && c.tags.includes("max"))),
-  );
-  if (vals.length === 0) return null;
-  return Math.max(...vals.map((c) => c.value));
-}
-
 /** Phase 8.I i3: render all axis markers (*, adv/disadv, min/max)
  * as a compact badge group next to the numeric value. */
 // Phase 8.J: helper functions for color rules and condition text.
@@ -304,14 +247,9 @@ function AxisMarkers({
   byTarget: ResolvedModifiers["byTarget"];
   target: string;
 }) {
-  const hasCond = hasConditionalMarker(byTarget, target);
-  const adv = countStacks(byTarget, target, "advantage");
-  const disadv = countStacks(byTarget, target, "disadvantage");
-  const floor = findFloor(byTarget, target);
-  const ceiling = findCeiling(byTarget, target);
+  const { conditional: hasCond, netAdvantage: netAdv, floor, ceiling } = axisMarkerState(byTarget, target);
   // Phase 8.L L19: net adv/disadv. 1 adv + 1 disadv cancel.
   // The larger wins; the count shown is the net count.
-  const netAdv = adv - disadv;
   const markers: string[] = [];
   if (netAdv === 1) markers.push("⇈");
   else if (netAdv >= 2) markers.push(`⇈(${netAdv})`);

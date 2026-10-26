@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from character_pdf.renderer import (ASSETS, primitive_records, render, stats,
                                      supporting_records, training_level, validate_request, access_value,
                                      RuntimeFolio, STYLES, GROUPS)
+from character_pdf.renderer import debt_account
 from character_pdf.markdown import markdown_html
 from pypdf import PdfReader
 import pdfplumber
@@ -47,6 +48,48 @@ def character(count=1, long_rule=False):
 
 
 class SnapshotTests(unittest.TestCase):
+    def test_full_scope_contains_every_acquisition_and_every_authored_description(self):
+        source = character(4)
+        source['primitiveLinks'][0]['primitive'].update(mechanicalOutputText='Complete mechanical zero.',
+            originalMechanicalOutputText='Complete mechanical zero.', verboseDescription='Complete verbose zero.',
+            narrativeRule='Complete narrative zero.')
+        source['primitiveLinks'][1]['primitive'].update(mechanicalOutputText='Effective mirrored rule.',
+            originalMechanicalOutputText='Original standard rule.', narrativeRule='Full original narrative.')
+        source['primitiveLinks'][2]['primitive']['category'] = 'DOMAIN'
+        records = supporting_records(source, primitive_records(source))['full_rules']
+        self.assertEqual([r['ref'] for r in records], ['P01','P02','P03','P04'])
+        self.assertIn('Complete mechanical zero.', records[0]['body'])
+        self.assertIn('Complete verbose zero.', records[0]['body'])
+        self.assertIn('Complete narrative zero.', records[0]['body'])
+        self.assertIn('Effective mirrored rule.', records[1]['body'])
+        self.assertIn('Full original narrative.', records[1]['body'])
+        self.assertIn('mirrored', records[1]['body'])
+        self.assertNotIn('Original standard rule.', records[1]['body'])
+
+    def test_debt_is_used_credit_not_the_entire_bracket_allowance(self):
+        source = character()
+        source['buBalance'].update(progressionSpent=47, progressionPool=40)
+        source['volatility'] = {'rating':10,'ceiling':12,'levelBracket':'L9-L12'}
+        self.assertEqual(debt_account(source), {'used':7,'available':3,'max':12,'bracket':'L9-L12'})
+        source['buBalance']['progressionSpent'] = 20
+        self.assertEqual(debt_account(source)['available'], 10)
+        self.assertEqual(debt_account(source)['used'], 0)
+
+    def test_full_scope_keeps_item_bound_ingredients_in_their_own_namespace(self):
+        source = character(1)
+        source['itemLinks'] = [{'item':{'id':'staff','name':'Staff','primitiveLinks':[
+            {'primitiveId':77,'versionId':'item-pin','primitive':{'id':77,'name':'Item scope',
+             'mechanicalOutputText':'Complete item mechanics.', 'narrativeRule':'Complete item narrative.',
+             'verboseDescription':'Complete item verbose.'}}]}}]
+        rows = primitive_records(source)
+        scope = supporting_records(source,rows)['full_rules']
+        self.assertEqual([r['ref'] for r in scope],['P01','I01.P01'])
+        self.assertIn('Item-bound rule / I01.',scope[1]['body'])
+        for text in ('Complete item mechanics.','Complete item narrative.','Complete item verbose.'):
+            self.assertIn(text,scope[1]['body'])
+        self.assertEqual(scope[1]['version_id'],'item-pin')
+        self.assertEqual(len(rows),1)
+
     def test_markdown_is_formatted_and_authored_html_never_becomes_markup(self):
         rendered = markdown_html('## Clear title\n\n**Bold** and *italic*\n- One\n- Two\n\n'
                                  '[safe](https://example.com/rules?a=1&b=2)\n'
@@ -170,6 +213,68 @@ class SnapshotTests(unittest.TestCase):
 
 @unittest.skipUnless((ASSETS/'fonts/Aubrey.ttf').is_file() and (ASSETS/'styles/aegis/frame.png').is_file(), 'Durable PDF assets are not installed')
 class NativePdfTests(unittest.TestCase):
+    def test_practice_roll_marks_fit_all_twelve_styles_and_front_layouts(self):
+        source = character(0)
+        source['pdfDerived']['rollMarkers'] = {'skill_practice_check.'+practice: {
+            'netAdvantage':2,'floor':100,'ceiling':999,'conditional':True}
+            for _, practices in GROUPS for practice in practices}
+        with tempfile.TemporaryDirectory() as directory:
+            for style, *_ in STYLES:
+                for orientation in ('portrait','landscape'):
+                    for density in ('normal','compact'):
+                        with self.subTest(style=style,orientation=orientation,density=density):
+                            folio = RuntimeFolio(source,{'style':style,'orientation':orientation,
+                                'density':density,'workbench':False},Path(directory)/'markers.pdf')
+                            if orientation == 'landscape': folio.front_landscape(density)
+                            else: folio.front_portrait(density)
+                            folio.c.save()
+                            self.assertEqual(len(folio.roll_annotations),40)
+                            for mark in folio.roll_annotations:
+                                practice = mark['target'].split('.')[-1]
+                                pair = next(p for p in folio.metric_pairs if p['role']=='practice_'+practice)
+                                left,top,right,bottom = mark['box']
+                                card = pair['card']
+                                self.assertGreaterEqual(left,card[0]+5)
+                                self.assertLessEqual(right,card[2]-4)
+                                self.assertGreaterEqual(top,card[1]+3)
+                                self.assertLessEqual(bottom,card[3]-2)
+
+    def test_full_scope_ink_roll_symbols_budget_and_removed_folio_survive_pdf(self):
+        source = character(2)
+        source['primitiveLinks'][0]['primitive'].update(
+            mechanicalOutputText='mechanicalwitness is a complete mechanical rule.',
+            originalMechanicalOutputText='mechanicalwitness is a complete mechanical rule.',
+            verboseDescription='verbosewitness preserves the entire long authored description.',
+            narrativeRule='narrativewitness preserves additional scope.')
+        source['volatility'] = {'rating':10,'ceiling':12,'levelBracket':'L9-L12'}
+        source['buBalance'].update(progressionSpent=47, progressionPool=40, progressionRemaining=-7, itemBuSpent=18)
+        source['pdfDerived']['rollMarkers'] = {'skill_practice_check.knowledge': {
+            'netAdvantage':2,'floor':10,'ceiling':20,'conditional':True}}
+        with tempfile.TemporaryDirectory() as directory:
+            for orientation in ('portrait','landscape'):
+                for color in (False,True):
+                    with self.subTest(orientation=orientation,color=color):
+                        result = render({'character':source,'options':{'orientation':orientation,
+                            'density':'compact','color':color,'workbench':True}}, Path(directory)/'proof.pdf')
+                        pages = PdfReader(result['path']).pages
+                        actual = ' '.join(p.extract_text() for p in pages)
+                        for text in ('mechanicalwitness','verbosewitness','narrativewitness','Debt 7 used / 3 available / 12 max','Item BU 18'):
+                            self.assertIn(text,actual)
+                        self.assertNotIn('FOLIO',actual)
+                        self.assertNotIn('ONGOING / DEFENCES',actual)
+                        kinds = {m['kind'] for m in result['roll_annotations']}
+                        self.assertEqual(kinds,{'advantage','floor','ceiling','conditional'})
+                        with pdfplumber.open(result['path']) as pdf:
+                            matched = []
+                            for p in pdf.pages:
+                                for char in p.chars:
+                                    rgb = char['non_stroking_color']
+                                    if color and rgb and len(rgb)==3 and all(abs(a-b)<.0001 for a,b in zip(rgb,(144/255,68/255,34/255))):
+                                        matched.append(char)
+                            if color:
+                                self.assertIn('mechanicalwitness',''.join(c['text'] for c in matched))
+                                self.assertTrue(all('Bold' in c['fontname'] for c in matched))
+
     def test_markdown_faces_preserve_reading_scale_advances_and_baseline(self):
         folio = RuntimeFolio(character(0), {'style': 'aegis', 'orientation': 'portrait',
                                           'density': 'normal', 'workbench': False}, Path('/unused.pdf'))

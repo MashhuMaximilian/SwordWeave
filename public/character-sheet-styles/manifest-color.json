@@ -1,8 +1,8 @@
 {
   "public_example": "Orren Vaultwright",
   "color": true,
-  "source_sha256": "0087b7eb460d804fe1a469810832b1f9e360efb058cd101495c4dcfa32a669d4",
-  "renderer_sha256": "ed63762d9a55fc3d4e32ca08116ba6b379ef52f4992b4e621f7bbcb44e89f333",
+  "source_sha256": "7e3009e44769c35cd57f89bcec5ff58b5146633935091aafce99340715a3060e",
+  "renderer_sha256": "c8971728f81afe75db1104d3fb19a6c981de85f2fb26c5e14eefc4347f646a1f",
   "images": [
     {
       "style": "aegis",
@@ -10,12 +10,12 @@
       "density": "normal",
       "color": true,
       "path": "aegis-portrait-normal-color.webp",
-      "sha256": "106573257909e42aeac9b561f9c4a6b4ec92be7d10d1ee2819931a557843fb61",
+      "sha256": "7acf28d0a59689989fd70075996cfdd063c8caeed56c3d0d49ef2543290d4e8d",
       "size": [
         840,
         1188
       ],
-      "bytes": 121960
+      "bytes": 122868
     },
     {
       "style": "aegis",
@@ -23,12 +23,12 @@
       "density": "compact",
       "color": true,
       "path": "aegis-portrait-compact-color.webp",
-      "sha256": "41060781e712cb4b3a7b0ff214c36345c066afcb08ef883b9e5e12c83de8229f",
+      "sha256": "0f535de0ac1b0e3055a4907f29282f3b3a39f11936d1d0251ee0739637f6c80c",
       "size": [
         840,
         1188
       ],
-      "bytes": 143248
+      "bytes": 143952
     },
     {
       "style": "aegis",
@@ -36,12 +36,12 @@
       "density": "normal",
       "color": true,
       "path": "aegis-landscape-normal-color.webp",
-      "sha256": "f422580d9866609d4337a926b14d153c84ad785a6505b58a8c633651de435e4c",
+      "sha256": "34b96a1098c28115fdca7bcb0942435bc47f02a61a525a5211ddc4a388d6f5f5",
       "size": [
         1188,
         841
       ],
-      "bytes": 147900
+      "bytes": 148634
     },
     {
       "style": "aegis",
@@ -49,12 +49,12 @@
       "density": "compact",
       "color": true,
       "path": "aegis-landscape-compact-color.webp",
-      "sha256": "bbfaf6d0f2c8ab23cf7228431acaad63e7b0eeaaccb24f1608e8f34ffdea7b97",
+      "sha256": "4891a732cd79b39a13188070a37a66db7acc1bc7542b11a517c70016138eefed",
       "size": [
         1188,
         841
       ],
-      "bytes": 149710
+      "bytes": 150492
     },
     {
       "style": "vesper",
@@ -62,12 +62,12 @@
       "density": "normal",
       "color": true,
       "path": "vesper-portrait-normal-color.webp",
-      "sha256": "19a866d40bedc60f820a56dcd2d6facbb8c587d24d08ef1215365c9dc5ec2863",
+      "sha256": "3824b7c39ebb851ce75865d0b2c1b36e635874773d7692828d36186788a7b45c",
       "size": [
         840,
         1188
       ],
-      "bytes": 129534
+      "bytes": 130362
     },
     {
       "style": "vesper",
@@ -75,12 +75,12 @@
       "density": "compact",
       "color": true,
       "path": "vesper-portrait-compact-color.webp",
-      "sha256": "b37ff181ef1afa429b21cce41d902047eca0cc7a5b94752b5b4fa500d223d0cb",
+      "sha256": "007bb9720c7bd3514e64f8536b53334df0d3ec028de5baa483e4c8e9457fe02d",
       "size": [
         840,
         1188
       ],
-      "bytes": 154576
+      "bytes": 155304
     },
     {
       "style": "vesper",
@@ -88,12 +88,12 @@
       "density": "normal",
       "color": true,
       "path": "vesper-landscape-normal-color.webp",
-      "sha256": "33a58e0cdd9ebbffd35a4b87b85deb009bde1b62655e5c815749ee62fa92e653",
+      "sha256": "bf82a226758deaeeefb02cbdc6ae9c1da28fc0feaf51f8f1a322dde6c609bae5",
       "size": [
         1188,
         841
       ],
-      "bytes": 165658
+      "bytes": 166556
     },
     {
       "style": "vesper",
@@ -101,12 +101,12 @@
       "density": "compact",
       "color": true,
       "path": "vesper-landscape-compact-color.webp",
-      "sha256": "95c16cc8bf0f118313221a771e9f6d5eaaba388388572a0f3a1173bbac4cbff7",
+      "sha256": "e53158df9158fda6ebd88777278ea5b50d934fee1a42acdd88aade60b3b68a31",
       "size": [
         1188,
         841
       ],
-      "bytes": 168598
+      "bytes": 169318
     },
     {
       "style": "orrery",
@@ -114,12 +114,12 @@
       "density": "normal",
       "color": true,
       "path": "orrery-portrait-normal-color.webp",
-      "sha256": "f108b892ea0b56e5f17dc3aebc43f1c5ca643645b9fe5b0d2a92484009dccf5a",
+      "sha256": "0454c3c12559119088b70f23b3001af2a06dde75f1a2b0b80c1d24d74e3d489f",
       "size": [
         840,
         1188
       ],
-      "bytes": 128952
+      "bytes": 129782
     },
     {
       "style": "orrery",
@@ -127,12 +127,12 @@
       "density": "compact",
       "color": true,
       "path": "orrery-portrait-compact-color.webp",
-      "sha256": "6a07803888216a49556b56791c8013832d7c53de5239c21acbc45ec43394a2a4",
+      "sha256": "0fd0a498090f5769b476bd9f1cd1ba1a097ab3364f2b10b12cd7d95adbd8f2ef",
       "size": [
         840,
         1188
       ],
-      "bytes": 151198
+      "bytes": 151910
     },
     {
       "style": "orrery",
@@ -140,12 +140,12 @@
       "density": "normal",
       "color": true,
       "path": "orrery-landscape-normal-color.webp",
-      "sha256": "4db0cb323380507aa0d46a9c72b78cffbfea3be3d6b39a27ffcc68442275c213",
+      "sha256": "71bc85baad8d411311ce44d44d2e8fd0abc29782fb82ee19a2222dd76ff5b94c",
       "size": [
         1188,
         841
       ],
-      "bytes": 159830
+      "bytes": 160760
     },
     {
       "style": "orrery",
@@ -153,12 +153,12 @@
       "density": "compact",
       "color": true,
       "path": "orrery-landscape-compact-color.webp",
-      "sha256": "dc957335f132a6ac7facdcdc82f516c96727ab0ebd383dfed7206211eb8a695d",
+      "sha256": "7f64bd659e749de9c4d92ac37d80a87661e7455a7b4a1f9a4a708dfc1e41145a",
       "size": [
         1188,
         841
       ],
-      "bytes": 161752
+      "bytes": 162424
     },
     {
       "style": "moire",
@@ -166,12 +166,12 @@
       "density": "normal",
       "color": true,
       "path": "moire-portrait-normal-color.webp",
-      "sha256": "63afc5aac14cd887686948dac57f687698c1d9d1907c229732512f0a94482f28",
+      "sha256": "a691c50610a5864e62dc7ef4d33ed2d219e6d5f12f2bb301d9cf2de5600e4b5a",
       "size": [
         840,
         1188
       ],
-      "bytes": 135466
+      "bytes": 134902
     },
     {
       "style": "moire",
@@ -179,12 +179,12 @@
       "density": "compact",
       "color": true,
       "path": "moire-portrait-compact-color.webp",
-      "sha256": "07fcb10c7ed17d8ab64820dbe982cd36eb2ac4c14ecbf66ae9945b2f6a335233",
+      "sha256": "830b6fecef2d60ac49eb987c0397d2449a00b9d71c4d412f333ddd5b9f7afca3",
       "size": [
         840,
         1188
       ],
-      "bytes": 156282
+      "bytes": 157240
     },
     {
       "style": "moire",
@@ -192,12 +192,12 @@
       "density": "normal",
       "color": true,
       "path": "moire-landscape-normal-color.webp",
-      "sha256": "759ae9d687507102cef3025682d893c835cb291f6cb95a8c0baebb0eb1888c30",
+      "sha256": "ec64c1ed8661579a8065201bec22ae0b1097dfa0167eed3afb215be4e7f5e556",
       "size": [
         1188,
         841
       ],
-      "bytes": 166720
+      "bytes": 167402
     },
     {
       "style": "moire",
@@ -205,12 +205,12 @@
       "density": "compact",
       "color": true,
       "path": "moire-landscape-compact-color.webp",
-      "sha256": "3e4455e3e6d889f13fd9df24c4616a1023805fb4fb009e028ab319d506eaec60",
+      "sha256": "983251c144613ba0789953245022dbb89d8123f17d5d560b15e11bc20e69f1e4",
       "size": [
         1188,
         841
       ],
-      "bytes": 170132
+      "bytes": 170806
     },
     {
       "style": "serein",
@@ -218,12 +218,12 @@
       "density": "normal",
       "color": true,
       "path": "serein-portrait-normal-color.webp",
-      "sha256": "4e3e1d8b3836583c45adcb1d4e959f6194ad02686976d82359a2ccd066d242f6",
+      "sha256": "e8afe70535ce23446ef1345a760f589c0a713d36e442a60dd66c97f89a998ecd",
       "size": [
         840,
         1188
       ],
-      "bytes": 126382
+      "bytes": 127308
     },
     {
       "style": "serein",
@@ -231,12 +231,12 @@
       "density": "compact",
       "color": true,
       "path": "serein-portrait-compact-color.webp",
-      "sha256": "1929a6166784db9f9ff7d25a6ba07736815049e213cb73f0164bf693cf262e76",
+      "sha256": "b72d603bd50058d6ced47b730848e1543de443b2a220c1902dce7243dbfa1037",
       "size": [
         840,
         1188
       ],
-      "bytes": 146942
+      "bytes": 147640
     },
     {
       "style": "serein",
@@ -244,12 +244,12 @@
       "density": "normal",
       "color": true,
       "path": "serein-landscape-normal-color.webp",
-      "sha256": "670588177b651747801260067da0cdb91cc6ecd9607a5d0ac37ada372585275d",
+      "sha256": "7b1d460e501887dc3dadb2af9d3c9e41f6af6a75c78acfcb81c51a1701281060",
       "size": [
         1188,
         841
       ],
-      "bytes": 154220
+      "bytes": 154902
     },
     {
       "style": "serein",
@@ -257,12 +257,12 @@
       "density": "compact",
       "color": true,
       "path": "serein-landscape-compact-color.webp",
-      "sha256": "f885bcbf27431d11266040c95707a052fd2a3bff0b7f297059849468f2a749a7",
+      "sha256": "343fcadd1c0d1e4a376beef708c2c90d6fe58732d89fdbae00bcd96ba7e9576a",
       "size": [
         1188,
         841
       ],
-      "bytes": 156152
+      "bytes": 156834
     },
     {
       "style": "prism",
@@ -270,12 +270,12 @@
       "density": "normal",
       "color": true,
       "path": "prism-portrait-normal-color.webp",
-      "sha256": "e209614b49c4b6ebb2eb0849c9f6c2b7cbfb6953dbf4ad47647d14fe6db2d065",
+      "sha256": "f15f627411ff135fa924bf1b6c4d4fa9224154c0a323ac96748a273d9c21acbf",
       "size": [
         840,
         1188
       ],
-      "bytes": 127174
+      "bytes": 128844
     },
     {
       "style": "prism",
@@ -283,12 +283,12 @@
       "density": "compact",
       "color": true,
       "path": "prism-portrait-compact-color.webp",
-      "sha256": "fcace7f5379920950138b2a9c7d9a75d9867b3eb88778bc9dd1052f08bdbbafb",
+      "sha256": "930ae001e949b5763431458ad8cd21745ce1c89cbb548828799b7d0532ae3c24",
       "size": [
         840,
         1188
       ],
-      "bytes": 148052
+      "bytes": 148668
     },
     {
       "style": "prism",
@@ -296,12 +296,12 @@
       "density": "normal",
       "color": true,
       "path": "prism-landscape-normal-color.webp",
-      "sha256": "d1ea20bcb77b8c503ce01da4b6dafd90096cd6c6f756d246d446e89a071c8708",
+      "sha256": "00682bf943578636a4aad30524326e7c147cec0b14db7c2302a6329de775c75b",
       "size": [
         1188,
         841
       ],
-      "bytes": 156720
+      "bytes": 157672
     },
     {
       "style": "prism",
@@ -309,12 +309,12 @@
       "density": "compact",
       "color": true,
       "path": "prism-landscape-compact-color.webp",
-      "sha256": "5d44ba76f5651dc92873b1555485e6accffa3cab35f846dc2101b691bf0aa18c",
+      "sha256": "09757ee72c9ac2d66a6a73f3da8cb25a82090847ce6f70a70f9aa39997ba2fd0",
       "size": [
         1188,
         841
       ],
-      "bytes": 158562
+      "bytes": 158008
     },
     {
       "style": "cipher",
@@ -322,12 +322,12 @@
       "density": "normal",
       "color": true,
       "path": "cipher-portrait-normal-color.webp",
-      "sha256": "e68c639db8f7196c081101341bc183418b4b7a58533eae3743b186b62618558b",
+      "sha256": "1e239eb57356ac0b35813fea0bbfefd887d2b3f4d6ca2f20889f0d02c350a36d",
       "size": [
         840,
         1188
       ],
-      "bytes": 129186
+      "bytes": 129478
     },
     {
       "style": "cipher",
@@ -335,12 +335,12 @@
       "density": "compact",
       "color": true,
       "path": "cipher-portrait-compact-color.webp",
-      "sha256": "2338596d43f8feb1680ac9492cb1e49d73b9cca17bf6a656f46f3afafdc81708",
+      "sha256": "3a6493788c27c13bc282b45a2ff718887f99029f75e58173f63edbbd857c41c0",
       "size": [
         840,
         1188
       ],
-      "bytes": 149366
+      "bytes": 150044
     },
     {
       "style": "cipher",
@@ -348,12 +348,12 @@
       "density": "normal",
       "color": true,
       "path": "cipher-landscape-normal-color.webp",
-      "sha256": "7eb47a4c403b55923001655c59e12189348ff95d1e26d8348c3ceaff0caea6bd",
+      "sha256": "197d41346d06a63d312cef4dd60dbe6774bd34cd611c50486901fa6c51b979ad",
       "size": [
         1188,
         841
       ],
-      "bytes": 159306
+      "bytes": 160114
     },
     {
       "style": "cipher",
@@ -361,12 +361,12 @@
       "density": "compact",
       "color": true,
       "path": "cipher-landscape-compact-color.webp",
-      "sha256": "d2e08eb460d5479cc23aac8963d6f8ee0f46c096ae304746ac17aceb8d474ee6",
+      "sha256": "4bb08b2b162338229fe2e9b2d3f4ad7fbcb23a560c03ecce7f4cafb2f2cfb5ef",
       "size": [
         1188,
         841
       ],
-      "bytes": 160934
+      "bytes": 163312
     },
     {
       "style": "helix",
@@ -374,12 +374,12 @@
       "density": "normal",
       "color": true,
       "path": "helix-portrait-normal-color.webp",
-      "sha256": "aaa805c2650bac2481c3eb6dae78d7c9459fabf7e3d07457abecfdaeffa00f25",
+      "sha256": "67e5ec74a5731a999f08b0ce6fa262ca59d72d3cdc3d128db894ba02039a74da",
       "size": [
         840,
         1188
       ],
-      "bytes": 138976
+      "bytes": 139904
     },
     {
       "style": "helix",
@@ -387,12 +387,12 @@
       "density": "compact",
       "color": true,
       "path": "helix-portrait-compact-color.webp",
-      "sha256": "86b821ce17a890a17212a4829f838cc94f55007fab3c9b31e463c6830de69f3d",
+      "sha256": "9a56fcca06b6bb0f209ffb17bf80e145a4cdbbc0c0c21b8395a2ab198dc55a30",
       "size": [
         840,
         1188
       ],
-      "bytes": 165628
+      "bytes": 166370
     },
     {
       "style": "helix",
@@ -400,12 +400,12 @@
       "density": "normal",
       "color": true,
       "path": "helix-landscape-normal-color.webp",
-      "sha256": "b98132099b62ce1b722c81f56b26ca03e04f34106f08ef0cd53652879aa8c280",
+      "sha256": "4ed993ea0520e194c5494bcf11ff5ed8aaa1b4742fb1ed3e3da0935627b8380e",
       "size": [
         1188,
         841
       ],
-      "bytes": 179690
+      "bytes": 180534
     },
     {
       "style": "helix",
@@ -413,12 +413,12 @@
       "density": "compact",
       "color": true,
       "path": "helix-landscape-compact-color.webp",
-      "sha256": "7e3eda57ca327a98155bc92cde802485be886a8903f749f0a6e682bde519faea",
+      "sha256": "5910d63077925dfde91ef093b61ab58c4ee7ea95633b45fb0552626a095f04e1",
       "size": [
         1188,
         841
       ],
-      "bytes": 180286
+      "bytes": 181170
     },
     {
       "style": "cinder",
@@ -426,12 +426,12 @@
       "density": "normal",
       "color": true,
       "path": "cinder-portrait-normal-color.webp",
-      "sha256": "332aa9c23484d8b8c79efae739f7c6d86dbb763689bfd085649433ea5240dc5b",
+      "sha256": "b8c491f607ff31471e4b3a56ffc462e5030147e403f7221b2ab2539a97048321",
       "size": [
         840,
         1188
       ],
-      "bytes": 126858
+      "bytes": 128018
     },
     {
       "style": "cinder",
@@ -439,12 +439,12 @@
       "density": "compact",
       "color": true,
       "path": "cinder-portrait-compact-color.webp",
-      "sha256": "f25dc8ad431a7bf342fd49bb9c788f781e5be3e18d0b7ec24fa2a287f492b2cd",
+      "sha256": "928c7ce27bd11864dc0dcb569871af1295053e57cbf63b71472d78139f54f65e",
       "size": [
         840,
         1188
       ],
-      "bytes": 149652
+      "bytes": 150426
     },
     {
       "style": "cinder",
@@ -452,12 +452,12 @@
       "density": "normal",
       "color": true,
       "path": "cinder-landscape-normal-color.webp",
-      "sha256": "172ed9b3903cb54e8b37501fd0031ca66467bdc7b52af217407c409085a23ac6",
+      "sha256": "31e519deeaa116db6b2bc77bbbfd13f2e0889b71c0b877dc09f42eab9fff8301",
       "size": [
         1188,
         841
       ],
-      "bytes": 158772
+      "bytes": 159812
     },
     {
       "style": "cinder",
@@ -465,12 +465,12 @@
       "density": "compact",
       "color": true,
       "path": "cinder-landscape-compact-color.webp",
-      "sha256": "9bd90d8eff4c6aa8c496792e6ab2af81c9d8358e0b6e8a07148edf592d7ec188",
+      "sha256": "784712fd13faedd6415649fa576e8a98e8fed073ac60a2c13f19dc7b1fb12caf",
       "size": [
         1188,
         841
       ],
-      "bytes": 160440
+      "bytes": 162910
     },
     {
       "style": "nocturne",
@@ -478,12 +478,12 @@
       "density": "normal",
       "color": true,
       "path": "nocturne-portrait-normal-color.webp",
-      "sha256": "3750c43ec39bd266fdc3fd1e381725395588c1c3bed4bd368795cf5e7f1a355e",
+      "sha256": "1183fab3e4edfa371d104085df98f21f46b6db074266eb326849680b95853ce9",
       "size": [
         840,
         1188
       ],
-      "bytes": 131322
+      "bytes": 132232
     },
     {
       "style": "nocturne",
@@ -491,12 +491,12 @@
       "density": "compact",
       "color": true,
       "path": "nocturne-portrait-compact-color.webp",
-      "sha256": "7191e0f40c904cb913756f2551346aebbfe40e04166bc39d1d689439439f7f2c",
+      "sha256": "2bd931958588b0c3675e19f9883f3e765863e81bdbc62b9895c6d8714652c72a",
       "size": [
         840,
         1188
       ],
-      "bytes": 152100
+      "bytes": 152770
     },
     {
       "style": "nocturne",
@@ -504,12 +504,12 @@
       "density": "normal",
       "color": true,
       "path": "nocturne-landscape-normal-color.webp",
-      "sha256": "9668e4f21900ec2d2740b08caf926e7f96631a190844187f957701739a46304a",
+      "sha256": "9e7e9eaf442483bbdf242ae27f6a575a4367066767150f3f7ed728f4a8340e9c",
       "size": [
         1188,
         841
       ],
-      "bytes": 161558
+      "bytes": 162422
     },
     {
       "style": "nocturne",
@@ -517,12 +517,12 @@
       "density": "compact",
       "color": true,
       "path": "nocturne-landscape-compact-color.webp",
-      "sha256": "52c3eb7c5e4bc504e3ecbb24026d55edf35ad989c2c41e63ac1e3bd1387c7861",
+      "sha256": "14aa9a22ac0fac1704ea865a7f938ee527759c6ec1add84680d7e97c7d502730",
       "size": [
         1188,
         841
       ],
-      "bytes": 163248
+      "bytes": 163912
     },
     {
       "style": "tidal",
@@ -530,12 +530,12 @@
       "density": "normal",
       "color": true,
       "path": "tidal-portrait-normal-color.webp",
-      "sha256": "2f40e6315185294ba99b38dc4825f87aa6fdf86d8339de6c551e58e2fb1e7f48",
+      "sha256": "0623d6bcfa4dc3e4ed5b7d5d90db78dbd6413b2aac48e7844ce0f44276781cb1",
       "size": [
         840,
         1188
       ],
-      "bytes": 133454
+      "bytes": 134444
     },
     {
       "style": "tidal",
@@ -543,12 +543,12 @@
       "density": "compact",
       "color": true,
       "path": "tidal-portrait-compact-color.webp",
-      "sha256": "c48fd46717a38deacb12a9ef7ec0d42df52b6696c8b375a03da049d3fedec491",
+      "sha256": "917e52c3afdd1f8f9e499524b2c26a696c8259a46d8686a0e742a56e10fef008",
       "size": [
         840,
         1188
       ],
-      "bytes": 159310
+      "bytes": 158228
     },
     {
       "style": "tidal",
@@ -556,12 +556,12 @@
       "density": "normal",
       "color": true,
       "path": "tidal-landscape-normal-color.webp",
-      "sha256": "020c1580006d63971ee870a3bf4bedba63fe28dab01f237779ca379bf32bd341",
+      "sha256": "7f77e165c5dbfbcb4d8fa4583915e894db557f4cefaece2625a3f3f2eb24cadb",
       "size": [
         1188,
         841
       ],
-      "bytes": 170562
+      "bytes": 169832
     },
     {
       "style": "tidal",
@@ -569,12 +569,12 @@
       "density": "compact",
       "color": true,
       "path": "tidal-landscape-compact-color.webp",
-      "sha256": "2512db36840611d48055be1c9d47ff5648068e19fb08e214fadfc6f8752cbdee",
+      "sha256": "01d911773534a174c5ff717bfa66eab17b103fe8ef79e438297b3c3ea1e701fe",
       "size": [
         1188,
         841
       ],
-      "bytes": 172336
+      "bytes": 173156
     },
     {
       "style": "solstice",
@@ -582,12 +582,12 @@
       "density": "normal",
       "color": true,
       "path": "solstice-portrait-normal-color.webp",
-      "sha256": "522dfe58bdada9409f26f5d750de71d911958003b10378bd90f5fdc458a90601",
+      "sha256": "4c4b5c557232db0e89e68d8ef2f16016f3a83a0fbeb0d46ffae58f19a2ffb144",
       "size": [
         840,
         1188
       ],
-      "bytes": 123988
+      "bytes": 124818
     },
     {
       "style": "solstice",
@@ -595,12 +595,12 @@
       "density": "compact",
       "color": true,
       "path": "solstice-portrait-compact-color.webp",
-      "sha256": "6e01224b7dcecd46ad891d6fcb68ca60190e9a08629b69367e951ffc6bb376a0",
+      "sha256": "3d9b73b5253de9cf2c33b0d0926bf38e8e449e92e98184300e3f3ae436aa2075",
       "size": [
         840,
         1188
       ],
-      "bytes": 145454
+      "bytes": 146234
     },
     {
       "style": "solstice",
@@ -608,12 +608,12 @@
       "density": "normal",
       "color": true,
       "path": "solstice-landscape-normal-color.webp",
-      "sha256": "002f6daea02d9b0e4e98e2ce6c59f2d90d4584664d05e635208ff94238465732",
+      "sha256": "a5bc6b69be8694dccbd71e48b6e2872228a278f2512f74a0d12714274489e09a",
       "size": [
         1188,
         841
       ],
-      "bytes": 151302
+      "bytes": 151776
     },
     {
       "style": "solstice",
@@ -621,12 +621,12 @@
       "density": "compact",
       "color": true,
       "path": "solstice-landscape-compact-color.webp",
-      "sha256": "6f604b4ce339b736e58cce387da7b50c475acc5d1661b861322245652229cea4",
+      "sha256": "4079ddce19efb03bf11b800373e778b5ecbf0c39a7b39ec416cf148548cb123e",
       "size": [
         1188,
         841
       ],
-      "bytes": 153048
+      "bytes": 154078
     }
   ]
 }

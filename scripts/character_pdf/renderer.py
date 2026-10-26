@@ -121,6 +121,10 @@ def primitive_records(character):
         result.append({'ref': f'P{index:02}', 'name': clean(primitive.get('name') or 'Unnamed primitive'),
                        'rule': clean(preferred), 'rendered_text': markdown_plain(clean(preferred)),
                        'narrative': clean(primitive.get('narrativeRule')),
+                       'mechanical': clean(primitive.get('mechanicalOutputText')) if
+                           clean(primitive.get('originalMechanicalOutputText', primitive.get('mechanicalOutputText'))).strip() else '',
+                       'verbose': unique_text([primitive.get(key) for key in
+                           ('verboseDescription', 'narrativeRule', 'description', 'narrativeDescription')]),
                        'category': primitive.get('category') or '', 'source_id': primitive.get('id'),
                        'instance_id': link.get('instanceId'), 'version_id': pinned_version(link, primitive),
                        'is_mirrored': bool(link.get('isMirrored')),
@@ -198,6 +202,22 @@ def training_level(row, pb):
         return {'EXPERTISE': 2, 'EXPERT': 2, 'PROFICIENT': 1, 'PROFICIENCY': 1}.get(training.upper(), 0)
     contribution = row.get('pbContribution', 0)
     return max(0, min(2, round(contribution / pb))) if pb else 0
+
+
+def debt_account(character):
+    """Same used/available/max debt calculation as the sheet identity drawer."""
+    balance, volatility = character.get('buBalance') or {}, character.get('volatility') or {}
+    spent, pool = balance.get('progressionSpent'), balance.get('progressionPool')
+    credit, ceiling = volatility.get('rating'), volatility.get('ceiling')
+    known = all(isinstance(value, (int, float)) for value in (spent, pool, credit, ceiling))
+    used = min(max(0, spent-pool), credit) if known else None
+    return {'used': used, 'available': max(0, min(credit, ceiling)-used) if known else None,
+            'max': ceiling, 'bracket': volatility.get('levelBracket') or '?'}
+
+
+def available_bu(character):
+    remaining = (character.get('buBalance') or {}).get('progressionRemaining')
+    return max(0, remaining) if isinstance(remaining, (int, float)) else None
 
 
 def supporting_records(character, primitives):
@@ -338,18 +358,22 @@ def supporting_records(character, primitives):
                                   effect.get('mechanicalOutputText'), effect.get('description'), effect.get('narrativeDescription')]),
                                   'source_id': identity[0], 'version_id': identity[1], 'is_mirrored': identity[2],
                                   'entity_kind': 'effect'})
-    for row in primitives:
-        # Grouped access controls show ownership, not their complete rules.
-        # Preserve those rules here; append narrative when it adds authored scope.
-        parts = []
-        if row['category'] in ACCESS:
-            parts.append(row['rule'])
-        if row['narrative'] and row['narrative'].strip() != row['rule'].strip():
-            parts.append(('Original authored narrative; this acquisition is mirrored, and its effective mechanical rule governs.\n' if row['is_mirrored'] else '') + row['narrative'])
-        if parts:
-            groups['full_rules'].append({'ref': row['ref'], 'name': row['name'], 'body': unique_text(parts),
-                                         'entity_kind': 'primitive', 'source_id': row['source_id'],
-                                         'version_id': row['version_id']})
+    for row in reference_primitives:
+        # Every acquisition gets a complete source entry, including those
+        # already printed on the front. Keep pins, repeated purchases and
+        # mirrored effective rules distinct; prose never overwrites mechanics.
+        note = ('Original authored narrative; this acquisition is mirrored. The effective mechanical rule above governs.'
+                if row['is_mirrored'] and row['verbose'] else '')
+        owner = row['ref'].split('.')[0] if row['ref'].startswith('I') else None
+        sections = [('note', '', f'Item-bound rule / {owner}. Applies through this item.' if owner else ''),
+                    ('mechanical', 'Mechanical', row['mechanical']),
+                    ('note', '', note), ('narrative', 'Narrative / verbose', row['verbose'])]
+        sections = [{'kind': kind, 'label': label, 'text': text} for kind, label, text in sections if text]
+        body = unique_text([(section['label']+'\n' if section['label'] else '')+section['text'] for section in sections])
+        groups['full_rules'].append({'ref': row['ref'], 'name': row['name'], 'body': body,
+                                     'sections': sections, 'entity_kind': 'primitive',
+                                     'source_id': row['source_id'], 'version_id': row['version_id'],
+                                     'is_mirrored': row['is_mirrored']})
     for index, link in enumerate(character.get('heritageLinks') or [], 1):
         heritage = link.get('heritage') or {}
         kind = clean(heritage.get('kind') or 'Heritage').replace('_', ' ').title()
@@ -365,11 +389,20 @@ def supporting_records(character, primitives):
     if character.get('notes'):
         groups['identity'].append({'ref': '', 'name': 'Player notes', 'body': clean(character['notes'])})
     balance = character.get('buBalance') or {}
+    debt = debt_account(character)
     account = unique_text([f"Level / Budget {number(character.get('level')) or '?'} / {number(balance.get('progressionPool')) or '?'} BU.",
-                           f"Character BU spent {number(balance.get('progressionSpent')) or '?'}; {number(balance.get('progressionRemaining')) or '?'} available. Separate Item BU {number(balance.get('itemBuSpent')) or '?'}.",
+                           f"Character BU spent {number(balance.get('progressionSpent')) or '?'}; {number(available_bu(character)) or '?'} available. Separate Item BU {number(balance.get('itemBuSpent')) or '?'}.",
+                           f"Debt BU: {number(debt['used'])} used / {number(debt['available'])} available / {number(debt['max'])} max ({debt['bracket']}).",
                            f"Agreed bonus BU: {number(balance.get('dmBonusBu'))}." if balance.get('dmBonusBu') is not None else '',
                            'Reusing owned references is not another acquisition. Record agreed changes and their source.'])
     groups['identity'].append({'ref': '', 'name': 'Build account / advancement', 'body': account})
+    roll_markers = ((character.get('pdfDerived') or {}).get('rollMarkers') or {}).values()
+    if any(state.get('netAdvantage') or state.get('conditional') or state.get('floor') is not None or
+           state.get('ceiling') is not None for state in roll_markers):
+        groups['identity'].append({'ref': '', 'name': 'Roll symbols', 'body':
+            'Double up/down arrows: advantage/disadvantage (a number shows net stacks). '
+            'Barred up/down arrows: minimum/maximum result. *: conditional. '
+            'These annotate the roll; they do not add to the printed modifier.'})
     for records in groups.values():
         for record in records:
             record['rendered_text'] = markdown_plain(record.get('body', ''))
@@ -443,6 +476,7 @@ class RuntimeFolio(APPROVED_FOLIO):
         self.media_map = character.get('pdfMedia') or {}
         self.media_cache, self.media_placements, self.media_credits = {}, [], set()
         self.media_failures = 0
+        self.roll_annotations = []
 
     def absolute_box(self, box):
         x, y, X, Y = box
@@ -732,9 +766,11 @@ class RuntimeFolio(APPROVED_FOLIO):
         name = clean(character.get('name') or 'Unnamed character')
         self.text(self.one_line(name, 373-name_left, 'Display', 17), name_left, 82, 17, 'Display')
         budget = character.get('buBalance') or {}
-        self.text('LEVEL / BUDGET', 388, 82, 6.1, 'Head')
+        self.text('LEVEL / BU', 388, 79, 6.1, 'Head')
         value = f"{number(character.get('level')) or '?'} / {number(budget.get('progressionSpent')) or '?'} of {number(budget.get('progressionPool')) or '?'} BU"
-        self.plain(value, 388, 95, self.right-388, 8, 9.2)
+        self.plain(value, 388, 90, self.right-388, 8, 9.2)
+        self.text(f"Available {number(available_bu(character)) or '?'}  /  Item BU {number(budget.get('itemBuSpent')) or '?'}", 388, 102, 7.2, 'Body')
+        self.text(self.debt_text(), 388, 113, 6.6, 'Body')
         heritages = ' / '.join(clean((link.get('heritage') or {}).get('name')) for link in character.get('heritageLinks') or [])
         concept = character.get('concept') or heritages
         self.text('CONCEPT / HERITAGES', name_left, 109, 6.1, 'Head')
@@ -742,6 +778,76 @@ class RuntimeFolio(APPROVED_FOLIO):
         concept_left = name_left+114
         first_line = self.one_line(concept, 373-concept_left, 'Body', 9.1)
         self.text(first_line, concept_left, 108, 9.1, 'Body')
+
+    def debt_text(self):
+        debt = debt_account(self.character)
+        return f"Debt {number(debt['used']) or '?'} used / {number(debt['available']) or '?'} available / {number(debt['max']) or '?'} max"
+
+    def domain_text(self, value, x, y, width, size):
+        # A native, prominent label without surrounding it in another card.
+        self.c.saveState()
+        self.c.setFillColorRGB(*(theme.TEAL if self.color_edition else (0, 0, 0)))
+        self.c.setFont('BodyBold', size)
+        value = self.one_line(value or 'None recorded', width, 'BodyBold', size)
+        self.c.drawString(x, self.height-y-size*.8, value)
+        self.c.restoreState()
+        self.texts.append({'page': self.page, 'panel': self.panel, 'text': value,
+                          'box': self.absolute_box([x, y, x+pdfmetrics.stringWidth(value, 'BodyBold', size), y+size]),
+                          'font': 'BodyBold', 'size': size, 'role': 'domains'})
+
+    def axis_marks(self, target, x, y, width, size=6.3):
+        state = ((self.character.get('pdfDerived') or {}).get('rollMarkers') or {}).get(target) or {}
+        net = state.get('netAdvantage', 0)
+        marks = []
+        if net:
+            marks.append(('advantage' if net > 0 else 'disadvantage', str(abs(net)) if abs(net) > 1 else '',
+                          '#059669' if net > 0 else '#dc2626'))
+        for key in ('floor', 'ceiling'):
+            if state.get(key) is not None:
+                marks.append((key, number(state[key]), '#d97706'))
+        if state.get('conditional'):
+            marks.append(('conditional', '*', '#d97706'))
+        if not marks:
+            return
+        required = sum((0 if kind == 'conditional' else 6)+pdfmetrics.stringWidth(value, 'Head', size)+3
+                       for kind, value, _ in marks)
+        # Callers reserve a separate annotation row when inline space is tight.
+        if required > width+.01:
+            raise ValueError(f'Roll annotations for {target} exceed their reserved writing measure')
+        for kind, value, color in marks:
+            start = x
+            self.c.saveState()
+            rgb = theme.rgb(color) if self.color_edition else (0, 0, 0)
+            self.c.setStrokeColorRGB(*rgb)
+            self.c.setFillColorRGB(*rgb)
+            self.c.setLineWidth(.7)
+            if kind != 'conditional':
+                up = kind in ('advantage', 'floor')
+                tip, tail = (y+1, y+6) if up else (y+6, y+1)
+                shafts = (x+1.5, x+4) if kind in ('advantage', 'disadvantage') else (x+3,)
+                for shaft in shafts:
+                    self.c.line(shaft, self.height-tip, shaft, self.height-tail)
+                    end = tip+(2 if up else -2)
+                    self.c.line(shaft, self.height-tip, shaft-1.5, self.height-end)
+                    self.c.line(shaft, self.height-tip, shaft+1.5, self.height-end)
+                if kind in ('floor', 'ceiling'):
+                    bar = tip-1 if up else tip+1
+                    self.c.line(x, self.height-bar, x+6, self.height-bar)
+                x += 6
+            self.c.setFont('Head', size)
+            self.c.drawString(x, self.height-y-size*.8, value)
+            x += pdfmetrics.stringWidth(value, 'Head', size)+3
+            self.c.restoreState()
+            self.roll_annotations.append({'page': self.page, 'panel': self.panel, 'target': target,
+                                          'kind': kind, 'value': value, 'color': list(rgb),
+                                          'box': self.absolute_box([start, y-1, x, y+size+1])})
+
+    def metric_marks(self, target, x, y, right, fallback_x=None, fallback_right=None):
+        """Use a short second line for dense cards rather than crowding values."""
+        if fallback_x is not None:
+            self.axis_marks(target, fallback_x, y+9, fallback_right-fallback_x, 5.9)
+        else:
+            self.axis_marks(target, x, y, max(0, right-x))
 
     def band_hint(self, title, x, y, width, hint):
         """Give a legend its own measured space beside the structural heading."""
@@ -791,7 +897,7 @@ class RuntimeFolio(APPROVED_FOLIO):
                         for column in range(2 if dense else 1)]
         for index, practice in enumerate(practices):
             if dense:
-                px, yy, pw = x+13+(index%2)*(width-15)/2, y+44+(index//2)*11.5, (width-15)/2
+                px, yy, pw = x+13+(index%2)*(width-15)/2, y+41+(index//2)*16, (width-15)/2
             else:
                 px, yy, pw = x+12, y+51+index*11.5, width-14
             row = lookup.get(practice) or {}
@@ -801,6 +907,9 @@ class RuntimeFolio(APPROVED_FOLIO):
                                number(row.get('total'), True) or '?', 8.2 if dense else 9,
                                'practice_'+practice, card, label_size,
                                cell_width=22 if dense else 26)
+            end = self.metric_pairs[-1]['cell'][2]-self.origin_x
+            self.metric_marks('skill_practice_check.'+practice, end+2, yy, x+width-7,
+                              px+9 if dense else None, px+pw-4 if dense else None)
 
     def attribute(self, which, x, y, width, height, c=None):
         self.attribute_card(which, x, y, width, height+4, c)
@@ -870,7 +979,7 @@ class RuntimeFolio(APPROVED_FOLIO):
             for index, roman in enumerate(TIER_LABELS):
                 self.check(x+12+(index%2)*75, y+48+(index//2)*16, TIER_LABELS[roman], 'verb_tier', roman in owned['VERB_TIER'], 8.5)
             self.text('DOMAINS', x+12, y+85, 6.8, 'Head')
-            self.text(self.one_line(domain or 'None recorded', width-24, 'Body', 8.6), x+12, y+100, 8.6, 'Body')
+            self.domain_text(domain, x+12, y+100, width-24, 9)
             self.write(x+12, y+112, width-24, 14, 'domains_extra')
             self.text('RANGE', x+12, y+136, 6.8, 'Head')
             for index, label in enumerate(RANGES):
@@ -884,7 +993,7 @@ class RuntimeFolio(APPROVED_FOLIO):
             for index, roman in enumerate(TIER_LABELS):
                 self.check(x+58+index*(width-66)/4, y+23, TIER_LABELS[roman], 'verb_tier', roman in owned['VERB_TIER'], 8.5)
             self.text('DOMAINS', x+7, y+46, 6.3, 'Head')
-            self.text(self.one_line(domain or 'None recorded', width-83, 'Body', 9), x+70, y+45, 9, 'Body')
+            self.domain_text(domain, x+70, y+45, width-83, 9.4)
             self.text('RANGE', x+7, y+66, 6.2, 'Head')
             for index, label in enumerate(RANGES):
                 self.check(x+7+index*(width-14)/6, y+80, label, 'range', label in owned['RANGE'], 7.8, DISTANCES[index])
@@ -896,7 +1005,7 @@ class RuntimeFolio(APPROVED_FOLIO):
             for index, roman in enumerate(TIER_LABELS):
                 self.check(x+53+index*56, y+20, TIER_LABELS[roman], 'verb_tier', roman in owned['VERB_TIER'], 8.6)
             self.text('DOMAINS', x+300, y+22, 6.3, 'Head')
-            self.text(self.one_line(domain or 'None recorded', width-369, 'Body', 9), x+363, y+21, 9, 'Body')
+            self.domain_text(domain, x+363, y+21, width-369, 9.4)
             self.text('RANGE', x+6, y+45, 6.3, 'Head')
             for index, label in enumerate(RANGES):
                 self.check(x+49+index*44, y+41, label, 'range', label in owned['RANGE'], 7.5, DISTANCES[index])
@@ -915,6 +1024,16 @@ class RuntimeFolio(APPROVED_FOLIO):
             portrait = self.media(record, portrait=True) if record.get('entity_kind') in ('character', 'heritage') else None
             icon = None if portrait else self.media(record)
             html = '<b>' + escape(clean(title)) + '</b>' + (' · ' if primitive else '<br/>') + markdown_html(clean(body))
+            if record.get('sections'):
+                sections = []
+                for section in record['sections']:
+                    content = markdown_html(clean(section['text']))
+                    label = '<b>'+escape(section['label'])+'</b><br/>' if section['label'] else ''
+                    if section['kind'] == 'mechanical':
+                        color = '#904422' if self.color_edition else '#222222'
+                        content = f'<font color="{color}"><b>{content}</b></font>'
+                    sections.append(label+content)
+                html = '<b>'+escape(clean(title))+'</b><br/>'+'<br/>'.join(sections)
             leading = 12.0 if self.landscape and primitive and density == 'normal' else RULE_LEADING
             queue.append({'record': record, 'paragraph': self.paragraph_object(html, leading=leading, first_line_indent=15 if icon else 0),
                           'continued': False, 'icon': icon, 'portrait': portrait,
@@ -1051,7 +1170,7 @@ class RuntimeFolio(APPROVED_FOLIO):
                 self.write(x+5, yy, width-10, 14, 'primitive_additions')
 
     def state_rail(self, y, c=None):
-        self.text('ONGOING / DEFENCES / ENDING', self.left, y, 6.2, 'Head')
+        self.text('ACTIVE EFFECTS / END WHEN', self.left, y, 6.2, 'Head')
         self.write(self.left+174, y-3, self.right-self.left-174, 16, 'ongoing_endings')
 
     def footer_state(self, c=None):
@@ -1064,8 +1183,6 @@ class RuntimeFolio(APPROVED_FOLIO):
         self.text('LOAD / capacity', self.left+249, y+1, 5.8, 'Head')
         self.pencil_value(self.left+329, y-4, 43, 15, 'load_current', self.stats['currentLoad'])
         self.text('/ '+(number(self.stats['carryCapacity']) or '___'), self.left+376, y, 8.4, 'Body')
-        self.text('FOLIO', self.right-69, y+1, 5.8, 'Head')
-        self.write(self.right-37, y-4, 37, 15, 'rule_folio')
 
     def front_portrait(self, density):
         compact = density == 'compact'
@@ -1088,8 +1205,8 @@ class RuntimeFolio(APPROVED_FOLIO):
             self.live_column(self.left, 448, 159)
             self.access(216, 129, self.right-216)
             self.ledger_runtime(216, 260, self.right-216, 637, pending)
-            self.text('ONGOING / ENDING', self.left+2, 643, 6.3, 'Head')
-            self.write(self.left+105, 639, self.right-self.left-105, 14, 'ongoing_endings')
+            self.text('ACTIVE EFFECTS / END WHEN', self.left+2, 643, 6.3, 'Head')
+            self.write(self.left+142, 639, self.right-self.left-142, 14, 'ongoing_endings')
         else:
             self.vital_bar(122)
             for index in range(3):
@@ -1100,8 +1217,8 @@ class RuntimeFolio(APPROVED_FOLIO):
             else:
                 self.access(self.left, 287, 159, vertical=True)
                 self.ledger_runtime(216, 287, self.right-216, 637, pending)
-            self.text('ONGOING / ENDING', self.left+2, 643, 6.3, 'Head')
-            self.write(self.left+105, 639, self.right-self.left-105, 14, 'ongoing_endings')
+            self.text('ACTIVE EFFECTS / END WHEN', self.left+2, 643, 6.3, 'Head')
+            self.write(self.left+142, 639, self.right-self.left-142, 14, 'ongoing_endings')
         self.scaling(688 if compact else 658, compact=compact)
         self.footer_state()
         self.end()
@@ -1131,6 +1248,8 @@ class RuntimeFolio(APPROVED_FOLIO):
             self.paired_metric(practice.title(), xx+8, yy, label_widths[index % 2],
                                number(row.get('total'), True) or '?', 9.2,
                                'practice_'+practice, card, 8.8)
+            self.metric_marks('skill_practice_check.'+practice, 0, yy, 0, xx+8,
+                              min(xx+100, x+width-5))
 
     def landscape_access(self, y):
         x, width = self.left, self.right-self.left
@@ -1141,7 +1260,7 @@ class RuntimeFolio(APPROVED_FOLIO):
             self.check(x+52+index*70, y+19, TIER_LABELS[roman], 'verb_tier', roman in owned['VERB_TIER'], 8.6)
         self.text('DOMAINS', x+4, y+35, 6.3, 'Head')
         domain = ' / '.join(row['ref']+' '+access_value(row) for row in self.rows if row['category'] == 'DOMAIN')
-        self.text(self.one_line(domain or 'None recorded', width-68, 'Body', 9.2), x+65, y+34, 9.2, 'Body')
+        self.domain_text(domain, x+65, y+34, width-68, 9.6)
         for index, label in enumerate(RANGES):
             self.check(x+4+index*(width-8)/6, y+50, label, 'range', label in owned['RANGE'], 7.8, DISTANCES[index])
         self.text('DIE', x+4, y+76, 6.3, 'Head')
@@ -1183,10 +1302,11 @@ class RuntimeFolio(APPROVED_FOLIO):
                              self.character.get('portraitFrame') or {})
         self.text(self.one_line(self.character.get('name') or 'Unnamed character', self.right-identity_left, 'Display', 17), identity_left, 83, 17, 'Display')
         balance = self.character.get('buBalance') or {}
-        self.text(f"LEVEL / BUDGET  {number(self.character.get('level')) or '?'} / {number(balance.get('progressionSpent')) or '?'} of {number(balance.get('progressionPool')) or '?'} BU", identity_left+4, 106, 8, 'Head')
+        self.text(f"LEVEL / BU  {number(self.character.get('level')) or '?'} / {number(balance.get('progressionSpent')) or '?'} of {number(balance.get('progressionPool')) or '?'} BU  /  Available {number(available_bu(self.character)) or '?'}", identity_left+4, 110, 7.6, 'Head')
+        self.text(self.debt_text()+f"  /  Item BU {number(balance.get('itemBuSpent')) or '?'}", identity_left+4, 120, 6.7, 'Body')
         heritages = ' / '.join(clean((link.get('heritage') or {}).get('name')) for link in self.character.get('heritageLinks') or [])
         concept = unique_text([self.character.get('concept'), heritages]).replace('\n', ' / ')
-        self.text(self.one_line('CONCEPT / HERITAGES  '+(concept or 'See identity record'), self.right-identity_left-8, 'Body', 6.8), identity_left+4, 118, 6.8, 'Body')
+        self.text(self.one_line('CONCEPT / HERITAGES  '+(concept or 'See identity record'), self.right-identity_left-8, 'Body', 6.8), identity_left+4, 101, 6.8, 'Body')
         self.molding(x, 128, width, 42, 1)
         for index, (title, value, current_role) in enumerate([
                 ('VITALITY MAX / CURRENT', self.stats['vitality'], 'current_vitality'),
@@ -1346,9 +1466,7 @@ class RuntimeFolio(APPROVED_FOLIO):
             self.begin('blank workbench', 'IN PLAY / COMPOSE / ACQUIRE')
             self.heading('The working surface')
             self.text('CHARACTER', self.left+4, 111, 6.2, 'Head')
-            self.write(self.left+64, 104, 219, 18, 'workbench_character')
-            self.text('FOLIO / DATE', self.right-166, 111, 6.2, 'Head')
-            self.write(self.right-103, 104, 100, 18, 'workbench_folio')
+            self.write(self.left+64, 104, self.right-self.left-68, 18, 'workbench_character')
             self.scaling(130, compact=True)
             self.text('REACH', self.left+8, 251, 6.2, 'Head')
             for index, label in enumerate(RANGES):
@@ -1466,6 +1584,7 @@ class RuntimeFolio(APPROVED_FOLIO):
                   'roles': self.roles, 'text_boxes': self.texts, 'writing_fields': self.writing,
                   'practice_marks': self.marks, 'choices': self.choices, 'numeric_values': self.numeric,
                   'metric_pairs': self.metric_pairs,
+                  'roll_annotations': self.roll_annotations,
                   'media_placements': self.media_placements, 'media_credits': sorted(self.media_credits),
                   'media_decode_failures': self.media_failures,
                   'rule_placements': self.placed, 'rule_segments': self.segments, 'source_records': self.groups,

@@ -33,6 +33,7 @@ import type { HardModifier } from "@/types/swordweave";
 import { sumPrimitiveContributions, walkPrimitiveContributionsForAxis } from "./primitive-walk";
 import { computeAllSavingThrows, proficiencyBonus } from "./practices";
 import { resolveModifiers, type ResolvedPrimitiveSlot } from "./resolve-modifiers";
+import { axisMarkerMap, type AxisMarkerState } from "./axis-markers";
 import { resolvePracticeGrants } from "./practice-grants";
 import {
   BUAccount,
@@ -186,6 +187,7 @@ export type CharacterSheetInput = {
 };
 
 export type CharacterSheet = {
+  readonly rollMarkers?: Readonly<Record<string, AxisMarkerState>>;
   readonly buBalance: BUBalance;
   readonly volatility: {
     readonly rating: number;
@@ -1179,6 +1181,7 @@ behaviorVariables.sort((a, b) => a.key.localeCompare(b.key));
     }));
 
   return {
+    rollMarkers: axisMarkerMap(sheetResolver.byTarget),
     buBalance,
     volatility: {
       rating: buLedger.volatilityRating,

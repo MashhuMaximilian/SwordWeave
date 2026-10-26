@@ -44,6 +44,7 @@ describe("character PDF snapshot", () => {
     expect(snapshot.pdfDerived).toMatchObject({ attributes: { physical: -2, mental: 7, magical: 9 }, dc: 23, pb: 6,
       movement: { walk: 45, fly: 90, climb: 0 }, restCap: 166, equippedSlotsUsed: 9, currentLoad: 44 });
     expect(snapshot.conditionContext.character.attributes).toEqual(changedSheet.attributes);
+    expect(snapshot.pdfDerived.rollMarkers).toEqual(changedSheet.rollMarkers ?? {});
     expect(snapshot.primitiveLinks).toHaveLength(character.primitiveLinks.length);
   });
 

@@ -201,6 +201,7 @@ export function createCharacterPdfSnapshot(
       saveDc: sheet.dc, proficiencies: practices.filter(p => p.training > 0).map(p => p.practice), flags: [], custom,
     } },
     pdfDerived: {
+      rollMarkers: sheet.rollMarkers ?? {},
       attributes: sheet.attributes, saves, practices, pb: sheet.proficiencyBonus, dc: sheet.dc,
       movement: { walk: sheet.speedByType["WALKING_SPEED"] ?? 0, climb: sheet.speedByType["CLIMBING_SPEED"] ?? 0,
         swim: sheet.speedByType["SWIMMING_SPEED"] ?? 0, fly: sheet.speedByType["FLYING_SPEED"] ?? 0, burrow: sheet.speedByType["BURROWING_SPEED"] ?? 0 },
