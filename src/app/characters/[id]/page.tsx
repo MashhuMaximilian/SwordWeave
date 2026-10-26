@@ -637,9 +637,9 @@ export default async function CharacterSheetPage({
       proficiencies: new Set(
         [
           ...sheet.practices
-            .filter((p) => p.attribute === (row.attrProficient ?? "PHYSICAL"))
+            .filter((p) => p.training > 0)
             .map((p) => p.practice),
-          (row.attrProficient ?? "PHYSICAL").toLowerCase(),
+          ...(row.attrProficient ? [row.attrProficient.toLowerCase()] : []),
         ],
       ),
       flags: new Set(),

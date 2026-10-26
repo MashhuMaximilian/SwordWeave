@@ -14,6 +14,17 @@ beforeEach(()=>{
   mocks.aggregate.mockReturnValue({vitality:{max:12},dc:10,proficiencyBonus:2,savingThrows:[],behaviorVariables:[],attributes:{},practices:[]});
 });
 describe("draft sheet graph reuse",()=>{
+  it("uses actual practice training for proficiency-dependent conditions",async()=>{
+    mocks.aggregate.mockReturnValue({vitality:{max:12},dc:10,proficiencyBonus:2,savingThrows:[],behaviorVariables:[],attributes:{},practices:[
+      {practice:"prowess",attribute:"PHYSICAL",training:1,total:5},
+      {practice:"knowledge",attribute:"MENTAL",training:1,total:6},
+      {practice:"awareness",attribute:"MENTAL",training:2,total:8},
+      {practice:"mysticism",attribute:"MAGICAL",training:0,total:400},
+    ]});
+    await readDraftSheet("character",graph);
+    expect(mocks.aggregate.mock.calls[1]?.[0].conditionContext.character.proficiencies)
+      .toEqual(new Set(["prowess","knowledge","awareness","physical"]));
+  });
   it("uses the supplied transaction graph without a redundant workspace read",async()=>{
     const result=await readDraftSheet("character",graph);
     expect(result.vitality.max).toBe(12);

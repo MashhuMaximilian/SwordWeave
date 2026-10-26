@@ -48,6 +48,13 @@ describe("character PDF snapshot", () => {
     expect(snapshot.primitiveLinks).toHaveLength(character.primitiveLinks.length);
   });
 
+  it("copies resolved training rather than guessing from a primitive's other grants", () => {
+    const practices = sheet.practices.map((p, i) => ({...p,training:(i % 3) as 0 | 1 | 2}));
+    const snapshot = createCharacterPdfSnapshot(character, graph, {...sheet,practices}, "OWNER");
+    expect(snapshot.pdfDerived.practices.map(p=>p.training)).toEqual(practices.map(p=>p.training));
+    expect(snapshot.pdfDerived.practices.map(p=>p.total)).toEqual(practices.map(p=>p.total));
+  });
+
   it("retains actual repeated purchases, pins and mirrored wording while references do not duplicate acquisitions", () => {
     const primitive = { id: 1, name: "Lift", mechanicalOutputText: "Add 2 to Physical.", narrativeRule: "A lifted burden.",
       hardModifiers: [{ kind: "modify", target: "physical", operation: "add", value: 2 }] };

@@ -43,7 +43,7 @@ export function resolvePracticeGrants(
   contributions: readonly ModifierContribution[],
   pb: number,
   proficientAttribute: string | null | undefined,
-): { contributions: ModifierContribution[]; bonus: number } {
+): { contributions: ModifierContribution[]; bonus: number; training: 0 | 1 | 2 } {
   const practice = target.slice("skill_practice_check.".length);
   const attribute = Object.entries(PRACTICE_ATTRIBUTE_MAP).find(([, names]) =>
     (names as readonly string[]).includes(practice),
@@ -51,11 +51,19 @@ export function resolvePracticeGrants(
   const active = (c: ModifierContribution) => c.conditionActive && !c.inhibited;
   const baseProficient =
     attribute?.toLowerCase() === proficientAttribute?.toLowerCase();
+  // Earlier catalogue expertise pieces used an additive PB token, guarded by
+  // proficiency, instead of a grant token. Preserve that authored arithmetic
+  // while identifying the active training badge just as the live sheet does.
+  // A plain numeric bonus, mirrored penalty or unrelated scope never qualifies.
+  const legacyExpertise = (c: ModifierContribution) =>
+    active(c) && c.op === "add" && c.value > 0 &&
+    practiceGrant(c.rawValue) === "proficiency" &&
+    /^expertise\b/i.test(c.primitiveName);
   const numericProficiency = contributions.some(
     (c) =>
       active(c) &&
       c.op === "add" &&
-      practiceGrant(c.rawValue) === "proficiency",
+      practiceGrant(c.rawValue) === "proficiency" && !legacyExpertise(c),
   );
   const hasProficiency =
     baseProficient ||
@@ -86,5 +94,9 @@ export function resolvePracticeGrants(
     bonus += value;
     return { ...c, value, tags: [...new Set([...c.tags, kind])] };
   });
-  return { contributions: resolved, bonus };
+  // Export the same scoped, active grant state that produced the total.
+  // Plain numeric bonuses and unrelated grants from the same primitive are not
+  // evidence of training in this practice.
+  return { contributions: resolved, bonus,
+    training: hasProficiency ? expertiseApplied || contributions.some(legacyExpertise) ? 2 : 1 : 0 };
 }

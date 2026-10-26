@@ -234,6 +234,9 @@ class NativePdfTests(unittest.TestCase):
                                 pair = next(p for p in folio.metric_pairs if p['role']=='practice_'+practice)
                                 left,top,right,bottom = mark['box']
                                 card = pair['card']
+                                baseline = pair['value_box'][1]+next(t['size'] for t in folio.texts if t['box']==pair['value_box'])*.8
+                                self.assertAlmostEqual(mark['baseline'],baseline,places=5)
+                                self.assertGreaterEqual(left,pair['cell'][2]+2.9)
                                 self.assertGreaterEqual(left,card[0]+5)
                                 self.assertLessEqual(right,card[2]-4)
                                 self.assertGreaterEqual(top,card[1]+3)
@@ -365,6 +368,7 @@ class NativePdfTests(unittest.TestCase):
                         for total in (1, -12, 123):
                             with self.subTest(style=style, orientation=orientation, density=density, total=total):
                                 source = character(0)
+                                source['pdfDerived']['attributes'] = {key:total for key in ('physical','mental','magical')}
                                 source['pdfDerived']['saves'] = {key: total for key in ('physical', 'mental', 'magical')}
                                 source['pdfDerived']['practices'] = [
                                     {'practice': practice, 'total': total, 'training': 1}
@@ -382,6 +386,13 @@ class NativePdfTests(unittest.TestCase):
                                 self.assertEqual(len(folio.metric_pairs), 13)
                                 with pdfplumber.open(BytesIO(folio.stream.getvalue())) as pdf:
                                     chars = pdf.pages[0].chars
+                                    for seal in folio.attribute_seals:
+                                        left,top,right,bottom = seal['value_box']
+                                        glyphs=[c for c in chars if c['x0']>=left-.02 and c['x1']<=right+.02 and abs(c['top']-top)<3]
+                                        self.assertEqual(''.join(c['text'] for c in glyphs),f'{total:+}',seal)
+                                        inner=seal['inner_box']
+                                        self.assertTrue(all(c['x0']>=inner[0]-.02 and c['x1']<=inner[2]+.02 and
+                                                            c['top']>=inner[1]-.02 and c['bottom']<=inner[3]+.02 for c in glyphs),seal)
                                     for pair in folio.metric_pairs:
                                         left, top, right, bottom = pair['value_box']
                                         glyphs = [char for char in chars

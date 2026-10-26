@@ -159,18 +159,7 @@ export function createCharacterPdfSnapshot(
   const effectLinks = graph.nodes.filter(node => node.kind === "effect" &&
     supplyPaths(graph, node.key).some(path => !path.item),
   ).map(node => ({ effectId: node.id, effect: definition(node) }));
-  const practices = sheet.practices.map(practice => {
-    // Grants appear in the canonical resolver's primitive contribution list.
-    // A plain numeric bonus is not proficiency or expertise.
-    const grants = primitiveLinks.filter(link => practice.primitiveContributions.some(c => c.primitiveId === link.primitiveId))
-      .flatMap(link => Array.isArray(link.primitive["hardModifiers"]) ? link.primitive["hardModifiers"] : [])
-      .map(record).filter(modifier => modifier["operation"] === "grant")
-      .map(modifier => record(modifier["value"]))
-      .map(value => String(value["text"] ?? value["value"] ?? value["which"] ?? "").replace(/^\[|\]$/g, "").toLowerCase());
-    const proficient = practice.pbContribution !== 0 || grants.some(grant => ["pb", "proficiency", "proficiency_bonus"].includes(grant));
-    const training: 0 | 1 | 2 = proficient ? grants.includes("expertise") ? 2 : 1 : 0;
-    return { ...practice, training };
-  });
+  const practices = sheet.practices.map(practice => ({ ...practice }));
   const saves = Object.fromEntries(sheet.savingThrows.map(save => [save.attribute.toLowerCase(), save.bonus])) as CharacterPdfSnapshot["pdfDerived"]["saves"];
   const custom = { proficiency_bonus: sheet.proficiencyBonus, ...Object.fromEntries(sheet.savingThrows.map(save => [`${save.attribute.toLowerCase()}_saving_throw`, save.bonus])) };
   const readOnlyGraph: WorkspaceGraph = { ...graph, edges: graph.edges.map(edge => {

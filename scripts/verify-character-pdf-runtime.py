@@ -184,6 +184,12 @@ def verify(manifest):
         cx,cy,cr,cb=pair['card'];sx,sy,sr,sb=pair['cell']
         assert lr+2<=sx and sx<=vx<=vr<=sr, ('label/value separation',pair)
         assert cx+5<=vx and vr<=cr-5 and cy<=vy and vb<=cb, ('number outside card',pair)
+    for mark in m.get('roll_annotations',[]):
+        practice=mark['target'].split('.')[-1]
+        pair=next(p for p in m['metric_pairs'] if p['page']==mark['page'] and p['role']=='practice_'+practice)
+        value=next(t for t in m['text_boxes'] if t['page']==pair['page'] and t['box']==pair['value_box'])
+        assert abs(mark['baseline']-(value['box'][1]+value['size']*.8))<.01, ('roll marker baseline',mark)
+        assert mark['box'][0]>=pair['cell'][2]+2.9 and mark['box'][2]<=pair['card'][2]-4, ('roll marker clearance',mark)
     for box in m['text_boxes']+m['writing_fields']:
         x,y,right,bottom=box['box']
         assert x>=0 and right<=m['page_size'][0]+.03 and y>=0 and bottom<=m['page_size'][1]-.01,(path.name,'bounds',box)
@@ -191,7 +197,15 @@ def verify(manifest):
             left,right_fold=m['fold_gutter']; assert right<=left or x>=right_fold, ('fold collision',box)
     glyphs=0
     with pdfplumber.open(path) as pdf:
-        for page in pdf.pages:
+        for page_no,page in enumerate(pdf.pages,1):
+            for seal in (s for s in m.get('attribute_seals',[]) if s['page']==page_no):
+                left,top,right,bottom=seal['value_box']
+                chars=[c for c in page.chars if c['x0']>=left-.02 and c['x1']<=right+.02 and abs(c['top']-top)<3]
+                expected=next(n['value'] for n in m['numeric_values'] if n['page']==page_no and n['role']==seal['role'])
+                assert ''.join(c['text'] for c in chars)==expected, ('missing attribute glyph',seal)
+                inner_left,inner_top,inner_right,inner_bottom=seal['inner_box']
+                assert all(c['x0']>=inner_left-.02 and c['x1']<=inner_right+.02 and
+                           c['top']>=inner_top-.02 and c['bottom']<=inner_bottom+.02 for c in chars), ('attribute touches seal',seal)
             for ch in page.chars:
                 assert ch['x0']>=10 and ch['x1']<=page.width-10, ('glyph x bounds',path.name,ch['text'])
                 assert ch['top']>=10 and ch['bottom']<=page.height-10, ('glyph y bounds',path.name,ch['text'])
@@ -200,7 +214,8 @@ def verify(manifest):
                 glyphs+=1
     return {'file':str(path),'sha256':m['sha256'],'pages':len(r.pages),'color_edition':color_edition,'native_color_operations':color_operations,'images':images,'actual_clip_paths':clips,
             'actual_curved_clips':curves,'minimum_native_ppi':round(min_ppi,2),'fonts':sorted(fonts),'glyphs':glyphs,
-            'source_rules':'PASS','decoded_image_and_alpha_bytes':'PASS','transforms_and_clips':'PASS','bounds_and_fold':'PASS'}
+            'source_rules':'PASS','decoded_image_and_alpha_bytes':'PASS','transforms_and_clips':'PASS','bounds_and_fold':'PASS',
+            'inline_roll_markers_and_attribute_clearance':'PASS'}
 
 
 if __name__=='__main__':

@@ -212,7 +212,7 @@ export type CharacterSheet = {
     }>;
   };
   readonly buLedger: BuLedger;
-  readonly practices: ReadonlyArray<PracticeModifierBreakdown>;
+  readonly practices: ReadonlyArray<PracticeModifierBreakdown & { readonly training: 0 | 1 | 2 }>;
   readonly practiceAttributeMap: PracticeAttributeMap;
   readonly vitality: {
     readonly max: number;
@@ -810,12 +810,16 @@ export function aggregateCharacterSheet(
     const target = `skill_practice_check.${practice.practice}`;
     const grants = resolvePracticeGrants(target, sheetResolver.byTarget[target] ?? [],
       pbOverride ?? proficiencyBonus(input.level), input.attrProficient);
-    return { ...practice, total: practice.total + grants.bonus,
-      primitiveContributions: [...practice.primitiveContributions,
-        ...grants.contributions.filter(c => c.op === "grant" && c.value !== 0 &&
-          (c.tags.includes("expertise") || c.tags.includes("proficiency"))).map(c => ({
-            primitiveId: c.primitiveId, primitiveName: c.primitiveName, bonus: c.value,
-          }))],
+    // The live drawer uses this same resolver total. The older primitive walk
+    // only understood a subset of value tokens and could drop equations or
+    // evaluate compound conditions differently in server/PDF exports.
+    return { ...practice, training: grants.training,
+      total: practice.slice + practice.pbContribution + (sheetResolver.totals[target] ?? 0),
+      primitiveContributions: grants.contributions.filter(c => c.conditionActive && !c.inhibited && c.value !== 0 &&
+        (c.op === "add" || c.op === "subtract" ||
+          (c.op === "grant" && (c.tags.includes("expertise") || c.tags.includes("proficiency"))))).map(c => ({
+            primitiveId: c.primitiveId, primitiveName: c.primitiveName, bonus: c.op === "subtract" ? -c.value : c.value,
+          })),
     };
   });
 

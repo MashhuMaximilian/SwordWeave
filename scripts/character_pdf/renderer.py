@@ -449,7 +449,7 @@ class RuntimeFolio(APPROVED_FOLIO):
         self.origin_x = 0
         for name in ('roles', 'texts', 'writing', 'marks', 'placed', 'art', 'choices', 'numeric',
                      'frame_paths', 'source_blocks', 'padding_cards', 'overflow', 'furniture',
-                     'panels', 'tables', 'joins', 'beams', 'segments', 'metric_pairs'):
+                     'panels', 'tables', 'joins', 'beams', 'segments', 'metric_pairs', 'attribute_seals'):
             setattr(self, name, [])
         self.assets = {}
         for asset_key, filename in (('original', 'frame.png'), ('bridge', 'bridge.png')):
@@ -795,12 +795,12 @@ class RuntimeFolio(APPROVED_FOLIO):
                           'box': self.absolute_box([x, y, x+pdfmetrics.stringWidth(value, 'BodyBold', size), y+size]),
                           'font': 'BodyBold', 'size': size, 'role': 'domains'})
 
-    def axis_marks(self, target, x, y, width, size=6.3):
+    def axis_marks(self, target, x, baseline, width, size=6.3):
         state = ((self.character.get('pdfDerived') or {}).get('rollMarkers') or {}).get(target) or {}
         net = state.get('netAdvantage', 0)
         marks = []
         if net:
-            marks.append(('advantage' if net > 0 else 'disadvantage', str(abs(net)) if abs(net) > 1 else '',
+            marks.append(('advantage' if net > 0 else 'disadvantage', f'({abs(net)})' if abs(net) > 1 else '',
                           '#059669' if net > 0 else '#dc2626'))
         for key in ('floor', 'ceiling'):
             if state.get(key) is not None:
@@ -809,45 +809,61 @@ class RuntimeFolio(APPROVED_FOLIO):
             marks.append(('conditional', '*', '#d97706'))
         if not marks:
             return
-        required = sum((0 if kind == 'conditional' else 6)+pdfmetrics.stringWidth(value, 'Head', size)+3
-                       for kind, value, _ in marks)
-        # Callers reserve a separate annotation row when inline space is tight.
-        if required > width+.01:
-            raise ValueError(f'Roll annotations for {target} exceed their reserved writing measure')
+        measure = lambda point: sum((0 if kind == 'conditional' else point*.95)+
+                                   pdfmetrics.stringWidth(value, 'Head', point)+2
+                                   for kind, value, _ in marks)
+        # Keep every annotation beside the total on the same baseline. Dense
+        # cards reserve whole practice rows instead of a second icon line.
+        if measure(size) > width:
+            size = max(5.4, min(size, (width-2*len(marks))*size/(measure(size)-2*len(marks))))
+        if measure(size) > width+.01:
+            raise ValueError(f'Roll annotations for {target} exceed their inline measure')
+        y = baseline-size*.8
         for kind, value, color in marks:
             start = x
+            unit = size/6.3
+            glyph = size*.95
             self.c.saveState()
             rgb = theme.rgb(color) if self.color_edition else (0, 0, 0)
             self.c.setStrokeColorRGB(*rgb)
             self.c.setFillColorRGB(*rgb)
-            self.c.setLineWidth(.7)
+            self.c.setLineWidth(.65*unit)
             if kind != 'conditional':
                 up = kind in ('advantage', 'floor')
-                tip, tail = (y+1, y+6) if up else (y+6, y+1)
-                shafts = (x+1.5, x+4) if kind in ('advantage', 'disadvantage') else (x+3,)
+                tip, tail = (y+unit, baseline) if up else (baseline, y+unit)
+                shafts = (x+1.5*unit, x+4*unit) if kind in ('advantage', 'disadvantage') else (x+3*unit,)
                 for shaft in shafts:
                     self.c.line(shaft, self.height-tip, shaft, self.height-tail)
-                    end = tip+(2 if up else -2)
-                    self.c.line(shaft, self.height-tip, shaft-1.5, self.height-end)
-                    self.c.line(shaft, self.height-tip, shaft+1.5, self.height-end)
+                    end = tip+(2*unit if up else -2*unit)
+                    self.c.line(shaft, self.height-tip, shaft-1.5*unit, self.height-end)
+                    self.c.line(shaft, self.height-tip, shaft+1.5*unit, self.height-end)
                 if kind in ('floor', 'ceiling'):
-                    bar = tip-1 if up else tip+1
-                    self.c.line(x, self.height-bar, x+6, self.height-bar)
-                x += 6
+                    bar = tip-unit if up else tip+unit
+                    self.c.line(x, self.height-bar, x+glyph, self.height-bar)
+                x += glyph
             self.c.setFont('Head', size)
-            self.c.drawString(x, self.height-y-size*.8, value)
-            x += pdfmetrics.stringWidth(value, 'Head', size)+3
+            self.c.drawString(x, self.height-baseline, value)
+            x += pdfmetrics.stringWidth(value, 'Head', size)+2
             self.c.restoreState()
             self.roll_annotations.append({'page': self.page, 'panel': self.panel, 'target': target,
-                                          'kind': kind, 'value': value, 'color': list(rgb),
-                                          'box': self.absolute_box([start, y-1, x, y+size+1])})
+                                          'kind': kind, 'value': value, 'color': list(rgb), 'baseline': baseline,
+                                          'box': self.absolute_box([start, y-unit, x, baseline+size*.25])})
 
-    def metric_marks(self, target, x, y, right, fallback_x=None, fallback_right=None):
-        """Use a short second line for dense cards rather than crowding values."""
-        if fallback_x is not None:
-            self.axis_marks(target, fallback_x, y+9, fallback_right-fallback_x, 5.9)
-        else:
-            self.axis_marks(target, x, y, max(0, right-x))
+    def attribute_value(self, name, x, y, radius, size):
+        value = number(self.stats['attributes'].get(name.lower()), True) or '?'
+        # A safe inner rectangle fits even the narrow diamond/leaf seals. Fit
+        # the signed string with the embedded font, preserving whitespace on
+        # both sides rather than treating every modifier as one digit.
+        width, height = (radius-3)*1.25, (radius-3)*1.1
+        ascent, descent = pdfmetrics.getAscentDescent('Head')
+        size = min(size, width/max(pdfmetrics.stringWidth(value, 'Head', 1), .01),
+                   height/((ascent-descent)/1000))
+        value_y = y+(ascent+descent)*size/2000-size*.8
+        self.value(value, x, value_y, size, 'attribute_'+name.lower())
+        self.attribute_seals.append({'page': self.page, 'panel': self.panel, 'role': 'attribute_'+name.lower(),
+                                     'value_box': self.texts[-1]['box'], 'size': size,
+                                     'inner_box': self.absolute_box([x-width/2, y-height/2, x+width/2, y+height/2]),
+                                     'seal_box': self.absolute_box([x-radius,y-radius,x+radius,y+radius])})
 
     def band_hint(self, title, x, y, width, hint):
         """Give a legend its own measured space beside the structural heading."""
@@ -877,39 +893,30 @@ class RuntimeFolio(APPROVED_FOLIO):
     def attribute_card(self, which, x, y, width, height, c=None, dense=False):
         name, practices = GROUPS[which]
         self.molding(x, y, width, height, .982)
-        rx, cy = x + (23 if dense else 27), y + (23 if dense else 25)
-        self.seal(rx, cy, 17 if dense else 20)
-        labelx = x + (44 if dense else 53)
-        self.strap(labelx, y + 7, width - (labelx-x) - 6, 17)
-        self.text(name.upper(), labelx+5, y+11, 7.5, 'Head', 1)
-        self.value(number(self.stats['attributes'].get(name.lower()), True) or '?', rx, cy-7, 14, 'attribute_'+name.lower())
+        rx, cy = x + (23 if dense else 27), y + (20 if dense else 25)
+        radius = 16 if dense else 20
+        self.seal(rx, cy, radius)
+        labelx = x + (43 if dense else 53)
+        self.strap(labelx, y + (5 if dense else 7), width - (labelx-x) - 6, 14 if dense else 17)
+        self.text(name.upper(), labelx+5, y+(8 if dense else 11), 7.5, 'Head', 1)
+        self.attribute_value(name, rx, cy, radius, 14)
         card = [x, y, x+width, y+height]
-        self.paired_metric('SAVE', labelx+4, y+30,
+        self.paired_metric('SAVE', labelx+4, y+(25 if dense else 30),
                            pdfmetrics.stringWidth('SAVE', 'Head', 6.1),
                            number(self.stats['saves'].get(name.lower()), True) or '?',
-                           10, 'save_'+name.lower(), card, 6.1, 'Head')
+                           9 if dense else 10, 'save_'+name.lower(), card, 6.1, 'Head', cell_width=22)
         lookup = {row.get('practice', '').lower(): row for row in self.stats['practices']}
-        label_size = 8.1 if dense else 8.5
-        # A dense card has two independent label/value columns. Each uses its
-        # longest practice label rather than the width of the entire card.
-        label_widths = [max(pdfmetrics.stringWidth(p.title(), 'Body', label_size)
-                            for i, p in enumerate(practices) if not dense or i % 2 == column)
-                        for column in range(2 if dense else 1)]
+        label_size = 7.8 if dense else 8.5
+        label_width = max(pdfmetrics.stringWidth(p.title(), 'Body', label_size) for p in practices)
         for index, practice in enumerate(practices):
-            if dense:
-                px, yy, pw = x+13+(index%2)*(width-15)/2, y+41+(index//2)*16, (width-15)/2
-            else:
-                px, yy, pw = x+12, y+51+index*11.5, width-14
+            px, yy = x+12, y+(37+index*9.2 if dense else 51+index*11.5)
             row = lookup.get(practice) or {}
             self.practice_mark(px+2, yy+3.5, practice, training_level(row, self.stats['pb']))
-            self.paired_metric(practice.title(), px+10, yy,
-                               label_widths[index % 2 if dense else 0],
+            self.paired_metric(practice.title(), px+10, yy, label_width,
                                number(row.get('total'), True) or '?', 8.2 if dense else 9,
-                               'practice_'+practice, card, label_size,
-                               cell_width=22 if dense else 26)
+                               'practice_'+practice, card, label_size, cell_width=20)
             end = self.metric_pairs[-1]['cell'][2]-self.origin_x
-            self.metric_marks('skill_practice_check.'+practice, end+2, yy, x+width-7,
-                              px+9 if dense else None, px+pw-4 if dense else None)
+            self.axis_marks('skill_practice_check.'+practice, end+3, yy+label_size*.8, x+width-7-end-3)
 
     def attribute(self, which, x, y, width, height, c=None):
         self.attribute_card(which, x, y, width, height+4, c)
@@ -1228,28 +1235,31 @@ class RuntimeFolio(APPROVED_FOLIO):
         x, width = self.left, self.right-self.left
         name, practices = GROUPS[which]
         self.molding(x, y, width, 43, .982)
-        self.seal(x+23, y+21, 15)
-        self.value(number(self.stats['attributes'].get(name.lower()), True) or '?', x+23, y+14, 13, 'attribute_'+name.lower())
-        self.strap(x+47, y+5, 86, 14)
-        self.text(name.upper(), x+52, y+8, 7.2, 'Head', 1)
+        self.seal(x+23, y+21, 17)
+        self.attribute_value(name, x+23, y+21, 17, 13)
+        self.strap(x+44, y+5, 53, 14)
+        self.text(name.upper(), x+49, y+8, 7.2, 'Head', 1)
         card = [x, y, x+width, y+43]
-        self.paired_metric('SAVE', x+49, y+27,
+        self.paired_metric('SAVE', x+46, y+27,
                            pdfmetrics.stringWidth('SAVE', 'Head', 6.1),
                            number(self.stats['saves'].get(name.lower()), True) or '?',
-                           9.2, 'save_'+name.lower(), card, 6.1, 'Head')
+                           9.2, 'save_'+name.lower(), card, 6.1, 'Head', cell_width=22)
         lookup = {row.get('practice', '').lower(): row for row in self.stats['practices']}
-        label_widths = [max(pdfmetrics.stringWidth(p.title(), 'Body', 8.8)
+        label_size = 8.1
+        column_width = (width-107)/2
+        label_widths = [max(pdfmetrics.stringWidth(p.title(), 'Body', label_size)
                             for i, p in enumerate(practices) if i % 2 == column)
                         for column in range(2)]
         for index, practice in enumerate(practices):
-            xx, yy = x+149+(index%2)*102, y+7+(index//2)*18
+            xx, yy = x+103+(index%2)*column_width, y+9+(index//2)*18
             row = lookup.get(practice) or {}
             self.practice_mark(xx, yy+3.5, practice, training_level(row, self.stats['pb']))
             self.paired_metric(practice.title(), xx+8, yy, label_widths[index % 2],
-                               number(row.get('total'), True) or '?', 9.2,
-                               'practice_'+practice, card, 8.8)
-            self.metric_marks('skill_practice_check.'+practice, 0, yy, 0, xx+8,
-                              min(xx+100, x+width-5))
+                               number(row.get('total'), True) or '?', 8.8,
+                               'practice_'+practice, card, label_size, cell_width=18)
+            end = self.metric_pairs[-1]['cell'][2]-self.origin_x
+            self.axis_marks('skill_practice_check.'+practice, end+3, yy+label_size*.8,
+                            xx+column_width-3-end-3)
 
     def landscape_access(self, y):
         x, width = self.left, self.right-self.left
@@ -1583,7 +1593,7 @@ class RuntimeFolio(APPROVED_FOLIO):
                   'chosen_density': density, 'density_measurements': self.density_measurements,
                   'roles': self.roles, 'text_boxes': self.texts, 'writing_fields': self.writing,
                   'practice_marks': self.marks, 'choices': self.choices, 'numeric_values': self.numeric,
-                  'metric_pairs': self.metric_pairs,
+                  'metric_pairs': self.metric_pairs, 'attribute_seals': self.attribute_seals,
                   'roll_annotations': self.roll_annotations,
                   'media_placements': self.media_placements, 'media_credits': sorted(self.media_credits),
                   'media_decode_failures': self.media_failures,

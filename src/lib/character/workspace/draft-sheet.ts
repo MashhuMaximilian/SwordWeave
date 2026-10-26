@@ -56,8 +56,8 @@ export async function readDraftSheet(characterId: string, currentGraph?: Workspa
     attributes: base.attributes,
     practices: Object.fromEntries(base.practices.map(p => [p.practice, p.total])) as never,
     proficiencies: new Set([
-      ...base.practices.filter(p => p.attribute === (row.attrProficient ?? "PHYSICAL")).map(p => p.practice),
-      (row.attrProficient ?? "PHYSICAL").toLowerCase(),
+      ...base.practices.filter(p => p.training > 0).map(p => p.practice),
+      ...(row.attrProficient ? [row.attrProficient.toLowerCase()] : []),
     ]),
     flags: new Set(), custom: {
       proficiency_bonus: base.proficiencyBonus,
