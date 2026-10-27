@@ -17,7 +17,7 @@ describe('published Aegis print-pack downloads', () => {
 
   it('serves the exact reviewed bytes from stable public paths', () => {
     for (const file of [...CHARACTER_SHEET_FILES, CHARACTER_SHEET_PACK, CHARACTER_SHEET_MONOCHROME_PACK]) {
-      expect(file.href).toMatch(/^\/character-sheets\/aegis-v0\.1-alpha-2026-10-23-r2\/[^/]+\.(pdf|zip)$/);
+      expect(file.href).toMatch(/^\/character-sheets\/aegis-v0\.1-alpha-2026-10-27-r3\/[^/]+\.(pdf|zip)$/);
       const bytes = readFileSync(join(process.cwd(), 'public', file.href));
       expect(bytes.byteLength).toBe(file.bytes);
       expect(createHash('sha256').update(bytes).digest('hex')).toBe(file.sha256);

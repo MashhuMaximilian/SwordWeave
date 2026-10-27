@@ -25,6 +25,8 @@ def main():
     parser.add_argument('--review', type=Path, required=True)
     parser.add_argument('--color', action='store_true', help='Gold/teal Aegis edition')
     parser.add_argument('--zip-filename', default='swordweave-aegis-character-sheets-v0.1-alpha.zip')
+    parser.add_argument('--release-date', default='2026-10-27')
+    parser.add_argument('--source-generator-commit', default='c89b051e4bf765ea658f7a5ea9cb31c7b238d402')
     args = parser.parse_args()
     edition = 'Gold / teal color' if args.color else 'Monochrome'
     sys.path.insert(0, str(args.renderer_root / 'scripts'))
@@ -40,6 +42,9 @@ def main():
 
         def text(self, value, *pos, **kw):
             value = str(value).replace('?', '___').replace('None recorded', '____________________')
+            value = value.replace('FULL RULES / REPEATABLE FOLIO', 'FULL RULES / CONTINUED')
+            if value.startswith('Agreed bonus ____'):
+                value = 'Agreed bonus ____    Debt used / available / max ____ / ____ / ____    Source __________________'
             return super().text(value, *pos, **kw)
 
         def plain(self, value, *pos, **kw):
@@ -47,6 +52,23 @@ def main():
 
         def value(self, value, *pos, **kw):
             return super().value('__' if value == '?' else value, *pos, **kw)
+
+        def attribute_value(self, name, x, y, radius, size):
+            # Blank fronts reserve pencil space, rather than fitting a numeric
+            # question mark and substituting a wider placeholder afterwards.
+            width = (radius-3)*1.25
+            self.write(x-width/2, y-2, width, 8, 'attribute_'+name.lower())
+
+        def page_heading(self, title, character=None):
+            self.heading(title)
+            self.text('CHARACTER', self.left, 113, 6.2, 'Head')
+            self.write(self.left+65, 105, self.right-self.left-65, 18, 'character')
+
+        def debt_text(self):
+            return 'Debt ___ used / ___ available / ___ max'
+
+        def domain_text(self, value, x, y, width, size):
+            self.write(x, y-3, width, 14, 'domains')
 
         def supporting_section(self, *unused):
             pass
@@ -205,7 +227,7 @@ def main():
         save_result(result, ident, source['name']+f" - level {source['level']} example", 'example')
 
     readme = f'''SwordWeave - Aegis character-sheet print pack
-v0.1 alpha / 23 October 2026 / refreshed from generator release ef2ceb3f
+v0.1 alpha / {args.release_date} / refreshed from generator release {args.source_generator_commit[:8]}
 {edition} edition
 
 The standard individual downloads and complete pack use the gold/teal color
@@ -292,7 +314,8 @@ https://www.swordweave.quest/contact
         for file in files:
             member = next(n for n in z.namelist() if n.endswith('/'+file['filename']))
             assert hashlib.sha256(z.read(member)).hexdigest() == file['sha256']
-    manifest = {'release': 'v0.1-alpha', 'updated': '2026-10-23', 'style': 'Aegis',
+    manifest = {'release': 'v0.1-alpha', 'updated': args.release_date,
+        'sourceGeneratorCommit': args.source_generator_commit, 'style': 'Aegis',
         'color': args.color, 'edition': edition, 'printable': True, 'fillable': False, 'physicalProof': 'pending', 'files': files,
         'zip': {'filename': archive.name, 'bytes': archive.stat().st_size, 'sha256': sha(archive)},
         'renderer': {str(p.relative_to(args.renderer_root)): sha(p) for p in

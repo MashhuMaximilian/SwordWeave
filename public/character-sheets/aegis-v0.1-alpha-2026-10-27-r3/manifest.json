@@ -1,0 +1,118 @@
+{
+  "version": "v0.1-alpha",
+  "updated": "2026-10-27",
+  "revision": 3,
+  "defaultEdition": "gold_teal",
+  "sourceGeneratorCommit": "c89b051e4bf765ea658f7a5ea9cb31c7b238d402",
+  "printable": true,
+  "fillable": false,
+  "physicalProof": "pending",
+  "files": [
+    {
+      "id": "aegis-blank-portrait-normal",
+      "label": "Portrait - Normal",
+      "group": "blank-front",
+      "pages": 1,
+      "bytes": 2211144,
+      "sha256": "ed895758ef542422a2de16e39e174c23d7642cfdd6462cdbf51eec4f53ba8458",
+      "href": "/character-sheets/aegis-v0.1-alpha-2026-10-27-r3/aegis-blank-portrait-normal.pdf",
+      "edition": "aegis_portrait_normal",
+      "description": "One A4 front with a spacious ingredient record."
+    },
+    {
+      "id": "aegis-blank-portrait-dense",
+      "label": "Portrait - Dense",
+      "group": "blank-front",
+      "pages": 1,
+      "bytes": 2210800,
+      "sha256": "040020287b9fd8609450adc927f27ab7ebd36055dad1ed6ed29fe93a00e260de",
+      "href": "/character-sheets/aegis-v0.1-alpha-2026-10-27-r3/aegis-blank-portrait-dense.pdf",
+      "edition": "aegis_portrait_dense",
+      "description": "One A4 front with two columns for owned ingredients."
+    },
+    {
+      "id": "aegis-blank-landscape-normal",
+      "label": "Landscape - Normal",
+      "group": "blank-front",
+      "pages": 1,
+      "bytes": 2210872,
+      "sha256": "4fc770118b9a1719d89bfc470875dc27019f1695d52dfc19b42a620ef8e936d6",
+      "href": "/character-sheets/aegis-v0.1-alpha-2026-10-27-r3/aegis-blank-landscape-normal.pdf",
+      "edition": "aegis_landscape_normal",
+      "description": "One A4 sheet with a core panel and two primitive columns; fold through the protected 16 pt centre clearance."
+    },
+    {
+      "id": "aegis-blank-landscape-dense",
+      "label": "Landscape - Dense",
+      "group": "blank-front",
+      "pages": 1,
+      "bytes": 2210862,
+      "sha256": "cce922983c8ce40108b5fd1571923f75efe02c2ed781da2f3b9e62760b7fb8ac",
+      "href": "/character-sheets/aegis-v0.1-alpha-2026-10-27-r3/aegis-blank-landscape-dense.pdf",
+      "edition": "aegis_landscape_dense",
+      "description": "One A4 sheet with a core panel and two denser primitive columns; fold through the protected 16 pt centre clearance."
+    },
+    {
+      "id": "aegis-blank-supporting-portrait",
+      "label": "Blank supporting pages - portrait",
+      "group": "blank-support",
+      "pages": 6,
+      "bytes": 2232711,
+      "sha256": "4c24da55410ca9205df9350428c88841e8268828b9137b60b6c36e7b6656a0a2",
+      "href": "/character-sheets/aegis-v0.1-alpha-2026-10-27-r3/aegis-blank-supporting-portrait.pdf",
+      "edition": "aegis_supporting_portrait",
+      "description": "Six repeatable A4 leaves: primitives, compositions/effects, equipment, identity, full rules and a workbench."
+    },
+    {
+      "id": "aegis-blank-supporting-landscape",
+      "label": "Blank supporting pages - landscape",
+      "group": "blank-support",
+      "pages": 3,
+      "bytes": 2218247,
+      "sha256": "dd56cb44cb47959d3c84444ab9c025fa3e5e4e9342e30d7c9ef74607a8da035f",
+      "href": "/character-sheets/aegis-v0.1-alpha-2026-10-27-r3/aegis-blank-supporting-landscape.pdf",
+      "edition": "aegis_supporting_landscape",
+      "description": "Three foldable A4 sheets containing six matching supporting panels. Print only the pages you need."
+    },
+    {
+      "id": "aegis-example-tarn",
+      "label": "Tarn Emberpost - level 1 example",
+      "group": "example",
+      "pages": 5,
+      "bytes": 2648506,
+      "sha256": "4e23b7789ce19937e7be91bb1668d7786a6e24ed078abdd2954825eb228c80ad",
+      "href": "/character-sheets/aegis-v0.1-alpha-2026-10-27-r3/aegis-example-tarn.pdf",
+      "edition": "aegis_example_tarn",
+      "description": "A level-one public example in the normal portrait format, including full rules, equipment and identity."
+    },
+    {
+      "id": "aegis-example-orren",
+      "label": "Orren Vaultwright - level 16 example",
+      "group": "example",
+      "pages": 9,
+      "bytes": 2895890,
+      "sha256": "3c02e208ee1ae976833223903b4ed841d1d1495af80952d3cde8329562e091d9",
+      "href": "/character-sheets/aegis-v0.1-alpha-2026-10-27-r3/aegis-example-orren.pdf",
+      "edition": "aegis_example_orren",
+      "description": "A level-sixteen public example in the dense landscape format, including its full continuation records."
+    }
+  ],
+  "pack": {
+    "filename": "swordweave-aegis-character-sheets-v0.1-alpha.zip",
+    "bytes": 15138516,
+    "sha256": "a900e5c26cf3d3cbf444f56fc41ad44becc23a9c38575c0085ff092ab17fe3bb",
+    "href": "/character-sheets/aegis-v0.1-alpha-2026-10-27-r3/swordweave-aegis-character-sheets-v0.1-alpha.zip",
+    "color": true,
+    "pages": 27
+  },
+  "monochromePack": {
+    "filename": "swordweave-aegis-character-sheets-v0.1-alpha-monochrome.zip",
+    "bytes": 12083349,
+    "sha256": "4a8422e3cfe8ed519475c54a13904e1ae619051e44a45afb4e6adaf5368a9b0d",
+    "href": "/character-sheets/aegis-v0.1-alpha-2026-10-27-r3/swordweave-aegis-character-sheets-v0.1-alpha-monochrome.zip",
+    "color": false,
+    "pages": 27
+  },
+  "preview": "/character-sheets/aegis-v0.1-alpha-2026-10-27-r3/aegis-four-formats.webp",
+  "readme": "/character-sheets/aegis-v0.1-alpha-2026-10-27-r3/READ-ME.txt"
+}

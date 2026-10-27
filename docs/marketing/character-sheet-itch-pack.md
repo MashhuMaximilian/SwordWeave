@@ -1,6 +1,12 @@
 # Proposed character-sheet addition for itch.io / 23 October 2026
 
-## Latest refresh / 23 October 2026
+## Latest refresh / 27 October 2026
+
+The creator approved updating Books, the creator kit and itch.io to the current
+renderer. See [the 27 October refresh](aegis-static-refresh-2026-10-27.md) for the
+27-page color/monochrome packages, source hashes, checks and publishing status.
+
+## Earlier refresh / 23 October 2026
 
 The founder requested gold/teal as the default. See [the refreshed static release](aegis-static-refresh-2026-10-23.md) for the regenerated eight PDFs and ZIP, optional monochrome ZIP, updated preview and exact publication status. The older pack and initial proposal below are history.
 

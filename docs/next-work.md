@@ -2,7 +2,22 @@
 
 Updated 11 October 2026 from the publication, licensing and future-store discussion. The original working roadmap is `.local-plans/next-phase.md`, whose latest update includes these decisions alongside the earlier collections/monsters, GM workspace and ChatGPT app/MCP plan. That ignored file remains private and is not committed or deployed. This document is a publication/commerce companion, not a replacement project roadmap. Historical implementation closeouts retain their original release context. Items below are plans, not claims that implementation or release has happened.
 
-## Current release: three compact free alpha core editions
+## Current character-sheet follow-up / 27 October 2026
+
+The interactive character PDF generator is live on production, including the
+26 October practice/roll-marker and attribute-fit corrections. The creator
+approved refreshing the static Aegis downloads on Books, the creator kit and
+itch.io; see [the current release checkpoint](marketing/aegis-static-refresh-2026-10-27.md).
+The creator is handling the physical print/pencil/fold check. Futoshi's three
+definition/version corrections and older PB-based training primitives are
+recap-only work for now; no definition or character pins are changed. PUB-01's
+damage-triggered Vitality upkeep counter/reset policy remains undecided.
+Private creator export/import and the other long-term product phases below
+remain deferred.
+
+The compact core release notes below retain their original historical context.
+
+## Earlier core release: three compact free alpha core editions
 
 The PHB, Game Master's Guide and SRD are now compact v0.1 alpha core manuscripts with indexed, bookmarked light/dark PDFs and responsive readers. The release preserves the approved app fonts and gold/silver/teal materials. The PHB teaches all player procedures; the SRD reproduces the mechanical framework and principal primitive families; the GM Guide provides practical preparation and adjudication tools. No class subsystem, mandatory Monster Manual or exhaustive heritage/fork appendix was added.
 

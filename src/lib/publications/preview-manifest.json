@@ -192,71 +192,71 @@
     ]
   },
   "aegis-blank-supporting-portrait": {
-    "sourcePdfSha256": "af67625af2dbd0bd4d676487b3ebec6b65705b4f74fbbd4aab5d802b3334327d",
+    "sourcePdfSha256": "4c24da55410ca9205df9350428c88841e8268828b9137b60b6c36e7b6656a0a2",
     "previews": [
       {
-        "src": "/publications/previews/2026-10-23/aegis-blank-supporting-portrait-1.webp",
+        "src": "/publications/previews/2026-10-27/aegis-blank-supporting-portrait-1.webp",
         "width": 708,
         "height": 1000,
         "page": 1,
-        "bytes": 37618
+        "bytes": 39156
       },
       {
-        "src": "/publications/previews/2026-10-23/aegis-blank-supporting-portrait-2.webp",
+        "src": "/publications/previews/2026-10-27/aegis-blank-supporting-portrait-2.webp",
         "width": 708,
         "height": 1000,
         "page": 2,
-        "bytes": 34530
+        "bytes": 36966
       }
     ]
   },
   "aegis-blank-landscape-dense": {
-    "sourcePdfSha256": "6b36f7dc95f4920057d5fa171a9f1115b41e15294e627e87d3f69d1575f1a50c",
+    "sourcePdfSha256": "cce922983c8ce40108b5fd1571923f75efe02c2ed781da2f3b9e62760b7fb8ac",
     "previews": [
       {
-        "src": "/publications/previews/2026-10-23/aegis-blank-landscape-dense-1.webp",
+        "src": "/publications/previews/2026-10-27/aegis-blank-landscape-dense-1.webp",
         "width": 1000,
         "height": 708,
         "page": 1,
-        "bytes": 63752
+        "bytes": 71608
       }
     ]
   },
   "aegis-example-tarn": {
-    "sourcePdfSha256": "f11b3907cab33060217360caff8fecb56aecca748fd59ec743e11d24cd0a3042",
+    "sourcePdfSha256": "4e23b7789ce19937e7be91bb1668d7786a6e24ed078abdd2954825eb228c80ad",
     "previews": [
       {
-        "src": "/publications/previews/2026-10-23/aegis-example-tarn-1.webp",
+        "src": "/publications/previews/2026-10-27/aegis-example-tarn-1.webp",
         "width": 708,
         "height": 1000,
         "page": 1,
-        "bytes": 70984
+        "bytes": 79276
       },
       {
-        "src": "/publications/previews/2026-10-23/aegis-example-tarn-2.webp",
+        "src": "/publications/previews/2026-10-27/aegis-example-tarn-2.webp",
         "width": 708,
         "height": 1000,
         "page": 2,
-        "bytes": 52654
+        "bytes": 59700
       }
     ]
   },
   "aegis-example-orren": {
-    "sourcePdfSha256": "aa9bb5bb6896bce110a723074520c9cc45da3e222dccfe0b29e882bb0fa9312c",
+    "sourcePdfSha256": "3c02e208ee1ae976833223903b4ed841d1d1495af80952d3cde8329562e091d9",
     "previews": [
       {
-        "src": "/publications/previews/2026-10-23/aegis-example-orren-1.webp",
+        "src": "/publications/previews/2026-10-27/aegis-example-orren-1.webp",
         "width": 1000,
         "height": 708,
         "page": 1,
-        "bytes": 124482
+        "bytes": 135672
       },
       {
-        "src": "/publications/previews/2026-10-23/aegis-example-orren-2.webp",
+        "src": "/publications/previews/2026-10-27/aegis-example-orren-2.webp",
         "width": 1000,
         "height": 708,
         "page": 2,
-        "bytes": 78432
+        "bytes": 85916
       }
     ]
   },
@@ -264,54 +264,54 @@
     "sourcePdfSha256": "dd56cb44cb47959d3c84444ab9c025fa3e5e4e9342e30d7c9ef74607a8da035f",
     "previews": [
       {
-        "src": "/publications/previews/2026-10-23/aegis-blank-supporting-landscape-1.webp",
+        "src": "/publications/previews/2026-10-27/aegis-blank-supporting-landscape-1.webp",
         "width": 1000,
         "height": 708,
         "page": 1,
-        "bytes": 42692
+        "bytes": 46904
       },
       {
-        "src": "/publications/previews/2026-10-23/aegis-blank-supporting-landscape-2.webp",
+        "src": "/publications/previews/2026-10-27/aegis-blank-supporting-landscape-2.webp",
         "width": 1000,
         "height": 708,
         "page": 2,
-        "bytes": 47394
+        "bytes": 52762
       }
     ]
   },
   "aegis-blank-portrait-normal": {
-    "sourcePdfSha256": "6d27a657114a2c748bd51f35649e6481e0e9629d7cdb5d5b436d4f70381b98f6",
+    "sourcePdfSha256": "ed895758ef542422a2de16e39e174c23d7642cfdd6462cdbf51eec4f53ba8458",
     "previews": [
       {
-        "src": "/publications/previews/2026-10-23/aegis-blank-portrait-normal-1.webp",
+        "src": "/publications/previews/2026-10-27/aegis-blank-portrait-normal-1.webp",
         "width": 708,
         "height": 1000,
         "page": 1,
-        "bytes": 55742
+        "bytes": 63164
       }
     ]
   },
   "aegis-blank-portrait-dense": {
-    "sourcePdfSha256": "0f6b0a7a432635706c41c4d758a6422d995145e98c3335bf9dd2588eb6dfc91e",
+    "sourcePdfSha256": "040020287b9fd8609450adc927f27ab7ebd36055dad1ed6ed29fe93a00e260de",
     "previews": [
       {
-        "src": "/publications/previews/2026-10-23/aegis-blank-portrait-dense-1.webp",
+        "src": "/publications/previews/2026-10-27/aegis-blank-portrait-dense-1.webp",
         "width": 708,
         "height": 1000,
         "page": 1,
-        "bytes": 53896
+        "bytes": 61502
       }
     ]
   },
   "aegis-blank-landscape-normal": {
-    "sourcePdfSha256": "a764d0bdb73ebb5c5be1a842a10d0dcdadda009473a91d941a3de1693f481503",
+    "sourcePdfSha256": "4fc770118b9a1719d89bfc470875dc27019f1695d52dfc19b42a620ef8e936d6",
     "previews": [
       {
-        "src": "/publications/previews/2026-10-23/aegis-blank-landscape-normal-1.webp",
+        "src": "/publications/previews/2026-10-27/aegis-blank-landscape-normal-1.webp",
         "width": 1000,
         "height": 708,
         "page": 1,
-        "bytes": 63844
+        "bytes": 71508
       }
     ]
   },
