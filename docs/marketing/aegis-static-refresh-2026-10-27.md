@@ -41,10 +41,26 @@ Renderer source: `c89b051e4bf765ea658f7a5ea9cb31c7b238d402`.
 
 ## Publishing checkpoint
 
-Website tests/build, deployment verification, itch.io save and downloaded-file
-verification are recorded here after completion. itch.io entries 10–19 are
-replaced by exact filename; 01–09, prices, visibility, display names and download
-counts are preserved. No book or guide release is replaced by this refresh.
+Published on main in `b4c96c56e0be4ecb3ea60ebb1319c3ef0c7cb0b9`.
+Production deployment `dpl_AvQoEGxye8rzUREsHmBN6d8AFmT9` is Ready and carries
+the `www.swordweave.quest` / `swordweave.quest` aliases. Books and the creator kit
+show the current 27-page totals, nine-page Orren example, fresh PDF previews and
+dated download URLs. Eighteen publication/analytics tests, TypeScript and the
+complete production build pass. Local build uses Webpack because this isolated
+checkout reuses dependencies through links outside Turbopack's inferred root.
+
+Both production ZIPs were downloaded through the browser. Their SHA-256 hashes
+and every contained PDF match the reviewed release; the separate Orren PDF also
+matches. Evidence is in `live-release-check.json` and the published-page captures
+in the evidence directory above.
+
+itch.io entries 10–19 were replaced by exact filename and saved; the public
+page and download instructions show 27 pages / nine-page Orren. 01–09, prices,
+visibility, display names, order, document category and existing download counts
+are preserved. The in-app browser could not finish itch.io's JavaScript-driven
+download and native Safari inspection timed out; uploaded-byte parity through
+an itch.io redownload is therefore not claimed. No book or guide release is
+replaced by this refresh.
 
 ## Decisions still deferred
 

@@ -5,9 +5,9 @@ Updated 11 October 2026 from the publication, licensing and future-store discuss
 ## Current character-sheet follow-up / 27 October 2026
 
 The interactive character PDF generator is live on production, including the
-26 October practice/roll-marker and attribute-fit corrections. The creator
-approved refreshing the static Aegis downloads on Books, the creator kit and
-itch.io; see [the current release checkpoint](marketing/aegis-static-refresh-2026-10-27.md).
+26 October practice/roll-marker and attribute-fit corrections. Refreshed static
+Aegis downloads are published on Books, the creator kit and itch.io; see
+[the current release checkpoint](marketing/aegis-static-refresh-2026-10-27.md).
 The creator is handling the physical print/pencil/fold check. Futoshi's three
 definition/version corrections and older PB-based training primitives are
 recap-only work for now; no definition or character pins are changed. PUB-01's
