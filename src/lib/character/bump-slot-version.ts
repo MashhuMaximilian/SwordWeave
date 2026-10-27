@@ -23,13 +23,14 @@ import {
 } from "@/db/schema/characters";
 import { resolveLatestVersionId } from "@/lib/versions/slot-source";
 import { recomputeBuSpentAndBustCache } from "@/lib/engine/recompute-bu-spent";
+import { capabilityVersions, itemVersions, primitiveVersions } from "@/db/schema/versions";
 
 export type SlotKind = "primitive" | "capability" | "item";
 
 export interface BumpSlotArgs {
   /** Slot row owner. */
   readonly characterId: string;
-  /** Underlying entity id. For primitives: number. For caps/items: uuid string. */
+  /** Primitive instance UUID, or underlying capability/item UUID. */
   readonly entityId: string | number;
   /** What kind of slot. */
   readonly kind: SlotKind;
@@ -51,14 +52,42 @@ export async function bumpSlotVersion({
   kind,
   toVersionId,
 }: BumpSlotArgs): Promise<{ newVersionId: string }> {
-  // Resolve target version BEFORE writing so we don't mutate the DB on
-  // a bad version id. This is the common path: omit toVersionId to
-  // bump to latest.
+  // A primitive occurrence has its own UUID, distinct from the integer
+  // primitive ID used by the version table. Always resolve it inside this
+  // character before looking up a version.
+  let underlyingId: string | number = entityId;
+  if (kind === "primitive") {
+    const [slot] = await db.select({ id: characterPrimitives.primitiveId })
+      .from(characterPrimitives).where(and(
+        eq(characterPrimitives.characterId, characterId),
+        eq(characterPrimitives.instanceId, String(entityId)),
+      )).limit(1);
+    if (!slot) throw new Error("Primitive slot not found.");
+    underlyingId = slot.id;
+  }
+
+  // Validate explicit pins against the underlying entity, so a version
+  // from another primitive/capability/item cannot be attached to this slot.
+  if (toVersionId) {
+    const [version] = kind === "primitive"
+      ? await db.select({ id: primitiveVersions.id }).from(primitiveVersions).where(and(
+          eq(primitiveVersions.id, toVersionId), eq(primitiveVersions.primitiveId, Number(underlyingId)),
+        )).limit(1)
+      : kind === "capability"
+        ? await db.select({ id: capabilityVersions.id }).from(capabilityVersions).where(and(
+            eq(capabilityVersions.id, toVersionId), eq(capabilityVersions.capabilityId, String(underlyingId)),
+          )).limit(1)
+        : await db.select({ id: itemVersions.id }).from(itemVersions).where(and(
+            eq(itemVersions.id, toVersionId), eq(itemVersions.itemId, String(underlyingId)),
+          )).limit(1);
+    if (!version) throw new Error("Version does not belong to this slot's entity.");
+  }
+
   let newVersionId = toVersionId ?? null;
   if (!newVersionId) {
     const resolved = await resolveLatestVersionId(
-      kind === "primitive" ? "primitive" : kind === "capability" ? "capability" : "item",
-      entityId,
+      kind,
+      underlyingId,
     );
     if (!resolved) {
       throw new Error(
@@ -68,12 +97,9 @@ export async function bumpSlotVersion({
     newVersionId = resolved;
   }
 
+  let updated: { versionId: string | null }[];
   if (kind === "primitive") {
-    // character_primitives uses instanceId, not entityId. The caller
-    // passes entityId which is actually the instanceId (UUID, not the
-    // primitiveId). For primitives we identify the slot by instanceId
-    // because the slot-source-badge renders against a specific instance.
-    await db
+    updated = await db
       .update(characterPrimitives)
       .set({ versionId: newVersionId })
       .where(
@@ -81,9 +107,9 @@ export async function bumpSlotVersion({
           eq(characterPrimitives.characterId, characterId),
           eq(characterPrimitives.instanceId, String(entityId)),
         ),
-      );
+      ).returning({ versionId: characterPrimitives.versionId });
   } else if (kind === "capability") {
-    await db
+    updated = await db
       .update(characterCapabilities)
       .set({ versionId: newVersionId })
       .where(
@@ -91,9 +117,9 @@ export async function bumpSlotVersion({
           eq(characterCapabilities.characterId, characterId),
           eq(characterCapabilities.capabilityId, String(entityId)),
         ),
-      );
+      ).returning({ versionId: characterCapabilities.versionId });
   } else {
-    await db
+    updated = await db
       .update(characterItems)
       .set({ versionId: newVersionId })
       .where(
@@ -101,8 +127,9 @@ export async function bumpSlotVersion({
           eq(characterItems.characterId, characterId),
           eq(characterItems.itemId, String(entityId)),
         ),
-      );
+      ).returning({ versionId: characterItems.versionId });
   }
+  if (updated.length === 0) throw new Error("Character slot not found.");
 
   // BU depends on the slotted primitive's version (BU is read from the
   // primitive row, which the resolver may cache against a specific

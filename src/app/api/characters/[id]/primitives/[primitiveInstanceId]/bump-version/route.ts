@@ -19,7 +19,7 @@
 
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { characterPrimitives } from "@/db/schema";
 import { bumpSlotVersion } from "@/lib/character/bump-slot-version";
@@ -48,7 +48,10 @@ export async function POST(
       .select({ primitiveId: characterPrimitives.primitiveId })
       .from(characterPrimitives)
       .where(
-        eq(characterPrimitives.instanceId, primitiveInstanceId),
+        and(
+          eq(characterPrimitives.instanceId, primitiveInstanceId),
+          eq(characterPrimitives.characterId, characterId),
+        ),
       )
       .limit(1);
     if (!slot[0]) {

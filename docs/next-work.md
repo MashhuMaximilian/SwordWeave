@@ -9,8 +9,11 @@ The interactive character PDF generator is live on production, including the
 Aegis downloads are published on Books, the creator kit and itch.io; see
 [the current release checkpoint](marketing/aegis-static-refresh-2026-10-27.md).
 The creator is handling the physical print/pencil/fold check. Futoshi's three
-definition/version corrections and older PB-based training primitives are
-recap-only work for now; no definition or character pins are changed. PUB-01's
+agreed primitive pins are updated, and five older custom training definitions
+have corrected versions. Other characters retain their pins and can review
+updates through the existing controls. See [the training revision record](library/training-primitive-revisions-2026-10-27.md).
+The individual primitive update action also resolves the underlying primitive
+ID correctly and validates explicit version pins. PUB-01's
 damage-triggered Vitality upkeep counter/reset policy remains undecided.
 Private creator export/import and the other long-term product phases below
 remain deferred.
