@@ -6,6 +6,7 @@ import * as CookieConsent from "vanilla-cookieconsent";
 let initialization: Promise<void> | undefined;
 let analyticsAllowed = false;
 const listeners = new Set<() => void>();
+const hasVercelTelemetry = process.env["NEXT_PUBLIC_SW_HOSTING"] !== "hetzner";
 
 export const analyticsConsent = {
   subscribe(listener: () => void) {
@@ -45,7 +46,9 @@ export function initializeCookieConsent() {
         en: {
           consentModal: {
             title: "Your privacy choices",
-            description: "Essential storage keeps sign-in and your preferences working. Optional Google Analytics and Vercel tools help Mashu understand visits, useful actions, and performance. You can change your choice at any time.",
+            description: hasVercelTelemetry
+              ? "Essential storage keeps sign-in and your preferences working. Optional Google Analytics and Vercel tools help Mashu understand visits, useful actions, and performance. You can change your choice at any time."
+              : "Essential storage keeps sign-in and your preferences working. Optional Google Analytics helps Mashu understand visits and how people use SwordWeave. You can change your choice at any time.",
             acceptAllBtn: "Accept analytics",
             acceptNecessaryBtn: "Essential only",
             showPreferencesBtn: "Choose preferences",
@@ -60,7 +63,13 @@ export function initializeCookieConsent() {
             sections: [
               { title: "Choose what you share", description: "Optional analytics stay off until you accept. Changing your choice does not affect access to the game tools." },
               { title: "Essential storage", description: "Clerk uses cookies for sign-in and account security. The site also remembers your theme, tool preferences, and this privacy choice. These are required for the features you use.", linkedCategory: "necessary" },
-              { title: "Usage & performance analytics", description: 'Google Analytics measures visits, referral sources, and actions such as successful contact submissions, saved characters, downloads and Discord clicks. It uses pseudonymous browser identifiers. Vercel Web Analytics measures visits; Speed Insights measures performance. All are optional. <a href="https://vercel.com/docs/analytics/privacy-policy" target="_blank" rel="noopener noreferrer">Read about Vercel Analytics privacy</a>.', linkedCategory: "analytics" },
+              {
+                title: hasVercelTelemetry ? "Usage & performance analytics" : "Usage analytics",
+                description: "Google Analytics measures visits, referral sources, and actions such as successful contact submissions, saved characters, downloads and Discord clicks. It uses pseudonymous browser identifiers." + (hasVercelTelemetry
+                  ? ' Vercel Web Analytics measures visits and Speed Insights measures performance. All are optional. <a href="https://vercel.com/docs/analytics/privacy-policy" target="_blank" rel="noopener noreferrer">Read about Vercel Analytics privacy</a>.'
+                  : " Google Analytics is optional."),
+                linkedCategory: "analytics",
+              },
               { title: "Questions?", description: '<a href="/contact">Contact Mashu</a> or read more about <a href="/privacy">privacy and cookies</a>.' },
             ],
           },

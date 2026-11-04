@@ -6,7 +6,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { analyticsConsent, filterAnalyticsEvent, initializeCookieConsent, showCookiePreferences } from "@/lib/cookie-consent";
 
-export function CookieConsentManager() {
+export function CookieConsentManager({ vercelTelemetry }: { vercelTelemetry: boolean }) {
   const allowed = useSyncExternalStore(analyticsConsent.subscribe, analyticsConsent.getSnapshot, analyticsConsent.getServerSnapshot);
   useEffect(() => {
     // Fail closed if the manager cannot initialize: analytics stays off.
@@ -14,9 +14,9 @@ export function CookieConsentManager() {
   }, []);
   return <>
     <GoogleAnalytics allowed={allowed} />
-    {allowed && <>
-    <Analytics beforeSend={filterAnalyticsEvent} />
-    <SpeedInsights beforeSend={filterAnalyticsEvent} />
+    {allowed && vercelTelemetry && <>
+      <Analytics beforeSend={filterAnalyticsEvent} />
+      <SpeedInsights beforeSend={filterAnalyticsEvent} />
   </>}
   </>;
 }

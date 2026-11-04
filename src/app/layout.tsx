@@ -154,7 +154,7 @@ try {
         <AppAuthProvider policy={deploymentPolicy()}>
           <MobileViewport />
           <AppShell><LibraryRefresh />{children}</AppShell>
-          <CookieConsentManager />
+          <CookieConsentManager vercelTelemetry={process.env["SW_HOSTING"] !== "hetzner"} />
         </AppAuthProvider>
       </body>
     </RootHtml>

@@ -5,7 +5,8 @@ beforeEach(() => { vi.resetModules(); consent.allowed = false; vi.stubEnv('NEXT_
 describe('basic opt-in analytics lifecycle', () => {
   it('loads nothing before consent, sends one view, rejects private data, then stops after withdrawal', async () => {
     const scripts: { src: string }[] = [];
-    const target = { location: { href: 'https://www.swordweave.quest/contact?email=secret', hostname: 'www.swordweave.quest' } };
+    vi.stubEnv('NEXT_PUBLIC_SW_HOSTING', 'hetzner');
+    const target = { location: new URL('https://www.swordweave.quest/contact?email=secret') };
     vi.stubGlobal('window', target);
     vi.stubGlobal('document', { referrer: '', cookie: '_ga=old', createElement: () => ({}), head: { appendChild: (script: { src: string }) => scripts.push(script) } });
     vi.stubGlobal('sessionStorage', { removeItem: vi.fn() });
@@ -25,5 +26,17 @@ describe('basic opt-in analytics lifecycle', () => {
     expect(layer).toHaveLength(0);
     expect((target as unknown as Record<string, unknown>)['ga-disable-G-TEST123']).toBe(true);
     expect(scripts).toHaveLength(1);
+  });
+
+  it('keeps the production tag off the Hetzner preview even after consent', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SW_HOSTING', 'hetzner');
+    consent.allowed = true;
+    const appendChild = vi.fn();
+    vi.stubGlobal('window', { location: new URL('https://migration-preview.swordweave.quest/contact') });
+    vi.stubGlobal('document', { createElement: () => ({}), head: { appendChild } });
+    const { startGoogleAnalytics, track } = await import('../client');
+    startGoogleAnalytics();
+    track({ name: 'contact_form_started', params: { form_id: 'contact' } });
+    expect(appendChild).not.toHaveBeenCalled();
   });
 });

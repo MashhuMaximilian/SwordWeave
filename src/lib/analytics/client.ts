@@ -1,5 +1,6 @@
 'use client';
 import { analyticsConsent } from '@/lib/cookie-consent';
+import { SITE_URL } from '@/lib/seo/public-pages';
 import { safePage, validEvent, type AnalyticsEvent } from './contract';
 
 type Gtag = (...args: unknown[]) => void;
@@ -14,6 +15,7 @@ function context() {
 }
 export function startGoogleAnalytics() {
   if (!measurementId || !/^G-[A-Z0-9]+$/.test(measurementId) || !analyticsConsent.getSnapshot()) return;
+  if (process.env['NEXT_PUBLIC_SW_HOSTING'] === 'hetzner' && window.location.origin !== SITE_URL) return;
   const target = gaWindow();
   const wasDisabled = target[`ga-disable-${measurementId}`];
   target[`ga-disable-${measurementId}`] = false;
