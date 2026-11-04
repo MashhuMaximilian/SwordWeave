@@ -1,4 +1,5 @@
 "use client";
+import { displayArtworkUrl } from "@/lib/assets/upload-path";
 import { ForkCharacterButton } from "./fork-character-button";
 import { CharacterPdfActions } from "./character-pdf-actions";
 import { useCharacterReadOnly } from "./character-read-only";
@@ -302,7 +303,7 @@ export function SheetIdentityHeader({
           {portraitUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={portraitUrl}
+              src={displayArtworkUrl(portraitUrl)}
               alt={`${name}'s portrait`}
               className="size-full object-cover"
               style={portraitFrameStyle(portraitFrame)}

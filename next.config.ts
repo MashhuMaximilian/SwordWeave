@@ -9,6 +9,20 @@ const localPreviewHosts = Object.values(networkInterfaces()).flatMap(addresses =
 );
 
 const nextConfig: NextConfig = {
+  output: "standalone",
+  // The container checks generated route types in its own build step.
+  ...(process.env["SW_CONTAINER_BUILD"] === "1" ? {
+    typescript: { ignoreBuildErrors: true },
+    experimental: { cpus: 2, turbopackMemoryLimit: 1536 * 1024 * 1024 },
+  } : {}),
+  outputFileTracingIncludes: {
+    "/api/characters/\\[id\\]/pdf": [
+      "./scripts/render-character-pdf.py",
+      "./scripts/build-character-sheet-v{6,7,8,9,10,11}.py",
+      "./scripts/character_pdf/*.py",
+      "./assets/character-pdf/**/*",
+    ],
+  },
   reactStrictMode: true,
   // Local testing is commonly opened through either loopback spelling.
   // Next's dev-origin guard otherwise serves the SSR shell at 127.0.0.1

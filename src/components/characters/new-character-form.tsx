@@ -1,4 +1,5 @@
 "use client";
+import { displayArtworkUrl } from "@/lib/assets/upload-path";
 import { track } from "@/lib/analytics/client";
 import { CatalogueQuickLook } from "@/components/library/catalogue-quick-look";
 import { Markdown } from "@/components/ui/markdown";
@@ -1967,7 +1968,7 @@ function QuickBuildForm({
                     >
                       <CatalogueQuickLook name={selected.name}><p>{selected.cost} BU · {label}</p><Markdown copyRole="narrative">{selected.description || ""}</Markdown>{selected.rules?.map((rule, i) => <div className="sw-catalogue-peek-rule" key={i}><Markdown copyRole={rule.mechanical ? "mechanical" : "narrative"}>{rule.text}</Markdown></div>)}</CatalogueQuickLook>
                       {selected.imageUrl ? (
-                        <img src={selected.imageUrl} alt="" loading="lazy" />
+                        <img src={displayArtworkUrl(selected.imageUrl)} alt="" loading="lazy" />
                       ) : (
                         <span aria-hidden>◇</span>
                       )}

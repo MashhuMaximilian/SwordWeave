@@ -1,0 +1,453 @@
+{
+  "schemaVersion": 1,
+  "files": [
+    {
+      "path": "api/character-pdf-render.py",
+      "sha256": "a16e46fd94325e733e38b3ba5171fdee8220a0f8a7c3a2cb8d4dd3ce127c3e3f"
+    },
+    {
+      "path": "assets/character-pdf/fonts/Aubrey-OFL.txt",
+      "sha256": "071a0917e2aca3f11ebb24ec0a01b85315d3d07787b1e273033708f5faa67fd2"
+    },
+    {
+      "path": "assets/character-pdf/fonts/Aubrey.ttf",
+      "sha256": "9aa7667677b433cc92effa5b3b1ce5d669023a9af24ea45401cf7ccf0a95fe17"
+    },
+    {
+      "path": "assets/character-pdf/fonts/BodyBold.ttf",
+      "sha256": "b8cf86ce2def7305b937e11738d3985e6518610c9a2289336bd7acb780cb5cea"
+    },
+    {
+      "path": "assets/character-pdf/fonts/BodyBoldItalic.ttf",
+      "sha256": "52b934913d69cbc555527dbeb687763c3c338102e4edfec46da9a41c915207d7"
+    },
+    {
+      "path": "assets/character-pdf/fonts/BodyItalic.ttf",
+      "sha256": "780f1ee57ce6c658a1a7b5a9e5b3d1c34d6ea67025bb998f64b647edcff41a65"
+    },
+    {
+      "path": "assets/character-pdf/fonts/Oxanium-OFL.txt",
+      "sha256": "fe17c0f2581d71b4e1ea7e636e7f4877c29223e11bb1dd1a871e8c3f2a86336b"
+    },
+    {
+      "path": "assets/character-pdf/fonts/Oxanium.ttf",
+      "sha256": "85ca6a91b02a52bf35292c2f9606bb03db1eb219fab7f6a4e05d1f3b0d409033"
+    },
+    {
+      "path": "assets/character-pdf/fonts/Syne-OFL.txt",
+      "sha256": "475a383b65a38721caaac085b476328e7430d80b55dd89ad3370af7576aca051"
+    },
+    {
+      "path": "assets/character-pdf/fonts/Syne.ttf",
+      "sha256": "298fcd1f4fe4b8746e8c6d4b963356c7929dcd69d35a471debc910a174bc12ab"
+    },
+    {
+      "path": "assets/character-pdf/fonts/UnicaOne-OFL.txt",
+      "sha256": "05f4462985eece49ebd278c13ac1011b546e0a9a4675c542b7239edc90df55d4"
+    },
+    {
+      "path": "assets/character-pdf/fonts/UnicaOne.ttf",
+      "sha256": "040273fc53a38b889c6e7b87942f712c06b5af0dbe1c9e9a1259b0f3a29ec955"
+    },
+    {
+      "path": "assets/character-pdf/manifest.json",
+      "sha256": "396ee1fada1e2bf9d0dc314937168d3ff2d759976ddad020e92ae69be652f19d"
+    },
+    {
+      "path": "assets/character-pdf/styles/aegis/bridge.png",
+      "sha256": "1c652dea037c2c0a5a84426c903101dcf3c7a326102a8261ec31dc9dd4655cde"
+    },
+    {
+      "path": "assets/character-pdf/styles/aegis/frame.png",
+      "sha256": "ed5a0d87c9cbfe3b57cd7df9e65de1469f96070c63b226ad346bcb9f9efeba58"
+    },
+    {
+      "path": "assets/character-pdf/styles/cinder/bridge.png",
+      "sha256": "08ad67eb7aee88bad8a98cc251c7e8c8caeefc74e0f90fe6007c169b775784db"
+    },
+    {
+      "path": "assets/character-pdf/styles/cinder/frame.png",
+      "sha256": "841c3bf91e387c1938b35770e93b09b38e487a15fa6b1bc156affccea0d1dd9c"
+    },
+    {
+      "path": "assets/character-pdf/styles/cipher/bridge.png",
+      "sha256": "c051e8cca0e507e319bf4e7fe8be5956052cc4af8ae6538cce718f7557a8ef9e"
+    },
+    {
+      "path": "assets/character-pdf/styles/cipher/frame.png",
+      "sha256": "f56106aaf7b933770c78dfdbf247bd94bdbfac2e95ad1fdcb2cb9b62040d66b9"
+    },
+    {
+      "path": "assets/character-pdf/styles/helix/bridge.png",
+      "sha256": "a9eb087c9b76b749f88fc147360bf109d525f145835bd1da37ba89839ea8b440"
+    },
+    {
+      "path": "assets/character-pdf/styles/helix/frame.png",
+      "sha256": "d52463f6c530c53e20108eed598fde30662162a0466bc10a9764103f1ced42b4"
+    },
+    {
+      "path": "assets/character-pdf/styles/moire/bridge.png",
+      "sha256": "608600d251b2aa1430491919baffd690df512a7d3c09cfa57cdafb3a72ef020a"
+    },
+    {
+      "path": "assets/character-pdf/styles/moire/frame.png",
+      "sha256": "660a5d2c88d978be46ff5dc2ff90bd02d4b4b3a9af8df02614aa4dcc92d079cd"
+    },
+    {
+      "path": "assets/character-pdf/styles/nocturne/bridge.png",
+      "sha256": "02cff6a001e743b9be94b30b8acb9d77004daf5ee629e798cefbcd711c3546d6"
+    },
+    {
+      "path": "assets/character-pdf/styles/nocturne/frame.png",
+      "sha256": "60a48c4d11a39856238f9b8166c201062c23486efc955e326ab99f6dc3aa7dd8"
+    },
+    {
+      "path": "assets/character-pdf/styles/orrery/bridge.png",
+      "sha256": "62bae38329236b7216b5666889e728e89bf6ff4d35d0d0c32d451578865940e2"
+    },
+    {
+      "path": "assets/character-pdf/styles/orrery/frame.png",
+      "sha256": "f613d7b1e4ef945977c06a84b8c5af38b9f982e09faae93429db27dd771ff6bf"
+    },
+    {
+      "path": "assets/character-pdf/styles/prism/bridge.png",
+      "sha256": "2a1b7ae1dd9ca7ae150d9b0836e0810b78ba6014c323f7c777aca5cf9ef272d2"
+    },
+    {
+      "path": "assets/character-pdf/styles/prism/frame.png",
+      "sha256": "05588e353d359276780f34b4138825e9a177536e8dd62ff4463c765241808f2f"
+    },
+    {
+      "path": "assets/character-pdf/styles/serein/bridge.png",
+      "sha256": "44e338460b00ba0090ac294e52ff6e5f99aef50a96e87a3b56c8661c1d8b3e7d"
+    },
+    {
+      "path": "assets/character-pdf/styles/serein/frame.png",
+      "sha256": "37df28f7bb1731673d407c79a87f26e3ddb503dd73b72f158f1967c451f7d6e9"
+    },
+    {
+      "path": "assets/character-pdf/styles/solstice/bridge.png",
+      "sha256": "e6eed78b647827fb11f0fc9c8015c6ddb1fbdf44dc274becdfec4958a08b0b67"
+    },
+    {
+      "path": "assets/character-pdf/styles/solstice/frame.png",
+      "sha256": "0937ac22aa844f30e9ed7c5556b1858e8168cc5e2f4c650519872ec6303e1560"
+    },
+    {
+      "path": "assets/character-pdf/styles/tidal/bridge.png",
+      "sha256": "d431cd2687670290d7c8a0791d644101e1e6383bae3dd786afdbbdde40ccf89a"
+    },
+    {
+      "path": "assets/character-pdf/styles/tidal/frame.png",
+      "sha256": "d00a81a95bb1077831f71986b940d51e517fb861acf16c0cf4b15578025a6584"
+    },
+    {
+      "path": "assets/character-pdf/styles/vesper/bridge.png",
+      "sha256": "c5063e0eab66c0430a6a5b46809c32fb1cb0a3053d9788867dc0abdf18540a61"
+    },
+    {
+      "path": "assets/character-pdf/styles/vesper/frame.png",
+      "sha256": "a649fd5f7118bbcb70797db347477bcca145ba048d23547759a8966980ce1685"
+    },
+    {
+      "path": "docs/publications/character-sheets/orren-public-source.json",
+      "sha256": "807093f9d282fc5e0719a4ce63c61acc59208eeaba12aaa56625404a8257cd32"
+    },
+    {
+      "path": "docs/publications/quick-core-release-manifest.json",
+      "sha256": "20ade0e760859a05f98b107dca5a20dc8c5c3bd9a4550a7659cb444995ef8132"
+    },
+    {
+      "path": "docs/publications/quick-core/create-and-publish.md",
+      "sha256": "87b5bc7820ed3ed1aae80bcc1b14b472c1b82e7a8862cded36aaf587f02ac6af"
+    },
+    {
+      "path": "docs/publications/quick-core/create.md",
+      "sha256": "8445475071f827652cdd3a14cfba9baf5f80b09eb469d799434766697ed13656"
+    },
+    {
+      "path": "docs/publications/quick-core/play.md",
+      "sha256": "92320f51321cd5956ad38c750cafaa7865dbc5d429866d00166ed1c07c275bd6"
+    },
+    {
+      "path": "docs/publications/quick-core/run.md",
+      "sha256": "16dee5d5f9a487b36111c3e9e50835d02a4d8e69677e8df9a5ee4f506b9476f6"
+    },
+    {
+      "path": "public/books/v0.1-alpha/quick-core-2026-10-21/create-and-publish.pdf",
+      "sha256": "b7336d026057b2611d3efe7a05a5aa720368ab57348119c3bad7d06b284f84bb"
+    },
+    {
+      "path": "public/books/v0.1-alpha/quick-core-2026-10-21/create.pdf",
+      "sha256": "c2f8ed259eda5e6ab854a562f139ae58f662a1ed5585559d2d586b187b337825"
+    },
+    {
+      "path": "public/books/v0.1-alpha/quick-core-2026-10-21/play.pdf",
+      "sha256": "bd0dd178452f978cb6c8a991bf469a934ebae5c89b5a3878892a9f7f1031327c"
+    },
+    {
+      "path": "public/books/v0.1-alpha/quick-core-2026-10-21/run.pdf",
+      "sha256": "7564a6d067c3d53bffe239ec68611e3ad7a262fbbf323060bd4dd3cef65b84e3"
+    },
+    {
+      "path": "public/character-sheets/aegis-v0.1-alpha-2026-10-27-r3/aegis-blank-landscape-dense.pdf",
+      "sha256": "cce922983c8ce40108b5fd1571923f75efe02c2ed781da2f3b9e62760b7fb8ac"
+    },
+    {
+      "path": "public/character-sheets/aegis-v0.1-alpha-2026-10-27-r3/aegis-blank-landscape-normal.pdf",
+      "sha256": "4fc770118b9a1719d89bfc470875dc27019f1695d52dfc19b42a620ef8e936d6"
+    },
+    {
+      "path": "public/character-sheets/aegis-v0.1-alpha-2026-10-27-r3/aegis-blank-portrait-dense.pdf",
+      "sha256": "040020287b9fd8609450adc927f27ab7ebd36055dad1ed6ed29fe93a00e260de"
+    },
+    {
+      "path": "public/character-sheets/aegis-v0.1-alpha-2026-10-27-r3/aegis-blank-portrait-normal.pdf",
+      "sha256": "ed895758ef542422a2de16e39e174c23d7642cfdd6462cdbf51eec4f53ba8458"
+    },
+    {
+      "path": "public/character-sheets/aegis-v0.1-alpha-2026-10-27-r3/aegis-blank-supporting-landscape.pdf",
+      "sha256": "dd56cb44cb47959d3c84444ab9c025fa3e5e4e9342e30d7c9ef74607a8da035f"
+    },
+    {
+      "path": "public/character-sheets/aegis-v0.1-alpha-2026-10-27-r3/aegis-blank-supporting-portrait.pdf",
+      "sha256": "4c24da55410ca9205df9350428c88841e8268828b9137b60b6c36e7b6656a0a2"
+    },
+    {
+      "path": "public/character-sheets/aegis-v0.1-alpha-2026-10-27-r3/aegis-example-orren.pdf",
+      "sha256": "3c02e208ee1ae976833223903b4ed841d1d1495af80952d3cde8329562e091d9"
+    },
+    {
+      "path": "public/character-sheets/aegis-v0.1-alpha-2026-10-27-r3/aegis-example-tarn.pdf",
+      "sha256": "4e23b7789ce19937e7be91bb1668d7786a6e24ed078abdd2954825eb228c80ad"
+    },
+    {
+      "path": "public/character-sheets/aegis-v0.1-alpha-2026-10-27-r3/manifest.json",
+      "sha256": "3fd028e7f82a86072af751d1968bbd7585ec50538d638c6b70a660ffc7877979"
+    },
+    {
+      "path": "public/character-sheets/aegis-v0.1-alpha-2026-10-27-r3/swordweave-aegis-character-sheets-v0.1-alpha-monochrome.zip",
+      "sha256": "4a8422e3cfe8ed519475c54a13904e1ae619051e44a45afb4e6adaf5368a9b0d"
+    },
+    {
+      "path": "public/character-sheets/aegis-v0.1-alpha-2026-10-27-r3/swordweave-aegis-character-sheets-v0.1-alpha.zip",
+      "sha256": "a900e5c26cf3d3cbf444f56fc41ad44becc23a9c38575c0085ff092ab17fe3bb"
+    },
+    {
+      "path": "public/icons/home/cube-metallic.svg",
+      "sha256": "2d15d28e38a2f470092998de980db0499202817205c540bf6acc13ae627b75e2"
+    },
+    {
+      "path": "public/icons/home/cube.svg",
+      "sha256": "277d6d74b14e8ee26fdcfcdcda92da17bdc064ffc394a2b374040ed3ba7fa480"
+    },
+    {
+      "path": "public/icons/home/dna1-metallic.svg",
+      "sha256": "98afc6b4ad9e0008a2854ede0e18db183b822ae75753faf7f5b0b021cc9e2d3b"
+    },
+    {
+      "path": "public/icons/home/dna1.svg",
+      "sha256": "1ba6704dc02c110816282bd7d53f0bf19d362103dee71b1cc87ab98490e27948"
+    },
+    {
+      "path": "public/icons/home/fire-shield-metallic.svg",
+      "sha256": "3f5f4e325a98e9f54feaab0b67ed6ff79e9731c5e56e3b2f88fd77b78d022174"
+    },
+    {
+      "path": "public/icons/home/fire-shield.svg",
+      "sha256": "533111cb7015c37ba204a5d0d28fe1c18a132690d2569ec6dece08d5bc2b0916"
+    },
+    {
+      "path": "public/icons/home/knapsack-metallic.svg",
+      "sha256": "8bed9b8bd2d0aad0b133cc8c73599a10e99abe7666e1039147807f18f8aa2883"
+    },
+    {
+      "path": "public/icons/home/knapsack.svg",
+      "sha256": "c2dd7301440c1345727bb6097e6bab621b4528578cd4d8c4281a62cd7cd8b0e0"
+    },
+    {
+      "path": "public/icons/home/rune-sword-metallic.svg",
+      "sha256": "bb2ad2875bab3242c098fc3fcd3101ef2bb6fbda3a87b99032abd1d7ac1ec27b"
+    },
+    {
+      "path": "public/icons/home/rune-sword.svg",
+      "sha256": "3fc995ca546d6ee4390fe3663f2bf1cbbae27cc84120dc054e0847f91e27d80d"
+    },
+    {
+      "path": "requirements.txt",
+      "sha256": "f1d12d0a046d4238bbf3b464ee498829bf6009ae5f6d5b9b2a17d84ca3447a6a"
+    },
+    {
+      "path": "scripts/build-character-sheet-v10.py",
+      "sha256": "d3857b22c3377320a96041cebe1832827f6d9acaaac8f3a5d553f23985448641"
+    },
+    {
+      "path": "scripts/build-character-sheet-v11.py",
+      "sha256": "a02f5245f14c1e8847ffc19e27cbceea59f498b22113c0afffe7fcbec1516c2a"
+    },
+    {
+      "path": "scripts/build-character-sheet-v6.py",
+      "sha256": "1e8843683fdf8104a71d3cf893a1533b7a5d9f95f3ddcb62b349899f65098ec3"
+    },
+    {
+      "path": "scripts/build-character-sheet-v7.py",
+      "sha256": "ca1547f5d8ad235dc36344e7aa0c665277368c3323d67749a5233f6f03756c17"
+    },
+    {
+      "path": "scripts/build-character-sheet-v8.py",
+      "sha256": "30884084336c4454be5aac5f9e6e2e752e25313969566bed2c04bdf79afdddd2"
+    },
+    {
+      "path": "scripts/build-character-sheet-v9.py",
+      "sha256": "13debbfdcef856a29b859b021837f8a791eb6a05a479d25281b74d4981c9fe5d"
+    },
+    {
+      "path": "scripts/character_pdf/__init__.py",
+      "sha256": "51074e26309d9368e1acbf1cfc31c52dcced617354d0d82d60a391a0305f8fed"
+    },
+    {
+      "path": "scripts/character_pdf/design.py",
+      "sha256": "f30df78a9aef103f3f3c6d010be2fddc516570d5c8f53ea07179024f9113779a"
+    },
+    {
+      "path": "scripts/character_pdf/markdown.py",
+      "sha256": "f8b885147f53605c3a9407e8516aa8ab2bf03d2afd9ed6a4f54ae98f15197bbe"
+    },
+    {
+      "path": "scripts/character_pdf/renderer.py",
+      "sha256": "f691b4c21912120b6e7cddb5d5c967036af619c8e3dfe03aacb8f8abf8e3fa5d"
+    },
+    {
+      "path": "scripts/character_pdf/requirements.txt",
+      "sha256": "36ff9caeb33ce86734f1f052c0d4223070396bdcda59d3c432957fa063c5493c"
+    },
+    {
+      "path": "scripts/character_pdf/test_color.py",
+      "sha256": "3d1739b97424b8027bc3628f122f3be5570a82f68f08dcde2855254c3d9d0cb4"
+    },
+    {
+      "path": "scripts/character_pdf/test_http.py",
+      "sha256": "1e70f9cc0f76d6e2efa9af812aadef6d0fe1953e15fc6f6dc0418f467b0b6fd7"
+    },
+    {
+      "path": "scripts/character_pdf/test_layout_refinements.py",
+      "sha256": "ef30343be30abafedd1f950fa4f1860a1dce443a8da8896312d24e3ac34ddc59"
+    },
+    {
+      "path": "scripts/character_pdf/test_renderer.py",
+      "sha256": "ac78358148e8152ea79af6d68caa98b348ebf845e069c4335f5fa81594311f44"
+    },
+    {
+      "path": "scripts/character_pdf/theme.py",
+      "sha256": "13d3e5d03d05ccaca0fb7e11cf00e4de39b60d838d5c88063df1d13e8e51e31c"
+    },
+    {
+      "path": "scripts/character_pdf/transport_http.py",
+      "sha256": "6da1722330e4d92ac56ccffdad53a1123c8cdc8b8ce3ab064d2d1b9681de849c"
+    },
+    {
+      "path": "src/app/heritage-author-identity.css",
+      "sha256": "fe0b4b0723d10a9aeb4af167f6fb0f1c74badb2f9a380bf2a8820b727d0db3ad"
+    },
+    {
+      "path": "src/components/characters/character-pdf-actions.css",
+      "sha256": "24c69372587ea262f711026dc19ebb14c5835e31d13b8283e81836aae2c45162"
+    },
+    {
+      "path": "src/components/encounters/encounter-preview.css",
+      "sha256": "f706b9dbf37e2e1022b3e7c34420d87daba1537ec3f2231dec9384ba1544e478"
+    },
+    {
+      "path": "src/components/encounters/encounters.css",
+      "sha256": "d4dc9636e0e4b5f3e4b22161ee363c7c315ee80da903afee7bbf051e4ed4062a"
+    },
+    {
+      "path": "src/components/home/public-nav.css",
+      "sha256": "b3c00917027bc8b8a71dfebb6f8fc081beb71ca09bf4787c4bc08126eb9168fd"
+    },
+    {
+      "path": "src/components/library/catalogue-layout.css",
+      "sha256": "8d58faf23b6d3c7dcdb95c6eabc163a6a04015b3bbfca54ab2202e196f850ad8"
+    },
+    {
+      "path": "src/components/library/visibility-choices.css",
+      "sha256": "03d8be082e8eb4f1b8fc1c55ebfe90c32f154f6d719a22f1226a8ca3b7b43492"
+    },
+    {
+      "path": "src/components/monsters/monster-template-preview.css",
+      "sha256": "5d66e97d1e0cfe4ad6073ce0cd8b0d7c5d181e9a6e9cbbde5613b01261b48c16"
+    },
+    {
+      "path": "src/components/publications/publication-gallery.css",
+      "sha256": "c2aca03dc132dafd6153f5467b40099ab1e0de619e2060ebea5a54a66880ab8c"
+    },
+    {
+      "path": "src/lib/character/workspace/__tests__/transactions.integration.test.ts",
+      "sha256": "fcb8787abf3bb3ed53db850ae37492a71226600f08aad4fc17a17a308a0e5b4c"
+    },
+    {
+      "path": "src/lib/engine/__tests__/fixtures/level18-physical-proficient.synthetic.json",
+      "sha256": "cd7bdf3352bc56442aa32fe1584df7e128bc022b18544486b94a60a9a1736715"
+    },
+    {
+      "path": "src/lib/engine/__tests__/resolve-modifiers.test.ts",
+      "sha256": "d23351f10a0d20032b30d1efa0a0eea10bf6203d941e0836fa063ce21eae036d"
+    },
+    {
+      "path": "src/lib/operations/contracts.ts",
+      "sha256": "0388dce805dc67e902f6e0acb3e92a149840b62684e3b74bfc971ca1e6c3eaf4"
+    },
+    {
+      "path": "src/lib/seo/pages.json",
+      "sha256": "6c82ab307cc8b41c77a36d03ce1340ae1b0528139736fcc696de985c1a281a19"
+    },
+    {
+      "path": "src/test/isolated-application-guard.ts",
+      "sha256": "160d92aec389a7334c4965c1d193e39720f863c721e7cd963cd356254533b29a"
+    },
+    {
+      "path": "src/test/server-only.ts",
+      "sha256": "1d0181b7455f6d7c5dbc3076e31ae8ea83fdbad7cbf2401d08389e84e7ae4216"
+    },
+    {
+      "path": "src/test/setup-isolated-application.ts",
+      "sha256": "ddd812085d949f5c7817911d815ac795450f7a94e526f90101e91e5ebf3e9e9d"
+    },
+    {
+      "path": "tsconfig.json",
+      "sha256": "8202ed48a7350524fe2af5df3c457fbecd3c5b48eb025a82176d003c8df0fbea"
+    },
+    {
+      "path": "vitest.config.ts",
+      "sha256": "9a4367aadd0cfb4c82b34904e61f38aa71d0b83b00e93e11439b6d6e272f487f"
+    }
+  ],
+  "requiredCases": [
+    {
+      "file": "src/lib/engine/__tests__/resolve-modifiers.test.ts",
+      "names": [
+        "level-18 synthetic Physical-proficiency regression"
+      ]
+    },
+    {
+      "file": "src/lib/character/workspace/__tests__/transactions.integration.test.ts",
+      "names": [
+        "creates and attaches a named empty effect atomically and retries once",
+        "versions the containing effect and preserves explicit instances",
+        "rejects stale membership submissions without changing versions",
+        "forks a borrowed container without editing its child definitions",
+        "leaves unchanged saves untouched and serializes conflicting edits",
+        "moves membership atomically and undoes it through compensating versions",
+        "rolls back creation when the destination is invalid",
+        "preserves a shared direct instance and its pinned version through the build modal",
+        "detaches and restores a bundle without removing an independent primitive",
+        "imports legacy occurrences idempotently and honors tombstones",
+        "clears a manual override durably without changing the automatic base state",
+        "applies a package once per idempotency key, then allows a deliberate second application",
+        "promotes an application without replaying vitality or buying another instance",
+        "rolls back all consequence changes when one occurrence is stale",
+        "mirrors only a direct supply and compensates without changing its bundle"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "character": {
+    "id": "synthetic-level18-physical",
+    "level": 18,
+    "attrProficient": "PHYSICAL",
+    "primitiveLinks": [
+      {
+        "isMirrored": false,
+        "primitive": {
+          "id": 9101,
+          "name": "Synthetic Physical increase",
+          "isMirrorable": true,
+          "mirrorVector": "STANDARD_ONLY",
+          "hardModifiers": [{ "kind": "modify", "target": "attribute.physical", "operation": "add", "value": 5, "stacking": "stack" }]
+        }
+      },
+      {
+        "isMirrored": false,
+        "primitive": {
+          "id": 9102,
+          "name": "Synthetic Physical increment",
+          "isMirrorable": true,
+          "mirrorVector": "STANDARD_ONLY",
+          "hardModifiers": [{ "kind": "modify", "target": "attribute.physical", "operation": "add", "value": 1, "stacking": "stack" }]
+        }
+      },
+      {
+        "isMirrored": true,
+        "primitive": {
+          "id": 9103,
+          "name": "Synthetic mirrored Physical modifier",
+          "isMirrorable": true,
+          "mirrorVector": "VARIABLE_VECTOR",
+          "hardModifiers": [{ "kind": "modify", "target": "attribute.physical", "operation": "add", "value": 4, "stacking": "stack" }]
+        }
+      },
+      {
+        "isMirrored": false,
+        "primitive": {
+          "id": 9104,
+          "name": "Synthetic Mental increase",
+          "isMirrorable": true,
+          "mirrorVector": "STANDARD_ONLY",
+          "hardModifiers": [{ "kind": "modify", "target": "attribute.mental", "operation": "add", "value": 3, "stacking": "stack" }]
+        }
+      },
+      {
+        "isMirrored": false,
+        "primitive": {
+          "id": 9105,
+          "name": "Synthetic Magical increase",
+          "isMirrorable": true,
+          "mirrorVector": "STANDARD_ONLY",
+          "hardModifiers": [{ "kind": "modify", "target": "attribute.magical", "operation": "add", "value": 2, "stacking": "stack" }]
+        }
+      },
+      {
+        "isMirrored": false,
+        "primitive": {
+          "id": 9106,
+          "name": "Synthetic Physical save increment",
+          "isMirrorable": true,
+          "mirrorVector": "STANDARD_ONLY",
+          "hardModifiers": [{ "kind": "modify", "target": "saving_throw.physical", "operation": "add", "value": 1, "stacking": "stack" }]
+        }
+      },
+      {
+        "isMirrored": false,
+        "primitive": {
+          "id": 9107,
+          "name": "Synthetic authored PB save addition",
+          "isMirrorable": true,
+          "mirrorVector": "STANDARD_ONLY",
+          "hardModifiers": [{ "kind": "modify", "target": "saving_throw.physical", "operation": "add", "value": { "kind": "derived", "which": "pb" }, "stacking": "stack" }]
+        }
+      },
+      {
+        "isMirrored": false,
+        "primitive": {
+          "id": 9108,
+          "name": "Synthetic Physical attack increment",
+          "isMirrorable": true,
+          "mirrorVector": "STANDARD_ONLY",
+          "hardModifiers": [{ "kind": "modify", "target": "attack_bonus.physical", "operation": "add", "value": 2, "stacking": "stack" }]
+        }
+      },
+      {
+        "isMirrored": false,
+        "primitive": {
+          "id": 9109,
+          "name": "Synthetic Physical DC increment",
+          "isMirrorable": true,
+          "mirrorVector": "STANDARD_ONLY",
+          "hardModifiers": [{ "kind": "modify", "target": "save_dc.physical", "operation": "add", "value": 4, "stacking": "stack" }]
+        }
+      }
+    ]
+  }
+}

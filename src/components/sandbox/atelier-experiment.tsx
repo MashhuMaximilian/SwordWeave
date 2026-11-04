@@ -1,7 +1,8 @@
 "use client";
 
 import { createContext, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { useAuth, useClerk } from "@clerk/nextjs";
+import { useAppAuth } from "@/components/auth/app-auth-provider";
+import { signupUnavailable } from "@/lib/runtime/mode-policy";
 import { approveNavigation } from "@/components/character-modal/character-modal-store";
 import { decodeCharacterFormRecovery } from "@/lib/sandbox/character-form-recovery";
 import { ATELIER_FLUSH_EVENT, clearAtelierExperiment, readAtelierExperiment, writeAtelierExperiment } from "@/lib/sandbox/atelier-experiment-session";
@@ -13,8 +14,7 @@ const STORAGE_FAILURE = "sw-atelier-experiment-storage-failure";
 export const useAtelierExperiment = () => useContext(Context);
 
 export function AtelierExperimentProvider({ children, initialSignedIn }: { children: ReactNode; initialSignedIn: boolean }) {
-  const { isLoaded, isSignedIn } = useAuth();
-  const { redirectToSignIn, redirectToSignUp } = useClerk();
+  const { isLoaded, isSignedIn, redirectToSignIn, redirectToSignUp, policy } = useAppAuth();
   const [resuming] = useState(() => { try { return (readAtelierExperiment(sessionStorage, "auth-resume") as { requested?: unknown } | null)?.requested === true; } catch { return false; } });
   const [action, setAction] = useState<string | null>(null);
   const [storageError, setStorageError] = useState("");
@@ -38,6 +38,7 @@ export function AtelierExperimentProvider({ children, initialSignedIn }: { child
   }
   function close() { dialog.current?.close(); setAction(null); opener.current?.focus(); }
   async function authenticate(signUp = false) {
+    if (signUp && !policy.canSignUp) return;
     storageFailed.current = false;
     window.dispatchEvent(new Event(ATELIER_FLUSH_EVENT));
     let stored = false;
@@ -56,7 +57,8 @@ export function AtelierExperimentProvider({ children, initialSignedIn }: { child
       <h2 id={title} className="text-xl font-bold">Sign in to {action}</h2>
       <p className="my-4 max-w-md">Your experiment stays in this tab through sign-in. Nothing is saved or published automatically; review your draft and choose Save when you return.</p>
       {storageError && <p className="my-3 text-sm text-destructive" role="alert">{storageError}</p>}
-      <div className="flex flex-wrap gap-3"><button type="button" className="rounded border px-3 py-3" onClick={close}>Continue experimenting</button><button type="button" className="rounded bg-primary px-3 py-3 text-primary-foreground" disabled={!isLoaded} onClick={() => void authenticate()}>Sign in</button><button type="button" className="rounded border px-3 py-3" disabled={!isLoaded} onClick={() => void authenticate(true)}>Create account</button></div>
+      <div className="flex flex-wrap gap-3"><button type="button" className="rounded border px-3 py-3" onClick={close}>Continue experimenting</button><button type="button" className="rounded bg-primary px-3 py-3 text-primary-foreground" disabled={!isLoaded} onClick={() => void authenticate()}>Sign in</button><button type="button" className="rounded border px-3 py-3" disabled={!isLoaded || !policy.canSignUp} onClick={() => void authenticate(true)}>Create account</button></div>
+      {!policy.canSignUp && <p role="status">{signupUnavailable}</p>}
     </dialog>}
   </Context.Provider>;
 }

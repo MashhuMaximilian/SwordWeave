@@ -5,6 +5,7 @@
 // URL: /search?q=<query>&type=<LibraryTargetType>
 // =============================================================================
 
+import { displayArtworkUrl } from "@/lib/assets/upload-path";
 import Link from "next/link";
 import { Search, SearchX } from "lucide-react";
 import {
@@ -120,7 +121,7 @@ function SearchHitRow({ hit, query }: { hit: SearchHit; query: string }) {
         {hit.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={hit.imageUrl}
+            src={displayArtworkUrl(hit.imageUrl)}
             alt=""
             className="size-14 shrink-0 rounded-md object-cover"
           />

@@ -8,11 +8,14 @@ import { ContactForm, CopyContactEmail } from "@/components/contact/contact-form
 import { DiscordIcon } from "@/components/icons/discord-icon";
 import { CONTACT_EMAIL, DISCORD_INVITE_URL } from "@/lib/community";
 import { getContactMailConfig } from "@/lib/server/contact-mail";
+import { deploymentMode } from "@/lib/runtime/deployment";
+import { connection } from "next/server";
 import "./contact.css";
 
 export const metadata: Metadata = publicPageMetadata("/contact");
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  await connection();
   return <div className="sw-home sw-public-site sw-public-site--arcane sw-contact"><StructuredData path="/contact" />
     <PublicNav />
     <div id="main-content" className="sw-contact__layout">
@@ -28,7 +31,7 @@ export default function ContactPage() {
           <p>SwordWeave is a one-person project. Replies may take a little time.</p>
         </div>
       </div>
-      <ContactForm configured={Boolean(getContactMailConfig())} />
+      <ContactForm configured={deploymentMode() === "production" && Boolean(getContactMailConfig())} />
       <section className="sw-contact__community" aria-labelledby="contact-community-title">
         <h2 id="contact-community-title">Prefer the tavern?</h2>
         <p>Ask a rules question, share a character, or find people to play with in the community.</p>

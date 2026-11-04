@@ -13,7 +13,7 @@ const anonymous: AppAuthSnapshot = { isLoaded: true, isSignedIn: false, userId: 
 const user = (id = "user_a"): AppAuthSnapshot => ({ isLoaded: true, isSignedIn: true, userId: id, identity: { username: id, displayName: "Name", avatarUrl: null } });
 function runtime() {
   return {
-    openSignIn: vi.fn(), openAccount: vi.fn(), redirectToSignIn: vi.fn(),
+    openSignIn: vi.fn(), openAccount: vi.fn(), redirectToSignIn: vi.fn(), redirectToSignUp: vi.fn(),
     signOut: vi.fn(), refreshSession: vi.fn(),
   } satisfies AppAuthRuntimeActions;
 }

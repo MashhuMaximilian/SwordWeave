@@ -1,3 +1,4 @@
+import { displayArtworkUrl } from "@/lib/assets/upload-path";
 import { systemBestiary } from "./catalogue/system-bestiary";
 import { systemBestiaryArtwork } from "./catalogue/system-bestiary-art";
 
@@ -19,4 +20,9 @@ export function monsterArtwork(row: {id?: string | undefined; name: string; imag
       row.catalogue.tactics === recipe.tactics) return systemByName.get(row.name)?.path ?? null;
   if (row.sourceOrigin !== "Monster feedback examples · October 2026" || !illustratedCreatures.includes(row.name)) return null;
   return `/art/monsters/${row.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-graphic-v1.webp`;
+}
+
+export function displayMonsterArtwork(row: Parameters<typeof monsterArtwork>[0]): string | null {
+  const url = monsterArtwork(row);
+  return url ? displayArtworkUrl(url) : null;
 }

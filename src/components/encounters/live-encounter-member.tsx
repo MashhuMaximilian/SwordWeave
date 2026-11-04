@@ -1,4 +1,5 @@
 "use client";
+import { displayArtworkUrl } from "@/lib/assets/upload-path";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -146,7 +147,7 @@ export function LiveEncounterMember({
           <span className="sw-live-portrait">
             {member.artwork ? (
               <Image
-                src={member.artwork}
+                src={displayArtworkUrl(member.artwork)}
                 alt=""
                 width={36}
                 height={36}

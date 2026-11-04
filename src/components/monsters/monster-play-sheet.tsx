@@ -16,7 +16,7 @@ import type {MonsterSlot} from "@/lib/monsters/resolve";
 import {Markdown} from "@/components/ui/markdown";
 import {IdentityCell} from "@/components/characters/identity-cell";
 import {MonsterCompositionView} from "./monster-composition-view";
-import {monsterArtwork} from "@/lib/monsters/art";
+import {displayMonsterArtwork} from "@/lib/monsters/art";
 
 import {CapabilityActionButtons} from "@/components/characters/capability-card";
 import {portraitFrameStyle} from "@/lib/character/portrait-frame";
@@ -54,7 +54,7 @@ export function MonsterPlaySheet({id,embedded=false}:{id:string;embedded?:boolea
  function applyPackage(p:typeof packages[number]){const applicationId=crypto.randomUUID();const changes=p.pieces.map(piece=>{const occurrence:ConsequenceOccurrence={...customMonsterConsequence(piece.title,piece.description),id:crypto.randomUUID(),applicationId,sourceEntityId:String(piece.id),sourceEntityType:"primitive",sourceVersionId:piece.versionId,modifiers:piece.modifiers,restrictions:piece.behavior.restrictions,recovery:piece.behavior.recovery,applicationSnapshot:{vitalityDelta:piece.behavior.vitalityDelta,modifiers:piece.modifiers,restrictions:piece.behavior.restrictions}};return {field:`consequence:${occurrence.id}`,value:occurrence as unknown};});changes.push({field:"currentVitality",value:Math.max(0,Math.min(sheet.maximum,sheet.currentVitality+p.vitalityDelta))});queuePlayChanges("MONSTER_PLAY_COPY",id,changes);}
  function compositionActions(pin:MonsterComponentPin){const key=`${pin.kind}:${pin.id}`,field=key.replace("capability:","cap:").replace("effect:","eff:");const p=packages.find(p=>p.key===key);const active=overrides[field]!==true;return <CapabilityActionButtons active={active} showToggle={toggles.includes(key)} showTrigger={!!p} triggerLabel="Use" triggerDisabled={!active} onToggle={()=>change(field,active?true:null)} onTrigger={()=>{if(p)applyPackage(p);}}/>;}
 
- const artwork=monsterArtwork({...copy.definition,name:copy.definition.name});
+ const artwork=displayMonsterArtwork({...copy.definition,name:copy.definition.name});
  return <main className="sw-monster-page monster-character-sheet v12-character-page" data-character-surface data-encounter-embedded={embedded||undefined}>
  <header className="creature-identity v12-sheet-identity v12-instrument sticky">
   <Link href="/monsters" className="creature-back v12-metal-button">← Monsters &amp; NPCs</Link>

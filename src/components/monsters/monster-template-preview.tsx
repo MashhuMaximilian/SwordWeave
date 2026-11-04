@@ -13,7 +13,7 @@ import type { PinnedDefinition } from "@/lib/monsters/service";
 import type { MonsterSlot, resolveMonster } from "@/lib/monsters/resolve";
 import { MonsterCompositionView } from "./monster-composition-view";
 import { MonsterSheetStats, MonsterPracticeGrid } from "./monster-sheet-stats";
-import { monsterArtwork } from "@/lib/monsters/art";
+import { displayMonsterArtwork } from "@/lib/monsters/art";
 import "./monster-template-preview.css";
 import { PreviewActions, type PreviewActionProps } from "@/components/preview/preview-shared";
 
@@ -88,7 +88,7 @@ function AccountPreview({ id, version, compact, ready, actions, actionPlacement,
   const { monster, sheet } = data;
   const definition = monster.definition;
   const slots = data.slots ?? definition.resolvedSlots ?? [];
-  const artwork = monsterArtwork({ ...definition, id, name: monster.name });
+  const artwork = displayMonsterArtwork({ ...definition, id, name: monster.name });
   return <section className={`sw-creature-preview ${compact ? "is-compact" : ""}`} aria-label={`${monster.name} mini sheet`}>
     {!hideActions && actions && actionPlacement === "top" && <PreviewActions {...actions}/>}
     {showIdentity && <header className="sw-creature-identity">
@@ -112,7 +112,7 @@ function AccountPreview({ id, version, compact, ready, actions, actionPlacement,
 export function MonsterSheetPreview({definition,sheet,slots,compact=false,initialSection="practices",collapseNumbers=false}:{definition:PinnedDefinition;sheet:ReturnType<typeof resolveMonster>;slots:MonsterSlot[];compact?:boolean;initialSection?:"practices"|"abilities"|"story";collapseNumbers?:boolean}) {
  const [tab,setTab]=useState<"practices"|"abilities"|"story">(initialSection);
  const previewId=useId();
- const artwork=monsterArtwork(definition);
+ const artwork=displayMonsterArtwork(definition);
  const monster={name:definition.name};
  return <section className={`sw-creature-preview ${compact?"is-compact":""}`} aria-label="Creature review sheet">
     {collapseNumbers ? <details className="sw-creature-numbers"><summary>Full creature numbers</summary><MonsterSheetStats showPractices={false} sheet={sheet} definition={definition} proficientAttribute={definition.proficientAttribute} baselineVitality={definition.baselineVitality ?? sheet.vitality}/></details> : <MonsterSheetStats showPractices={false} sheet={sheet} definition={definition} proficientAttribute={definition.proficientAttribute} baselineVitality={definition.baselineVitality ?? sheet.vitality}/>}

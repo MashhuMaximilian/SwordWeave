@@ -1,4 +1,5 @@
 "use client";
+import { displayArtworkUrl } from "@/lib/assets/upload-path";
 import Link from "next/link";
 import { Check, Plus, ArrowUpRight, RefreshCw } from "lucide-react";
 import { useState } from "react";
@@ -121,7 +122,7 @@ export function EncounterPartyDirectory({
               <div className="v12-roster-avatar-crop">
                 {character.portraitUrl ? (
                   <img
-                    src={character.portraitUrl}
+                    src={displayArtworkUrl(character.portraitUrl)}
                     alt=""
                     loading="lazy"
                     style={portraitFrameStyle(character.portraitFrame)}

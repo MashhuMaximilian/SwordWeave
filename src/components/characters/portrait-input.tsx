@@ -1,4 +1,5 @@
 "use client";
+import { displayArtworkUrl } from "@/lib/assets/upload-path";
 import { useAtelierExperiment } from "@/components/sandbox/atelier-experiment";
 
 import { useCallback, useRef, useState, type ReactNode } from "react";
@@ -114,7 +115,7 @@ export function PortraitInput({
           // Portraits may be authenticated local blob-proxy URLs or arbitrary
           // user links, so Next Image cannot safely predeclare their host.
           // eslint-disable-next-line @next/next/no-img-element
-          <img ref={imageRef} src={value} alt={characterName ? `${characterName} portrait` : label} draggable={false} style={portraitFrameStyle(frame)} />
+          <img ref={imageRef} src={displayArtworkUrl(value)} alt={characterName ? `${characterName} portrait` : label} draggable={false} style={portraitFrameStyle(frame)} />
         ) : (
           <div className="sw-portrait-input__empty">
             <ImagePlus aria-hidden />

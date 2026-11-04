@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import { PUBLIC_PAGES, SITE_URL, markdownPath, isDiscoveryProduction, PUBLIC_MARKDOWN_MEDIA_TYPE } from './public-pages';
+import { PUBLIC_PAGES, SITE_URL, markdownPath, PUBLIC_MARKDOWN_MEDIA_TYPE } from './public-pages';
+import { isDiscoveryProduction } from './discovery-policy';
 
 export function publicPageMetadata(path: string): Metadata {
   const page = PUBLIC_PAGES[path];

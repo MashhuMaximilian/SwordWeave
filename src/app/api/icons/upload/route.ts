@@ -1,44 +1,12 @@
-// =============================================================================
-// POST /api/icons/upload
-//
-// Upload a custom icon for use on a primitive/effect/capability/template/
-// item. Body is multipart/form-data with a single `file` field plus
-// optional `color` and `entityType`/`entityId` metadata.
-//
-// The upload goes into Vercel Blob (private access), or local disk in
-// development without a Blob token, at the canonical path
-// `user-uploads/<clerk-user-id>/<uuid>.<ext>`. The
-// client receives the path back and stores it in the entity row's
-// `icon_url` column. The icon is served via /api/icons/blob/[...path]
-// which Clerk-auths the viewer and streams from Blob.
-//
-// Restrictions:
-//   - Only authenticated users can upload.
-//   - Max size: 4MB (the user said the largest icon they expect to see
-//     is a few hundred KB; 4MB leaves headroom for high-res PNGs).
-//   - MIME: image/png, image/jpeg, image/webp, image/gif, image/svg+xml.
-//   - Path prefix: always `user-uploads/<clerk-user-id>/` so a user
-//     can't overwrite another user's blob. (Even if they tried, blob
-//     names are unique by UUID — but the prefix hardens the boundary.)
-// =============================================================================
+// Authenticated image uploads use the viewer-owned key and return a same-site proxy URL.
 
 import { auth } from "@clerk/nextjs/server";
-import { put } from "@vercel/blob";
 import { type NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { MAX_UPLOAD_BYTES, writePrivateUpload } from "@/lib/assets/private-upload-store";
 
 export const dynamic = "force-dynamic";
 
-const MAX_BYTES = 4 * 1024 * 1024; // 4 MB
-const ALLOWED_MIME = new Set([
-  "image/png",
-  "image/jpeg",
-  "image/webp",
-  "image/gif",
-  "image/svg+xml",
-]);
 const MIME_TO_EXT: Record<string, string> = {
   "image/png": "png",
   "image/jpeg": "jpg",
@@ -67,63 +35,29 @@ export async function POST(req: NextRequest) {
   if (file.size === 0) {
     return NextResponse.json({ error: "Empty file" }, { status: 400 });
   }
-  if (file.size > MAX_BYTES) {
+  if (file.size > MAX_UPLOAD_BYTES) {
     return NextResponse.json(
-      { error: `File too large; max ${MAX_BYTES} bytes` },
+      { error: `File too large; max ${MAX_UPLOAD_BYTES} bytes` },
       { status: 413 },
     );
   }
-  if (!ALLOWED_MIME.has(file.type)) {
+  const ext = MIME_TO_EXT[file.type];
+  if (!ext || !Object.hasOwn(MIME_TO_EXT, file.type)) {
     return NextResponse.json(
       { error: `Unsupported MIME type: ${file.type}` },
       { status: 415 },
     );
   }
 
-  // Build the canonical blob path. The user-id prefix lets us list a
-  // user's uploads later (Vercel Blob's list API takes a prefix). The
-  // UUID prevents collisions and makes guessing URLs hard.
-  const ext = MIME_TO_EXT[file.type] ?? "bin";
   const pathname = `user-uploads/${clerkUserId}/${randomUUID()}.${ext}`;
-
-  // Local development has no Vercel Blob token. Keep uploads on disk so
-  // portraits (and other uploaded icons) still work during local playtests.
-  if (process.env.NODE_ENV === "development" && !process.env["BLOB_READ_WRITE_TOKEN"]) {
-    const destination = join(process.cwd(), ".local-uploads", pathname);
-    try {
-      await mkdir(join(process.cwd(), ".local-uploads", "user-uploads", clerkUserId), { recursive: true });
-      await writeFile(destination, Buffer.from(await file.arrayBuffer()), { flag: "wx" });
-      return NextResponse.json({ ok: true, pathname, contentType: file.type, size: file.size });
-    } catch (error) {
-      console.error("[api/icons/upload] local upload failed:", error);
-      return NextResponse.json({ error: "Upload failed" }, { status: 500 });
-    }
-  }
-
-  // `put` from @vercel/blob streams the body. We pass `access: "private"`
-  // because the blob store is private. The token comes from
-  // BLOB_READ_WRITE_TOKEN (configured in Vercel for production, .env.local
-  // for dev).
-  let blob;
   try {
-    blob = await put(pathname, file, {
-      access: "private",
-      // Random UUID prevents collisions; we don't need to add a content-
-      // hash because the same UUID is the canonical name.
-      addRandomSuffix: false,
-      // Allow the browser to set Content-Type from the upload.
-      contentType: file.type,
-    });
-  } catch (e) {
-    console.error("[api/icons/upload] blob put failed:", e);
+    await writePrivateUpload(pathname, file, req.signal);
+  } catch {
+    console.error("[api/icons/upload] private upload failed");
     return NextResponse.json({ error: "Upload failed" }, { status: 502 });
   }
 
   return NextResponse.json({
-    ok: true,
-    pathname: blob.pathname,
-    url: blob.url, // internal signed URL — never returned to clients beyond /api/icons/blob
-    contentType: file.type,
-    size: file.size,
+    ok: true, pathname, url: `/api/icons/blob/${pathname}`, contentType: file.type, size: file.size,
   });
 }

@@ -4,6 +4,8 @@ import localFont from "next/font/local";
 import { Magra, Teko } from "next/font/google";
 import Script from "next/script";
 import { AppAuthProvider } from "@/components/auth/app-auth-provider";
+import { deploymentPolicy } from "@/lib/runtime/deployment";
+import { connection } from "next/server";
 import { CookieConsentManager } from "@/components/privacy/cookie-consent";
 import { AppShell } from "@/components/layout/app-shell";
 import { MobileViewport } from "@/components/layout/mobile-viewport";
@@ -90,11 +92,12 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { themeColor: "#0b0a0f", width: "device-width", initialScale: 1, viewportFit: "cover", interactiveWidget: "resizes-content" };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  await connection();
   return (
     <RootHtml>
       <head>
@@ -148,7 +151,7 @@ try {
 } catch {}
           `}
         </Script>
-        <AppAuthProvider>
+        <AppAuthProvider policy={deploymentPolicy()}>
           <MobileViewport />
           <AppShell><LibraryRefresh />{children}</AppShell>
           <CookieConsentManager />

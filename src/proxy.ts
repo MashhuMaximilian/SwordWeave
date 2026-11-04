@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest, type NextFetchEvent } from "next/server";
 import { isPublicPage, PUBLIC_PAGES, PUBLIC_MARKDOWN_ASSETS, markdownPath, PUBLIC_MARKDOWN_MEDIA_TYPE } from "@/lib/seo/public-pages";
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { isGuestAtelierPath } from "@/lib/sandbox/atelier-public-catalog";
@@ -26,7 +26,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/users/check-username",
 ]);
 
-export default clerkMiddleware(async (auth, req) => {
+const authenticatedProxy = clerkMiddleware(async (auth, req) => {
   if (req.nextUrl.pathname.endsWith('.md')) {
     if (PUBLIC_MARKDOWN_ASSETS.has(req.nextUrl.pathname)) {
       const response = NextResponse.next();
@@ -48,11 +48,18 @@ export default clerkMiddleware(async (auth, req) => {
     await auth.protect();
   }
   const response = NextResponse.next();
-  if (process.env["VERCEL_ENV"] === "preview" || !isPublicPage(req.nextUrl.pathname) || Array.from(req.nextUrl.searchParams.keys()).some(key => !["utm_source", "utm_medium", "utm_campaign", "utm_content"].includes(key))) {
+  if (process.env["VERCEL_ENV"] === "preview" || process.env["SW_DEPLOYMENT_MODE"] === "preview" || process.env["SW_DEPLOYMENT_MODE"] === "restore" || !isPublicPage(req.nextUrl.pathname) || Array.from(req.nextUrl.searchParams.keys()).some(key => !["utm_source", "utm_medium", "utm_campaign", "utm_content"].includes(key))) {
     response.headers.set("X-Robots-Tag", "noindex, follow");
   }
   return response;
 });
+
+export default function proxy(req: NextRequest, event: NextFetchEvent) {
+  if (req.nextUrl.pathname === "/api/health/live" || req.nextUrl.pathname === "/api/health/ready") {
+    return NextResponse.next();
+  }
+  return authenticatedProxy(req, event);
+}
 
 export const config = {
   matcher: [

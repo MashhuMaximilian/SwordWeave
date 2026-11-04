@@ -1,9 +1,12 @@
 import { beforeAll, afterAll, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
 import { eq, and } from "drizzle-orm";
+import { assertIsolatedApplicationTestTarget } from "@/test/isolated-application-guard";
 const caller = vi.hoisted(() => ({ id: "user_workspace_verification" }));
 vi.mock("@clerk/nextjs/server", () => ({
-  auth: { protect: async () => ({ userId: caller.id }) },
+  auth: Object.assign(async () => ({ userId: caller.id }), {
+    protect: async () => ({ userId: caller.id }),
+  }),
 }));
 import { db, pool } from "@/db/client";
 import * as s from "@/db/schema";
@@ -22,10 +25,7 @@ import {
   POST as apply,
   GET as preview,
 } from "@/app/api/characters/[id]/consequences/apply/route";
-const enabled =
-  process.env["WORKSPACE_TEST_DATABASE"] === "sw_workspace_verify_20260908";
-const suite = enabled ? describe : describe.skip;
-suite("isolated workspace transactions", () => {
+describe("isolated workspace transactions", () => {
   const characterId = randomUUID();
   const context = { params: Promise.resolve({ id: characterId }) };
   let primitiveId: number;
@@ -37,12 +37,7 @@ suite("isolated workspace transactions", () => {
       body: JSON.stringify(body),
     });
   beforeAll(async () => {
-    if (
-      !new URL(process.env["DATABASE_URL"]!).pathname.endsWith(
-        "/sw_workspace_verify_20260908",
-      )
-    )
-      throw new Error("Refusing non-isolated database.");
+    assertIsolatedApplicationTestTarget();
     await db
       .insert(s.users)
       .values({ clerkUserId: caller.id, username: "workspace_verification" })
@@ -66,9 +61,9 @@ suite("isolated workspace transactions", () => {
       mechanicalOutputText: "",
       narrativeRule: "",
       isPublic: false,
-      isMirrorable: false,
+      isMirrorable: true,
       mirrorVector: "STANDARD_ONLY",
-      mirrorBuCredit: 0,
+      mirrorBuCredit: 4,
       mirrorEligibilityNotes: "",
       sourceOrigin: "manual",
       tags: [],
@@ -92,6 +87,7 @@ suite("isolated workspace transactions", () => {
     });
   }, 30000);
   afterAll(async () => {
+    assertIsolatedApplicationTestTarget();
     await db.delete(s.characters).where(eq(s.characters.id, characterId));
     await pool.end();
   }, 30000);
@@ -132,7 +128,7 @@ suite("isolated workspace transactions", () => {
       expectedRevision: graph.revision,
       target: target.key,
       path: [edge.id],
-      expectedHash: target.data["contentHash"],
+      expectedHash: target.data["contentHash"] ?? null,
       child: `primitive:${primitiveId}`,
     };
     const saved = await executeWorkspaceCommand(
@@ -173,7 +169,7 @@ suite("isolated workspace transactions", () => {
         expectedRevision: 0,
         target: target.key,
         path: [edge.id],
-        expectedHash: target.data["contentHash"],
+        expectedHash: target.data["contentHash"] ?? null,
         child: `primitive:${primitiveId}`,
       }),
     ).rejects.toThrow("changed");
@@ -198,7 +194,7 @@ suite("isolated workspace transactions", () => {
       expectedRevision: graph.revision,
       target: target.key,
       path: [edge.id],
-      expectedHash: target.data["contentHash"],
+      expectedHash: target.data["contentHash"] ?? null,
       draft: { name: `My fork ${characterId}` },
     });
     expect(saved["outcome"]).toBe("forked");
@@ -229,7 +225,7 @@ suite("isolated workspace transactions", () => {
       expectedRevision: graph.revision,
       target: target.key,
       path: [edge.id],
-      expectedHash: target.data["contentHash"],
+      expectedHash: target.data["contentHash"] ?? null,
       draft: {},
     };
     const saved = await executeWorkspaceCommand(characterId, caller.id, {
@@ -287,11 +283,11 @@ suite("isolated workspace transactions", () => {
       expectedRevision: graph.revision,
       target: source.key,
       path: [sourcePath.id],
-      expectedHash: source.data["contentHash"],
+      expectedHash: source.data["contentHash"] ?? null,
       edgeId: membership.id,
       destination: destination.key,
       destinationPath: [destinationPath.id],
-      destinationHash: destination.data["contentHash"],
+      destinationHash: destination.data["contentHash"] ?? null,
     });
     graph = await readWorkspace(characterId);
     expect(
@@ -315,7 +311,7 @@ suite("isolated workspace transactions", () => {
         graph.edges.find((e) => e.parent === null && e.child === current.key)!
           .id,
       ],
-      expectedHash: current.data["contentHash"],
+      expectedHash: current.data["contentHash"] ?? null,
     });
     graph = await readWorkspace(characterId);
     expect(
@@ -408,7 +404,7 @@ suite("isolated workspace transactions", () => {
     const base = {
       target: target.key,
       path,
-      expectedHash: target.data["contentHash"],
+      expectedHash: target.data["contentHash"] ?? null,
     };
     await executeWorkspaceCommand(characterId, caller.id, {
       ...base,
@@ -424,8 +420,10 @@ suite("isolated workspace transactions", () => {
       .where(eq(s.characterPrimitives.characterId, characterId));
     expect(rows).toHaveLength(1);
     expect(rows[0]!.originEffectId).toBeNull();
+    const detached = (await readWorkspace(characterId, [target.key])).nodes.find(node => node.key === target.key);
     await executeWorkspaceCommand(characterId, caller.id, {
       ...base,
+      expectedHash: detached?.data["contentHash"] ?? null,
       commandId: randomUUID(),
       operation: "undo",
       undoCommandId: commandId,
@@ -681,10 +679,6 @@ suite("isolated workspace transactions", () => {
       .update(s.characters)
       .set({ mode: "BUILD" })
       .where(eq(s.characters.id, characterId));
-    await db
-      .update(s.primitives)
-      .set({ isMirrorable: true, mirrorBuCredit: 4 })
-      .where(eq(s.primitives.id, primitiveId));
     const graph = await readWorkspace(characterId);
     const target = graph.nodes.find(
       (n) => n.key === `primitive:${primitiveId}`,
@@ -692,7 +686,7 @@ suite("isolated workspace transactions", () => {
     const root = graph.edges.find(
       (e) => e.child === target.key && e.parent === null,
     )!;
-    expect(root.data?.["directSource"]).toBeTruthy();
+    expect(root.data?.["directSource"] ?? root.data?.["source"]).toBe("PERSONAL");
     const before = await db.query.characterPrimitives.findMany({
       where: eq(s.characterPrimitives.characterId, characterId),
     });

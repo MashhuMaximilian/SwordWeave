@@ -13,7 +13,6 @@ import type { SaveIntent } from "@/lib/publishing/save-intent";
 import { DetailModal } from "@/components/ui/detail-modal";
 import { MonsterTemplatePreview, MonsterSheetPreview } from "./monster-template-preview";
 import { MonsterSheetStats } from "./monster-sheet-stats";
-import { monsterArtwork } from "@/lib/monsters/art";
 import { ForgeProgressRail, ForgeWorkbench, QuickbuildSection } from "@/components/characters/forge-section";
 import { PortraitInput } from "@/components/characters/portrait-input";
 import { SetOptionCard } from "@/components/characters/new-character-form";
@@ -91,7 +90,7 @@ function AccountMonsterWorkbench({id,browse=false,embedded=false,publicCatalog,s
   let active=true;const controller=new AbortController();
   const tasks=[request("/api/monsters","GET",undefined,controller.signal).then(b=>{if(!active)return;setRows(b.monsters);setHasMore(b.monsters.length===100);setCopies(b.copies);})];
   if(userId)tasks.push(request("/api/collections?own=true","GET",undefined,controller.signal).then(b=>{if(active)setSourceCollections((b.collections??[]).filter((c:{system_kind:string|null})=>!c.system_kind));}));
-  if(id)tasks.push(request(`/api/monsters/${id}`,"GET",undefined,controller.signal).then(b=>{if(!active)return;if(!recovery.restored){setDefinition({...b.monster.definition,...(monsterArtwork(b.monster.definition)?{imageUrl:monsterArtwork(b.monster.definition)}:{})});setVisibility(b.monster.visibility??(b.monster.isPublic?"PUBLIC":"PRIVATE"));setSourceCollectionId(b.monster.sourceCollectionId??"");setSheet(b.sheet);setComponentSlots(b.slots??[]);}setRecordCanEdit(b.canEdit);}));
+  if(id)tasks.push(request(`/api/monsters/${id}`,"GET",undefined,controller.signal).then(b=>{if(!active)return;if(!recovery.restored){setDefinition(b.monster.definition);setVisibility(b.monster.visibility??(b.monster.isPublic?"PUBLIC":"PRIVATE"));setSourceCollectionId(b.monster.sourceCollectionId??"");setSheet(b.sheet);setComponentSlots(b.slots??[]);}setRecordCanEdit(b.canEdit);}));
   void Promise.allSettled(tasks).then(results=>{if(!active)return;const failed=results.find(result=>result.status==="rejected");if(failed?.status==="rejected")setError(failed.reason instanceof Error?failed.reason.message:"Unable to load this account.");setLoadedAccount(accountIdentity);});
   return()=>{active=false;controller.abort();};
  },[id,isLoaded,userId,accountIdentity]);

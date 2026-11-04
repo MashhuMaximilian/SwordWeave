@@ -2,6 +2,10 @@
   "name": "swordweave",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.30.3",
+  "engines": {
+    "node": ">=24 <25"
+  },
   "description": "Open-source web engine for the SwordWeave modular tabletop RPG system.",
   "scripts": {
     "dev": "node scripts/dev-surface-css.mjs",
@@ -24,11 +28,12 @@
     "db:check-drift": "tsx scripts/_check-drift.ts",
     "db:diff-notion": "tsx scripts/_diff-notion-vs-db.ts",
     "db:migrate-v12-library": "tsx scripts/migrate-v12-library.ts",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "tsx scripts/hetzner/test-application.mts run",
+    "test:watch": "tsx scripts/hetzner/test-application.mts watch",
     "usage:report": "tsx scripts/report-platform-usage.mts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1161.0",
     "@clerk/nextjs": "^7.5.12",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
@@ -52,6 +57,7 @@
     "react-aria-components": "^1.19.0",
     "react-dom": "^19.2.7",
     "react-resizable-panels": "^4.12.1",
+    "server-only": "0.0.1",
     "sharp": "0.34.5",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.2",

@@ -733,10 +733,12 @@ export async function executeWorkspaceCommand(
         throw new Error(
           "This command cannot be undone on the selected entity.",
         );
-      if (
-        previous.result["afterHash"] !== undefined &&
-        previous.result["afterHash"] !== target.data["contentHash"]
-      )
+      const afterVersionId = previous.result["afterVersionId"];
+      const afterHash = previous.result["afterHash"];
+      const changed = typeof afterVersionId === "string"
+        ? afterVersionId !== target.versionId || (afterHash !== null && afterHash !== target.data["contentHash"])
+        : afterHash !== undefined && afterHash !== target.data["contentHash"];
+      if (changed)
         throw new WorkspaceConflict(
           "This bundle changed after that command. Review its newer version before undoing.",
         );
@@ -833,6 +835,7 @@ export async function executeWorkspaceCommand(
         target: characterWorkspaceState.characterId,
         set: { revision },
       });
+    const savedNode = updated.nodes.find((node) => node.key === `${target.kind}:${savedTarget.id}`);
     const result = {
       ...savedTarget,
       revision,
@@ -840,9 +843,8 @@ export async function executeWorkspaceCommand(
       memberships: updated.edges,
       replacements,
       before,
-      afterHash:
-        updated.nodes.find((n) => n.key === `${target.kind}:${savedTarget.id}`)
-          ?.data["contentHash"] ?? null,
+      afterHash: savedNode?.data["contentHash"] ?? null,
+      afterVersionId: savedNode?.versionId ?? null,
       target: target.key,
     };
     await db.insert(characterWorkspaceCommands).values({

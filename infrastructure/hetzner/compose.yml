@@ -1,0 +1,32 @@
+services:
+  swordweave:
+    image: ${SW_IMAGE:?Select the verified SwordWeave image}
+    env_file: ${SW_RUNTIME_ENV:?Select the protected runtime configuration}
+    ports:
+      - "127.0.0.1:3100:3000"
+    volumes:
+      - type: bind
+        source: ${SW_UPLOAD_ALIAS_FILE_HOST:?Select the verified upload alias file}
+        target: /app/config/upload-aliases.json
+        read_only: true
+    environment:
+      SW_HOSTING: hetzner
+      SW_UPLOAD_BACKEND: r2
+      SW_UPLOAD_ALIAS_FILE: /app/config/upload-aliases.json
+    restart: unless-stopped
+    cpus: 2
+    mem_limit: 3g
+    pids_limit: 256
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:uid=1000,gid=1000,mode=1777,size=256m
+      - /app/.next/cache:uid=1000,gid=1000,mode=0750,size=128m
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s

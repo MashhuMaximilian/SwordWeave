@@ -1,4 +1,5 @@
 import type { BrowserAuthSnapshot } from "./browser-snapshot";
+import { accountUnavailable, modePolicy, signupUnavailable, signInUnavailable, type ModePolicy } from "@/lib/runtime/mode-policy";
 
 export type AppAuthIdentity = {
   username: string | null;
@@ -15,6 +16,7 @@ export type AppAuthRuntimeActions = {
   openSignIn: () => void | Promise<void>;
   openAccount: () => void | Promise<void>;
   redirectToSignIn: (options: { redirectUrl: string }) => void | Promise<void>;
+  redirectToSignUp: (options: { redirectUrl: string }) => void | Promise<void>;
   signOut: (options: { redirectUrl: string }) => void | Promise<void>;
   refreshSession: () => void | Promise<void>;
 };
@@ -23,6 +25,8 @@ type Options = {
   loadSnapshot: () => Promise<BrowserAuthSnapshot>;
   loadRuntime: () => void | Promise<void>;
   beforeAuthIntent?: () => void;
+  policy?: ModePolicy;
+  onRestrictedAction?: (notice: string) => void;
 };
 type Readiness = {
   promise: Promise<void>;
@@ -53,6 +57,7 @@ function sameIdentity(a: AppAuthIdentity | null, b: AppAuthIdentity | null) {
  * that island never reparents the app or temporarily clears a resolved identity.
  */
 export function createAppAuthController(options: Options) {
+  const policy = options.policy ?? modePolicy("production");
   let snapshot = LOADING;
   let disposed = false;
   let runtimeRequested = false;
@@ -114,6 +119,7 @@ export function createAppAuthController(options: Options) {
 
   function activateRuntime(): Promise<void> {
     if (disposed) return Promise.reject(disposedError());
+    if (!policy.canUseIdentity) return Promise.resolve();
     // This latch deliberately survives an import failure: an old anonymous
     // bootstrap response must not overwrite a newer auth intent or identity.
     runtimeRequested = true;
@@ -133,6 +139,10 @@ export function createAppAuthController(options: Options) {
   }
 
   function bootstrap(): Promise<void> {
+    if (!policy.canUseIdentity) {
+      publish(ANONYMOUS);
+      return Promise.resolve();
+    }
     if (disposed || runtimeRequested) return Promise.resolve();
     if (bootstrapPromise) return bootstrapPromise;
     const pending = (async () => {
@@ -199,6 +209,11 @@ export function createAppAuthController(options: Options) {
     throw disposedError();
   }
 
+  function restricted(notice: string): Promise<void> {
+    options.onRestrictedAction?.(notice);
+    return Promise.resolve();
+  }
+
   function authIntent() {
     if (disposed) return;
     try { options.beforeAuthIntent?.(); }
@@ -219,16 +234,23 @@ export function createAppAuthController(options: Options) {
     updateFromRuntime,
     failRuntime,
     openSignIn(): Promise<void> {
+      if (!policy.canUseIdentity) return restricted(signInUnavailable);
       authIntent();
       return invoke(runtime => runtime.openSignIn());
     },
-    openAccount: () => invoke(runtime => runtime.openAccount()),
+    openAccount: () => policy.canManageAccount ? invoke(runtime => runtime.openAccount()) : restricted(accountUnavailable),
     redirectToSignIn(redirect: { redirectUrl: string }): Promise<void> {
+      if (!policy.canUseIdentity) return restricted(signInUnavailable);
       authIntent();
       return invoke(runtime => runtime.redirectToSignIn(redirect));
     },
-    signOut: (redirect: { redirectUrl: string }) => invoke(runtime => runtime.signOut(redirect)),
-    refreshSession: () => invoke(runtime => runtime.refreshSession()),
+    redirectToSignUp(redirect: { redirectUrl: string }): Promise<void> {
+      if (!policy.canSignUp) return restricted(signupUnavailable);
+      authIntent();
+      return invoke(runtime => runtime.redirectToSignUp(redirect));
+    },
+    signOut: (redirect: { redirectUrl: string }) => policy.canUseIdentity ? invoke(runtime => runtime.signOut(redirect)) : restricted(signInUnavailable),
+    refreshSession: () => policy.canUseIdentity ? invoke(runtime => runtime.refreshSession()) : Promise.resolve(),
     dispose() {
       if (disposed) return;
       disposed = true;

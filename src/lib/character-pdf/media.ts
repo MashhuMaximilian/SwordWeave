@@ -1,7 +1,6 @@
 import sharp from "sharp";
-import { get } from "@vercel/blob";
-import { readFile, realpath, stat } from "node:fs/promises";
-import { join, sep } from "node:path";
+import { readPrivateUpload } from "@/lib/assets/private-upload-store";
+import { uploadKey } from "@/lib/assets/upload-path";
 import { PUBLIC_ART_ORIGIN } from "@/lib/assets/public-art";
 import { canReadUploadedArtwork } from "@/lib/assets/upload-access";
 import { lineageArtUrl } from "@/lib/heritage/lineage-art";
@@ -26,6 +25,8 @@ type Candidate = { target: "character" | "heritages" | "icons"; key: string; sou
  * Other HTTPS raster URLs go through the DNS-pinned remote image boundary. */
 export function characterPdfArtworkSource(value: unknown): Source | null {
   let path = string(value);
+  const key = uploadKey(path);
+  if (key) return { type: "upload", pathname: key };
   if (!path || path.includes("\\") || /[\x00-\x20]/.test(path)) return null;
   if (/^https?:/i.test(path)) {
     let url: URL;
@@ -35,15 +36,14 @@ export function characterPdfArtworkSource(value: unknown): Source | null {
     if (!canonical && !blob) return { type: "remote", url: url.href };
     if (canonical && (url.search || url.hash)) return null;
     path = url.pathname;
-    if (blob) path = path.replace(/^\//, "");
+    if (blob) return null;
   }
   if (path.includes("..") || /[%?#]/.test(path)) return null;
   if (/^\/images\/(characters|lineages|heritages)\/[a-zA-Z0-9/_-]+\.(png|jpe?g|webp)$/i.test(path)) {
     return { type: "public", url: `${PUBLIC_ART_ORIGIN}${path}` };
   }
-  const pathname = path.replace(/^\/api\/icons\/blob\//, "").replace(/^\/(?=user-uploads\/)/, "");
-  if (/^user-uploads\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_.-]+\.(png|jpe?g|webp|gif|svg)$/i.test(pathname)) return { type: "upload", pathname };
-  return null;
+  const sameSiteKey = uploadKey(path);
+  return sameSiteKey ? { type: "upload", pathname: sameSiteKey } : null;
 }
 
 function iconSource(entity: CharacterPdfRecord): Source | null {
@@ -120,17 +120,9 @@ async function sourceBytes(source: Source, viewerId: string | null, signal: Abor
   if (source.type === "remote") return await readRemoteArtwork(source.url, { signal });
   if (source.type === "upload") {
     if (!(await canReadUploadedArtwork(source.pathname, viewerId))) throw new Error("Artwork is unavailable");
-    if (process.env.NODE_ENV === "development" && !process.env["BLOB_READ_WRITE_TOKEN"]) {
-      const root = await realpath(join(process.cwd(), ".local-uploads"));
-      const path = await realpath(join(root, source.pathname));
-      if (!path.startsWith(root + sep)) throw new Error("Artwork is unavailable");
-      const file = await stat(path);
-      if (!file.isFile() || file.size > CHARACTER_PDF_MEDIA_INPUT_LIMIT) throw new Error("Artwork is unavailable");
-      return await readFile(path, { signal });
-    }
-    const blob = await get(source.pathname, { access: "private", abortSignal: signal });
-    if (!blob || blob.statusCode !== 200 || blob.blob.size > CHARACTER_PDF_MEDIA_INPUT_LIMIT) throw new Error("Artwork is unavailable");
-    return await limitedStream(blob.stream, signal);
+    const upload = await readPrivateUpload(source.pathname, signal);
+    if (!upload || upload.size > CHARACTER_PDF_MEDIA_INPUT_LIMIT) throw new Error("Artwork is unavailable");
+    return await limitedStream(upload.stream, signal);
   }
   const urls = source.type === "game" ? [
     `https://game-icons.net/icons/ffffff/transparent/1x1/${source.author}/${source.slug}.svg`,

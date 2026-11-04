@@ -19,4 +19,3 @@ export const PUBLIC_MARKDOWN_ASSETS = new Set([
   '/press/materials/swordweave-first-session-run-sheet.md', '/press/materials/swordweave-build-with-neris.md',
 ]);
 export function isPublicPage(path: string) { return Object.hasOwn(PUBLIC_PAGES, path); }
-export function isDiscoveryProduction() { return process.env['VERCEL_ENV'] !== 'preview' && process.env.NODE_ENV !== 'development'; }

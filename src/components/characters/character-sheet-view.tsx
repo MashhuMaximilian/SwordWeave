@@ -1,4 +1,5 @@
 "use client";
+import { displayArtworkUrl } from "@/lib/assets/upload-path";
 import { EditableNumberInput } from "@/components/ui/editable-number-input";
 
 import { useState, useMemo, useTransition, useEffect, useCallback, useRef } from "react";
@@ -1147,7 +1148,7 @@ function CharacterSheetContent(initialProps: CharacterSheetProps) {
         <div className="flex items-center gap-4">
           {props.portraitUrl ? (
             <img
-              src={props.portraitUrl}
+              src={displayArtworkUrl(props.portraitUrl)}
               alt={props.name}
               className="size-16 rounded-md border border-border object-cover"
             />
@@ -4140,10 +4141,10 @@ function BackstoryTab({ id, initial, permission, portraitUrl, characterName, her
     </div>
     <div className="v12-backstory-layout" data-portrait-shape={hasPortrait ? shape : "none"}>
       {hasPortrait && portraitUrl && <figure className="v12-backstory-portrait">
-        <a href={portraitUrl} target="_blank" rel="noopener noreferrer" aria-label={`Open the full portrait of ${characterName}`}>
+        <a href={displayArtworkUrl(portraitUrl)} target="_blank" rel="noopener noreferrer" aria-label={`Open the full portrait of ${characterName}`}>
           {/* This is the complete artwork; the avatar crop belongs only to compact identity views. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={portraitUrl} alt={`Portrait of ${characterName}`} onLoad={(event) => {
+          <img src={displayArtworkUrl(portraitUrl)} alt={`Portrait of ${characterName}`} onLoad={(event) => {
             const image = event.currentTarget;
             const ratio = image.naturalWidth / image.naturalHeight;
             setPortrait({ url: portraitUrl, shape: ratio > 1.2 ? "landscape" : ratio < 0.85 ? "portrait" : "square" });

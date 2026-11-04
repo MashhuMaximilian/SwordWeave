@@ -37,7 +37,7 @@ export function ClerkRuntime(props: ClerkRuntimeProps) {
   </RuntimeBoundary>;
 }
 
-function RuntimeBridge({ controller, formHost, onReady }: ClerkRuntimeProps) {
+function RuntimeBridge({ controller, formHost, onReady, policy }: ClerkRuntimeProps) {
   const clerk = useClerk();
   const { isLoaded, isSignedIn, userId } = useAuth();
   const { user } = useUser();
@@ -52,12 +52,16 @@ function RuntimeBridge({ controller, formHost, onReady }: ClerkRuntimeProps) {
     identity: isSignedIn === true && profileUserId === userId ? { username, displayName, avatarUrl } : null,
   }), [isLoaded, isSignedIn, userId, profileUserId, username, displayName, avatarUrl]);
   const actions = useMemo<AppAuthRuntimeActions>(() => ({
-    openSignIn: () => { clerk.openSignIn(); },
-    openAccount: () => { clerk.openUserProfile(); },
+    openSignIn: async () => {
+      if (policy.canSignUp) clerk.openSignIn();
+      else await clerk.redirectToSignIn({ redirectUrl: window.location.href });
+    },
+    openAccount: () => { if (policy.canManageAccount) clerk.openUserProfile(); },
     redirectToSignIn: async options => { await clerk.redirectToSignIn(options); },
+    redirectToSignUp: async options => { if (policy.canSignUp) await clerk.redirectToSignUp(options); },
     signOut: async options => { await clerk.signOut(options); },
     refreshSession: async () => { await clerk.session?.getToken({ skipCache: true }); },
-  }), [clerk]);
+  }), [clerk, policy]);
 
   useLayoutEffect(() => {
     if (!snapshot.isLoaded) return;
@@ -76,8 +80,8 @@ function RuntimeBridge({ controller, formHost, onReady }: ClerkRuntimeProps) {
 
   return <>
     <AuthMeasurement allowed={allowed} />
-    {formHost && createPortal(formHost.kind === 'sign-in'
-      ? <SignIn signInUrl="/sign-in" signUpUrl="/sign-up" fallbackRedirectUrl="/atelier" withSignUp appearance={appearance} />
+    {formHost && (formHost.kind === 'sign-in' || policy.canSignUp) && createPortal(formHost.kind === 'sign-in'
+      ? <SignIn signInUrl="/sign-in" signUpUrl="/sign-up" fallbackRedirectUrl="/atelier" withSignUp={policy.canSignUp} appearance={appearance} />
       : <SignUp signInUrl="/sign-in" fallbackRedirectUrl="/atelier" appearance={appearance} />,
     formHost.element)}
   </>;

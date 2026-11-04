@@ -1,0 +1,64 @@
+{
+	servers {
+		strict_sni_host on
+		timeouts {
+			read_header 10s
+			read_body 60s
+			idle 2m
+		}
+	}
+}
+
+(swordweave_app) {
+	@internal path /api/health/ready /api/health/ready/* /api/cron /api/cron/*
+	@upload {
+		method POST
+		path /api/icons/upload /api/icons/upload/
+	}
+	@oversized_upload {
+		method POST
+		path /api/icons/upload /api/icons/upload/
+		expression `{http.request.header.Content-Length}.matches('^[0-9]+$') && int({http.request.header.Content-Length}) > 5242880`
+	}
+	route {
+		respond @internal 404
+		respond @oversized_upload 413
+		request_body @upload {
+			max_size 5242880
+		}
+		reverse_proxy 127.0.0.1:3100 {
+			transport http {
+				dial_timeout 3s
+				response_header_timeout 95s
+				read_timeout 95s
+			}
+		}
+	}
+}
+
+migration-preview.swordweave.quest {
+	header X-Robots-Tag "noindex, nofollow"
+	@operator remote_ip {$SW_PREVIEW_OPERATOR_IP:127.0.0.1/32}
+	handle @operator {
+		import swordweave_app
+	}
+	handle {
+		respond 404
+	}
+}
+
+swordweave.quest {
+	redir https://www.swordweave.quest{uri} 308
+}
+
+www.swordweave.quest {
+	@enabled expression `"{$SW_PUBLIC_SITE_ENABLED:false}" == "true"`
+	handle @enabled {
+		import swordweave_app
+	}
+	handle {
+		header Cache-Control "no-store"
+		header Retry-After "120"
+		respond "SwordWeave is temporarily in maintenance." 503
+	}
+}

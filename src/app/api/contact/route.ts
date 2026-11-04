@@ -1,11 +1,12 @@
 import { handleContactRequest } from "@/lib/server/contact-handler";
 import { deliverContactMessage, getContactMailConfig } from "@/lib/server/contact-mail";
+import { deploymentMode } from "@/lib/runtime/deployment";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
 export async function POST(request: Request) {
-  const config = getContactMailConfig();
+  const config = deploymentMode() === "production" ? getContactMailConfig() : null;
   return handleContactRequest(request, {
     configured: Boolean(config),
     deliver: async message => {

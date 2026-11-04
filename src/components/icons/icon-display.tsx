@@ -34,6 +34,7 @@
 //     loses the per-route cache and adds CPU cost on every render.
 // =============================================================================
 
+import { displayArtworkUrl } from "@/lib/assets/upload-path";
 import { cn } from "@/lib/utils";
 import { DEFAULT_ICON_COLOR, ICON_FINISH_VERSION } from "@/lib/icons/metallic-svg";
 
@@ -72,7 +73,7 @@ export function IconDisplay({
   if (portraitUrl) {
     return (
       <img
-        src={portraitUrl}
+        src={displayArtworkUrl(portraitUrl)}
         alt={alt ?? "Heritage portrait"}
         width={size}
         height={size}
@@ -139,9 +140,7 @@ export function IconDisplay({
     // The blob path comes back from /api/icons/upload as a relative
     // pathname ("user-uploads/<id>/<uuid>.png"). We route through our
     // Clerk-auth proxy so the private blob is never exposed directly.
-    const src = /^(https?:\/\/|\/)/i.test(iconUrl)
-      ? iconUrl
-      : `/api/icons/blob/${iconUrl}`;
+    const src = displayArtworkUrl(iconUrl);
     return (
       <img
         src={src}

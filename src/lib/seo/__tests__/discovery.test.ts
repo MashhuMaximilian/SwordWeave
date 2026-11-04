@@ -1,14 +1,19 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { PUBLIC_PAGES, PUBLIC_MARKDOWN_ASSETS, markdownPath } from '../public-pages';
 import { bookMarkdown, guideMarkdown, publicHtmlMarkdown, CORE_BOOKS } from '../markdown';
 import { publicPageMetadata } from '../metadata';
 import sitemap from '@/app/sitemap';
 import robots from '@/app/robots';
 
+vi.mock('next/server', async importOriginal => ({
+  ...await importOriginal<typeof import('next/server')>(),
+  connection: async () => {},
+}));
+
 describe('public discovery', () => {
-  it('maps only curated public pages to distinct canonical URLs and formats', () => {
+  it('maps only curated public pages to distinct canonical URLs and formats', async () => {
     expect(Object.keys(PUBLIC_PAGES)).toHaveLength(17);
-    expect(sitemap()).toHaveLength(17);
+    expect(await sitemap()).toHaveLength(17);
     expect(PUBLIC_PAGES['/press']).toBeDefined();
     expect(PUBLIC_PAGES['/creating-a-character']).toBeDefined();
     expect(PUBLIC_PAGES['/tutorials/create-a-primitive']).toBeDefined();
@@ -19,7 +24,7 @@ describe('public discovery', () => {
       expect(publicPageMetadata(path).alternates?.types).toEqual({ 'text/plain': `https://www.swordweave.quest${markdownPath(path)}` });
       expect(markdownPath(path)).toMatch(/\.md$/);
     }
-    expect(robots().rules).toEqual([{ userAgent: '*', allow: '/', disallow: ['/api/'] }]);
+    expect((await robots()).rules).toEqual([{ userAgent: '*', allow: '/', disallow: ['/api/'] }]);
     expect(publicPageMetadata('/characters/private').robots).toEqual({ index: false, follow: true });
   });
   it('exports the actual complete book source, including table, rules and edition warning', () => {

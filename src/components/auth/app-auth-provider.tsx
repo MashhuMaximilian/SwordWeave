@@ -6,6 +6,7 @@ import { createAppAuthController, type AppAuthSnapshot } from '@/lib/auth/app-au
 import type { BrowserAuthSnapshot } from '@/lib/auth/browser-snapshot';
 import { beginAuthMeasurement } from '@/lib/analytics/auth';
 import { analyticsConsent } from '@/lib/cookie-consent';
+import { modePolicy, signupUnavailable, signInUnavailable, type ModePolicy } from '@/lib/runtime/mode-policy';
 
 export type AppAuthController = ReturnType<typeof createAppAuthController>;
 export type NativeAuthHost = { kind: 'sign-in' | 'sign-up'; element: HTMLDivElement };
@@ -15,13 +16,16 @@ export type ClerkRuntimeProps = {
   generation: number;
   onReady: () => void;
   onError: (error: unknown) => void;
+  policy: ModePolicy;
 };
 type AppAuth = AppAuthSnapshot & Pick<AppAuthController,
-  'openSignIn' | 'openAccount' | 'redirectToSignIn' | 'signOut' | 'refreshSession'> & {
+  'openSignIn' | 'openAccount' | 'redirectToSignIn' | 'redirectToSignUp' | 'signOut' | 'refreshSession'> & {
   registerAuthHost: (kind: NativeAuthHost['kind'], element: HTMLDivElement) => () => void;
   retryRuntime: () => void;
   runtimeError: string;
+  policy: ModePolicy;
 };
+const defaultPolicy = modePolicy('production');
 const Context = createContext<AppAuth | null>(null);
 export function useAppAuth() {
   const value = useContext(Context);
@@ -50,16 +54,19 @@ async function browserSnapshot(): Promise<BrowserAuthSnapshot> {
 }
 
 /** Persistent app state is never wrapped/reparented when the SDK is activated. */
-export function AppAuthProvider({ children }: { children: React.ReactNode }) {
+export function AppAuthProvider({ children, policy = defaultPolicy }: { children: React.ReactNode; policy?: ModePolicy }) {
   const path = usePathname();
   const [Runtime, setRuntime] = useState<ComponentType<ClerkRuntimeProps> | null>(null);
   const [formHost, setFormHost] = useState<NativeAuthHost | null>(null);
   const [generation, setGeneration] = useState(0);
   const [runtimeError, setRuntimeError] = useState('');
+  const [restrictedNotice, setRestrictedNotice] = useState('');
   const alive = useRef(false);
   // This lazy initializer stores callbacks; it does not read the lifecycle ref during render.
   // eslint-disable-next-line react-hooks/refs
   const [controller] = useState(() => createAppAuthController({
+    policy,
+    onRestrictedAction: setRestrictedNotice,
     loadSnapshot: browserSnapshot,
     beforeAuthIntent: recordAuthIntent,
     loadRuntime: async () => {
@@ -88,12 +95,13 @@ export function AppAuthProvider({ children }: { children: React.ReactNode }) {
     void controller.activateRuntime().catch(() => setRuntimeError('Account controls could not load. Please try again.'));
   }, [controller]);
   const registerAuthHost = useCallback((kind: NativeAuthHost['kind'], element: HTMLDivElement) => {
+    if (!policy.canUseIdentity || (kind === 'sign-up' && !policy.canSignUp)) return () => {};
     const registration = { kind, element };
     setFormHost(registration);
     recordAuthIntent();
     void controller.activateRuntime().catch(() => setRuntimeError('Account controls could not load. Please try again.'));
     return () => setFormHost(current => current === registration ? null : current);
-  }, [controller]);
+  }, [controller, policy]);
 
   useEffect(() => {
     alive.current = true;
@@ -121,32 +129,39 @@ export function AppAuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [controller]);
   useEffect(() => {
-    if (/^\/sign-(in|up)(\/|$)/.test(path)) {
+    if (policy.canUseIdentity && (/^\/sign-in(\/|$)/.test(path) || (policy.canSignUp && /^\/sign-up(\/|$)/.test(path)))) {
       recordAuthIntent();
       void controller.activateRuntime().catch(() => setRuntimeError('Account controls could not load. Please try again.'));
     }
-  }, [controller, path]);
+  }, [controller, path, policy]);
 
   const value = useMemo<AppAuth>(() => ({
     ...snapshot,
     openSignIn: controller.openSignIn,
     openAccount: controller.openAccount,
     redirectToSignIn: controller.redirectToSignIn,
+    redirectToSignUp: controller.redirectToSignUp,
     signOut: controller.signOut,
     refreshSession: controller.refreshSession,
-    registerAuthHost, retryRuntime, runtimeError,
-  }), [controller, snapshot, registerAuthHost, retryRuntime, runtimeError]);
+    registerAuthHost, retryRuntime, runtimeError, policy,
+  }), [controller, snapshot, registerAuthHost, retryRuntime, runtimeError, policy]);
   return <Context.Provider value={value}>
     {children}
-    {Runtime && <Runtime controller={controller} formHost={formHost} generation={generation} onReady={onReady} onError={onError} />}
+    {restrictedNotice && <p role="status" className="fixed bottom-4 left-4 z-50 rounded border bg-card p-3">
+      {restrictedNotice} <button type="button" onClick={() => setRestrictedNotice('')}>Dismiss</button>
+    </p>}
+    {Runtime && policy.canUseIdentity && <Runtime controller={controller} formHost={formHost} generation={generation} onReady={onReady} onError={onError} policy={policy} />}
   </Context.Provider>;
 }
 
 /** Replaces the auth page's existing flex wrapper; adds no extra layout box. */
 export function NativeAuthFormHost({ kind, className }: { kind: NativeAuthHost['kind']; className: string }) {
-  const { registerAuthHost, retryRuntime, runtimeError } = useAppAuth();
+  const { registerAuthHost, retryRuntime, runtimeError, policy } = useAppAuth();
   const [element, setElement] = useState<HTMLDivElement | null>(null);
   useEffect(() => element ? registerAuthHost(kind, element) : undefined, [registerAuthHost, kind, element]);
+  if (!policy.canUseIdentity || (kind === 'sign-up' && !policy.canSignUp)) {
+    return <p role="status" className={className}>{kind === 'sign-up' ? signupUnavailable : signInUnavailable}</p>;
+  }
   return <div className={className} ref={setElement}>
     {runtimeError && <p role="alert" className="text-sm text-destructive">
       {runtimeError} <button type="button" onClick={retryRuntime}>Try again</button>

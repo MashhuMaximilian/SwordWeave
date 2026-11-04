@@ -19,6 +19,7 @@ import {
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { users } from "@/db/schema/profiles";
+import { deploymentMode } from "@/lib/runtime/deployment";
 
 export const runtime = "nodejs"; // need Node crypto, not Edge
 export const dynamic = "force-dynamic";
@@ -61,6 +62,7 @@ interface ClerkUserDeletedJSON {
 }
 
 export async function POST(req: NextRequest): Promise<Response> {
+  if (deploymentMode() !== "production") return new NextResponse(null, { status: 404 });
   let evt;
   try {
     evt = await verifyWebhook(req);

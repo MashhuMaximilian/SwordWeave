@@ -15,6 +15,7 @@ import {
   findUsersReadyForPurge,
 } from "@/lib/profiles/lookup";
 import { checkAdminAuth } from "@/lib/admin-auth";
+import { deploymentMode } from "@/lib/runtime/deployment";
 
 export async function GET(req: NextRequest) {
   const { isAdmin, reason } = checkAdminAuth(req);
@@ -41,6 +42,9 @@ interface PurgeResult {
 }
 
 async function runPurge({ dryRun }: { dryRun: boolean }): Promise<NextResponse> {
+  if (!dryRun && deploymentMode() !== "production") {
+    return NextResponse.json({ error: "Purge unavailable." }, { status: 503 });
+  }
   const now = new Date();
   const candidates = await findUsersReadyForPurge(now);
 
