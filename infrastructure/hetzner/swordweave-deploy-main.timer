@@ -1,0 +1,10 @@
+[Unit]
+Description=Check GitHub main for SwordWeave releases every two minutes
+
+[Timer]
+OnCalendar=*-*-* *:0/2:00
+Persistent=true
+AccuracySec=15s
+
+[Install]
+WantedBy=timers.target
