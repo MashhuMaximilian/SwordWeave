@@ -69,15 +69,17 @@ body[data-ui="v12"] .sw-fab .sw-fab__utility-grid [data-fab-action] {
 body[data-ui="v12"] .sw-fab .sw-fab__utility-grid .sw-fab__action-label {display:none!important}
 body[data-ui="v12"] .sw-fab .sw-fab__account-avatar {width:25px;height:25px;flex:none;object-fit:cover;border:2px solid var(--v12-silver)!important;background:var(--fab-archive);color:var(--fab-ink)}
 body[data-ui="v12"] .sw-fab .sw-fab__support {
-  display:flex;align-items:center;gap:8px;min-height:32px;margin:0;padding:4px 3px!important;
+  display:flex;align-items:center;gap:5px;min-height:36px;margin:0;padding:4px 3px!important;
   border:1px solid transparent!important;border-radius:7px!important;background:transparent!important;box-shadow:none!important;
   color:var(--fab-brass)!important;font:400 10px/1.3 Arial,sans-serif!important;text-decoration:none!important;
 }
 body[data-ui="v12"] .sw-fab .sw-fab__support .sw-fab-glyph {width:17px;height:18px;background:currentColor!important}
-.sw-fab__support>svg {margin-left:auto}
-.sw-fab__community-row {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.sw-fab__support>svg {margin-left:auto;flex:none}
+.sw-fab__community-row {display:grid;grid-template-columns:minmax(0,1.6fr) repeat(2,minmax(0,1fr));gap:6px}
 .sw-fab__community-row>.sw-fab__support {min-width:0}
+.sw-fab__community-row>.sw-fab__support>span {min-width:0}
 .sw-fab__community-row>.sw-fab__support>svg:first-child {margin-left:0;flex:none;width:17px;height:18px}
+@media(max-width:359px) { .sw-fab__community-row>.sw-fab__support>svg:last-child {display:none} }
 /* Feedback changes finish, never type size, weight, wrapping or layout. */
 @media(hover:hover) {
   body[data-ui="v12"] .sw-fab :is(.sw-fab__destination,[data-fab-action],.sw-fab__support):hover {background:var(--fab-gold)!important;color:#302611!important;border-color:#d3b773!important}
@@ -238,17 +240,17 @@ body[data-ui="v12"] .sw-fab .sw-fab__utility-grid :is([data-fab-action="dark"],[
 body[data-ui="v12"] .sw-fab :is(a,button) {transition-property:box-shadow,border-color!important}
 body[data-ui="v12"] .sw-fab [data-fab-trigger] svg {stroke:url(#sw-fab-gold)!important;filter:none!important}
 body[data-ui="v12"] .sw-fab [data-fab-trigger]:focus-visible {background:var(--fab-gold)!important;color:#17140f!important}
-/* Discord alone uses silver at rest and gold feedback. Support keeps its finish. */
-body[data-ui="v12"] .sw-fab .sw-fab__support[data-fab-link="discord"] {--discord-finish:var(--fab-silver)}
-body[data-ui="v12"] .sw-fab .sw-fab__support[data-fab-link="discord"]>span {
-  background:var(--discord-finish)!important;background-clip:text!important;-webkit-background-clip:text!important;color:transparent!important;
+/* Community links use silver at rest and gold feedback. */
+body[data-ui="v12"] .sw-fab .sw-fab__support:is([data-fab-link="discord"],[data-fab-link="chatgpt"]) {--community-finish:var(--fab-silver)}
+body[data-ui="v12"] .sw-fab .sw-fab__support:is([data-fab-link="discord"],[data-fab-link="chatgpt"])>span {
+  background:var(--community-finish)!important;background-clip:text!important;-webkit-background-clip:text!important;color:transparent!important;
 }
 body[data-ui="v12"] .sw-fab .sw-fab__support[data-fab-link="discord"]>[data-discord-icon] {
   width:19px;height:15px;background-clip:border-box!important;-webkit-background-clip:border-box!important;
 }
-body[data-ui="v12"] .sw-fab .sw-fab__support[data-fab-link="discord"]>svg {stroke:url(#sw-fab-silver)!important}
-body[data-ui="v12"] .sw-fab .sw-fab__support[data-fab-link="discord"]:is(:hover,:focus-visible) {--discord-finish:var(--fab-metal-text,var(--sw-metal-gold))}
-body[data-ui="v12"] .sw-fab .sw-fab__support[data-fab-link="discord"]:is(:hover,:focus-visible)>svg {stroke:url(#sw-fab-gold)!important}
+body[data-ui="v12"] .sw-fab .sw-fab__support:is([data-fab-link="discord"],[data-fab-link="chatgpt"])>svg {stroke:url(#sw-fab-silver)!important}
+body[data-ui="v12"] .sw-fab .sw-fab__support:is([data-fab-link="discord"],[data-fab-link="chatgpt"]):is(:hover,:focus-visible) {--community-finish:var(--fab-metal-text,var(--sw-metal-gold))}
+body[data-ui="v12"] .sw-fab .sw-fab__support:is([data-fab-link="discord"],[data-fab-link="chatgpt"]):is(:hover,:focus-visible)>svg {stroke:url(#sw-fab-gold)!important}
 @media(hover:hover) and (pointer:fine) {
  body[data-ui="v12"] .sw-fab [data-fab-trigger]:hover {background:var(--fab-gold)!important;color:#17140f!important}
 }

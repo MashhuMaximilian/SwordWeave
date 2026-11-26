@@ -664,3 +664,72 @@ body[data-ui="v12"] .sw-public-site .sw-intent__choices button[aria-pressed="tru
 @supports (mask-image: image-set(url("/logo-mono-mask.png") 1x)) {
  .sw-arcane-forge__brand { mask-image:image-set(url('/brand/masks/logo-mono-192.png') 1x,url('/brand/masks/logo-mono-384.png') 2x,url('/brand/masks/logo-mono-576.png') 3x,url('/brand/masks/logo-mono-768.png') 4x);-webkit-mask-image:image-set(url('/brand/masks/logo-mono-192.png') 1x,url('/brand/masks/logo-mono-384.png') 2x,url('/brand/masks/logo-mono-576.png') 3x,url('/brand/masks/logo-mono-768.png') 4x); }
 }
+
+.sw-home-chatgpt .sw-public-duet {
+  align-items: center;
+}
+
+.sw-home-chatgpt__copy {
+  max-width: 42rem;
+  display: grid;
+  gap: 1.2rem;
+}
+
+.sw-home-chatgpt__copy > p,
+.sw-chatgpt-guide__status {
+  color: var(--public-soft);
+  font-size: 1.2rem;
+  line-height: 1.55;
+}
+
+.sw-chatgpt-prompt figcaption {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: var(--sw-text-teal);
+  font-family: var(--font-system, sans-serif);
+  font-size: 0.9rem;
+}
+
+.sw-chatgpt-prompt figcaption svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.sw-chatgpt-prompt blockquote {
+  font-size: 1.15rem;
+  line-height: 1.55;
+  color: var(--sw-text-gold);
+}
+
+.sw-chatgpt-guide__hero .sw-chatgpt-guide__status {
+  margin-top: 1rem;
+}
+
+.sw-chatgpt-guide #connect {
+  scroll-margin-top: 4.5rem;
+}
+
+.sw-chatgpt-guide__steps {
+  list-style: decimal inside;
+}
+
+.sw-chatgpt-guide__steps > li {
+  display: list-item;
+}
+
+.sw-chatgpt-guide__steps > li::marker {
+  color: var(--sw-text-teal);
+}
+
+.sw-chatgpt-guide__steps h3 {
+  display: inline;
+}
+
+.sw-chatgpt-guide__steps p {
+  margin-top: 0.75rem;
+}
+
+.sw-chatgpt-guide__help {
+  margin-top: 1.25rem;
+}

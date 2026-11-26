@@ -55,7 +55,8 @@ const authenticatedProxy = clerkMiddleware(async (auth, req) => {
 });
 
 export default function proxy(req: NextRequest, event: NextFetchEvent) {
-  if (req.nextUrl.pathname === "/api/health/live" || req.nextUrl.pathname === "/api/health/ready") {
+  const path = req.nextUrl.pathname;
+  if (path === "/api/health/live" || path === "/api/health/ready" || path === "/.well-known/openai-apps-challenge") {
     return NextResponse.next();
   }
   return authenticatedProxy(req, event);
