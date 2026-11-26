@@ -1,3 +1,5 @@
+import type { CharacterSize } from "@/lib/heritage/lineage-size";
+
 export const MAX_CHARACTER_COMPANIONS = 20;
 
 export function characterCompanionsPath(characterId: string) {
@@ -24,6 +26,16 @@ export interface CharacterCompanionPickerEntry extends CharacterCompanionCandida
   size: string;
   vitality: number;
   budget: number;
+  origin: "system" | "community";
+  habitat?: string;
+  role?: string;
+}
+
+export interface CharacterCompanionPickerFilters {
+  size?: CharacterSize;
+  origin?: "system" | "community";
+  maxBudget?: number;
+  sort?: "name" | "budget";
 }
 
 export interface CharacterCompanionPickerPage {

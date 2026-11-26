@@ -1,18 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useAppAuth } from "@/components/auth/app-auth-provider";
-import { ArrowRight, PawPrint, Plus, Trash2 } from "lucide-react";
-import { IconDisplay } from "@/components/icons/icon-display";
-import { ColumnSearchBar } from "@/components/library/column-search-bar";
-import { LibrarySourceRecord } from "@/components/library/library-source-record";
-import { Markdown } from "@/components/ui/markdown";
+import { CharacterCompanionShelf } from "./character-companion-shelf";
+import { CompanionBestiaryPicker } from "./companion-bestiary-picker";
+import { PawPrint, Plus, Trash2 } from "lucide-react";
 import { MonsterTemplatePreview } from "@/components/monsters/monster-template-preview";
 import { DetailModal } from "@/components/ui/detail-modal";
 import { useModalStack } from "@/components/ui/modal-stack";
 import { browserUuid } from "@/lib/browser-uuid";
-import { characterCompanionBestiaryPath, characterCompanionPlayPath, MAX_CHARACTER_COMPANIONS, type CharacterCompanionCandidate, type CharacterCompanionPickerEntry, type CharacterCompanionPickerPage, type CharacterCompanionSummary } from "@/lib/character/companion-types";
+import { characterCompanionBestiaryPath, MAX_CHARACTER_COMPANIONS, type CharacterCompanionCandidate, type CharacterCompanionSummary } from "@/lib/character/companion-types";
 import type { DraftOperation } from "@/lib/character/workspace/draft-types";
 import { readJsonResponse } from "@/lib/http/read-json-response";
 
@@ -79,21 +77,7 @@ export function CharacterCompanions({
       ) : companions.items.length === 0 ? (
         <p className="text-sm text-muted-foreground">No companions to show.</p>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2">
-          {companions.items.map(companion => (
-            <li key={companion.id} className="rounded-md border border-border p-3">
-              <h3 className="font-semibold">{companion.name}</h3>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {companion.playCopyId && (
-                  <Link className="sheet-button is-gold" href={characterCompanionPlayPath(companion.playCopyId, characterId)}>
-                    Open play sheet <span className="sr-only">for {companion.name}</span>
-                  </Link>
-                )}
-                {companion.bestiary && <BestiaryLink monster={companion.bestiary} />}
-              </div>
-            </li>
-          ))}
-        </ul>
+        <CharacterCompanionShelf characterId={characterId} companions={companions.items} />
       )}
     </section>
   );
@@ -256,116 +240,13 @@ export function CompanionDraftPanel({
       <button type="button" className="sheet-button is-gold" disabled={!pickerOpen && !canBrowse} aria-expanded={pickerOpen} onClick={() => setPickerOpen(value => !value)}>
         <Plus size={16} aria-hidden="true" /> {pickerOpen ? "Close Bestiary picker" : "Add companion"}
       </button>
+      {error && <p role="alert" className="text-sm">{error}</p>}
       {pickerOpen && userId && <CompanionBestiaryPicker key={`${userId}:${endpoint}`} endpoint={endpoint} canAdd={canAdd}
+        renderBestiaryLink={monster => <BestiaryLink monster={monster} />}
         onAdd={(selected, name) => stage({
           id: browserUuid(), type: "companion", label: name,
           payload: { action: "add", templateId: selected.id, version: selected.version, name },
         })}/>}
-      {error && <p role="alert" className="text-sm">{error}</p>}
     </section>
   );
-}
-
-function CompanionBestiaryPicker({ endpoint, canAdd, onAdd }: {
-  endpoint: string;
-  canAdd: boolean;
-  onAdd: (selected: CharacterCompanionPickerEntry, name: string) => Promise<boolean>;
-}) {
-  const [query, setQuery] = useState("");
-  const [offset, setOffset] = useState(0);
-  const [attempt, setAttempt] = useState(0);
-  const [results, setResults] = useState<{ query: string; key: string; items: CharacterCompanionPickerEntry[]; nextOffset: number | null; error: string }>();
-  const [selected, setSelected] = useState<CharacterCompanionPickerEntry | null>(null);
-  const [name, setName] = useState("");
-  const placement = useRef<HTMLFormElement>(null);
-  const key = JSON.stringify([query, offset, attempt]);
-  const current = results?.query === query ? results : undefined;
-  const loading = current?.key !== key;
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const params = new URLSearchParams({ picker: "1", q: query.trim(), offset: String(offset) });
-    async function loadPage() {
-      try {
-        const response = await fetch(`${endpoint}?${params}`, { signal: controller.signal, cache: "no-store" });
-        const data = await readJsonResponse<Partial<CharacterCompanionPickerPage> & { error?: string }>(response);
-        if (!response.ok || !Array.isArray(data.candidates)) throw new Error(data.error || "Unable to load the Bestiary.");
-        const incoming = data.candidates;
-        const nextOffset = typeof data.nextOffset === "number" && Number.isSafeInteger(data.nextOffset) && data.nextOffset > offset ? data.nextOffset : null;
-        if (controller.signal.aborted) return;
-        setResults(previous => {
-          const preceding = offset > 0 && previous?.query === query ? previous.items : [];
-          const merged = new Map([...preceding, ...incoming].map(item => [item.id, item]));
-          return { query, key, items: [...merged.values()], nextOffset, error: "" };
-        });
-      } catch (cause) {
-        if (!controller.signal.aborted) setResults(previous => ({
-          query, key, items: offset > 0 && previous?.query === query ? previous.items : [], nextOffset: null,
-          error: cause instanceof Error ? cause.message : "Unable to load the Bestiary.",
-        }));
-      }
-    }
-    void loadPage();
-    return () => controller.abort();
-  }, [endpoint, query, offset, key]);
-
-  const search = useCallback((value: string) => { setQuery(value); setOffset(0); }, []);
-
-  function choose(monster: CharacterCompanionPickerEntry) {
-    if (selected?.id !== monster.id || selected.version !== monster.version) setName("");
-    setSelected(monster);
-    window.requestAnimationFrame(() => placement.current?.focus({ preventScroll: false }));
-  }
-
-  return <section className="sheet-build-library v12-source-browser space-y-3 rounded-md border border-border p-3" aria-label="Bestiary picker">
-    <div className="v12-source-search">
-      <ColumnSearchBar search={query} onSearchChange={search} placeholder="Search the Bestiary…" label="Search Bestiary" maxLength={120}/>
-    </div>
-    <div className="grid gap-3 md:grid-cols-2" data-selected={selected !== null}>
-      {selected && <form ref={placement} tabIndex={-1}
-        className="grid min-w-0 content-start gap-3 rounded-md border border-border p-3 md:order-2 self-start"
-        aria-label={`Add ${selected.name} as a companion`} onSubmit={event => {
-          event.preventDefault();
-          if (!canAdd) return;
-          void onAdd(selected, name.trim() || selected.name).then(added => {
-            if (added) { setName(""); setSelected(null); }
-          });
-        }}>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="font-semibold">{selected.name}</h3>
-          <BestiaryLink monster={selected}/>
-        </div>
-        <label className="grid gap-1 text-sm">
-          Companion name (optional)
-          <input className="rounded-md border border-border bg-background p-2" maxLength={120} value={name}
-            placeholder={selected.name} onChange={event => setName(event.target.value)}/>
-        </label>
-        <button type="submit" className="sheet-button is-gold justify-self-start" disabled={!canAdd}>Add to draft</button>
-      </form>}
-      <div className={selected ? "min-w-0 md:order-1" : "min-w-0 md:col-span-2"} aria-busy={loading}>
-        <div className="sw-source-record-list">
-          {current?.items.map(monster => <div key={monster.id} role="button" tabIndex={0}
-            aria-label={monster.name} aria-current={selected?.id === monster.id ? "true" : undefined}
-            className="sw-source-record flex w-full cursor-pointer items-center gap-2 text-left"
-            onClick={() => choose(monster)} onKeyDown={event => {
-              if (event.key === "Enter" || event.key === " ") { event.preventDefault(); choose(monster); }
-            }}>
-            <LibrarySourceRecord title={monster.name}
-              icon={monster.imageUrl ? <IconDisplay portraitUrl={monster.imageUrl} size={30} alt=""/> : <PawPrint size={24}/>}
-              description={monster.description && <Markdown inline>{monster.description}</Markdown>}
-              metadata={<><span className="capitalize">{monster.size?.toLowerCase()}</span><span>{monster.vitality} Vitality</span><span>v{monster.version}</span></>}
-              badge={<span className="sw-library-cost-badge">{monster.budget} BU</span>}
-              actions={<ArrowRight aria-hidden="true"/>}/>
-          </div>)}
-        </div>
-        <div className="sheet-library-status">
-          {loading ? <p role="status">{offset ? "Loading more monsters…" : "Searching Bestiary…"}</p>
-            : current?.error ? <p role="alert">{current.error} <button type="button" onClick={() => setAttempt(count => count + 1)}>Retry</button></p>
-            : current?.nextOffset != null ? <button type="button" className="sheet-button" onClick={() => setOffset(current.nextOffset!)}>Show more monsters</button>
-            : !current?.items.length ? <div className="sheet-library-empty"><strong>No matching monsters</strong>{query.trim() && <button type="button" className="sheet-button" onClick={() => search("")}>Clear search</button>}</div>
-            : null}
-        </div>
-      </div>
-    </div>
-  </section>;
 }

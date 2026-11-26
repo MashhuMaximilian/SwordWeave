@@ -19,6 +19,8 @@ interface ColumnSearchBarProps {
   search: string;
   onSearchChange: (v: string) => void;
   onOpenFilters?: () => void;
+  filtersExpanded?: boolean;
+  filtersControls?: string;
   hasActiveFilters?: boolean;
   placeholder?: string;
   label?: string;
@@ -31,6 +33,8 @@ export function ColumnSearchBar({
   search,
   onSearchChange,
   onOpenFilters,
+  filtersExpanded,
+  filtersControls,
   hasActiveFilters = false,
   placeholder = "Search…",
   label,
@@ -72,6 +76,8 @@ export function ColumnSearchBar({
           onClick={onOpenFilters}
           title="Open filters"
           aria-label="Open filters"
+          aria-expanded={filtersExpanded}
+          aria-controls={filtersControls}
           className={cn("sw-metal-button sw-catalogue-filter-toggle", hasActiveFilters && "is-filtered")}
         >
           <SlidersHorizontal size={18} aria-hidden="true" />

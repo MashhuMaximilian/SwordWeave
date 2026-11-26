@@ -12,6 +12,7 @@ import { pinMonsterReferences } from "./pins";
 import { monsterDefinitionSchema, pinMonsterSnapshot, sameMonsterSnapshot } from "./model";
 import { resolveMonsterComposition, type MonsterComponentPin } from "./composition";
 import { resolveMonster, type MonsterSlot } from "./resolve";
+import type { CharacterCompanionPickerFilters } from "@/lib/character/companion-types";
 const monsterVisibility = (viewer: string | null) => monsterTemplateVisibility(viewer, monsters.userId, monsters.visibility);
 export async function visibleMonster(id: string, userId: string | null, lockCurrentVersion = false) {
   const query = db.select().from(monsters).where(and(eq(monsters.id, id), monsterVisibility(userId)));
@@ -19,11 +20,29 @@ export async function visibleMonster(id: string, userId: string | null, lockCurr
   return row;
 }
 
-export async function searchVisibleMonsterTemplates(userId: string, query: string, offset: number, limit: number) {
-  return db.select({ id: monsters.id, name: monsters.name, version: monsters.version, definition: monsters.definition })
+export async function searchVisibleMonsterTemplates(userId: string, query: string, offset: number, limit: number, filters: CharacterCompanionPickerFilters) {
+  const budget = sql`(${monsters.definition}->>'budget')::numeric`;
+  const canonical = sql<boolean>`(
+    starts_with(${monsters.userId}, 'system:') AND ${monsters.forkedFromId} IS NULL
+    OR EXISTS (
+      SELECT 1 FROM users WHERE users.clerk_user_id = ${monsters.userId}
+        AND users.is_admin AND NOT users.is_anonymized AND users.deleted_at IS NULL
+    )
+  )`;
+  const searchable = sql`concat_ws(' ', ${monsters.name}, ${monsters.description},
+    ${monsters.definition}->'catalogue'->>'role', ${monsters.definition}->'catalogue'->>'environment',
+    ${monsters.definition}->'catalogue'->>'tags')`;
+  return db.select({ id: monsters.id, version: monsters.version, definition: monsters.definition, canonical })
     .from(monsters)
-    .where(and(monsterVisibility(userId), query ? sql`position(lower(${query}) in lower(${monsters.name} || ' ' || ${monsters.description})) > 0` : undefined))
-    .orderBy(sql`lower(${monsters.name})`, monsters.id).limit(limit).offset(offset);
+    .where(and(
+      monsterVisibility(userId),
+      ...query.split(/\s+/u).filter(Boolean).map(term => sql`position(lower(${term}) in lower(${searchable})) > 0`),
+      filters.size ? sql`coalesce(${monsters.definition}->>'size', 'MEDIUM') = ${filters.size}` : undefined,
+      filters.origin === "system" ? canonical : filters.origin === "community" ? sql`not ${canonical}` : undefined,
+      filters.maxBudget === undefined ? undefined : sql`${budget} <= ${filters.maxBudget}`,
+    ))
+    .orderBy(...(filters.sort === "budget" ? [budget] : []), sql`lower(${monsters.name})`, monsters.id)
+    .limit(limit).offset(offset);
 }
 export async function listMonsters(userId: string | null,offset=0) { const rows=await db.select({id:monsters.id,name:monsters.name,description:monsters.description,catalogue:sql<NonNullable<import("./model").MonsterDefinition["catalogue"]>|null>`${monsters.definition}->'catalogue'`,imageUrl:sql<string|null>`${monsters.definition}->>'imageUrl'`,sourceOrigin:sql<string|null>`${monsters.definition}->>'sourceOrigin'`,budget:sql<number>`(${monsters.definition}->>'budget')::double precision`,size:sql<string>`${monsters.definition}->>'size'`,attributes:sql<{physical:number;mental:number;magical:number}>`${monsters.definition}->'attributes'`,baselineVitality:sql<number|null>`(${monsters.definition}->>'baselineVitality')::double precision`,userId:monsters.userId,visibility:monsters.visibility,isPublic:monsters.isPublic,version:monsters.version,sourceCollectionId:monsters.sourceCollectionId,forkedFromId:monsters.forkedFromId,updatedAt:monsters.updatedAt,createdAt:monsters.createdAt}).from(monsters).where(monsterVisibility(userId)).orderBy(desc(monsters.updatedAt)).limit(100).offset(offset); return rows.map(row=>({...row,imageUrl:monsterArtwork({...row,catalogue:row.catalogue??undefined})})); }
 export async function prepareMonster(value: unknown, userId?: string | null) { const definition = await pinMonsterReferences(monsterDefinitionSchema.parse(value)); let componentPins:MonsterComponentPin[]=[];const slots = await resolveMonsterComposition(definition,userId,pins=>{componentPins=pins;}); const sheet = resolveMonster(definition,slots); if (sheet.spent > sheet.availableBudget) throw new Error("Composition exceeds the chosen BU budget. Weakness credit extends the spending budget; items use their separate pool."); const pinned={...definition,componentPins};if(new TextEncoder().encode(JSON.stringify(pinned)).byteLength>524288)throw new Error("Monster snapshot exceeds 512KB. Publish unversioned components before adding them, or split the composition.");return { definition:pinned, slots, sheet }; }

@@ -46,7 +46,7 @@ def main():
         extension["review"]["demo_recording_url"] = args.recording_url
     mcp["mcpServers"]["swordweave"]["extensions"]["com.openai"]["auth"]["client"]["clientId"] = args.client_id
 
-    icon = source.parents[2] / "public" / "icon-512.png"
+    icon = source.parents[2] / "public" / "brand" / "swordweave-companion-icon.png"
     with ZipFile(args.output, "x", compression=ZIP_DEFLATED) as package:
         package.writestr("plugin.json", json.dumps(plugin, ensure_ascii=False, indent=2) + "\n")
         package.writestr("mcp.json", json.dumps(mcp, indent=2) + "\n")
