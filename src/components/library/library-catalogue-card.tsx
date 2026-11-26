@@ -22,8 +22,8 @@ export function libraryCatalogueStatus(item: LibraryItem) {
   return item.definitionKind === "TEMPLATE" ? "Template" : libraryOrigin(item) === "system" ? "Canonical" : "Community";
 }
 /** The Library's catalogue material and interaction, shared by collection links and entries. */
-export function LibraryCatalogueSurface({ glyph, title, status, badge, children, footer, selected = false, onSelect, rowId, className = "" }: { glyph: ReactNode; title: string; status?: ReactNode; badge?: ReactNode; children?: ReactNode; footer?: ReactNode; selected?: boolean; onSelect: () => void; rowId?: string; className?: string }) {
-  return <article data-library-row-id={rowId} data-preview-trigger="true" aria-label={`Preview ${title}`} className={`v12-entry-row ${className}${selected ? " is-selected" : ""}`} onClick={onSelect} role="button" tabIndex={0} onKeyDown={event => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onSelect(); } }}>
+export function LibraryCatalogueSurface({ glyph, title, status, badge, children, footer, selected = false, onSelect, rowId, className = "", actionLabel }: { glyph: ReactNode; title: string; status?: ReactNode; badge?: ReactNode; children?: ReactNode; footer?: ReactNode; selected?: boolean; onSelect: () => void; rowId?: string; className?: string; actionLabel?: string }) {
+  return <article data-library-row-id={rowId} data-preview-trigger="true" aria-label={actionLabel ?? `Preview ${title}`} aria-current={selected ? "true" : undefined} className={`v12-entry-row ${className}${selected ? " is-selected" : ""}`} onClick={onSelect} role="button" tabIndex={0} onKeyDown={event => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onSelect(); } }}>
     <span className="v12-entry-glyph" aria-hidden="true">{glyph}</span><div className="v12-entry-copy"><div className="v12-entry-title-line"><h3>{title}</h3>{status}</div>{children}{footer}</div>{badge}
   </article>;
 }

@@ -26,12 +26,12 @@ type PreviewData = {
 const signed = (value: number) => value >= 0 ? `+${value}` : String(value);
 
 /** A template is read-only here. Playing creates an independent, pinned copy. */
-export function MonsterTemplatePreview({ id, version, compact = false, actions, actionPlacement = "bottom", hideActions = false, showIdentity = true, initialSection = "practices" }: { id: string; version?:number; compact?: boolean; actions?: PreviewActionProps; actionPlacement?: "top" | "bottom"; hideActions?: boolean; showIdentity?: boolean; initialSection?: "practices"|"abilities"|"story" }) {
+export function MonsterTemplatePreview({ id, version, compact = false, actions, actionPlacement = "bottom", hideActions = false, showIdentity = true, initialSection = "practices", displayName }: { id: string; version?:number; compact?: boolean; actions?: PreviewActionProps; actionPlacement?: "top" | "bottom"; hideActions?: boolean; showIdentity?: boolean; initialSection?: "practices"|"abilities"|"story"; displayName?: string }) {
   const { userId, isLoaded } = useAppAuth();
-  return <AccountPreview key={`${userId ?? "anonymous"}:${id}:${version ?? "current"}`} id={id} {...(version?{version}:{})} compact={compact} {...(actions?{actions}:{})} actionPlacement={actionPlacement} hideActions={hideActions} showIdentity={showIdentity} initialSection={initialSection} ready={isLoaded} />;
+  return <AccountPreview key={`${userId ?? "anonymous"}:${id}:${version ?? "current"}`} id={id} {...(version?{version}:{})} compact={compact} {...(actions?{actions}:{})} actionPlacement={actionPlacement} hideActions={hideActions} showIdentity={showIdentity} initialSection={initialSection} ready={isLoaded} displayName={displayName} />;
 }
 
-function AccountPreview({ id, version, compact, ready, actions, actionPlacement, hideActions, showIdentity, initialSection }: { id: string; version?:number; compact: boolean; ready: boolean; actions?: PreviewActionProps; actionPlacement: "top" | "bottom"; hideActions: boolean; showIdentity: boolean; initialSection: "practices"|"abilities"|"story" }) {
+function AccountPreview({ id, version, compact, ready, actions, actionPlacement, hideActions, showIdentity, initialSection, displayName }: { id: string; version?:number; compact: boolean; ready: boolean; actions?: PreviewActionProps; actionPlacement: "top" | "bottom"; hideActions: boolean; showIdentity: boolean; initialSection: "practices"|"abilities"|"story"; displayName: string | undefined }) {
   const { isSignedIn, redirectToSignIn } = useAppAuth();
   const {isGameMaster}=useAccount();
   const [data, setData] = useState<PreviewData | null>(null);
@@ -89,12 +89,14 @@ function AccountPreview({ id, version, compact, ready, actions, actionPlacement,
   const definition = monster.definition;
   const slots = data.slots ?? definition.resolvedSlots ?? [];
   const artwork = displayMonsterArtwork({ ...definition, id, name: monster.name });
-  return <section className={`sw-creature-preview ${compact ? "is-compact" : ""}`} aria-label={`${monster.name} mini sheet`}>
+  const heading = displayName ?? monster.name;
+  const record = displayName && displayName !== monster.name ? monster.name : "Creature record";
+  return <section className={`sw-creature-preview ${compact ? "is-compact" : ""}`} aria-label={`${heading} mini sheet`}>
     {!hideActions && actions && actionPlacement === "top" && <PreviewActions {...actions}/>}
     {showIdentity && <header className="sw-creature-identity">
       <span className="sw-creature-emblem">{artwork ? <img src={artwork} alt={`${monster.name} portrait`} style={portraitFrameStyle(definition.portraitFrame)} /> : <IconDisplay iconSource="GAME_ICONS" iconKey="lorc/gluttonous-smile" iconColor="#64c7c1" size={44} />}</span>
-      <div><p className="v12-kicker">Creature record · {definition.size.toLowerCase()}</p><h2>{monster.name}</h2><p>{sheet.availableBudget} BU · {sheet.mirrorCredit} weakness credit · Rank {sheet.rank.toFixed(2)} · {sheet.itemBu} item BU</p></div>
-      <BookmarkButton targetType="MONSTER" targetId={id} />
+      <div><p className="v12-kicker">{record} · {definition.size.toLowerCase()}{displayName && version ? ` · v${version}` : ""}</p><h2>{heading}</h2><p>{sheet.availableBudget} BU · {sheet.mirrorCredit} weakness credit · Rank {sheet.rank.toFixed(2)} · {sheet.itemBu} item BU</p></div>
+      {!displayName && <BookmarkButton targetType="MONSTER" targetId={id} />}
     </header>}
     <MonsterSheetPreview initialSection={initialSection} collapseNumbers={!showIdentity} definition={definition} sheet={sheet} slots={slots} compact={compact}/>
 

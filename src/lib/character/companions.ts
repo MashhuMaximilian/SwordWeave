@@ -12,6 +12,7 @@ import {
   type CharacterCompanionCandidate,
   type CharacterCompanionChange,
   type CharacterCompanionPickerEntry,
+  type CharacterCompanionPickerFilters,
   type CharacterCompanionPickerPage,
   type CharacterCompanionSummary,
 } from "./companion-types";
@@ -104,9 +105,9 @@ export async function listCharacterCompanions(characterId: string, clerkUserId: 
 
 const COMPANION_PICKER_PAGE_SIZE = 24;
 
-export async function listCharacterCompanionCandidates(characterId: string, clerkUserId: string, query: string, offset: number): Promise<CharacterCompanionPickerPage> {
+export async function listCharacterCompanionCandidates(characterId: string, clerkUserId: string, query: string, offset: number, filters: CharacterCompanionPickerFilters): Promise<CharacterCompanionPickerPage> {
   await requireCharacterCompanionOwner(characterId, clerkUserId);
-  const templates = await searchVisibleMonsterTemplates(clerkUserId, query, offset, COMPANION_PICKER_PAGE_SIZE + 1);
+  const templates = await searchVisibleMonsterTemplates(clerkUserId, query, offset, COMPANION_PICKER_PAGE_SIZE + 1, filters);
   const candidates = await Promise.all(templates.slice(0, COMPANION_PICKER_PAGE_SIZE).map(async (template): Promise<CharacterCompanionPickerEntry | null> => {
     const prepared = await readAttachableMonster(template.id, template.version, clerkUserId);
     if (!prepared) return null;
@@ -115,6 +116,9 @@ export async function listCharacterCompanionCandidates(characterId: string, cler
       description: template.definition.concept ?? "", size: template.definition.size,
       imageUrl: monsterArtwork({ ...template.definition, id: template.id }),
       vitality: prepared.currentVitality, budget: template.definition.budget,
+      origin: template.canonical ? "system" : "community",
+      ...(template.definition.catalogue?.environment ? { habitat: template.definition.catalogue.environment } : {}),
+      ...(template.definition.catalogue?.role ? { role: template.definition.catalogue.role } : {}),
     };
   }));
   return {

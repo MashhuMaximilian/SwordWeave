@@ -1,0 +1,53 @@
+body[data-ui="v12"] .sw-companion-picker-grid.v12-creation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+  gap: 8px;
+}
+
+body[data-ui="v12"] .sw-companion-picker-grid .sw-companion-picker-card {
+  align-items: start;
+  grid-template-columns: 54px minmax(0, 1fr) auto;
+  margin: 0;
+  min-height: 92px;
+}
+
+body[data-ui="v12"] .sw-companion-picker-card .v12-entry-glyph {
+  width: 50px;
+  height: 50px;
+  overflow: hidden;
+}
+
+.sw-companion-picker-card .v12-entry-lineage {
+  overflow-wrap: anywhere;
+}
+
+.sw-companion-picker-filters,
+.sw-companion-picker-selection {
+  display: grid;
+  align-items: end;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.sw-companion-picker-filters {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
+}
+
+.sw-companion-picker-filters[hidden] {
+  display: none;
+}
+
+.sw-companion-picker-filters label,
+.sw-companion-picker-selection label {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.sw-companion-picker-filters :is(input, select),
+.sw-companion-picker-selection input {
+  width: 100%;
+  min-width: 0;
+}
