@@ -16,6 +16,43 @@ export interface DraftRecoveryJournal {
 export function draftRecoveryKey(authorId: string, characterId: string): string {
   return `sw:character-draft-pending:v1:${encodeURIComponent(authorId)}:${encodeURIComponent(characterId)}`;
 }
+export function draftRecoveryArchiveKey(authorId: string, characterId: string): string {
+  return `sw:character-draft-archive:v1:${encodeURIComponent(authorId)}:${encodeURIComponent(characterId)}`;
+}
+
+type ArchivedDraftCopy = { journal: DraftRecoveryJournal; original: string };
+
+export function readDraftRecoveryArchive(raw: string | null): ArchivedDraftCopy[] {
+  if (raw === null) return [];
+  const copies = JSON.parse(raw) as ArchivedDraftCopy[];
+  if (!Array.isArray(copies) || copies.some(copy => !copy?.journal || typeof copy.original !== "string")) {
+    throw new Error("The archived browser drafts could not be read.");
+  }
+  return copies;
+}
+
+/** Preserve the exact copy before releasing its claim on the active draft. */
+export function archiveDraftRecovery(
+  storage: Pick<Storage, "getItem" | "setItem" | "removeItem">,
+  activeKey: string,
+  original: string,
+  journal: DraftRecoveryJournal,
+): ArchivedDraftCopy[] {
+  if (storage.getItem(activeKey) !== original) {
+    throw new Error("Your browser draft changed in another tab. Reload it before continuing.");
+  }
+  const archiveKey = draftRecoveryArchiveKey(journal.authorId, journal.characterId);
+  const copies = readDraftRecoveryArchive(storage.getItem(archiveKey));
+  if (!copies.some(copy => copy.original === original)) copies.push({ journal, original });
+  const archive = JSON.stringify(copies);
+  storage.setItem(archiveKey, archive);
+  if (storage.getItem(archiveKey) !== archive || storage.getItem(activeKey) !== original) {
+    throw new Error("The browser could not safely archive this draft. Your edits are still saved.");
+  }
+  storage.removeItem(activeKey);
+  return copies;
+}
+
 function stable(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stable).join(",")}]`;
   if (value && typeof value === "object") return `{${Object.entries(value).filter(([, entry]) => entry !== undefined).sort(([a], [b]) => a.localeCompare(b)).map(([key, entry]) => `${JSON.stringify(key)}:${stable(entry)}`).join(",")}}`;

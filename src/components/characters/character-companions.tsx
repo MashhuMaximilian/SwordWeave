@@ -1,14 +1,18 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useAppAuth } from "@/components/auth/app-auth-provider";
-import { PawPrint, Plus, Trash2 } from "lucide-react";
+import { ArrowRight, PawPrint, Plus, Trash2 } from "lucide-react";
+import { IconDisplay } from "@/components/icons/icon-display";
+import { ColumnSearchBar } from "@/components/library/column-search-bar";
+import { LibrarySourceRecord } from "@/components/library/library-source-record";
+import { Markdown } from "@/components/ui/markdown";
 import { MonsterTemplatePreview } from "@/components/monsters/monster-template-preview";
 import { DetailModal } from "@/components/ui/detail-modal";
 import { useModalStack } from "@/components/ui/modal-stack";
 import { browserUuid } from "@/lib/browser-uuid";
-import { characterCompanionBestiaryPath, characterCompanionPlayPath, MAX_CHARACTER_COMPANIONS, type CharacterCompanionCandidate, type CharacterCompanionSummary } from "@/lib/character/companion-types";
+import { characterCompanionBestiaryPath, characterCompanionPlayPath, MAX_CHARACTER_COMPANIONS, type CharacterCompanionCandidate, type CharacterCompanionPickerEntry, type CharacterCompanionPickerPage, type CharacterCompanionSummary } from "@/lib/character/companion-types";
 import type { DraftOperation } from "@/lib/character/workspace/draft-types";
 import { readJsonResponse } from "@/lib/http/read-json-response";
 
@@ -27,18 +31,18 @@ function readCompanionUndo(characterId: string) {
 
 const subscribeToSession = () => () => {};
 
-function useCompanionList<T>(url: string | null, field: "companions" | "candidates", delay = 0) {
+function useCompanionList(url: string) {
   const { isLoaded, userId } = useAppAuth();
-  const [result, setResult] = useState<{ key: string; value: Load<T> }>();
-  const key = userId && url ? `${userId}:${url}` : null;
+  const [result, setResult] = useState<{ key: string; value: Load<CharacterCompanionSummary> }>();
+  const key = userId ? `${userId}:${url}` : null;
   useEffect(() => {
-    if (!key || !url) return;
+    if (!key) return;
     const controller = new AbortController();
     const load = async () => {
       try {
         const response = await fetch(url, { signal: controller.signal, cache: "no-store" });
-        const payload = await readJsonResponse<Partial<Record<typeof field, T[]>> & { error?: string }>(response);
-        const items = payload[field];
+        const payload = await readJsonResponse<{ companions?: CharacterCompanionSummary[]; error?: string }>(response);
+        const items = payload.companions;
         if (!response.ok || !Array.isArray(items)) {
           throw new Error(payload.error || "Unable to load companions.");
         }
@@ -49,9 +53,9 @@ function useCompanionList<T>(url: string | null, field: "companions" | "candidat
         }
       }
     };
-    const timer = window.setTimeout(() => void load(), delay);
-    return () => { window.clearTimeout(timer); controller.abort(); };
-  }, [key, url, field, delay]);
+    void load();
+    return () => controller.abort();
+  }, [key, url]);
   if (isLoaded && !userId) return { items: [], error: "Sign in to view companions." };
   return result?.key === key ? result.value : undefined;
 }
@@ -63,9 +67,7 @@ export function CharacterCompanions({
   characterId: string;
   onEdit?: () => void;
 }) {
-  const companions = useCompanionList<CharacterCompanionSummary>(
-    `/api/characters/${encodeURIComponent(characterId)}/companions`, "companions",
-  );
+  const companions = useCompanionList(`/api/characters/${encodeURIComponent(characterId)}/companions`);
   return (
     <section className="space-y-3" aria-label="Character companions">
       {onEdit && <div className="flex flex-wrap gap-2">
@@ -175,26 +177,22 @@ export function CompanionDraftPanel({
   operations,
   disabled,
   onReviewInterruptedDraft,
+  onContinueCurrentDraft,
   onStage,
 }: {
   characterId: string;
   operations: readonly DraftOperation[];
   disabled: boolean;
   onReviewInterruptedDraft?: () => void;
+  onContinueCurrentDraft?: () => Promise<void>;
   onStage: (operation: CompanionOperation) => Promise<unknown>;
 }) {
   const endpoint = `/api/characters/${encodeURIComponent(characterId)}/companions`;
-  const saved = useCompanionList<CharacterCompanionSummary>(endpoint, "companions");
+  const { userId } = useAppAuth();
+  const saved = useCompanionList(endpoint);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [choice, setChoice] = useState("");
-  const [name, setName] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
-  const picker = useCompanionList<CharacterCompanionCandidate>(
-    pickerOpen ? `${endpoint}?${new URLSearchParams({ picker: "1", q: query.trim() })}` : null, "candidates", 200,
-  );
-  const selected = picker?.items.find(candidate => candidate.id === choice);
   const companions = new Map(saved?.items.map(companion => [companion.id, { name: companion.name, added: false }]));
   for (const operation of operations) {
     if (operation.type !== "companion") continue;
@@ -204,22 +202,27 @@ export function CompanionDraftPanel({
       companions.delete(operation.payload.attachmentId);
     }
   }
-  const blocked = disabled || !!onReviewInterruptedDraft || pending || !saved || Boolean(saved.error);
+  const interrupted = Boolean(onReviewInterruptedDraft || onContinueCurrentDraft);
+  const blocked = disabled || interrupted || pending || !saved || Boolean(saved.error);
   const canAdd = !blocked && companions.size < MAX_CHARACTER_COMPANIONS;
-  const canBrowse = canAdd || (!!onReviewInterruptedDraft && !!saved && !saved.error);
+  const canBrowse = canAdd || (interrupted && !!saved && !saved.error);
 
-  async function stage(operation: CompanionOperation) {
+  async function changeDraft(action: () => Promise<unknown>, fallback: string) {
     setError("");
     setPending(true);
     try {
-      await onStage(operation);
+      await action();
       return true;
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to stage this companion change.");
+      setError(cause instanceof Error ? cause.message : fallback);
       return false;
     } finally {
       setPending(false);
     }
+  }
+
+  function stage(operation: CompanionOperation) {
+    return changeDraft(() => onStage(operation), "Unable to stage this companion change.");
   }
 
   return (
@@ -243,56 +246,126 @@ export function CompanionDraftPanel({
         </ul>
       )}
       {companions.size >= MAX_CHARACTER_COMPANIONS && <p className="text-sm text-muted-foreground">This draft has the maximum of {MAX_CHARACTER_COMPANIONS} companions.</p>}
-      {onReviewInterruptedDraft && <div className="sheet-guidance" role="status">
+      {interrupted && <div className="sheet-guidance" role="status">
         <span>You can browse the Bestiary. Resolve your interrupted draft before adding or removing companions.</span>
-        <button type="button" className="sheet-button" onClick={onReviewInterruptedDraft}>Review interrupted draft</button>
+        {onContinueCurrentDraft ? <button type="button" className="sheet-button" disabled={pending}
+          onClick={() => void changeDraft(onContinueCurrentDraft, "Unable to keep the local draft.")}>
+          {pending ? "Keeping local copy…" : "Keep local copy and continue"}
+        </button> : <button type="button" className="sheet-button" onClick={onReviewInterruptedDraft}>Review interrupted draft</button>}
       </div>}
       <button type="button" className="sheet-button is-gold" disabled={!pickerOpen && !canBrowse} aria-expanded={pickerOpen} onClick={() => setPickerOpen(value => !value)}>
         <Plus size={16} aria-hidden="true" /> {pickerOpen ? "Close Bestiary picker" : "Add companion"}
       </button>
-      {pickerOpen && (
-        <form className="grid gap-3 rounded-md border border-border p-3" onSubmit={event => {
-          event.preventDefault();
-          if (!selected || !canAdd) return;
-          const copyName = name.trim() || selected.name;
-          void stage({
-            id: browserUuid(),
-            type: "companion",
-            label: copyName,
-            payload: { action: "add", templateId: selected.id, version: selected.version, name: copyName },
-          }).then(added => { if (added) setName(""); });
-        }}>
-          <label className="grid gap-1 text-sm">
-            Search Bestiary
-            <input type="search" className="rounded-md border border-border bg-background p-2"
-              maxLength={100} value={query} onChange={event => { setQuery(event.target.value); setChoice(""); }} />
-          </label>
-          {!picker && <p role="status">Searching Bestiary…</p>}
-          {picker?.error && <p role="alert" className="text-sm">{picker.error}</p>}
-          {picker && !picker.error && !picker.items.length && <p className="text-sm text-muted-foreground">No matching monsters.</p>}
-          {!!picker?.items.length && (
-            <>
-              <label className="grid gap-1 text-sm">
-                Bestiary monster
-                <select className="rounded-md border border-border bg-background p-2" value={choice} onChange={event => setChoice(event.target.value)}>
-                  <option value="">Choose a monster</option>
-                  {picker.items.map(monster => <option key={monster.id} value={monster.id}>{monster.name} (v{monster.version})</option>)}
-                </select>
-              </label>
-              {selected && <BestiaryLink monster={selected} />}
-              <label className="grid gap-1 text-sm">
-                Companion name (optional)
-                <input className="rounded-md border border-border bg-background p-2" maxLength={120} value={name}
-                  placeholder={selected?.name} onChange={event => setName(event.target.value)} />
-              </label>
-              <button type="submit" className="sheet-button is-gold justify-self-start" disabled={!canAdd || !selected}>
-                Add to draft
-              </button>
-            </>
-          )}
-        </form>
-      )}
+      {pickerOpen && userId && <CompanionBestiaryPicker key={`${userId}:${endpoint}`} endpoint={endpoint} canAdd={canAdd}
+        onAdd={(selected, name) => stage({
+          id: browserUuid(), type: "companion", label: name,
+          payload: { action: "add", templateId: selected.id, version: selected.version, name },
+        })}/>}
       {error && <p role="alert" className="text-sm">{error}</p>}
     </section>
   );
+}
+
+function CompanionBestiaryPicker({ endpoint, canAdd, onAdd }: {
+  endpoint: string;
+  canAdd: boolean;
+  onAdd: (selected: CharacterCompanionPickerEntry, name: string) => Promise<boolean>;
+}) {
+  const [query, setQuery] = useState("");
+  const [offset, setOffset] = useState(0);
+  const [attempt, setAttempt] = useState(0);
+  const [results, setResults] = useState<{ query: string; key: string; items: CharacterCompanionPickerEntry[]; nextOffset: number | null; error: string }>();
+  const [selected, setSelected] = useState<CharacterCompanionPickerEntry | null>(null);
+  const [name, setName] = useState("");
+  const placement = useRef<HTMLFormElement>(null);
+  const key = JSON.stringify([query, offset, attempt]);
+  const current = results?.query === query ? results : undefined;
+  const loading = current?.key !== key;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const params = new URLSearchParams({ picker: "1", q: query.trim(), offset: String(offset) });
+    async function loadPage() {
+      try {
+        const response = await fetch(`${endpoint}?${params}`, { signal: controller.signal, cache: "no-store" });
+        const data = await readJsonResponse<Partial<CharacterCompanionPickerPage> & { error?: string }>(response);
+        if (!response.ok || !Array.isArray(data.candidates)) throw new Error(data.error || "Unable to load the Bestiary.");
+        const incoming = data.candidates;
+        const nextOffset = typeof data.nextOffset === "number" && Number.isSafeInteger(data.nextOffset) && data.nextOffset > offset ? data.nextOffset : null;
+        if (controller.signal.aborted) return;
+        setResults(previous => {
+          const preceding = offset > 0 && previous?.query === query ? previous.items : [];
+          const merged = new Map([...preceding, ...incoming].map(item => [item.id, item]));
+          return { query, key, items: [...merged.values()], nextOffset, error: "" };
+        });
+      } catch (cause) {
+        if (!controller.signal.aborted) setResults(previous => ({
+          query, key, items: offset > 0 && previous?.query === query ? previous.items : [], nextOffset: null,
+          error: cause instanceof Error ? cause.message : "Unable to load the Bestiary.",
+        }));
+      }
+    }
+    void loadPage();
+    return () => controller.abort();
+  }, [endpoint, query, offset, key]);
+
+  const search = useCallback((value: string) => { setQuery(value); setOffset(0); }, []);
+
+  function choose(monster: CharacterCompanionPickerEntry) {
+    if (selected?.id !== monster.id || selected.version !== monster.version) setName("");
+    setSelected(monster);
+    window.requestAnimationFrame(() => placement.current?.focus({ preventScroll: false }));
+  }
+
+  return <section className="sheet-build-library v12-source-browser space-y-3 rounded-md border border-border p-3" aria-label="Bestiary picker">
+    <div className="v12-source-search">
+      <ColumnSearchBar search={query} onSearchChange={search} placeholder="Search the Bestiary…" label="Search Bestiary" maxLength={120}/>
+    </div>
+    <div className="grid gap-3 md:grid-cols-2" data-selected={selected !== null}>
+      {selected && <form ref={placement} tabIndex={-1}
+        className="grid min-w-0 content-start gap-3 rounded-md border border-border p-3 md:order-2 self-start"
+        aria-label={`Add ${selected.name} as a companion`} onSubmit={event => {
+          event.preventDefault();
+          if (!canAdd) return;
+          void onAdd(selected, name.trim() || selected.name).then(added => {
+            if (added) { setName(""); setSelected(null); }
+          });
+        }}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-semibold">{selected.name}</h3>
+          <BestiaryLink monster={selected}/>
+        </div>
+        <label className="grid gap-1 text-sm">
+          Companion name (optional)
+          <input className="rounded-md border border-border bg-background p-2" maxLength={120} value={name}
+            placeholder={selected.name} onChange={event => setName(event.target.value)}/>
+        </label>
+        <button type="submit" className="sheet-button is-gold justify-self-start" disabled={!canAdd}>Add to draft</button>
+      </form>}
+      <div className={selected ? "min-w-0 md:order-1" : "min-w-0 md:col-span-2"} aria-busy={loading}>
+        <div className="sw-source-record-list">
+          {current?.items.map(monster => <div key={monster.id} role="button" tabIndex={0}
+            aria-label={monster.name} aria-current={selected?.id === monster.id ? "true" : undefined}
+            className="sw-source-record flex w-full cursor-pointer items-center gap-2 text-left"
+            onClick={() => choose(monster)} onKeyDown={event => {
+              if (event.key === "Enter" || event.key === " ") { event.preventDefault(); choose(monster); }
+            }}>
+            <LibrarySourceRecord title={monster.name}
+              icon={monster.imageUrl ? <IconDisplay portraitUrl={monster.imageUrl} size={30} alt=""/> : <PawPrint size={24}/>}
+              description={monster.description && <Markdown inline>{monster.description}</Markdown>}
+              metadata={<><span className="capitalize">{monster.size?.toLowerCase()}</span><span>{monster.vitality} Vitality</span><span>v{monster.version}</span></>}
+              badge={<span className="sw-library-cost-badge">{monster.budget} BU</span>}
+              actions={<ArrowRight aria-hidden="true"/>}/>
+          </div>)}
+        </div>
+        <div className="sheet-library-status">
+          {loading ? <p role="status">{offset ? "Loading more monsters…" : "Searching Bestiary…"}</p>
+            : current?.error ? <p role="alert">{current.error} <button type="button" onClick={() => setAttempt(count => count + 1)}>Retry</button></p>
+            : current?.nextOffset != null ? <button type="button" className="sheet-button" onClick={() => setOffset(current.nextOffset!)}>Show more monsters</button>
+            : !current?.items.length ? <div className="sheet-library-empty"><strong>No matching monsters</strong>{query.trim() && <button type="button" className="sheet-button" onClick={() => search("")}>Clear search</button>}</div>
+            : null}
+        </div>
+      </div>
+    </div>
+  </section>;
 }

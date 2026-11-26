@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compareDraftRecovery, draftRecoveryKey, parseDraftRecovery, sameDraftRecovery, type DraftRecoveryJournal } from "../draft-recovery";
+import { archiveDraftRecovery, compareDraftRecovery, draftRecoveryArchiveKey, draftRecoveryKey, parseDraftRecovery, readDraftRecoveryArchive, sameDraftRecovery, type DraftRecoveryJournal } from "../draft-recovery";
 import type { WorkspaceDraft } from "../draft-types";
 
 const operation = { id: "op-one", type: "character" as const, payload: { name: "Bartholomew" } };
@@ -44,5 +44,44 @@ describe("draft recovery journal", () => {
     expect(compareDraftRecovery(journal, { ...server, status: "applied" }, 4).status).toBe("conflict");
     const next = { ...operation, id: "op-two", payload: { name: "Vey" } };
     expect(compareDraftRecovery({ ...journal, request: { ...journal.request, operations: [operation, next] } }, { ...server, version: 3, operations: [next, operation] }, 4).status).toBe("conflict");
+  });
+});
+
+describe("archiving interrupted browser edits", () => {
+  const activeKey = "active";
+  const original = '{"frame":{"notes":"Browser-only work"}}';
+  const archiveKey = draftRecoveryArchiveKey(journal.authorId, journal.characterId);
+
+  function browserStorage() {
+    const values = new Map([[activeKey, original]]);
+    return {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => { values.set(key, value); },
+      removeItem: (key: string) => { values.delete(key); },
+    };
+  }
+
+  it("keeps an exact copy of each interrupted edit while freeing the active draft", () => {
+    const storage = browserStorage();
+    archiveDraftRecovery(storage, activeKey, original, journal);
+    expect(storage.getItem(activeKey)).toBeNull();
+    storage.setItem(activeKey, "another draft");
+    archiveDraftRecovery(storage, activeKey, "another draft", journal);
+    expect(readDraftRecoveryArchive(storage.getItem(archiveKey)).map(copy => copy.original))
+      .toEqual([original, "another draft"]);
+  });
+
+  it("keeps the active edit when another tab has changed it", () => {
+    const storage = browserStorage();
+    storage.setItem(activeKey, "another tab");
+    expect(() => archiveDraftRecovery(storage, activeKey, original, journal)).toThrow("another tab");
+    expect(storage.getItem(activeKey)).toBe("another tab");
+    expect(storage.getItem(archiveKey)).toBeNull();
+  });
+
+  it("keeps the active edit when the browser cannot store a verified archive", () => {
+    const storage = { ...browserStorage(), setItem: () => { throw new Error("Storage is full"); } };
+    expect(() => archiveDraftRecovery(storage, activeKey, original, journal)).toThrow("Storage is full");
+    expect(storage.getItem(activeKey)).toBe(original);
   });
 });

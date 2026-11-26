@@ -18,6 +18,19 @@ export interface CharacterCompanionCandidate {
   version: number;
 }
 
+export interface CharacterCompanionPickerEntry extends CharacterCompanionCandidate {
+  description: string;
+  imageUrl: string | null;
+  size: string;
+  vitality: number;
+  budget: number;
+}
+
+export interface CharacterCompanionPickerPage {
+  candidates: CharacterCompanionPickerEntry[];
+  nextOffset: number | null;
+}
+
 export interface CharacterCompanionSummary {
   id: string;
   name: string;

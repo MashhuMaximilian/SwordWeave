@@ -19,11 +19,11 @@ export async function visibleMonster(id: string, userId: string | null, lockCurr
   return row;
 }
 
-export async function searchVisibleMonsterTemplates(userId: string, query: string) {
-  return db.select({ id: monsters.id, name: monsters.name, version: monsters.version })
+export async function searchVisibleMonsterTemplates(userId: string, query: string, offset: number, limit: number) {
+  return db.select({ id: monsters.id, name: monsters.name, version: monsters.version, definition: monsters.definition })
     .from(monsters)
-    .where(and(monsterVisibility(userId), query ? sql`position(lower(${query}) in lower(${monsters.name})) > 0` : undefined))
-    .orderBy(desc(monsters.updatedAt), monsters.id).limit(24);
+    .where(and(monsterVisibility(userId), query ? sql`position(lower(${query}) in lower(${monsters.name} || ' ' || ${monsters.description})) > 0` : undefined))
+    .orderBy(sql`lower(${monsters.name})`, monsters.id).limit(limit).offset(offset);
 }
 export async function listMonsters(userId: string | null,offset=0) { const rows=await db.select({id:monsters.id,name:monsters.name,description:monsters.description,catalogue:sql<NonNullable<import("./model").MonsterDefinition["catalogue"]>|null>`${monsters.definition}->'catalogue'`,imageUrl:sql<string|null>`${monsters.definition}->>'imageUrl'`,sourceOrigin:sql<string|null>`${monsters.definition}->>'sourceOrigin'`,budget:sql<number>`(${monsters.definition}->>'budget')::double precision`,size:sql<string>`${monsters.definition}->>'size'`,attributes:sql<{physical:number;mental:number;magical:number}>`${monsters.definition}->'attributes'`,baselineVitality:sql<number|null>`(${monsters.definition}->>'baselineVitality')::double precision`,userId:monsters.userId,visibility:monsters.visibility,isPublic:monsters.isPublic,version:monsters.version,sourceCollectionId:monsters.sourceCollectionId,forkedFromId:monsters.forkedFromId,updatedAt:monsters.updatedAt,createdAt:monsters.createdAt}).from(monsters).where(monsterVisibility(userId)).orderBy(desc(monsters.updatedAt)).limit(100).offset(offset); return rows.map(row=>({...row,imageUrl:monsterArtwork({...row,catalogue:row.catalogue??undefined})})); }
 export async function prepareMonster(value: unknown, userId?: string | null) { const definition = await pinMonsterReferences(monsterDefinitionSchema.parse(value)); let componentPins:MonsterComponentPin[]=[];const slots = await resolveMonsterComposition(definition,userId,pins=>{componentPins=pins;}); const sheet = resolveMonster(definition,slots); if (sheet.spent > sheet.availableBudget) throw new Error("Composition exceeds the chosen BU budget. Weakness credit extends the spending budget; items use their separate pool."); const pinned={...definition,componentPins};if(new TextEncoder().encode(JSON.stringify(pinned)).byteLength>524288)throw new Error("Monster snapshot exceeds 512KB. Publish unversioned components before adding them, or split the composition.");return { definition:pinned, slots, sheet }; }

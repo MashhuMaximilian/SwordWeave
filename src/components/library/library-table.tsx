@@ -2,6 +2,7 @@
 import { LibraryQuickDetails } from "./library-quick-details";
 import { LibraryCatalogueCard } from "./library-catalogue-card";
 import { heritageKindLabel, isHeritageKind } from "@/lib/heritage/labels";
+import { LibrarySourceRecord } from "./library-source-record";
 import { libraryHeritageArt } from "@/lib/heritage/lineage-art";
 
 // =============================================================================
@@ -262,25 +263,18 @@ function ListItem({
   const rule = item.definitionKind === "TEMPLATE" ? item.description || item.mechanicalDescription : item.mechanicalDescription || item.description;
   const origin = libraryOrigin({ ...item, sourceOrigin: item.sourceOrigin ?? null });
   const inner = isAtelier ? (
-    <>
-      <span className="sw-entity-medallion sw-source-record-icon" aria-hidden="true">
-        <IconDisplay portraitUrl={libraryHeritageArt(item)} iconSource={item.iconSource || "GAME_ICONS"} iconKey={item.iconKey || ENTITY_TYPE_ICONS[item.targetType] || "lorc/cubes"} iconUrl={item.iconUrl} iconColor={item.iconColor} size={28} alt="" />
-      </span>
-      <div className="sw-source-record-copy">
-        <h3>{item.name}</h3>
-        <div className="sw-source-record-rule"><Markdown copyRole={rule === item.mechanicalDescription ? "mechanical" : "narrative"}>{rule || "Open the preview to inspect this entry’s rules."}</Markdown></div>
-        <div className="sw-source-record-meta">
-          {tier !== null && <span>Tier {tier}</span>}
-          <span>{origin === "system" ? "Canonical" : "Community"}</span>
-          <span aria-label={`${item.likesCount} likes`}>♥ {item.likesCount}</span>
-          <span aria-label={`${item.forkCount} forks`}>⑂ {item.forkCount}</span>
-        </div>
-      </div>
-      <div className="sw-source-record-end">
-        {item.buCost !== null && <span className="sw-library-cost-badge">{item.buCost} BU</span>}
-        <div className="sw-source-record-actions"><BookmarkButton targetType={item.targetType} targetId={item.targetId} /><ArrowRight aria-hidden="true" /></div>
-      </div>
-    </>
+    <LibrarySourceRecord title={item.name}
+      icon={<IconDisplay portraitUrl={libraryHeritageArt(item)} iconSource={item.iconSource || "GAME_ICONS"} iconKey={item.iconKey || ENTITY_TYPE_ICONS[item.targetType] || "lorc/cubes"} iconUrl={item.iconUrl} iconColor={item.iconColor} size={28} alt="" />}
+      description={<Markdown copyRole={rule === item.mechanicalDescription ? "mechanical" : "narrative"}>{rule || "Open the preview to inspect this entry’s rules."}</Markdown>}
+      metadata={<>
+        {tier !== null && <span>Tier {tier}</span>}
+        <span>{origin === "system" ? "Canonical" : "Community"}</span>
+        <span aria-label={`${item.likesCount} likes`}>♥ {item.likesCount}</span>
+        <span aria-label={`${item.forkCount} forks`}>⑂ {item.forkCount}</span>
+      </>}
+      badge={item.buCost !== null && <span className="sw-library-cost-badge">{item.buCost} BU</span>}
+      actions={<><BookmarkButton targetType={item.targetType} targetId={item.targetId} /><ArrowRight aria-hidden="true" /></>}
+    />
   ) : compact ? (
     <>
       <BookmarkButton targetType={item.targetType} targetId={item.targetId} />

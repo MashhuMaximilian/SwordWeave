@@ -479,7 +479,8 @@ export function CharacterBuildWorkspace({ characterId, initialRoot = "ALL", perm
     {...(permission === "OWNER" ? { companions: {
       content: <CompanionDraftPanel characterId={characterId} operations={operations}
         disabled={compositionBlocked || !controller.ready} onStage={stage}
-        {...(controller.pendingRecovery ? { onReviewInterruptedDraft: () => navigate(() => { setFoundation(null); setMobile("build"); }) } : {})}/>,
+        {...(controller.recoveryConflict ? { onContinueCurrentDraft: controller.continueCurrentDraft }
+          : controller.pendingRecovery ? { onReviewInterruptedDraft: () => navigate(() => { setFoundation(null); setMobile("build"); }) } : {})}/>,
       ...(!controller.pendingRecovery ? { onReview: () => { setFoundation(null); openReview(); } } : {}),
     } } : {})}
     onClose={() => {setFoundationDirty(false);setFoundation(null);}}
@@ -506,7 +507,38 @@ export function CharacterBuildWorkspace({ characterId, initialRoot = "ALL", perm
       <button type="button" aria-pressed={randomizer} onClick={openRandomizer}><Sparkles size={16}/>Randomizer</button>
     </nav>
     <div className="sheet-build-budget"><span><b>{remaining}</b> BU available</span><span>{spent} allocated · {pool} budget</span><span>Drawbacks {credit}/{debtMax}</span><span className="sheet-budget-note">Leaving BU unspent is fine.</span></div>
-    {controller.pendingRecovery && <section className="sheet-recovery" role="alert"><div><strong>An interrupted change is saved in this browser</strong><p>{controller.recoveryConflict || "Recover it to continue your draft. Nothing has been applied to the live character."}</p><details><summary>See saved changes</summary><ul>{controller.pendingRecovery.request.operations.map(operation => <li key={operation.id}>{operation.label ?? operation.type}</li>)}</ul></details></div><div className="sheet-row-actions"><button className="sheet-button is-gold" disabled={busy || !!controller.recoveryConflict} onClick={() => attempt(async () => {const recovered = await controller.recoverPending();if(recovered){discardUnfinished();setFoundation(null);setNotice("Recovered and checked your draft. Review it before applying.");}})}>Recover local change</button><button className="sheet-button" disabled={busy} onClick={() => attempt(async () => {controller.dismissPending();await controller.reload();})}>Discard local copy</button></div></section>}
+    {controller.pendingRecovery && <section className="sheet-recovery" role="alert">
+      <div>
+        <strong>An interrupted change is saved in this browser</strong>
+        <p>{controller.recoveryConflict || "Recover the change to continue editing your draft."}</p>
+        <details><summary>See saved changes</summary><ul>
+          {controller.pendingRecovery.request.operations.map(operation => <li key={operation.id}>{operation.label ?? operation.type}</li>)}
+        </ul></details>
+      </div>
+      <div className="sheet-row-actions">
+        {controller.recoveryConflict
+          ? <button type="button" className="sheet-button is-gold" disabled={busy} onClick={() => attempt(controller.continueCurrentDraft)}>Keep local copy and continue</button>
+          : <button type="button" className="sheet-button is-gold" disabled={busy} onClick={() => attempt(async () => {
+            const recovered = await controller.recoverPending();
+            if (recovered) {
+              discardUnfinished();
+              setFoundation(null);
+              setNotice("Recovered and checked your draft. Review it before applying.");
+            }
+          })}>Recover local change</button>}
+        <button type="button" className="sheet-button" disabled={busy} onClick={() => attempt(async () => {
+          controller.dismissPending();
+          await controller.reload();
+        })}>Discard local copy</button>
+      </div>
+    </section>}
+    {!!controller.archivedRecovery.length && <details className="sheet-guidance">
+      <summary>Archived browser edits</summary>
+      {controller.archivedRecovery.map((entry, index) => (
+        <ul key={index}>{entry.request.operations.map(operation => <li key={operation.id}>{operation.label ?? operation.type}</li>)}</ul>
+      ))}
+      <button type="button" className="sheet-button" onClick={() => attempt(async () => controller.downloadArchivedRecovery())}>Download archived drafts</button>
+    </details>}
     {controller.persistenceWarning && <p className="sheet-guidance" role="status">{controller.persistenceWarning}</p>}
     {phone && !localProposal && <div className="sheet-phone-workbench-access"><span>{composer ? "Editing a piece" : "On your character"}</span><button type="button" onClick={() => openDrawer("build")}><Hammer size={15}/> Build &amp; Preview <ChevronRight size={14}/></button></div>}
     {remaining < 0 && <p className="sheet-error" role="alert">This build is {Math.abs(remaining)} BU over budget. Review it with your group before applying.</p>}{(error || controller.error) && (phone ? <details className="sheet-phone-warning"><summary>Draft needs attention · tap to review</summary><p role="alert">{error || controller.error}</p><button className="sheet-button" onClick={openReview}>Review or discard draft</button></details> : <p className="sheet-error" role="alert">{error || controller.error}{controller.error && <button className="sheet-button" onClick={openReview}>Review or discard draft</button>}</p>)}{notice && <div className="sheet-notice" role="status">{notice}{controller.canUndoApplied && <button className="sheet-button" disabled={busy || operations.length > 0} onClick={() => attempt(async () => {const result=await controller.undoApplied();if(result){setBase(result.graph);await refresh();router.refresh();setNotice("Restored the previous build. Play state was kept.");}})}>Undo applied build</button>}<button type="button" aria-label="Dismiss message" onClick={() => setNotice("")}><X size={13}/></button></div>}
