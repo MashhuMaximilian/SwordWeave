@@ -12,7 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@clerk/nextjs";
+import { useAppAuth } from "@/components/auth/app-auth-provider";
 import { ChevronRight, ChevronDown, Dna, Shield, Swords, Layers, ArrowLeft, Eye, Plus, Power, Search, Trash2 } from "lucide-react";
 import { openCharacterEditor, parseCharacterEditorIntent, type CharacterEditorIntent } from "./editor-events";
 import { CharacterBuildWorkspace } from "./character-build-workspace";
@@ -128,7 +128,7 @@ export function CharacterWorkspace(props: {
   initialIntent?: CharacterEditorIntent;
 }) {
   const permission = props.permission ?? "VIEWER";
-  const { userId } = useAuth();
+  const { userId } = useAppAuth();
   const searchParams = useSearchParams();
   const localProposal = process.env.NODE_ENV === "development" && searchParams.get("editor") === "guided";
   const [intent, setIntent] = useState<CharacterEditorIntent>(props.initialIntent ?? "overview");

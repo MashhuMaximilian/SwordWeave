@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { useAuth } from "@clerk/nextjs";
+import { useAppAuth } from "@/components/auth/app-auth-provider";
 import { PawPrint, Plus, Trash2 } from "lucide-react";
 import { MonsterTemplatePreview } from "@/components/monsters/monster-template-preview";
 import { DetailModal } from "@/components/ui/detail-modal";
@@ -28,7 +28,7 @@ function readCompanionUndo(characterId: string) {
 const subscribeToSession = () => () => {};
 
 function useCompanionList<T>(url: string | null, field: "companions" | "candidates", delay = 0) {
-  const { isLoaded, userId } = useAuth();
+  const { isLoaded, userId } = useAppAuth();
   const [result, setResult] = useState<{ key: string; value: Load<T> }>();
   const key = userId && url ? `${userId}:${url}` : null;
   useEffect(() => {
@@ -98,7 +98,7 @@ export function CharacterCompanions({
 }
 
 function UndoCompanionSave({ characterId }: { characterId: string }) {
-  const { userId } = useAuth();
+  const { userId } = useAppAuth();
   const saved = useSyncExternalStore(subscribeToSession, () => readCompanionUndo(characterId), () => null);
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
