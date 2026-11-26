@@ -3,7 +3,7 @@
 const readerPaths = new Set([
   "/start", "/character", "/creating-a-character", "/creating",
   "/tutorials/create-a-primitive", "/press", "/rules", "/combat",
-  "/about", "/contact", "/attributions", "/privacy",
+  "/about", "/contact", "/attributions", "/privacy", "/chatgpt",
 ]);
 
 export function cssSurface(pathname: string | null): "home" | "books" | "reader" | "tool" {
