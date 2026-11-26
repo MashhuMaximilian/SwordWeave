@@ -25,7 +25,7 @@ describe("character PDF POST", () => {
     expect(result.headers.get("cache-control")).toContain("private, no-store");
     expect(result.headers.get("content-disposition")).toBe('attachment; filename="swordweave-eowyn-hero-bad-header-vesper-landscape.pdf"');
     expect((await result.text()).startsWith("%PDF-")).toBe(true);
-    expect(mocks.snapshot).toHaveBeenCalledWith(id, "clerk-user");
+    expect(mocks.snapshot).toHaveBeenCalledWith(id, "clerk-user", false);
     expect(mocks.media).toHaveBeenCalledWith(expect.objectContaining({ id }), expect.objectContaining({ viewerId: "clerk-user", signal: expect.any(AbortSignal) }));
     expect(mocks.render).toHaveBeenCalledWith(expect.objectContaining({ id }), { style: "vesper", density: "auto", orientation: "landscape", workbench: true, color: false }, expect.objectContaining({ signal: expect.any(AbortSignal) }));
   });
@@ -39,7 +39,15 @@ describe("character PDF POST", () => {
   it("passes anonymous readers to the same snapshot permission gate", async () => {
     mocks.auth.mockResolvedValue({ userId: null });
     expect((await POST(request(), params)).status).toBe(200);
-    expect(mocks.snapshot).toHaveBeenCalledWith(id, null);
+    expect(mocks.snapshot).toHaveBeenCalledWith(id, null, false);
+  });
+  it("restricts an owner's public preview at the server snapshot gate", async () => {
+    const result = await POST(new Request("http://localhost/api/characters/" + id + "/pdf?view=public", {
+      method: "POST", body: "{}", headers: { "Content-Type": "application/json" },
+    }), params);
+    expect(result.status).toBe(200);
+    expect(mocks.snapshot).toHaveBeenCalledWith(id, "clerk-user", true);
+    expect(mocks.media).toHaveBeenCalledWith(expect.objectContaining({ id }), expect.objectContaining({ viewerId: null }));
   });
   it("never spawns rendering after access denial", async () => {
     mocks.snapshot.mockRejectedValue(new CharacterAccessDenied(id));

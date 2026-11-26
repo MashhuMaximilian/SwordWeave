@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Character preview</title>
+  <style>
+    :root { color-scheme: light dark; font-family: system-ui, sans-serif; color: CanvasText; background: Canvas; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 1rem; line-height: 1.5; font-size: .875rem; }
+    h1, h2, h3, h4, h5, h6, p, ul, dl { margin: 0; overflow-wrap: anywhere; }
+    h1 { font-size: 1.35rem; }
+    h2 { font-size: 1rem; margin-block-end: .35rem; }
+    h3 { font-size: .9rem; }
+    section { margin-block: 1rem; }
+    .muted { color: color-mix(in srgb, CanvasText 68%, Canvas); }
+    .ledger { display: flex; flex-wrap: wrap; gap: .5rem 1rem; }
+    .ledger > div { min-width: 5.5rem; }
+    dt { font-size: .78rem; }
+    dd { margin: 0; font-weight: 650; }
+    ul { padding-inline-start: 1.2rem; }
+    li + li, .backstory + .backstory { margin-block-start: .25rem; }
+    .backstory { padding-block: .4rem; }
+    .backstory p, .backstory pre, .backstory blockquote { margin-block: .25rem; }
+    .backstory pre { overflow: auto; white-space: pre-wrap; }
+    .backstory table { border-collapse: collapse; }
+    .backstory td, .backstory th { padding: .2rem .35rem; border: 1px solid color-mix(in srgb, CanvasText 25%, Canvas); }
+  </style>
+</head>
+<body>
+  <main id="preview" aria-live="polite"><p>Waiting for the character preview.</p></main>
+  <script>
+    (() => {
+      const container = document.querySelector("#preview");
+      const accessLabels = { verbTier: "Verb tier", domain: "Domain", range: "Range", dieType: "Die type" };
+      const accessCategories = { verbTier: "VERB_TIER", domain: "DOMAIN", range: "RANGE", dieType: "INTENSITY_DICE" };
+      const sizeLabels = { TINY: "Tiny", SMALL: "Small", MEDIUM: "Medium", LARGE: "Large", HUGE: "Huge", GARGANTUAN: "Gargantuan" };
+      const statusLabels = { selected: "Selected", freeBaseline: "Free baseline", missing: "Missing" };
+      const requiredLabels = {
+        name: "Character name", "attributes.physical": "Physical score", "attributes.mental": "Mental score", "attributes.magical": "Magical score",
+        "startingAccess.verbTier": "Verb tier", "startingAccess.domain": "Domain", "startingAccess.range": "Range", "startingAccess.dieType": "Die type",
+      };
+      const sourceLabels = { LINEAGE: "Lineage", UPBRINGING: "Upbringing", MANIFEST: "Manifest", PERSONAL: "Personal" };
+      const inlineTags = new Set(["code", "strong", "em", "s", "u"]);
+
+      function node(tag, text, className) {
+        const element = document.createElement(tag);
+        if (text !== undefined) element.textContent = text;
+        if (className) element.className = className;
+        return element;
+      }
+
+      function section(title, child) {
+        const region = node("section");
+        region.append(node("h2", title), child);
+        return region;
+      }
+
+      function ledger(entries) {
+        const list = node("dl", undefined, "ledger");
+        for (const [label, value] of entries) {
+          const term = node("div");
+          term.append(node("dt", label, "muted"), node("dd", String(value)));
+          list.append(term);
+        }
+        return list;
+      }
+
+      function unordered(items) {
+        const list = node("ul");
+        for (const item of items) list.append(node("li", item));
+        return list;
+      }
+
+      function appendInline(element, spans) {
+        if (!Array.isArray(spans)) return;
+        for (const span of spans) {
+          if (typeof span?.text !== "string") continue;
+          element.append(inlineTags.has(span.tag) ? node(span.tag, span.text) : document.createTextNode(span.text));
+        }
+      }
+
+      function formattedProse(blocks) {
+        const fragment = document.createDocumentFragment();
+        for (const block of blocks) {
+          if (block?.type === "code" && typeof block.text === "string") {
+            const pre = node("pre");
+            pre.append(node("code", block.text));
+            fragment.append(pre);
+          } else if (block?.type === "hr") {
+            fragment.append(node("hr"));
+          } else if (block?.type === "table" && Array.isArray(block.rows)) {
+            const table = node("table");
+            for (const [index, row] of block.rows.entries()) {
+              if (!Array.isArray(row)) continue;
+              const tableRow = table.insertRow();
+              for (const cell of row) {
+                const element = node(index === 0 ? "th" : "td");
+                appendInline(element, cell);
+                tableRow.append(element);
+              }
+            }
+            fragment.append(table);
+          } else if (Array.isArray(block?.items)) {
+            if (block.type === "ul" || block.type === "ol") {
+              const list = node(block.type);
+              for (const item of block.items) {
+                const listItem = node("li");
+                appendInline(listItem, item);
+                list.append(listItem);
+              }
+              fragment.append(list);
+            } else {
+              const heading = block.type === "heading" && Number.isInteger(block.level) && block.level >= 1 && block.level <= 6;
+              const tag = heading ? `h${block.level}` : block.type === "quote" ? "blockquote" : "p";
+              const element = node(tag);
+              appendInline(element, block.items[0]);
+              fragment.append(element);
+            }
+          }
+        }
+        return fragment;
+      }
+
+      function appendProseSection(title, entries) {
+        if (!Array.isArray(entries) || !entries.length) return;
+        const prose = node("div");
+        for (const entry of entries) {
+          if (typeof entry?.label !== "string" || !Array.isArray(entry.blocks)) continue;
+          const field = node("div", undefined, "backstory");
+          field.append(node("h3", entry.label));
+          if (typeof entry.sourceName === "string" && entry.sourceName) field.append(node("p", `Forked from ${entry.sourceName}`, "muted"));
+          if (typeof entry.mechanicalRule === "string" && entry.mechanicalRule) field.append(node("p", entry.mechanicalRule, "muted"));
+          field.append(formattedProse(entry.blocks));
+          prose.append(field);
+        }
+        if (prose.childElementCount) container.append(section(title, prose));
+      }
+
+      function render(data, metadata) {
+        const normalized = data?.normalized;
+        const budget = data?.budget;
+        if (normalized?.schemaVersion !== 1 || !budget) return;
+        const title = node("h1", normalized.name || "Character preview");
+        const introduction = node("p", `Level ${budget.level} · ${sizeLabels[normalized.size] ?? normalized.size} · Private draft`, "muted");
+        container.replaceChildren(title, introduction);
+
+        const access = Object.entries(accessLabels).map(([key, label]) => {
+          const status = normalized.startingAccess?.[key];
+          if (status === "freeBaseline") return [label, key === "range" ? "Touch · 0 BU" : "1d4 · 0 BU"];
+          const pieces = (normalized.placements ?? []).filter(piece => piece.category === accessCategories[key] && !piece.isMirrored);
+          return [label, pieces.map(piece => piece.name).join(", ") || statusLabels[status] || "Missing"];
+        });
+        container.append(section("Starting access", ledger(access)));
+        if (normalized.capabilities?.length) {
+          const capabilities = normalized.capabilities.map(({ name, members, source }) => {
+            const names = members.map(member => `${member.quantity > 1 ? `${member.quantity} × ` : ""}${member.name} (${member.role.toLowerCase()})`);
+            return [name, `${sourceLabels[source] ?? source} · ${names.join(", ")}`];
+          });
+          container.append(section("Capabilities", ledger(capabilities)));
+        }
+        if (normalized.placements?.length) {
+          const names = normalized.placements.map(({ name, source, isMirrored, mirrorCredit, buCost, pieceKey }) => {
+            const cost = isMirrored ? `${mirrorCredit} BU drawback credit` : `${buCost} BU`;
+            return `${name} · ${sourceLabels[source] ?? source} · ${cost}${pieceKey === null ? " · free baseline" : ""}`;
+          });
+          container.append(section("Selected rules", unordered(names)));
+        }
+
+        const attributes = normalized.attributes ?? {};
+        const attributesList = [["Physical", attributes.physical ?? "—"], ["Mental", attributes.mental ?? "—"], ["Magical", attributes.magical ?? "—"]];
+        if (attributes.proficient) attributesList.push(["Proficient", `${attributes.proficient[0]}${attributes.proficient.slice(1).toLowerCase()}`]);
+        container.append(section("Attributes", ledger(attributesList)));
+
+        container.append(section("Build units", ledger([
+          ["Level-one pool", budget.startingBu], ["Spent", budget.positiveSpent], ["Mirror credit", budget.mirrorCredit],
+          ["Available", budget.remaining], ["Drawback limit", budget.debtCeiling], ["Next-level ceiling", budget.nextLevelBudget],
+        ])));
+
+        const issues = [
+          ...(data.missing ?? []).map(key => `${requiredLabels[key] ?? key.replace(/^placements\./, "Placement for ")} is required.`),
+          ...(data.validationErrors ?? []).map(error => error.message), ...(data.tableQuestions ?? []),
+        ];
+        if (issues.length) container.append(section("Choices to resolve", unordered(issues)));
+
+        appendProseSection("Mirrored drawbacks", metadata?.["swordweave/drawbacks"]);
+        appendProseSection("New private primitives", metadata?.["swordweave/authored-rules"]);
+        appendProseSection("New private capabilities", metadata?.["swordweave/authored-capabilities"]);
+        appendProseSection("Backstory", metadata?.["swordweave/backstory"]);
+      }
+
+      const initializeId = "swordweave-preview-v1";
+      const notify = (method, params = {}) => window.parent.postMessage({ jsonrpc: "2.0", method, params }, "*");
+      const resize = new ResizeObserver(() => notify("ui/notifications/size-changed", { height: Math.ceil(document.body.getBoundingClientRect().height) }));
+      window.addEventListener("message", event => {
+        const message = event.data;
+        if (event.source !== window.parent || message?.jsonrpc !== "2.0") return;
+        if (message.id === initializeId && message.result) {
+          notify("ui/notifications/initialized");
+          resize.observe(document.body);
+        }
+        if (message.method === "ui/notifications/tool-result") render(message.params?.structuredContent, message.params?._meta);
+      });
+      window.addEventListener("openai:set_globals", () => render(window.openai?.toolOutput, window.openai?.toolResponseMetadata));
+      render(window.openai?.toolOutput, window.openai?.toolResponseMetadata);
+      window.parent.postMessage({
+        jsonrpc: "2.0", id: initializeId, method: "ui/initialize",
+        params: { protocolVersion: "2026-01-26", appInfo: { name: "SwordWeave character preview", version: "1.0.0" }, appCapabilities: {} },
+      }, "*");
+    })();
+  </script>
+</body>
+</html>

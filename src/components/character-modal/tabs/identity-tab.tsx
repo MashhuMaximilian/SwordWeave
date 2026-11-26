@@ -1,4 +1,5 @@
 "use client";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 
 // =============================================================================
 // IdentityTab — Tab 1 of the 7-tab character modal.
@@ -162,12 +163,12 @@ export function IdentityTab({ state: controlled, onChange }: IdentityTabProps = 
 
       <label className="block space-y-1">
         <span className="text-xs font-medium text-muted-foreground">Notes</span>
-        <textarea
-          value={state.notes}
-          onChange={(e) => setField("notes", e.target.value)}
+        <MarkdownEditor
+          ariaLabel="Notes" value={state.notes}
+          onChange={value => setField("notes", value)}
           rows={4}
           placeholder="Anything you want to remember about this character."
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+          textareaClassName="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
         />
       </label>
     </div>

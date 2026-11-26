@@ -38,6 +38,7 @@
 
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db/client";
+import { withPublishingTransaction } from "./save-transaction";
 import { publications } from "@/db/schema/engagement";
 import {
   resolveVirtualVersionId,
@@ -76,7 +77,10 @@ export async function autoPublishOnCreate({
     // API is responsible for unpublishing it — we don't touch it here.)
     return { publicationId: null, created: false };
   }
+  return withPublishingTransaction(() => autoPublishPublicCreation({ targetType, targetId, authorId }));
+}
 
+async function autoPublishPublicCreation({ targetType, targetId, authorId }: Omit<AutoPublishArgs, "isPublic">) {
   const finalVersionId = resolveVirtualVersionId(targetType, targetId);
   if (!isUuid(finalVersionId)) {
     console.error(

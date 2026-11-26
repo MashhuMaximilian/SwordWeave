@@ -1,4 +1,5 @@
 "use client";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { VisibilityChoices } from "@/components/library/visibility-choices";
 import { useEffect, useRef, useState } from "react";
 import { useAppAuth } from "@/components/auth/app-auth-provider";
@@ -783,11 +784,11 @@ function AccountWorkspace({
                 </label>
                 <label>
                   Encounter note
-                  <textarea
+                  <MarkdownEditor
                     maxLength={5000}
                     rows={2}
-                    value={draft.note}
-                    onChange={(e) => patch({ note: e.target.value })}
+                    ariaLabel="Encounter note" value={draft.note}
+                    onChange={value => patch({ note: value })}
                     placeholder="What brings the party here?"
                   />
                 </label>

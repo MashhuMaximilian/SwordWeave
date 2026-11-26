@@ -1,4 +1,5 @@
 "use client";
+import { Markdown } from "@/components/ui/markdown";
 import { EditableNumberInput } from "@/components/ui/editable-number-input";
 
 import { useMemo, useState, useTransition } from "react";
@@ -505,9 +506,7 @@ export function EffectComposer({
                     {effectBuTotal(effect)} BU
                   </span>
                 </div>
-                <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                  {effect.narrativeDescription || "No narrative rule yet."}
-                </p>
+                <Markdown className="mt-3 text-sm leading-6 text-muted-foreground">{effect.narrativeDescription || "No narrative rule yet."}</Markdown>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {effect.primitiveLinks.map((link) => (
                     <span

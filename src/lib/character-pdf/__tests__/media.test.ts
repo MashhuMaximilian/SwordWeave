@@ -30,6 +30,21 @@ describe("character PDF media trust boundaries", () => {
     expect(characterPdfArtworkSource("https://www.swordweave.quest/images/characters/orren.webp")).toEqual({ type: "public", url: "https://swordweave-public-art.ionmariusc97.workers.dev/images/characters/orren.webp" });
     expect(characterPdfArtworkSource("/api/icons/blob/user-uploads/user_1/example.png")).toEqual({ type: "upload", pathname: "user-uploads/user_1/example.png" });
     expect(characterPdfArtworkSource("https://store.private.blob.vercel-storage.com/user-uploads/user_1/example.png?signature=unused")).toEqual({ type: "upload", pathname: "user-uploads/user_1/example.png" });
+    expect(characterPdfArtworkSource("/art/monsters/scout.webp")).toEqual({ type: "public", url: "https://swordweave-public-art.ionmariusc97.workers.dev/images/monsters/scout.webp" });
+  });
+  it("packs art once for copies of the same pin and strips source URLs before rendering", async () => {
+    const frame = { x: 37, y: 49, zoom: 1.4 };
+    const result = await resolveCharacterPdfMedia(basic({ companions: [
+      { name: "Fern", portraitKey: "pinned-scout", portraitUrl: "/art/monsters/scout.webp", portraitFrame: frame },
+      { name: "Stone", portraitKey: "pinned-scout", portraitUrl: "/art/monsters/scout.webp", portraitFrame: frame },
+      { name: "Private art", portraitKey: "unreadable", portraitUrl: "user-uploads/other/private.png" },
+    ] }), { viewerId: "owner", color: true });
+    expect(Object.keys(result.pdfMedia!.companions)).toEqual(["pinned-scout"]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(mocks.access).toHaveBeenCalledWith("user-uploads/other/private.png", "owner");
+    expect(mocks.blob).not.toHaveBeenCalled();
+    expect(result.companions?.[0]).toEqual({ name: "Fern", portraitKey: "pinned-scout", portraitFrame: frame });
+    expect(result.companions?.every(companion => !companion.portraitUrl)).toBe(true);
   });
   it("routes general HTTPS artwork through the pinned reader and preserves custom RGB when chosen", async () => {
     const result = await resolveCharacterPdfMedia(basic({ portraitUrl: "https://images.example.com/portrait.jpg?size=large" }), { viewerId: null, color: true });

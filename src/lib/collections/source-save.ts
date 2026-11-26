@@ -3,6 +3,7 @@ import {
   assertAuthoringReferenceAccess,
 } from "@/lib/publishing/assert-authoring-references";
 import { auth } from "@clerk/nextjs/server";
+import { workspaceAuthoringUserId } from "@/lib/character/workspace/draft-scope";
 import { readBoundedJson, RequestSizeError } from "@/lib/http/read-bounded-json";
 import { NextResponse } from "next/server";
 import { and, eq, sql } from "drizzle-orm";
@@ -37,7 +38,7 @@ export async function withSourceCollection(
     );
   const source = data["sourceCollectionId"];
   if (authoringReferences(data).length) {
-    const { userId: actorId } = await auth();
+    const actorId = workspaceAuthoringUserId(request) ?? (await auth()).userId;
     if (!actorId)
       return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
     try {

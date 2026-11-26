@@ -1,4 +1,5 @@
 "use client";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { useCharacterReadOnly } from "./character-read-only";
 import { hasExternalCondition } from "@/lib/character/condition-scope";
 
@@ -216,7 +217,7 @@ export function ConditionsDrawer({ characterId, open, onClose, autoEvaluated }: 
         </footer>
       </aside>
 
-      {resolving&&<div className="v12-formula-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"><div role="dialog" aria-modal="true" aria-label="Record recovery" className="v12-formula-modal w-full max-w-lg space-y-3 rounded-lg border border-border bg-card p-5"><h2 className="text-xl font-semibold">Resolve {resolving.title}</h2><p>{resolving.recovery||'Record how this consequence was recovered.'}</p><label className="block text-sm">Recovery notes<textarea className="mt-1 w-full rounded border border-border bg-background p-2" value={recoveryNote} onChange={e=>setRecoveryNote(e.target.value)} /></label><p className="text-xs text-muted-foreground">This ends the ongoing effects and records recovery. Previously lost vitality is not refunded.</p><div className="flex gap-2"><button className="rounded bg-primary px-3 py-2 text-primary-foreground" onClick={()=>{update(resolving.id,{status:'resolved',resolvedAt:Date.now(),active:false,recoveryNote});setResolving(null);}}>Record recovery</button><button className="rounded border border-border px-3 py-2" onClick={()=>setResolving(null)}>Cancel</button></div></div></div>}
+      {resolving&&<div className="v12-formula-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"><div role="dialog" aria-modal="true" aria-label="Record recovery" className="v12-formula-modal w-full max-w-lg space-y-3 rounded-lg border border-border bg-card p-5"><h2 className="text-xl font-semibold">Resolve {resolving.title}</h2><Markdown>{resolving.recovery||'Record how this consequence was recovered.'}</Markdown><label className="block text-sm">Recovery notes<MarkdownEditor ariaLabel="Recovery notes" textareaClassName="mt-1 w-full rounded border border-border bg-background p-2" value={recoveryNote} onChange={value =>setRecoveryNote(value)} /></label><p className="text-xs text-muted-foreground">This ends the ongoing effects and records recovery. Previously lost vitality is not refunded.</p><div className="flex gap-2"><button className="rounded bg-primary px-3 py-2 text-primary-foreground" onClick={()=>{update(resolving.id,{status:'resolved',resolvedAt:Date.now(),active:false,recoveryNote});setResolving(null);}}>Record recovery</button><button className="rounded border border-border px-3 py-2" onClick={()=>setResolving(null)}>Cancel</button></div></div></div>}
       {promoting && <PromoteConsequence characterId={characterId} occurrence={promoting} onClose={() => setPromoting(null)} />}
       {composerOpen && (
         <ConditionComposer
@@ -376,10 +377,10 @@ export function ConditionCardItem({
             ))}
           </div>
           <div className="v12-condition-supporting-copy">
-            {condition.recovery && <p><strong>Recovery:</strong> {condition.recovery}</p>}
+            {condition.recovery && <div><strong>Recovery:</strong><Markdown>{condition.recovery}</Markdown></div>}
             {condition.restrictions?.map((restriction, index) => <p key={index}>{restriction.reason || `Blocks a ${restriction.kind}`}</p>)}
             {condition.applicationSnapshot && condition.applicationSnapshot.vitalityDelta!==0 && <p>Vitality when applied: {condition.applicationSnapshot.vitalityDelta}</p>}
-            {condition.recoveryNote && <p>Recovery notes: {condition.recoveryNote}</p>}
+            {condition.recoveryNote && <div>Recovery notes:<Markdown>{condition.recoveryNote}</Markdown></div>}
             {condition.status === "resolved" && <p>Resolved {condition.resolvedAt ? new Date(condition.resolvedAt).toLocaleString() : ""}</p>}
           </div>
           {tags.length > 0 && (

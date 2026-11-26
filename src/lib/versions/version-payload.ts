@@ -9,7 +9,8 @@
 //
 // =============================================================================
 
-import { and, eq, lte } from "drizzle-orm";
+import { and, eq, gte, lte, type SQL } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { db } from "@/db/client";
 import {
   effectVersions,
@@ -58,17 +59,61 @@ export async function getVersionPayload(
   targetId: string,
   versionNumber: number,
 ): Promise<ReconstructedVersion | null> {
-  const [target] = await fetchVersionRows(targetType, targetId, versionNumber, true);
+  const [target] = await fetchVersionRows(targetType, targetId, (_, number) => eq(number, versionNumber));
   if (!target) return null;
   // FULL versions are self-contained. DELTA reconstruction needs preceding
   // rows only; never download newer or unrelated history to open a preview.
   const rows = target.deltaKind === "FULL" ? [target]
-    : await fetchVersionRows(targetType, targetId, versionNumber);
+    : await fetchVersionRows(targetType, targetId, (_, number) => lte(number, versionNumber));
+  return reconstructPayload(target, rows);
+}
 
-  // Reconstruct the chain. We pass all rows (including those AFTER the
-  // target version) — reconstructVersion handles stopping at the right
-  // point by trimming the chain to the requested version.
-  //
+/** Load an exact pin within its definition and fail closed on incomplete history. */
+export async function getPinnedVersionPayload(
+  targetType: ReconstructableType,
+  targetId: string,
+  versionId: string,
+): Promise<ReconstructedVersion | null> {
+  const [target] = await fetchVersionRows(targetType, targetId, id => eq(id, versionId));
+  if (!target) return null;
+  const last = target.versionNumber;
+  const available = target.deltaKind === "FULL" ? [target]
+    : await fetchVersionRows(targetType, targetId, (_, number) =>
+      and(gte(number, Math.max(1, last - PIN_HISTORY_LIMIT + 1)), lte(number, last))!);
+  return reconstructPinnedVersion(target, available);
+}
+
+const PIN_HISTORY_LIMIT = 80;
+
+/** Shared with the sheet resolver so a reviewed pin has the same meaning when applied. */
+export function reconstructPinnedVersion(target: VersionRowRaw, versions: readonly VersionRowRaw[]): ReconstructedVersion | null {
+  const last = target.versionNumber;
+  if (!Number.isSafeInteger(last) || last < 1) return null;
+  const available = target.deltaKind === "FULL" ? [target] :
+    versions.filter(row => row.versionNumber <= last && row.versionNumber > last - PIN_HISTORY_LIMIT)
+      .sort((left, right) => left.versionNumber - right.versionNumber);
+  let base = available.length - 1;
+  while (base >= 0 && available[base]?.deltaKind !== "FULL") base--;
+  if (base < 0 || available.at(-1)?.id !== target.id) return null;
+  const chain = available.slice(base);
+  if (!chain.every((row, index) => row.versionNumber === last - chain.length + 1 + index &&
+    hasValidSnapshot(row, index === 0 ? "FULL" : "DELTA"))) return null;
+  return reconstructPayload(target, chain, true);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function hasValidSnapshot(row: VersionRowRaw, kind: "FULL" | "DELTA") {
+  if (row.deltaKind !== kind || !isRecord(row.snapshot)) return false;
+  if (kind === "FULL") return true;
+  return Object.entries(row.snapshot).every(([field, value]) =>
+    !["__proto__", "constructor", "prototype"].includes(field) && isRecord(value) &&
+    (value["__deleted"] === true || (Object.hasOwn(value, "value") && !value["__deleted"])));
+}
+
+function reconstructPayload(target: VersionRowRaw, rows: VersionRowRaw[], strictEnvelope = false): ReconstructedVersion | null {
   // The DB snapshot column stores plain data (for FULL) or delta patches
   // (for DELTA), NOT wrapped in VersionPayload. We wrap them here using
   // the deltaKind column to determine the correct envelope.
@@ -80,21 +125,20 @@ export async function getVersionPayload(
     ) as VersionPayload,
   }));
 
-  let reconstructed = reconstructVersion(chain, versionNumber);
-  if (!reconstructed) return null;
+  let reconstructed = reconstructVersion(chain, target.versionNumber);
 
   // Some seed-script snapshots store {id, data: {...}, sourceOrigin}.
   // If the reconstructed payload has a "data" key that's an object
   // (and not a plain field like "description"), unwrap it.
   if (
-    reconstructed &&
-    typeof reconstructed === "object" &&
-    "data" in reconstructed &&
-    typeof reconstructed["data"] === "object" &&
-    reconstructed["data"] !== null &&
-    !Array.isArray(reconstructed["data"]) &&
-    "id" in reconstructed
+    isRecord(reconstructed["data"]) &&
+    ("id" in reconstructed || (strictEnvelope && reconstructed["kind"] === "FULL"))
   ) {
+    // Historical source validation needs to see every authored field. An
+    // envelope may carry provenance, but cannot hide separate content.
+    if (strictEnvelope && Object.keys(reconstructed).some(field => ![
+      "id", "kind", "data", "sourceOrigin", "sourceId", "sourceVersionId", "userId", "createdAt", "updatedAt",
+    ].includes(field))) return null;
     reconstructed = reconstructed["data"] as Record<string, unknown>;
   }
 
@@ -125,8 +169,7 @@ interface VersionRowRaw {
 async function fetchVersionRows(
   targetType: ReconstructableType,
   targetId: string,
-  versionNumber: number,
-  exact = false,
+  selectVersion: (id: AnyPgColumn, number: AnyPgColumn) => SQL,
 ): Promise<VersionRowRaw[]> {
   switch (targetType) {
     case "PRIMITIVE": {
@@ -140,7 +183,7 @@ async function fetchVersionRows(
           snapshot: primitiveVersions.snapshot,
         })
         .from(primitiveVersions)
-        .where(and(eq(primitiveVersions.primitiveId, numId), exact ? eq(primitiveVersions.versionNumber, versionNumber) : lte(primitiveVersions.versionNumber, versionNumber)))
+        .where(and(eq(primitiveVersions.primitiveId, numId), selectVersion(primitiveVersions.id, primitiveVersions.versionNumber)))
         .orderBy(primitiveVersions.versionNumber);
       return rows;
     }
@@ -153,20 +196,20 @@ async function fetchVersionRows(
           snapshot: capabilityVersions.snapshot,
         })
         .from(capabilityVersions)
-        .where(and(eq(capabilityVersions.capabilityId, targetId), exact ? eq(capabilityVersions.versionNumber, versionNumber) : lte(capabilityVersions.versionNumber, versionNumber)))
+        .where(and(eq(capabilityVersions.capabilityId, targetId), selectVersion(capabilityVersions.id, capabilityVersions.versionNumber)))
         .orderBy(capabilityVersions.versionNumber);
       return rows;
     }
     case "EFFECT": {
       return db.select({id: effectVersions.id, versionNumber: effectVersions.versionNumber,
         deltaKind: effectVersions.deltaKind, snapshot: effectVersions.snapshot}).from(effectVersions)
-        .where(and(eq(effectVersions.effectId, targetId), exact ? eq(effectVersions.versionNumber, versionNumber) : lte(effectVersions.versionNumber, versionNumber)))
+        .where(and(eq(effectVersions.effectId, targetId), selectVersion(effectVersions.id, effectVersions.versionNumber)))
         .orderBy(effectVersions.versionNumber);
     }
     case "ITEM": {
       return db.select({id: itemVersions.id, versionNumber: itemVersions.versionNumber,
         deltaKind: itemVersions.deltaKind, snapshot: itemVersions.snapshot}).from(itemVersions)
-        .where(and(eq(itemVersions.itemId, targetId), exact ? eq(itemVersions.versionNumber, versionNumber) : lte(itemVersions.versionNumber, versionNumber)))
+        .where(and(eq(itemVersions.itemId, targetId), selectVersion(itemVersions.id, itemVersions.versionNumber)))
         .orderBy(itemVersions.versionNumber);
     }
     case "CHARACTER": {
@@ -178,7 +221,7 @@ async function fetchVersionRows(
           snapshot: characterVersions.snapshot,
         })
         .from(characterVersions)
-        .where(and(eq(characterVersions.characterId, targetId), exact ? eq(characterVersions.versionNumber, versionNumber) : lte(characterVersions.versionNumber, versionNumber)))
+        .where(and(eq(characterVersions.characterId, targetId), selectVersion(characterVersions.id, characterVersions.versionNumber)))
         .orderBy(characterVersions.versionNumber);
       return rows;
     }
@@ -193,7 +236,7 @@ async function fetchVersionRows(
           snapshot: heritageVersions.snapshot,
         })
         .from(heritageVersions)
-        .where(and(eq(heritageVersions.templateId, targetId), exact ? eq(heritageVersions.versionNumber, versionNumber) : lte(heritageVersions.versionNumber, versionNumber)))
+        .where(and(eq(heritageVersions.templateId, targetId), selectVersion(heritageVersions.id, heritageVersions.versionNumber)))
         .orderBy(heritageVersions.versionNumber);
       return rows;
     }

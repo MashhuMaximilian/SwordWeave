@@ -25,11 +25,12 @@ export const workspaceCreateSchema = z.object({
   category: z.enum(["LINEAGE", "UPBRINGING", "MANIFEST", "ITEM"]),
   draft: z.record(z.string(), z.unknown()),
   existingId: z.string().optional(),
+  expectedVersionId: z.uuid().optional(),
   mirrored: z.boolean().optional(),
   target: z.string().optional(),
   path: z.array(z.string()).optional(),
   expectedHash: z.string().nullable().optional(),
-});
+}).refine(value => !value.expectedVersionId || Boolean(value.existingId), "Select a library piece for this version.");
 export async function executeWorkspaceCreate(id: string, userId: string, raw: unknown): Promise<Record<string, unknown>> {
     const body = workspaceCreateSchema.parse(raw);
     const hash = createHash("sha256")
@@ -83,13 +84,16 @@ export async function executeWorkspaceCreate(id: string, userId: string, raw: un
           (n) => n.key === `${body.kind}:${body.existingId}`,
         );
         if (!node) throw new Error("Library piece not found.");
+        if (body.expectedVersionId && (node.versionId !== body.expectedVersionId || node.latestVersionId !== body.expectedVersionId || node.data["workspaceVersionIssue"])) {
+          throw new WorkspaceConflict("The selected library version has changed. Review the current version before attaching it.");
+        }
         candidate = node;
         const type =
           node.kind === "heritage"
             ? `${node.data["kind"]}_TEMPLATE`
             : node.kind.toUpperCase();
         const access = await db.execute(
-          sql`select ${visibilityCondition(type, sql`${node.id}`, sql`${node.userId}`, userId)} as allowed`,
+          sql`select ${visibilityCondition(type, sql`${node.id}`, sql`${node.userId}`, userId, sql`${node.data["isPublic"] === true}`)} as allowed`,
         );
         if (
           !before.edges.some((e) => e.child === node.key) &&

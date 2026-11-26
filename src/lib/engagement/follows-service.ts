@@ -13,6 +13,7 @@
 import { and, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { follows, users } from "@/db/schema";
+import { withPublishingTransaction } from "@/lib/publishing/save-transaction";
 
 export interface FollowResult {
   following: boolean;
@@ -42,16 +43,12 @@ export async function followUser(input: {
     throw new Error("Target user not found");
   }
 
-  // Insert (idempotent via unique index on (follower, following))
-  try {
+  await withPublishingTransaction(async () => {
     await db.insert(follows).values({
       followerId: followerUserId,
       followingId: followingUserId,
-    });
-  } catch (err) {
-    // Already following — no-op
-    if (!(err instanceof Error && err.message.includes("unique"))) throw err;
-  }
+    }).onConflictDoNothing({ target: [follows.followerId, follows.followingId] });
+  });
 
   return getFollowCounts(followerUserId, followingUserId);
 }
@@ -65,14 +62,14 @@ export async function unfollowUser(input: {
 }): Promise<FollowResult> {
   const { followerUserId, followingUserId } = input;
 
-  await db
+  await withPublishingTransaction(async () => db
     .delete(follows)
     .where(
       and(
         eq(follows.followerId, followerUserId),
         eq(follows.followingId, followingUserId),
       ),
-    );
+    ));
 
   return getFollowCounts(followerUserId, followingUserId);
 }

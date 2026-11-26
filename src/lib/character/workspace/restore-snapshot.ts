@@ -2,6 +2,7 @@ import { eq, getTableColumns } from "drizzle-orm";
 import { db } from "@/db/client";
 import * as s from "@/db/schema";
 import type { WorkspaceGraph } from "./model";
+import { currentForkGrants, recordCharacterForkGrants } from "./fork-grants";
 import { materializeWorkspace } from "./materialize";
 import { readWorkspace } from "./read";
 import { recomputeBuSpent } from "@/lib/engine/recompute-bu-spent";
@@ -13,6 +14,13 @@ export function buildFoundationRestore(foundation: Record<string, unknown>): Rec
   return Object.fromEntries(Object.entries(foundation).filter(([key]) => allowed.has(key)));
 }
 export async function restoreWorkspaceSnapshot(characterId: string, userId: string, snapshot: { foundation: Record<string, unknown>; graph: WorkspaceGraph }) {
+  const roots = snapshot.graph.edges.filter(edge => edge.parent === null);
+  const targetCapabilities = roots.filter(edge => edge.child.startsWith("capability:"));
+  // A foundation undo rebuilds junction rows, including untouched placements.
+  // Preserve only grants that exist now and match the restored occurrence exactly.
+  const grants = await currentForkGrants(characterId, targetCapabilities.map(edge => edge.child.slice("capability:".length)));
+  const unchangedGrants = grants.filter(grant => targetCapabilities.some(edge =>
+    edge.child === `capability:${grant.capabilityId}` && edge.id === grant.rootEdgeId && edge.versionId === grant.versionId));
   const currentItems = await db.select().from(s.characterItems).where(eq(s.characterItems.characterId, characterId));
   const equipped = new Map(currentItems.map(item => [item.itemId, item.equipped]));
   await db.update(s.characters).set(buildFoundationRestore(snapshot.foundation)).where(eq(s.characters.id, characterId));
@@ -21,7 +29,7 @@ export async function restoreWorkspaceSnapshot(characterId: string, userId: stri
   await db.delete(s.characterEffects).where(eq(s.characterEffects.characterId, characterId));
   await db.delete(s.characterHeritages).where(eq(s.characterHeritages.characterId, characterId));
   await db.delete(s.characterItems).where(eq(s.characterItems.characterId, characterId));
-  for (const edge of snapshot.graph.edges.filter(edge => edge.parent === null)) {
+  for (const edge of roots) {
     const node = snapshot.graph.nodes.find(node => node.key === edge.child);
     if (!node || !edge.data) throw new Error("The saved build snapshot is incomplete.");
     const table = node.kind === "primitive" ? s.characterPrimitives : node.kind === "capability" ? s.characterCapabilities : node.kind === "effect" ? s.characterEffects : node.kind === "heritage" ? s.characterHeritages : s.characterItems;
@@ -40,5 +48,6 @@ export async function restoreWorkspaceSnapshot(characterId: string, userId: stri
     else await db.insert(s.characterItems).values(row as typeof s.characterItems.$inferInsert);
   }
   await materializeWorkspace(await readWorkspace(characterId), userId, Number(snapshot.foundation["level"]));
+  await recordCharacterForkGrants(characterId, unchangedGrants);
   await recomputeBuSpent(characterId);
 }

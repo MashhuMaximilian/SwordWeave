@@ -50,6 +50,7 @@
  * existing CapabilityCard uses (sw:itemcap:<itemId>:<capId>).
  */
 
+import { Markdown } from "@/components/ui/markdown";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   Shield,
@@ -479,9 +480,7 @@ function ItemContainerCard({
       <button type="button" className="sw-character-item-expand" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? "Hide contents" : `Contents · ${item.primitiveLinks.length} primitives · ${item.capabilityLinks.length} capabilities · ${item.effectLinks.length} effects`} <span aria-hidden="true">{expanded ? "▾" : "▸"}</span></button>
       {expanded && <div className="sw-character-item-details">
       {item.description && (
-        <p className="mt-2 text-xs leading-relaxed text-muted-foreground line-clamp-3">
-          {item.description}
-        </p>
+        <Markdown className="mt-2 text-xs leading-relaxed text-muted-foreground line-clamp-3">{item.description}</Markdown>
       )}
 
       {/* Nested bundle — capabilities + primitives + effects */}
@@ -542,9 +541,7 @@ function ItemNestedBundle({
                   </span>
                 </div>
                 {cl.capability.verboseDescription && (
-                  <p className="mt-1 text-muted-foreground line-clamp-3">
-                    {cl.capability.verboseDescription}
-                  </p>
+                  <Markdown className="mt-1 text-muted-foreground line-clamp-3">{cl.capability.verboseDescription}</Markdown>
                 )}
                 {cl.capability.effectLinks.length > 0 && (
                   <ul className="mt-2 space-y-1 border-t border-border/30 pt-2">
@@ -555,9 +552,7 @@ function ItemNestedBundle({
                       >
                         <span className="font-medium">{el.effect.name}</span>
                         {el.effect.description && (
-                          <p className="mt-0.5 text-muted-foreground line-clamp-2">
-                            {el.effect.description}
-                          </p>
+                          <Markdown className="mt-0.5 text-muted-foreground line-clamp-2">{el.effect.description}</Markdown>
                         )}
                       </li>
                     ))}
@@ -583,9 +578,7 @@ function ItemNestedBundle({
               >
                 <CharacterComponentName name={el.effect.name} targetType="EFFECT" targetId={el.effectId} />
                 {el.effect.description && (
-                  <p className="mt-0.5 text-muted-foreground line-clamp-3">
-                    {el.effect.description}
-                  </p>
+                  <Markdown className="mt-0.5 text-muted-foreground line-clamp-3">{el.effect.description}</Markdown>
                 )}
               </li>
             ))}
@@ -615,9 +608,7 @@ function ItemNestedBundle({
                   {pl.primitive.category}
                 </div>
                 {pl.primitive.narrativeRule && (
-                  <p className="mt-1 text-muted-foreground line-clamp-3">
-                    {pl.primitive.narrativeRule}
-                  </p>
+                  <Markdown className="mt-1 text-muted-foreground line-clamp-3">{pl.primitive.narrativeRule}</Markdown>
                 )}
               </li>
             ))}

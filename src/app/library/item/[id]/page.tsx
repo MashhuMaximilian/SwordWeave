@@ -1762,7 +1762,7 @@ async function EffectDetail({
                     {parent.name}
                   </Link>
                   <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                    {parent.narrativeDescription?.slice(0, 200)}
+                    {parent.narrativeDescription && <Markdown inline>{parent.narrativeDescription}</Markdown>}
                   </p>
                 </li>
               );
@@ -1836,7 +1836,7 @@ async function EffectDetail({
                     {child.name}
                   </Link>
                   <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                    {child.narrativeDescription?.slice(0, 200)}
+                    {child.narrativeDescription && <Markdown inline>{child.narrativeDescription}</Markdown>}
                   </p>
                 </li>
               );

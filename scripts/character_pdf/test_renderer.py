@@ -47,6 +47,19 @@ def character(count=1, long_rule=False):
                            'practices': [{'practice': 'knowledge', 'total': 13, 'training': 2}]}}
 
 
+def companion(name, current=13, consequences=None):
+    return {'name': name, 'templateName': 'River Scout', 'templateVersion': 4, 'size': 'SMALL',
+            'concept': 'Keeps to the **tree line**.', 'vitality': {'current': current, 'max': 13},
+            'attributes': {'physical': 3, 'mental': 0, 'magical': 0}, 'speed': 25, 'proficiencyBonus': 2,
+            'attackBonus': 5, 'saveDc': 12, 'saves': {'physical': 4, 'mental': 0, 'magical': 0},
+            'practices': [{'name': 'prowess', 'total': 5, 'training': 1},
+                          {'name': 'stealth', 'total': 4}, {'name': 'survival', 'total': 2}],
+            'components': [{'name': 'Field Satchel', 'kind': 'item', 'quantity': 2, 'description': 'Carries scouting supplies.'}],
+            'rules': [{'name': 'Scouting Stride', 'mirrored': False, 'quantity': 1,
+                       'description': 'Use on unmarked ground.', 'source': 'Field Satchel'}],
+            'consequences': consequences or []}
+
+
 class SnapshotTests(unittest.TestCase):
     def test_full_scope_contains_every_acquisition_and_every_authored_description(self):
         source = character(4)
@@ -213,6 +226,103 @@ class SnapshotTests(unittest.TestCase):
 
 @unittest.skipUnless((ASSETS/'fonts/Aubrey.ttf').is_file() and (ASSETS/'styles/aegis/frame.png').is_file(), 'Durable PDF assets are not installed')
 class NativePdfTests(unittest.TestCase):
+    def test_each_companion_starts_a_dedicated_physical_page(self):
+        consequence = {'title': 'Fresh scrape', 'description': '**Binding** holds.',
+                       'duration': 'Until short rest', 'effect': 'Walk carefully.', 'recovery': 'Rest by a fire.'}
+        artwork = BytesIO()
+        Image.new('RGB', (100, 140), (101, 148, 163)).save(artwork, format='PNG')
+        media = {'mimeType': 'image/png', 'data': base64.b64encode(artwork.getvalue()).decode()}
+        frame = {'x': 30, 'y': 80, 'zoom': 1.5}
+        with tempfile.TemporaryDirectory() as directory:
+            for orientation, color in (('landscape', True), ('portrait', False)):
+                options = {'orientation': orientation, 'color': color}
+                plain = render({'character': character(), 'options': options}, Path(directory)/f'{orientation}-plain.pdf')
+                plain_text = [page.extract_text() for page in PdfReader(plain['path']).pages]
+                Path(plain['path']).unlink()
+                fern = {**companion('Fern Watcher', 0, [consequence]), 'portraitKey': 'exact-template',
+                        'portraitFrame': frame}
+                stone = {**companion('Stone Watcher', 9), 'portraitKey': 'exact-template'}
+                source = {**character(), 'companions': [fern, stone], 'pdfMedia': {'companions': {'exact-template': media}}}
+                single = {**source, 'companions': source['companions'][:1]}
+                one = render({'character': single, 'options': options}, Path(directory)/f'{orientation}-single.pdf')
+                self.assertEqual(one['pages'], plain['pages'] + 1)
+                Path(one['path']).unlink()
+                result = render({'character': source, 'options': options}, Path(directory)/f'{orientation}-pair.pdf')
+                pages = PdfReader(result['path']).pages
+                before = plain['pages']
+                self.assertEqual(len(pages), before + 2)
+                self.assertEqual([page.extract_text() for page in pages[:before]], plain_text)
+                starts = [r for r in result['roles'] if r['role'] == 'companion']
+                self.assertEqual([(r['page'], r['panel'], r['companion']) for r in starts],
+                                 [(before + 1, 0, 'Fern Watcher'), (before + 2, 0, 'Stone Watcher')])
+                fern, stone = (page.extract_text() for page in pages[before:])
+                self.assertIn('Companion of The Pagination Witness', fern)
+                self.assertIn('River Scout / version 4 / Small', fern)
+                self.assertIn('VITALITY\n0 / 13', fern)
+                self.assertIn('PHYSICAL', fern)
+                self.assertIn('Prowess', fern)
+                self.assertIn('ACTIVE CONSEQUENCES AND FIELD NOTES', fern)
+                self.assertIn('ABILITIES / EQUIPMENT', fern)
+                self.assertLess(fern.index('ABILITIES / EQUIPMENT'), fern.index('ACTIVE CONSEQUENCES AND FIELD NOTES'))
+                self.assertIn('Fresh scrape', fern)
+                self.assertIn('Binding holds.', fern)
+                self.assertIn('Field Satchel x2', fern)
+                self.assertIn('Scouting Stride', fern)
+                self.assertIn('Stealth: +4', fern)
+                self.assertIn('VITALITY\n9 / 13', stone)
+                self.assertNotIn('Fresh scrape', stone)
+                self.assertNotIn('Fern Watcher', stone)
+                self.assertNotIn('Fern Watcher', pages[before - 1].extract_text())
+                self.assertEqual(len([field for field in result['writing_fields']
+                                      if field['role'] == 'companion_vitality_changes']), 2)
+                portraits = [placement for placement in result['media_placements']
+                             if placement['role'] == 'companion_portrait']
+                self.assertEqual([(image['key'], image['page'], image['panel']) for image in portraits],
+                                 [('companion:exact-template', before+1, 0), ('companion:exact-template', before+2, 0)])
+                self.assertEqual(portraits[0]['portrait_frame'], frame)
+                self.assertEqual(portraits[1]['portrait_frame'], {'x': 50, 'y': 50, 'zoom': 1})
+                self.assertTrue(all(image['clip'] for image in portraits))
+                fern_sections = [entry for entry in result['text_boxes'] if entry['page'] == before+1]
+                rules = [entry for entry in fern_sections if entry['text'].startswith(('Equipment / Field Satchel', 'Scouting Stride', 'Additional practices', 'Creature story'))]
+                field_notes = next(entry for entry in fern_sections if entry['text'] == 'ACTIVE CONSEQUENCES AND FIELD NOTES')
+                printed_consequence = next(entry for entry in fern_sections if entry['text'].startswith('Fresh scrape'))
+                self.assertGreaterEqual(len({entry['box'][0] for entry in rules if entry['panel'] == 0}), 2)
+                self.assertTrue(all((entry['panel'], entry['box'][3]) < (field_notes['panel'], field_notes['box'][1]) for entry in rules))
+                self.assertEqual(field_notes['panel'], printed_consequence['panel'])
+                self.assertLess(field_notes['box'][1], printed_consequence['box'][1])
+                writing = [entry for entry in result['writing_fields'] if entry['page'] == before+1
+                           and entry['panel'] == field_notes['panel'] and entry['role'] == 'companion_notes']
+                self.assertGreaterEqual(len(writing), 2)
+                self.assertGreater(writing[0]['box'][1], printed_consequence['box'][3])
+                if orientation == 'landscape':
+                    left, right = result['fold_gutter']
+                    for entry in result['text_boxes'] + result['writing_fields']:
+                        if entry['page'] > before:
+                            self.assertTrue(entry['box'][2] <= left or entry['box'][0] >= right, entry)
+                Path(result['path']).unlink()
+
+    def test_long_companion_rules_and_consequences_keep_the_same_named_continuation(self):
+        consequence = {'title': 'Field notes for a lasting wound', 'duration': 'Until long rest', 'effect': '', 'recovery': '',
+                       'description': ' '.join(f'longwound{index}' for index in range(1200)) + ' Lasting wound end marker.'}
+        source = {**character(), 'companions': [companion('Fern Watcher', 3, [consequence]), companion('Stone Watcher')]}
+        source['companions'][0]['rules'][0]['description'] = (
+            ' '.join(f'longrule{index}' for index in range(1300)) + ' Long scouting end marker.')
+        with tempfile.TemporaryDirectory() as directory:
+            for orientation in ('portrait', 'landscape'):
+                with self.subTest(orientation=orientation):
+                    result = render({'character': source, 'options': {'orientation': orientation}},
+                                    Path(directory)/f'{orientation}-continuation.pdf')
+                    self.assertFalse(any(placement['role'] == 'companion_portrait' for placement in result['media_placements']))
+                    pages = PdfReader(result['path']).pages
+                    fern_start, stone_start = [r['page'] for r in result['roles'] if r['role'] == 'companion']
+                    self.assertGreater(stone_start, fern_start + 1)
+                    before_stone = [page.extract_text() for page in pages[fern_start:stone_start-1]]
+                    self.assertTrue(all('Fern Watcher' in page for page in before_stone))
+                    continued_text = ' '.join(' '.join(before_stone).split())
+                    self.assertIn('Lasting wound end marker.', continued_text)
+                    self.assertIn('Long scouting end marker.', continued_text)
+                    self.assertNotIn('Lasting wound end marker.', pages[stone_start-1].extract_text())
+
     def test_practice_roll_marks_fit_all_twelve_styles_and_front_layouts(self):
         source = character(0)
         source['pdfDerived']['rollMarkers'] = {'skill_practice_check.'+practice: {
@@ -261,8 +371,10 @@ class NativePdfTests(unittest.TestCase):
                             'density':'compact','color':color,'workbench':True}}, Path(directory)/'proof.pdf')
                         pages = PdfReader(result['path']).pages
                         actual = ' '.join(p.extract_text() for p in pages)
-                        for text in ('mechanicalwitness','verbosewitness','narrativewitness','Debt 7 used / 3 available / 12 max','Item BU 18'):
+                        for text in ('mechanicalwitness','verbosewitness','narrativewitness','40 of 40 BU',
+                                     'Positive purchases total 47 BU.', 'Debt 7 used / 3 available / 12 max','Item BU 18'):
                             self.assertIn(text,actual)
+                        self.assertNotIn('47 of 40 BU', actual)
                         self.assertNotIn('FOLIO',actual)
                         self.assertNotIn('ONGOING / DEFENCES',actual)
                         kinds = {m['kind'] for m in result['roll_annotations']}

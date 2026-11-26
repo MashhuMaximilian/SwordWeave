@@ -4,7 +4,7 @@ import type { WorkspaceGraph, WorkspaceNode } from "@/lib/character/workspace/mo
 import { aggregateRosterSheet } from "@/lib/character/roster-sheet";
 import type { CharacterSheetInput } from "@/lib/engine/sheet";
 
-const mocks = vi.hoisted(() => ({ access: vi.fn(), row: vi.fn(), publication: vi.fn(), visibility: vi.fn(), graph: vi.fn(), sheet: vi.fn(), pins: vi.fn(), conditions: vi.fn(), nodes: vi.fn() }));
+const mocks = vi.hoisted(() => ({ access: vi.fn(), row: vi.fn(), publication: vi.fn(), visibility: vi.fn(), graph: vi.fn(), sheet: vi.fn(), pins: vi.fn(), conditions: vi.fn(), nodes: vi.fn(), companions: vi.fn() }));
 vi.mock("@/db/client", () => ({ db: {
   query: { characters: { findFirst: mocks.row }, publications: { findFirst: mocks.publication } },
   select: () => ({ from: () => ({ where: mocks.conditions }) }),
@@ -15,6 +15,7 @@ vi.mock("@/lib/character/workspace/draft-sheet", () => ({ readDraftSheet: mocks.
 vi.mock("@/lib/character/workspace/effective-primitives", () => ({ effectivePrimitiveLinks: mocks.pins }));
 vi.mock("@/lib/character/workspace/load-nodes", () => ({ loadWorkspaceNodes: mocks.nodes }));
 vi.mock("@/lib/publishing/visibility", () => ({ checkVisibility: mocks.visibility }));
+vi.mock("../companions", () => ({ loadCharacterPdfCompanions: mocks.companions }));
 import { CharacterAccessDenied } from "@/lib/character/can-resolve-character";
 import { characterPdfRuleText, createCharacterPdfSnapshot, loadCharacterPdfSnapshot, type CharacterPdfSource } from "../snapshot";
 
@@ -32,6 +33,7 @@ beforeEach(() => {
   mocks.pins.mockImplementation(async links => links);
   mocks.conditions.mockResolvedValue([]);
   mocks.nodes.mockResolvedValue(new Map());
+  mocks.companions.mockResolvedValue([]);
 });
 
 describe("character PDF snapshot", () => {
@@ -107,6 +109,20 @@ describe("character PDF snapshot", () => {
     expect(JSON.stringify(snapshot.itemLinks)).toContain("Wand effect");
   });
 
+  it("exports the same pin on an independent effect and its graph entry", () => {
+    const effect: WorkspaceNode = { key: "effect:signal", kind: "effect", id: "signal", name: "Marsh Signal", bu: 0,
+      versionId: "signal-v1", latestVersionId: "signal-v2", userId: null, description: "Mark a crossing.", data: {} };
+    const isolated: WorkspaceGraph = { characterId: character.id, revision: 1, nodes: [effect], edges: [
+      { id: "root", parent: null, child: effect.key, category: "MANIFEST", order: 0, isMirrored: false, versionId: effect.versionId },
+    ] };
+    const snapshot = createCharacterPdfSnapshot({ ...character, capabilityLinks: [], heritageLinks: [], itemLinks: [] }, isolated, sheet, "OWNER");
+    expect(snapshot.effectLinks).toEqual([{
+      effectId: "signal", versionId: snapshot.readOnlyGraph.nodes[0]?.versionId,
+      effect: { id: "signal", name: "Marsh Signal", description: "Mark a crossing.", primitiveLinks: [], capabilityLinks: [], effectLinks: [] },
+    }]);
+    expect(snapshot.effectLinks[0]?.["versionId"]).toBe("signal-v1");
+  });
+
   it("uses canonical equipment quantity, two-hand slots and tiny-pouch load", () => {
     const itemNode: WorkspaceNode = { key: "item:gear", kind: "item", id: "gear", name: "Gear", bu: 3,
       versionId: null, latestVersionId: null, userId: null, description: "", data: { size: "LARGE", slotCost: 1, isTwoHanded: true } };
@@ -168,6 +184,19 @@ describe("character PDF snapshot", () => {
     expect(snapshot.viewerPermission).toBe("VIEWER");
     expect(snapshot.notes).toBeNull();
     expect(mocks.visibility).toHaveBeenCalledWith(expect.objectContaining({ viewerId: "follower", targetType: "CHARACTER" }));
+  });
+
+  it("loads private companion state for the authenticated owner only", async () => {
+    const companions = [{ name: "Private Scout", vitality: { current: 2, max: 13 } }];
+    mocks.companions.mockResolvedValue(companions);
+    expect((await loadCharacterPdfSnapshot(character.id, "owner")).companions).toEqual(companions);
+    expect(mocks.companions).toHaveBeenCalledWith(character.id, "owner");
+    const publicPreview = await loadCharacterPdfSnapshot(character.id, "owner", true);
+    expect(publicPreview.viewerPermission).toBe("VIEWER");
+    expect(publicPreview.companions).toBeUndefined();
+    mocks.access.mockResolvedValue({ permission: "EDITOR" });
+    expect((await loadCharacterPdfSnapshot(character.id, "editor")).companions).toBeUndefined();
+    expect(mocks.companions).toHaveBeenCalledTimes(1);
   });
 
   it("fails closed on unexpected access errors", async () => {

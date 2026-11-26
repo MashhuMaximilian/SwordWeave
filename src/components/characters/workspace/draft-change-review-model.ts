@@ -4,7 +4,7 @@ import { effectiveAvailability, supplyPaths, type WorkspaceGraph, type Workspace
 import type { WorkspaceDraftPreview } from "@/lib/character/workspace/draft-types";
 
 export type ReviewPreview = WorkspaceDraftPreview & { beforeGraph?: WorkspaceGraph };
-export type ReviewGraphPreview = Pick<ReviewPreview, "graph" | "beforeGraph" | "beforeSnapshot" | "afterSnapshot"> & {results?:WorkspaceDraftPreview["results"]};
+export type ReviewGraphPreview = Pick<ReviewPreview, "graph" | "beforeGraph" | "beforeSnapshot" | "afterSnapshot" | "companionChanges"> & {results?:WorkspaceDraftPreview["results"]};
 export type ReviewChange = { key: string; title: string; before: string; after: string; format?: "markdown" };
 export type ReviewPieceChange = { key: string; title: string; status: "Added" | "Removed" | "Changed"; facets: (ReviewChange & { label: string })[] };
 export function mechanicalRule(node: WorkspaceNode): string {
@@ -109,5 +109,5 @@ export function draftReviewChanges(preview: ReviewGraphPreview) {
 /** Net changed pieces and character fields, independent of intermediate edits/undo history. */
 export function draftReviewChangeCount(preview: ReviewGraphPreview): number | null {
   const changes = draftReviewChanges(preview);
-  return changes.hasBeforeGraph ? changes.pieces.length + changes.foundation.length : null;
+  return changes.hasBeforeGraph ? changes.pieces.length + changes.foundation.length + (preview.companionChanges?.length ?? 0) : null;
 }

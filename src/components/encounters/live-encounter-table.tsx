@@ -1,4 +1,5 @@
 "use client";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { useState } from "react";
 import Link from "next/link";
 import {
@@ -533,14 +534,14 @@ export function LiveEncounterTable({
           >
             <label>
               Record an event
-              <textarea
-                aria-label="Journal event"
+              <MarkdownEditor
+                ariaLabel="Journal event"
                 rows={3}
                 placeholder="What changed at the table?"
                 maxLength={2000}
                 disabled={disabled}
                 value={entry}
-                onChange={(e) => setEntry(e.target.value)}
+                onChange={setEntry}
               />
             </label>
             <button
@@ -568,7 +569,7 @@ export function LiveEncounterTable({
                   <small>
                     Round {e.value.round} · {e.value.phase}
                   </small>
-                  <p>{e.value.text}</p>
+                  <Markdown>{e.value.text}</Markdown>
                 </div>
                 <button
                   type="button"

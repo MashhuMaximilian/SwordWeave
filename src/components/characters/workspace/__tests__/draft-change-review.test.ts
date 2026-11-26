@@ -1,6 +1,8 @@
 import {describe,expect,it} from "vitest";
 import {draftReviewChanges,draftReviewChangeCount,mechanicalRule,type ReviewGraphPreview} from "../draft-change-review-model";
 import type {WorkspaceGraph,WorkspaceNode} from "@/lib/character/workspace/model";
+import type { WorkspaceDraftPreview } from "@/lib/character/workspace/draft-types";
+import { projectDraftOperation } from "@/lib/character/workspace/local-draft";
 const rule:WorkspaceNode={key:"primitive:1",kind:"primitive",id:"1",name:"Strength",bu:4,versionId:"v1",latestVersionId:"v1",userId:"owner",description:"Narrative flavor",data:{mechanicalOutputText:"Add +1 to Physical.",mechanicalDescription:"Legacy text"}};
 function graph(nodes:WorkspaceNode[]=[rule]):WorkspaceGraph{return {characterId:"c",revision:0,nodes,edges:[{id:"slot",parent:null,child:"primitive:1",category:"LINEAGE",order:0,isMirrored:false}]};}
 function preview(before:WorkspaceGraph,after:WorkspaceGraph):ReviewGraphPreview{return {graph:after,beforeSnapshot:{foundation:{name:"A",level:1},graph:before},afterSnapshot:{foundation:{name:"A",level:1},graph:after}};}
@@ -65,5 +67,31 @@ describe("net review counts", () => {
  });
  it("returns unknown rather than an invented zero when a baseline is unavailable", () => {
   expect(draftReviewChangeCount({graph:graph()})).toBeNull();
+ });
+ it("counts companion attachments with no build edits and cancels a pending addition", () => {
+  const value: WorkspaceDraftPreview = {
+   ...preview(graph(), graph()),
+   // Companion changes should leave the sheet and its cost untouched.
+   sheet: {} as WorkspaceDraftPreview["sheet"], beforeSheet: {} as WorkspaceDraftPreview["sheet"],
+   revision: 0, buSpent: 0, results: [], applied: false,
+  };
+  const first = projectDraftOperation(value, {
+   id: "first", type: "companion", label: "Ash",
+   payload: { action: "add", templateId: "wolf", version: 2, name: "Ash" },
+  }, "owner").preview;
+  const second = projectDraftOperation(first, {
+   id: "second", type: "companion", label: "Moss",
+   payload: { action: "add", templateId: "wolf", version: 2, name: "Moss" },
+  }, "owner").preview;
+  expect(second.companionChanges).toEqual([{ action: "add", id: "first", name: "Ash" }, { action: "add", id: "second", name: "Moss" }]);
+  expect(second.graph).toBe(value.graph);
+  expect(second.sheet).toBe(value.sheet);
+  expect(draftReviewChangeCount(second)).toBe(2);
+  const removed = projectDraftOperation(second, {
+   id: "third", type: "companion", label: "Ash",
+   payload: { action: "remove", attachmentId: "first" },
+  }, "owner").preview;
+  expect(removed.companionChanges).toEqual([{ action: "add", id: "second", name: "Moss" }]);
+  expect(draftReviewChangeCount(removed)).toBe(1);
  });
 });

@@ -373,6 +373,22 @@ export async function POST(request: Request) {
         isMirrored: inst.isMirrored,
       });
     }
+    // Directly selected primitives must follow the same publication and
+    // follower permissions as the library, not the legacy isPublic flag.
+    const directPrimitiveIds = [...new Set(expansionInput.primitives.map((slot) => slot.primitiveId))];
+    if (directPrimitiveIds.length > 0) {
+      const visiblePrimitives = await db
+        .select({ id: primitives.id })
+        .from(primitives)
+        .where(and(
+          inArray(primitives.id, directPrimitiveIds),
+          visibilityCondition("PRIMITIVE", sql`${primitives.id}`, sql`${primitives.userId}`, userId, sql`${primitives.isPublic}`),
+        ));
+      const visibleIds = new Set(visiblePrimitives.map((row) => row.id));
+      if (directPrimitiveIds.some((id) => !visibleIds.has(id))) {
+        return NextResponse.json({ error: "A selected starting primitive is unavailable." }, { status: 400 });
+      }
+    }
     // Direct capability slots (from capabilitiesBySource).
     const directCapabilityIdsBySource: Array<{
       id: string;
@@ -705,7 +721,7 @@ export async function POST(request: Request) {
     if (expandedPrimitiveIds.length) {
       const expandedIds = new Set(expandedPrimitiveIds);
       const costRows = [...new Map([...selectedDefinitions, ...freeRows].filter(p => expandedIds.has(p.id)).map(p => [p.id, p])).values()];
-      if (new Set(expandedPrimitiveIds).size !== costRows.length || expansionInput.primitives.some(slot => !costRows.some(row => row.id === slot.primitiveId && (row.isPublic || row.userId === userId)))) return NextResponse.json({error:"A selected starting primitive is unavailable."},{status:400});
+      if (new Set(expandedPrimitiveIds).size !== costRows.length) return NextResponse.json({error:"A selected starting primitive is unavailable."},{status:400});
       const costs = summarizeExpansionCost(expansion,new Map(costRows.map(p=>[p.id,p.buCost])),new Map(costRows.map(p=>[p.id,p.mirrorBuCredit])));
       buSpent = costs.positiveCost;
       mirrorCredit = costs.mirrorCredit;

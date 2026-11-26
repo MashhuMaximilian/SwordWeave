@@ -18,6 +18,7 @@ export interface CharacterPdfImage {
 }
 export interface CharacterPdfMedia {
   character?: CharacterPdfImage;
+  companions: Record<string, CharacterPdfImage>;
   heritages: Record<string, CharacterPdfImage>;
   icons: Record<string, CharacterPdfImage>;
   warnings: string[];
@@ -46,11 +47,34 @@ export interface CharacterPdfPractice {
   primitiveContributions: CharacterSheet["practices"][number]["primitiveContributions"];
 }
 
+export interface CharacterPdfCompanion {
+  name: string;
+  portraitKey?: string;
+  portraitUrl?: string;
+  portraitFrame?: { x: number; y: number; zoom: number };
+  templateName: string;
+  templateVersion: number;
+  concept: string;
+  size: string;
+  attributes: CharacterSheet["attributes"];
+  vitality: { current: number; max: number };
+  speed: number;
+  proficiencyBonus: number;
+  attackBonus: number;
+  saveDc: number;
+  saves: { physical: number; mental: number; magical: number };
+  practices: { name: string; total: number; training?: 0 | 1 | 2 }[];
+  components: { name: string; kind: string; quantity: number; description: string }[];
+  rules: { name: string; quantity: number; mirrored: boolean; description: string; source: string }[];
+  consequences: { title: string; description: string; effect: string; recovery: string; duration: string }[];
+}
+
 /** A server-resolved, serializable snapshot. No client-supplied character data
  * or private DM notes enter the renderer. Legacy publication generators use
  * these same character/primitiveLinks/readOnlyGraph property names. */
 export interface CharacterPdfSnapshot extends CharacterPdfRecord {
   pdfMedia?: CharacterPdfMedia;
+  companions?: CharacterPdfCompanion[];
   id: string;
   name: string;
   level: number;

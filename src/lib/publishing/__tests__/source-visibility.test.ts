@@ -1,12 +1,12 @@
 import { and,eq } from "drizzle-orm";
-import { follows } from "@/db/schema";
+import { follows, users } from "@/db/schema";
 import { PgDialect } from "drizzle-orm/pg-core";
 import {beforeEach,expect,it,vi} from "vitest";
 const mocks=vi.hoisted(()=>({publication:vi.fn(),user:vi.fn(),follow:vi.fn()}));
 vi.mock("@/db/client",()=>({db:{query:{publications:{findFirst:mocks.publication},users:{findFirst:mocks.user},follows:{findFirst:mocks.follow}}}}));
 import {checkVisibility} from "../visibility";
 const input={targetType:"CAPABILITY",targetId:"cap",ownerId:"author",isPublic:true,viewerId:null};
-beforeEach(()=>vi.clearAllMocks());
+beforeEach(()=>vi.resetAllMocks());
 it("denies source access if a publication permission lookup fails",async()=>{
  mocks.publication.mockRejectedValue(new Error("Unavailable database"));
  expect(await checkVisibility(input)).toEqual({allowed:false,reason:"private"});
@@ -41,4 +41,42 @@ it("resolves the follower-only author from Clerk ID before querying follows",asy
    return {followerId:"viewer-uuid"};
  });
  expect((await checkVisibility({...input,viewerId:"viewer"})).allowed).toBe(true);
+});
+
+const ownerUuid = "238809c4-2ce9-4cd0-9395-1bfd4d771cad";
+const followerCharacter = { ...input, targetType: "CHARACTER", ownerId: ownerUuid, viewerId: "viewer" };
+
+it("checks the actual follow edge when a character owner is an internal UUID", async () => {
+  mocks.publication.mockResolvedValue({ visibility: "FOLLOWERS_ONLY" });
+  mocks.user.mockResolvedValueOnce({ id: "viewer-uuid" }).mockResolvedValueOnce({ id: ownerUuid });
+  mocks.follow.mockResolvedValue({ followerId: "viewer-uuid" });
+
+  expect(await checkVisibility(followerCharacter)).toEqual({ allowed: true });
+  const dialect = new PgDialect();
+  const viewerClause = mocks.user.mock.calls[0]![0].where(users, { eq });
+  const authorClause = mocks.user.mock.calls[1]![0].where(users, { eq });
+  const followClause = mocks.follow.mock.calls[0]![0].where(follows, { and, eq });
+  expect(dialect.sqlToQuery(viewerClause)).toMatchObject({ sql: '"users"."clerk_user_id" = $1', params: ["viewer"] });
+  expect(dialect.sqlToQuery(authorClause)).toMatchObject({ sql: '"users"."id" = $1', params: [ownerUuid] });
+  expect(dialect.sqlToQuery(followClause).params).toEqual(["viewer-uuid", ownerUuid]);
+});
+
+it("denies access to a follower-only character without the owner follow edge", async () => {
+  mocks.publication.mockResolvedValue({ visibility: "FOLLOWERS_ONLY" });
+  mocks.user.mockResolvedValueOnce({ id: "viewer-uuid" }).mockResolvedValueOnce({ id: ownerUuid });
+  mocks.follow.mockResolvedValue(undefined);
+  expect(await checkVisibility(followerCharacter)).toEqual({ allowed: false, reason: "followers_only" });
+  expect(mocks.follow).toHaveBeenCalledOnce();
+});
+
+it.each([
+  { targetType: "CHARACTER", ownerId: "user_character_owner" },
+  { targetType: "CAPABILITY", ownerId: ownerUuid },
+])("keeps Clerk author lookup for $targetType with $ownerId", async ownership => {
+  mocks.publication.mockResolvedValue({ visibility: "FOLLOWERS_ONLY" });
+  mocks.user.mockResolvedValueOnce({ id: "viewer-uuid" }).mockResolvedValueOnce(undefined);
+  expect(await checkVisibility({ ...followerCharacter, ...ownership })).toEqual({ allowed: false, reason: "followers_only" });
+  const authorClause = mocks.user.mock.calls[1]![0].where(users, { eq });
+  expect(new PgDialect().sqlToQuery(authorClause)).toMatchObject({ sql: '"users"."clerk_user_id" = $1', params: [ownership.ownerId] });
+  expect(mocks.follow).not.toHaveBeenCalled();
 });

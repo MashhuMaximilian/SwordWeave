@@ -1,4 +1,5 @@
 "use client";
+import { Markdown } from "@/components/ui/markdown";
 import { sourceDisplayLabel } from "@/lib/publishing/source-display";
 
 import { useRouter, useSearchParams } from "next/navigation";
@@ -252,9 +253,7 @@ export function LibraryCapabilitiesView({
                 </span>
               </header>
 
-              <p className="mt-3 line-clamp-3 text-sm text-muted-foreground">
-                {cap.verboseDescription || "(no description)"}
-              </p>
+              <Markdown className="mt-3 line-clamp-3 text-sm text-muted-foreground">{cap.verboseDescription || "(no description)"}</Markdown>
 
               {cap.primitiveNames.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-1">
@@ -376,9 +375,7 @@ export function LibraryCapabilitiesView({
               <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
                 Description
               </h3>
-              <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                {detailCap.verboseDescription || "(no description)"}
-              </p>
+              <Markdown className="whitespace-pre-wrap text-sm leading-relaxed">{detailCap.verboseDescription || "(no description)"}</Markdown>
             </div>
 
             {/* Primitive composition */}

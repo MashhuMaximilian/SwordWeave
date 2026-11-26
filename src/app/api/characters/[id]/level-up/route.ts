@@ -1,100 +1,43 @@
-import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { eq } from "drizzle-orm";
-import { db } from "@/db/client";
-import { characters } from "@/db/schema";
+import { privateJson } from "@/lib/http/private-json";
 import { cumulativeBuForLevel, getVolatilityCeiling } from "@/lib/engine/bu";
 import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
-import { withCharacterSnapshot } from "@/lib/character/with-character-snapshot";
+import { maxStoredCharacterLevel, writeCharacterAdvancement } from "@/lib/character/advancement";
+import { CharacterAccessDenied } from "@/lib/character/can-resolve-character";
+import { withCharacterMutation } from "@/lib/character/mutation-transaction";
+import { resolveCharacterAccess } from "@/lib/character/resolve-character-access";
 
-/**
- * POST /api/characters/[id]/level-up
- *
- * Level up the character by 1. Phase 8.1 batch 10g: no upper cap
- * (was 20).
- *
- * Effects:
- *   - level += 1
- *   - dm_bonus_bu resets to 0 (per Mashu: DM bonus rolls into next-level progression)
- *   - Volatility ceiling expands (level-up only ever grows or holds
- *     ceiling, so existing mirrors can never become invalid — see
- *     getVolatilityCeiling)
- *
- * Body (optional):
- *   - newVitality: number — update currentVitality (e.g. on long rest)
- *
- * Note: BU spent does NOT reset. DM bonus grants that haven't been
- * spent carry forward into the new level's progression pool, so we
- * zero it out so it's not double-counted. The DB-level
- * Cumulative BU follows the open-ended level progression.
- */
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await auth.protect();
+    const { userId } = await auth.protect();
     const { id } = await params;
+    if (!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(id)) {
+      return privateJson({ error: "Character unavailable." }, { status: 404 });
+    }
     const body: unknown = await request.json().catch(() => ({}));
-
-    const current = await db.query.characters.findFirst({
-      where: eq(characters.id, id),
-    });
-    if (!current) {
-      return NextResponse.json({ error: "Character not found." }, { status: 404 });
+    const raw = body && typeof body === "object" && "newVitality" in body ? body.newVitality : null;
+    const vitality = raw == null ? undefined : Number(raw);
+    if (vitality !== undefined && (!Number.isInteger(vitality) || vitality < 0 || vitality > 2_147_483_647)) {
+      return privateJson({ error: "newVitality must be a non-negative integer." }, { status: 400 });
     }
 
-    // Phase 8.1 batch 10g: no upper level cap — the cumulative BU
-    // formula extrapolates indefinitely. The only constraint is that
-    // level is >= 1 (which is enforced by the DB-level check).
-    const updatePayload: Record<string, unknown> = {
-      level: current.level + 1,
-      // DM bonus rolls into next-level progression, reset so it's not double-counted
-      dmBonusBu: 0,
-      updatedAt: new Date(),
-    };
-
-    if (body && typeof body === "object") {
-      const newVitality = (body as Record<string, unknown>)["newVitality"];
-      if (newVitality !== undefined && newVitality !== null) {
-        const v = Number(newVitality);
-        if (!Number.isInteger(v) || v < 0) {
-          return NextResponse.json(
-            { error: "newVitality must be a non-negative integer." },
-            { status: 400 },
-          );
-        }
-        updatePayload["currentVitality"] = v;
+    const response = await withCharacterMutation(id, async () => {
+      const { character: current } = await resolveCharacterAccess(userId, id, { require: "OWNER" });
+      if (current.level >= maxStoredCharacterLevel) {
+        return privateJson({ error: "This character has reached the maximum stored level." }, { status: 409 });
       }
-    }
-
-    const [updated] = await db
-      .update(characters)
-      .set(updatePayload)
-      .where(eq(characters.id, id))
-      .returning();
-
-    await withCharacterSnapshot(id, async () => {
-      // Snapshot captures fresh state after the update
-    }, { publishedByUserId: null });
-
-    const newCeiling = getVolatilityCeiling(updated?.level ?? 1);
-
-    // Phase 8.3f S4 (Mashu 2026-07-28): level change shifts PB
-    // and max vitality, so the resolver cache must be busted.
-    bustResolverCache(id);
-
-    return NextResponse.json({
-      character: updated,
-      message: `Leveled up to ${updated?.level}. DM bonus BU consumed into progression pool.`,
-      progressionGained:
-        cumulativeBuForLevel(updated?.level ?? current.level + 1) -
-        cumulativeBuForLevel(current.level),
-      volatilityCeiling: newCeiling.maxNegativeBu,
-      volatilityBracket: newCeiling.levelBracket,
+      const { character } = await writeCharacterAdvancement(current, current.level + 1, userId, vitality);
+      const ceiling = getVolatilityCeiling(character.level);
+      return privateJson({
+        character, message: `Leveled up to ${character.level}. DM bonus BU consumed into progression pool.`,
+        progressionGained: cumulativeBuForLevel(character.level) - cumulativeBuForLevel(current.level),
+        volatilityCeiling: ceiling.maxNegativeBu, volatilityBracket: ceiling.levelBracket,
+      });
     });
+    if (response.ok) bustResolverCache(id);
+    return response;
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error.";
-    return NextResponse.json({ error: message }, { status: 400 });
+    if (error instanceof CharacterAccessDenied) return privateJson({ error: "Character unavailable." }, { status: 404 });
+    return privateJson({ error: "Could not level up this character." }, { status: 400 });
   }
 }

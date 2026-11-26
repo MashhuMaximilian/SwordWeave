@@ -17,6 +17,7 @@ import { SourceCollectionLink } from "@/components/collections/source-collection
 import { BookmarkButton } from "@/components/collections/bookmark-button";
 import { ForkSuccessModal } from "@/components/engagement/fork-success-modal";
 import { buildSandboxUrl } from "@/lib/publishing/fork-target";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 
 // =============================================================================
 // LikeForkBar — engagement controls for any library item
@@ -662,7 +663,7 @@ function FlagPopover(props: {
     const topBelow = anchor.bottom + POPOVER_OFFSET;
     const top =
       topAbove >= 8 ? topAbove : Math.min(topBelow, window.innerHeight - popoverHeight - 8);
-    return { top, left };
+    return { top: Math.max(8, top), left };
   })();
 
   // Escape closes the popover.
@@ -689,8 +690,8 @@ function FlagPopover(props: {
         role="dialog"
         aria-label="Flag content"
         aria-modal="true"
-        className="fixed z-[101] w-[280px] rounded-md border border-border bg-card p-3 shadow-xl"
-        style={{ top: pos.top, left: pos.left }}
+        className="fixed z-[101] w-[280px] overflow-y-auto rounded-md border border-border bg-card p-3 shadow-xl"
+        style={{ top: pos.top, left: pos.left, maxHeight: `calc(100dvh - ${pos.top + 8}px)` }}
         // Stop click propagation so clicks inside don't close us.
         onClick={(e) => e.stopPropagation()}
       >
@@ -717,13 +718,16 @@ function FlagPopover(props: {
           })}
         </div>
         {props.flagReason === "OTHER" && (
-          <textarea
+          <MarkdownEditor
+            ariaLabel="Flag note"
             value={props.flagNote}
-            onChange={(e) => props.onChangeNote(e.target.value)}
+            onChange={props.onChangeNote}
             placeholder="Optional note (max 500 chars)"
             maxLength={500}
-            className="mt-2 w-full rounded border border-border bg-background p-2 text-xs text-foreground"
+            className="mt-2"
+            textareaClassName="w-full rounded border border-border bg-background p-2 text-xs text-foreground"
             rows={2}
+            disabled={props.pending}
           />
         )}
         <div className="mt-2 flex gap-2">

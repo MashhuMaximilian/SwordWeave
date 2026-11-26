@@ -27,4 +27,24 @@ describe("Markdown", () => {
     expect(html).toContain("<table>");
     expect(html).not.toContain("**Bold**");
   });
+
+  it("shows formatted prose inside a control without nesting links or blocks", () => {
+    const source = "## River guide\n\n- **Scout** via [the bridge](https://example.com)";
+    const html = renderToStaticMarkup(createElement("button", null,
+      createElement(Markdown, { inline: true, copyRole: "narrative", children: source }),
+    ));
+
+    expect(html).toContain("River guide <strong>Scout</strong> via the bridge");
+    expect(html).toContain('data-copy="narrative"');
+    expect(html).not.toMatch(/<(a|h2|ul|div)\b/);
+  });
+
+  it("keeps raw HTML as text in authored Markdown", () => {
+    const html = renderToStaticMarkup(createElement(Markdown, null,
+      "<b>literal text</b> and [a reference](https://example.com)",
+    ));
+
+    expect(html).toContain("&lt;b&gt;literal text&lt;/b&gt;");
+    expect(html).toContain('href="https://example.com"');
+  });
 });

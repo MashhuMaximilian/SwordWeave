@@ -78,6 +78,15 @@ describe("character PDF transport", () => {
     expect((await requestCharacterPdf("id", DEFAULT_CHARACTER_PDF_OPTIONS, new AbortController().signal)).artworkWarnings).toBe(0);
     expect((await requestCharacterPdf("id", DEFAULT_CHARACTER_PDF_OPTIONS, new AbortController().signal)).artworkWarnings).toBe(0);
   });
+  it("sends the public preview context separately from PDF presentation options", async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response("%PDF-1.7", { headers: { "Content-Type": "application/pdf" } }));
+    vi.stubGlobal("fetch", fetcher);
+    const signal = new AbortController().signal;
+    await requestCharacterPdf("id", DEFAULT_CHARACTER_PDF_OPTIONS, signal, "Orren", true);
+    expect(fetcher).toHaveBeenCalledWith("/api/characters/id/pdf?view=public", expect.objectContaining({
+      body: JSON.stringify(DEFAULT_CHARACTER_PDF_OPTIONS), signal,
+    }));
+  });
   it("does not offer HTML error or empty responses as downloadable PDFs", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(new Response("login", { headers: { "Content-Type": "text/html" } })).mockResolvedValueOnce(new Response("", { headers: { "Content-Type": "application/pdf" } })));
     await expect(requestCharacterPdf("id", DEFAULT_CHARACTER_PDF_OPTIONS, new AbortController().signal)).rejects.toThrow("did not return a PDF");

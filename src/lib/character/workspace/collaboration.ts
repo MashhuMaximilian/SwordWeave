@@ -12,6 +12,13 @@ import type { DraftOperation } from "./draft-types";
 export class CollaborationError extends Error {
   constructor(message: string, readonly status = 400) { super(message); }
 }
+
+export function assertWorkspaceProposalReviewChannel(proposal: CharacterDraftProposal, channel?: "companion") {
+  if (proposal.reviewChannel === "companion" && channel !== proposal.reviewChannel) {
+    throw new CollaborationError("Open your SwordWeave companion conversation to review and approve this proposal.", 409);
+  }
+}
+
 const kind = "character-draft-proposal";
 async function revisionFor(characterId: string) {
   const [row] = await db.select().from(characterWorkspaceState).where(eq(characterWorkspaceState.characterId, characterId));
@@ -36,7 +43,7 @@ export async function readCollaboration(characterId: string, actorId: string): P
   const currentHash = character ? workspaceBuildFingerprint(graph,character) : "";
   return { revision: await revisionFor(characterId), proposals: proposals.map(proposal => ({ ...proposal, authorName: names.get(proposal.authorId) ?? "Collaborator" })), reviews: reviews.map(review => ({ ...review, reviewerName: names.get(review.reviewerId) ?? "Collaborator", changedSinceReview: review.revision !== graph.revision || review.buildHash !== currentHash })) };
 }
-export async function submitCharacterProposal(characterId: string, actorId: string, input: { baseRevision: number; operations: DraftOperation[]; expectedBaseHash?: string; rationale?: string; requestId?: string }) {
+export async function submitCharacterProposal(characterId: string, actorId: string, input: { baseRevision: number; operations: DraftOperation[]; expectedBaseHash?: string; rationale?: string; requestId?: string; reviewChannel?: "companion" }) {
   await resolveCharacterAccess(actorId, characterId, { require: "SUGGESTER" });
   if (!Number.isSafeInteger(input.baseRevision) || input.baseRevision < 0 || !validateProposalOperations(input.operations)) throw new CollaborationError("A proposal needs a valid base revision and between 1 and 100 draft changes.");
   if (JSON.stringify(input.operations).length > 2_000_000) throw new CollaborationError("This proposal is too large.");
@@ -47,7 +54,10 @@ export async function submitCharacterProposal(characterId: string, actorId: stri
     const [existing] = await db.select().from(characterWorkspaceCommands).where(and(eq(characterWorkspaceCommands.characterId, characterId), eq(characterWorkspaceCommands.commandId, id)));
     if (existing) {
       const previous = existing.result as unknown as CharacterDraftProposal;
-      if (previous.authorId !== actorId || JSON.stringify(previous.operations) !== JSON.stringify(input.operations) || previous.baseRevision !== input.baseRevision) throw new CollaborationError("This submission ID was already used for different changes.", 409);
+      if (previous.authorId !== actorId || JSON.stringify(previous.operations) !== JSON.stringify(input.operations)
+        || previous.baseRevision !== input.baseRevision || previous.reviewChannel !== input.reviewChannel) {
+        throw new CollaborationError("This submission ID was already used for different changes.", 409);
+      }
       return previous;
     }
     if (await revisionFor(characterId) !== input.baseRevision) throw new CollaborationError("The character changed. Refresh the draft and review it before proposing changes.", 409);
@@ -55,6 +65,7 @@ export async function submitCharacterProposal(characterId: string, actorId: stri
     const baseHash = workspaceBuildFingerprint(await readWorkspace(characterId), character!);
     if (input.expectedBaseHash && input.expectedBaseHash !== baseHash) throw new CollaborationError("The build changed after preview. Refresh your draft before submitting.",409);
     const proposal: CharacterDraftProposal = { id, baseHash, authorId: actorId, baseRevision: input.baseRevision, operations: input.operations, rationale: input.rationale?.trim().slice(0,2000) ?? "", status: "pending", createdAt: new Date().toISOString() };
+    if (input.reviewChannel) proposal.reviewChannel = input.reviewChannel;
     await writeRecord(characterId, id, kind, proposal);
     return proposal;
   });
@@ -74,7 +85,7 @@ export async function markCharacterReviewed(characterId: string, actorId: string
 }
 
 /** The caller supplies the canonical draft executor; it joins this transaction, so the proposal receipt and every operation commit or roll back together. */
-export async function decideCharacterProposal(characterId: string, actorId: string, proposalId: string, action: "approve" | "reject" | "withdraw", note: string, execute: (baseRevision: number, operations: DraftOperation[], authorId: string) => Promise<{ revision: number }>) {
+export async function decideCharacterProposal(characterId: string, actorId: string, proposalId: string, action: "approve" | "reject" | "withdraw", note: string, execute: (baseRevision: number, operations: DraftOperation[], authorId: string) => Promise<{ revision: number }>, reviewChannel?: "companion") {
   return withDatabaseTransaction(async () => {
     await lockCharacter(characterId);
     const access = await resolveCharacterAccess(actorId, characterId);
@@ -87,6 +98,7 @@ export async function decideCharacterProposal(characterId: string, actorId: stri
       throw new CollaborationError(`This proposal is already ${proposal.status}.`,409);
     }
     if (action === "approve") {
+      assertWorkspaceProposalReviewChannel(proposal, reviewChannel);
       await resolveCharacterAccess(proposal.authorId, characterId, { require: "SUGGESTER" });
       if (proposal.baseRevision !== await revisionFor(characterId)) throw new CollaborationError("This proposal is based on an older build. Nothing was applied; ask the author to refresh and resubmit it.",409);
       const [character] = await db.select().from(characters).where(eq(characters.id, characterId));

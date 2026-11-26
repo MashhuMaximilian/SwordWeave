@@ -6,11 +6,12 @@ import { z } from "zod";
 import { workspaceBuildFingerprint, getWorkspaceDraft, saveWorkspaceDraft, previewWorkspaceDraft, applyWorkspaceDraft, discardWorkspaceDraft, undoWorkspaceDraft } from "@/lib/character/workspace/drafts";
 import { CharacterAccessDenied } from "@/lib/character/can-resolve-character";
 import { WorkspaceConflict } from "@/lib/character/workspace/commands";
+import { CharacterCompanionConflict } from "@/lib/character/companions";
 import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
 type Context = { params: Promise<{ id: string }> };
 function failure(error: unknown) {
   return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to save the draft." }, {
-    status: error instanceof CharacterAccessDenied ? 403 : error instanceof WorkspaceConflict ? 409 : 400,
+    status: error instanceof CharacterAccessDenied ? 403 : error instanceof WorkspaceConflict || error instanceof CharacterCompanionConflict ? 409 : 400,
   });
 }
 export async function GET(_request: Request, { params }: Context) {

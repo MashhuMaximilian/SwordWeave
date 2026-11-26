@@ -1,6 +1,6 @@
 import { effectivePrimitiveLinks } from "./effective-primitives";
 import { applyConditionOverrides, runtimeConditionModifiers } from "@/lib/character/condition-overrides";
-import { activeRestrictions, occurrenceEnabled } from "@/lib/character/consequences/types";
+import { activeRestrictions, occurrenceEnabled, type ConsequenceOccurrence } from "@/lib/character/consequences/types";
 import { effectiveAvailability, instanceSupplyPaths } from "./model";
 import { readWorkspace } from "./read";
 import type { WorkspaceGraph } from "./model";
@@ -11,7 +11,11 @@ import { aggregateCharacterSheet, type CharacterSheetInput } from "@/lib/engine/
 
 /** Uses the same materialized membership rows and two-pass condition evaluation
  * as the sheet page. It intentionally bypasses the live resolver cache. */
-export async function readDraftSheet(characterId: string, currentGraph?: WorkspaceGraph) {
+export async function readDraftSheet(
+  characterId: string, currentGraph?: WorkspaceGraph, proposedVitality?: number,
+  proposedConsequences?: readonly ConsequenceOccurrence[],
+  proposedProgression?: Pick<CharacterSheetInput, "level" | "dmBonusBu">,
+) {
   const row = await db.query.characters.findFirst({
     where: eq(characters.id, characterId),
     with: {
@@ -21,15 +25,17 @@ export async function readDraftSheet(characterId: string, currentGraph?: Workspa
     },
   });
   if (!row) throw new Error("Character not found.");
-  const [graph, conditionRows, pinnedLinks] = await Promise.all([
+  const [graph, occurrences, pinnedLinks] = await Promise.all([
     currentGraph ?? readWorkspace(characterId),
-    db.select().from(characterConsequences).where(eq(characterConsequences.characterId, characterId)),
+    proposedConsequences ?? db.select().from(characterConsequences).where(eq(characterConsequences.characterId, characterId))
+      .then(rows => rows.filter(condition => !condition.deletedAt).map(condition => condition.occurrence)),
     effectivePrimitiveLinks(row.primitiveLinks),
   ]);
-  const occurrences = conditionRows.filter(condition => !condition.deletedAt).map(condition => condition.occurrence);
   const restrictions = activeRestrictions(occurrences);
   const input: CharacterSheetInput = {
     ...row,
+    ...proposedProgression,
+    currentVitality: proposedVitality ?? row.currentVitality,
     practiceSlices: row.practiceSlices as CharacterSheetInput["practiceSlices"],
     primitiveLinks: pinnedLinks.map(link => {
       const primitive = link.primitive;
@@ -49,7 +55,7 @@ export async function readDraftSheet(characterId: string, currentGraph?: Workspa
   };
   const base = aggregateCharacterSheet(input);
   return aggregateCharacterSheet({ ...input, conditionContext: { character: {
-    vitality: row.currentVitality ?? base.vitality.max,
+    vitality: input.currentVitality ?? base.vitality.max,
     vitalityMax: base.vitality.max,
     saveDc: base.dc,
     blockValue: base.behaviorVariables.find(b => b.key === "blockvalue")?.value ?? 0,

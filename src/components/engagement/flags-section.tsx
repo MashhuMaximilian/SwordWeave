@@ -23,6 +23,7 @@
 // unreadable) — the table below the chart still shows them.
 // =============================================================================
 
+import { Markdown } from "@/components/ui/markdown";
 import { useState } from "react";
 import { ChevronDown, ChevronUp, Flag, MessageSquare } from "lucide-react";
 import { createPortal } from "react-dom";
@@ -415,7 +416,7 @@ export function FlagNotesModal(props: {
                 key={n.id}
                 className="rounded-md border border-border bg-background p-3 text-sm"
               >
-                <p className="whitespace-pre-wrap text-foreground">{n.note}</p>
+                <Markdown className="whitespace-pre-wrap text-foreground">{n.note}</Markdown>
                 <p className="mt-2 text-xs uppercase tracking-wide text-muted-foreground">
                   {new Date(n.reportedAt).toLocaleString()}
                 </p>

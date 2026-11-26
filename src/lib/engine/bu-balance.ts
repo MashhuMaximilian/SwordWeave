@@ -104,6 +104,16 @@ export function computeBUBalance(account: BUAccount): BUBalance {
   };
 }
 
+/** Split the sheet's actual spending into ordinary BU, covered debt and excess. */
+export function splitProgressionSpend(spent: number, pool: number, mirrorCredit: number) {
+  const debtUsed = Math.min(Math.max(0, spent - pool), mirrorCredit);
+  const ordinarySpent = Math.max(0, spent - debtUsed);
+  return {
+    ordinarySpent, debtUsed, remaining: Math.max(0, pool - spent),
+    uncoveredExcess: Math.max(0, ordinarySpent - pool),
+  };
+}
+
 /**
  * Check if race/BG BU exceeds recommended caps. Returns warnings.
  * Soft cap: just warnings, no rejection.

@@ -7,7 +7,7 @@ import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { asc, or, eq, isNull, and, sql } from "drizzle-orm";
 import { db } from "@/db/client";
-import { primitives, primitiveMarketClassifications } from "@/db/schema";
+import { primitives } from "@/db/schema";
 import {
   isPrimitiveCategory,
   parseHardModifiers,
@@ -38,18 +38,7 @@ import {
   type CanonicalMechanicalRule,
 } from "@/lib/primitives/mechanical-rule";
 import { MARKET_FAMILIES } from "@/lib/primitives/canonical-market";
-
-async function saveMarketClassification(primitiveId: number, familyKey: string, costTier: string) {
-  const family = MARKET_FAMILIES.find((item) => item.key === familyKey);
-  if (!family) throw new Error("Choose a valid Lexicon Market family.");
-  const tier = Number(costTier.match(/Tier\s+(\d+)/i)?.[1] ?? 0) || null;
-  await db.insert(primitiveMarketClassifications).values({
-    primitiveId, familyKey: family.key, tier, source: "REVIEW", status: "CLASSIFIED", evidence: { authoredIn: "atelier" },
-  }).onConflictDoUpdate({
-    target: primitiveMarketClassifications.primitiveId,
-    set: { familyKey: family.key, tier, source: "REVIEW", status: "CLASSIFIED", evidence: { authoredIn: "atelier" }, updatedAt: new Date() },
-  });
-}
+import { savePrimitiveMarketClassification } from "@/lib/primitives/save-market-classification";
 export async function GET() {
   const { userId: viewerId } = await auth();
   const rows = await db.query.primitives.findMany({
@@ -412,7 +401,7 @@ async function handlePOST(request: Request) {
     // form can surface it. Status 200 (not 4xx) so the form's success path
     // doesn't surface an error toast — this is a deliberate non-event.
     if (outcome.kind === "no-op") {
-      if (effectiveSourceId !== null) await saveMarketClassification(effectiveSourceId, familyKey, costTier);
+      if (effectiveSourceId !== null) await savePrimitiveMarketClassification(effectiveSourceId, familyKey, costTier, "atelier");
       return NextResponse.json(
         {
           primitive: null,
@@ -488,7 +477,7 @@ async function handlePOST(request: Request) {
           { status: 404 },
         );
       }
-      await saveMarketClassification(updated.id, familyKey, costTier);
+      await savePrimitiveMarketClassification(updated.id, familyKey, costTier, "atelier");
 
       // Phase 4: auto-snapshot the updated primitive.
       await recordVersion({
@@ -637,7 +626,7 @@ async function handlePOST(request: Request) {
         { status: 500 },
       );
     }
-    await saveMarketClassification(created.id, familyKey, costTier);
+    await savePrimitiveMarketClassification(created.id, familyKey, costTier, "atelier");
 
     // Phase 9 round 8: when the user saved with isPublic=true, also
     // create a publications row so the library visibility filter

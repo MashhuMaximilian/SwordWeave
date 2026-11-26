@@ -1,4 +1,5 @@
 "use client";
+import { Markdown } from "@/components/ui/markdown";
 import { readJsonResponse } from "@/lib/http/read-json-response";
 
 import { useEffect, useMemo, useState } from "react";
@@ -49,7 +50,7 @@ export function QuickRuleBuilder({ characterId, budget, onBuild, onBuildOwn, onE
     <div className="discovery-rule-choices" role="group" aria-label="Priced rule options">{matching.map(option => <button key={option.key} type="button" aria-pressed={selected?.key === option.key} onClick={() => { setChoice(option.key); setCondition(""); }}><span>{option.name}{option.source === "library" ? " · Library" : ""}</span><span>{option.buCost} BU</span></button>)}</div>
     {!matching.length && <p>No priced option matches. Try another word or use the full builder below.</p>}
     {selected && prepared && <article className="v12-workspace-suggestion-card discovery-rule-preview">
-      <h4>{name.trim() || selected.name}</h4><p data-copy="mechanical">{prepared.mechanicalOutputText}</p><p data-copy="narrative">{prepared.narrativeRule}</p>
+      <h4>{name.trim() || selected.name}</h4><p data-copy="mechanical">{prepared.mechanicalOutputText}</p><Markdown copyRole="narrative">{prepared.narrativeRule}</Markdown>
       <p className="discovery-cost">{selected.buCost} BU · {Math.max(0, budget)} BU available</p>
       {selected.buCost > Math.max(0, budget) && <p>This costs more than the current allowance. You can inspect it in the builder before deciding.</p>}
       {canCondition && <fieldset className="discovery-condition-options"><legend>Only in this situation <span>(optional)</span></legend><div className="discovery-kind-options"><button type="button" aria-pressed={!condition} onClick={() => setCondition("")}>Always</button>{SITUATIONS.map(preset => <button key={preset.key} type="button" title={preset.hint} aria-pressed={condition === preset.key} onClick={() => setCondition(preset.key)}>{preset.label.replace("Actor", "You").replace("HP", "Vitality")}</button>)}<button type="button" onClick={() => { const alternatives = SITUATIONS.filter(preset => preset.key !== condition); const next = alternatives[Math.floor(Math.random() * alternatives.length)]; if (next) setCondition(next.key); }}><Shuffle size={14} />Shuffle situation</button></div><small>Conditions limit when a rule applies. They do not automatically reduce its price. Edit or combine situations in the full builder.</small></fieldset>}

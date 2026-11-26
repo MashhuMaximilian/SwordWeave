@@ -1,3 +1,4 @@
+import { Markdown } from "@/components/ui/markdown";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
@@ -158,7 +159,7 @@ export default async function ProfilePage({
             </div>
 
             {profile.bio && (
-              <p className="mt-3 text-sword-fg">{profile.bio}</p>
+              <Markdown className="mt-3 text-sword-fg">{profile.bio}</Markdown>
             )}
 
             <SocialLinks links={profile.socialLinks} />

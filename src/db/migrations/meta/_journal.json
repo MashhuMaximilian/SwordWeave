@@ -505,6 +505,27 @@
       "when": 1791627852445,
       "tag": "0075_collection_encounter_engagement",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1795564800000,
+      "tag": "0076_character_monster_companions",
+      "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1795564800001,
+      "tag": "0077_companion_operations",
+      "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1795564800002,
+      "tag": "0078_character_workspace_fork_grants",
+      "breakpoints": true
     }
   ]
 }

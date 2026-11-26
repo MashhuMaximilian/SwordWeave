@@ -21,6 +21,7 @@ import type { CharacterSheet } from "@/lib/engine/sheet";
 import { restRecoveryAllowance } from "@/lib/play-state/rest-recovery";
 import { computeLoad, computeEquipSlotsUsed, SIZE_LOAD, type CharacterSize } from "@/lib/engine/encumbrance";
 import type { CharacterPdfPrimitiveLink, CharacterPdfRecord, CharacterPdfSnapshot } from "./types";
+import { loadCharacterPdfCompanions } from "./companions";
 
 type SourcePrimitiveLink = CharacterPdfRecord & {
   primitiveId: number;
@@ -158,7 +159,7 @@ export function createCharacterPdfSnapshot(
   // only effects stay below itemLinks; the renderer must not imply ownership.
   const effectLinks = graph.nodes.filter(node => node.kind === "effect" &&
     supplyPaths(graph, node.key).some(path => !path.item),
-  ).map(node => ({ effectId: node.id, effect: definition(node) }));
+  ).map(node => ({ effectId: node.id, versionId: node.versionId, effect: definition(node) }));
   const practices = sheet.practices.map(practice => ({ ...practice }));
   const saves = Object.fromEntries(sheet.savingThrows.map(save => [save.attribute.toLowerCase(), save.bonus])) as CharacterPdfSnapshot["pdfDerived"]["saves"];
   const custom = { proficiency_bonus: sheet.proficiencyBonus, ...Object.fromEntries(sheet.savingThrows.map(save => [`${save.attribute.toLowerCase()}_saving_throw`, save.bonus])) };
@@ -205,10 +206,11 @@ export function createCharacterPdfSnapshot(
 /** Authorization happens before any component graph, narrative or conditions
  * are loaded. This path only selects data; it never bumps versions, restores
  * state, publishes a character or writes a snapshot to the DB. */
-export async function loadCharacterPdfSnapshot(characterId: string, clerkUserId: string | null): Promise<CharacterPdfSnapshot> {
+export async function loadCharacterPdfSnapshot(characterId: string, clerkUserId: string | null, publicView = false): Promise<CharacterPdfSnapshot> {
   let permission: CharacterPermission;
   try {
-    permission = (await resolveCharacterAccess(clerkUserId, characterId)).permission;
+    const access = await resolveCharacterAccess(clerkUserId, characterId);
+    permission = publicView ? "VIEWER" : access.permission;
   } catch (error) {
     if (!(error instanceof CharacterAccessDenied)) throw error;
     // The public sheet allows catalogue/follower readers as well as explicit
@@ -238,15 +240,17 @@ export async function loadCharacterPdfSnapshot(characterId: string, clerkUserId:
     },
   });
   if (!row) throw new Error("Character not found.");
-  const [graph, primitiveLinks, conditionRows] = await Promise.all([
+  const [graph, primitiveLinks, conditionRows, companions] = await Promise.all([
     readWorkspace(characterId), effectivePrimitiveLinks(row.primitiveLinks),
     db.select({ occurrence: characterConsequences.occurrence }).from(characterConsequences)
       .where(and(eq(characterConsequences.characterId, characterId), isNull(characterConsequences.deletedAt))),
+    permission === "OWNER" && clerkUserId ? loadCharacterPdfCompanions(characterId, clerkUserId) : [],
   ]);
   const [sheet, conflictingNodes] = await Promise.all([
     readDraftSheet(characterId, graph),
     loadWorkspaceNodes(graph.nodes.filter(node => node.data["workspaceVersionIssue"]).map(node => node.key)),
   ]);
-  return createCharacterPdfSnapshot({ ...row, primitiveLinks } as unknown as CharacterPdfSource,
+  const snapshot = createCharacterPdfSnapshot({ ...row, primitiveLinks } as unknown as CharacterPdfSource,
     graph, sheet, permission, conditionRows.map(entry => entry.occurrence), conflictingNodes);
+  return companions.length ? { ...snapshot, companions } : snapshot;
 }

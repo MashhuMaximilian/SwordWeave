@@ -1,4 +1,5 @@
 "use client";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -124,14 +125,14 @@ export function ProfileEditor({ profile }: { profile: ProfileData }) {
         <h2 className="text-lg font-semibold text-sword-fg">Bio</h2>
         <Field
           label={`About you (${bio.length}/500)`}
-          hint="Markdown is supported in future updates."
+          hint="Use Markdown to format your bio."
         >
-          <textarea
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
+          <MarkdownEditor
+            ariaLabel="About you" value={bio}
+            onChange={value => setBio(value)}
             maxLength={500}
             rows={4}
-            className="w-full rounded-md border border-sword-border bg-sword-bg px-3 py-2 text-sword-fg"
+            textareaClassName="w-full rounded-md border border-sword-border bg-sword-bg px-3 py-2 text-sword-fg"
             placeholder="Tell people about your TTRPG style, favorite settings, or anything else."
           />
         </Field>

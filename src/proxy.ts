@@ -43,8 +43,10 @@ const authenticatedProxy = clerkMiddleware(async (auth, req) => {
     return NextResponse.rewrite(destination);
   }
   const isSheet = /^\/characters\/[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\/?$/i.test(req.nextUrl.pathname);
+  const isStagingReview = process.env["MCP_FIXTURE_ENABLED"] === "true" &&
+    process.env["MCP_STAGING_REVIEW_ENABLED"] === "true" && /^\/companion\/review\/[^/]+\/?$/.test(req.nextUrl.pathname);
   // The sheet server page checks publication/share access. Editing routes stay protected.
-  if (isProtectedRoute(req) && !isSheet && !isGuestAtelierPath(req.nextUrl.pathname)) {
+  if (isStagingReview || (isProtectedRoute(req) && !isSheet && !isGuestAtelierPath(req.nextUrl.pathname))) {
     await auth.protect();
   }
   const response = NextResponse.next();
@@ -56,7 +58,10 @@ const authenticatedProxy = clerkMiddleware(async (auth, req) => {
 
 export default function proxy(req: NextRequest, event: NextFetchEvent) {
   const path = req.nextUrl.pathname;
-  if (path === "/api/health/live" || path === "/api/health/ready" || path === "/.well-known/openai-apps-challenge") {
+  // The MCP route verifies its OAuth bearer token. Public discovery, domain
+  // verification, and health checks do not require a Clerk website session.
+  if (path === "/api/health/live" || path === "/api/health/ready" || path === "/api/mcp" ||
+      path === "/.well-known/oauth-protected-resource/api/mcp" || path === "/.well-known/openai-apps-challenge") {
     return NextResponse.next();
   }
   return authenticatedProxy(req, event);

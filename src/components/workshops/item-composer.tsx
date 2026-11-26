@@ -1,4 +1,5 @@
 "use client";
+import { Markdown } from "@/components/ui/markdown";
 import { EditableNumberInput } from "@/components/ui/editable-number-input";
 
 import { useMemo, useState, useTransition } from "react";
@@ -767,7 +768,7 @@ export function ItemComposer({
                         <div className="font-medium">{p.name}</div>
                         {p.narrativeRule && (
                           <div className="truncate text-xs text-muted-foreground">
-                            {p.narrativeRule}
+                            <Markdown inline>{p.narrativeRule}</Markdown>
                           </div>
                         )}
                       </div>

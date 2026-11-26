@@ -1,5 +1,6 @@
 "use client";
 
+import { Markdown } from "@/components/ui/markdown";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ToastViewport, useToasts } from "@/components/ui/toast";
@@ -467,7 +468,7 @@ export function TemplateComposer({
                         </div>
                         {p.narrativeRule && (
                           <div className="truncate text-xs text-muted-foreground">
-                            {p.narrativeRule}
+                            <Markdown inline>{p.narrativeRule}</Markdown>
                           </div>
                         )}
                       </div>

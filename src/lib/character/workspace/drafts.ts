@@ -1,3 +1,4 @@
+import type { CharacterForkGrant } from "./fork-grants";
 import {compactDraftReplay} from "./compact-draft";
 import { canonicalJsonStringify } from "@/lib/publishing/hash-content";
 import { pinnedOperationIssue } from "./pinned-versions";
@@ -5,9 +6,10 @@ import { relocateWorkspacePiece } from "./relocate";
 import { createHash, randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
-import { db, withDatabaseTransaction } from "@/db/client";
+import { db, getDb, withDatabaseTransaction, withExistingTransaction } from "@/db/client";
 import * as s from "@/db/schema";
 import { canResolveCharacter, CharacterAccessDenied } from "@/lib/character/can-resolve-character";
+import { executeCharacterCompanionOperations, requireCharacterCompanionOwner, undoCharacterCompanionAttachments } from "@/lib/character/companions";
 import { readWorkspace } from "./read";
 import { executeWorkspaceCommand, WorkspaceConflict } from "./commands";
 import { executeWorkspaceCreate } from "./create";
@@ -17,7 +19,7 @@ import { readDraftSheet } from "./draft-sheet";
 import type { DraftOperation, WorkspaceDraft, WorkspaceDraftPreview } from "./draft-types";
 import type { WorkspaceGraph } from "./model";
 
-const characterDraftSchema = z.object({
+export const characterDraftSchema = z.object({
   portraitUrl: z.string().trim().max(8192).transform(value => value || null).nullable().optional(),
   portraitFrame: z.object({ x: z.number().min(0).max(100), y: z.number().min(0).max(100), zoom: z.number().min(0.5).max(3) }).strict().optional(),
   name: z.string().trim().min(1).max(200).optional(), notes: z.string().max(50000).nullable().optional(),
@@ -39,10 +41,17 @@ export const draftOperationsSchema = z.array(z.discriminatedUnion("type", [
   z.object({ id: z.string().uuid(), groupId: z.string().uuid().optional(), localBindings: localBindingsSchema, type: z.literal("character"), label: z.string().max(200).optional(), payload: characterDraftSchema }),
   z.object({ id: z.string().uuid(), groupId: z.string().uuid().optional(), localBindings: localBindingsSchema, type: z.literal("create"), label: z.string().max(200).optional(), payload: z.object({
     kind: z.enum(["primitive", "effect", "capability", "heritage", "item"]), category: z.enum(["LINEAGE", "UPBRINGING", "MANIFEST", "ITEM"]),
-    draft: z.record(z.string(), z.unknown()), mirrored: z.boolean().optional(), existingId: z.string().optional(), target: z.string().optional(), path: z.array(z.string()).optional(), expectedHash: z.string().nullable().optional(),
+    draft: z.record(z.string(), z.unknown()), mirrored: z.boolean().optional(), existingId: z.string().optional(), expectedVersionId: z.uuid().optional(), target: z.string().optional(), path: z.array(z.string()).optional(), expectedHash: z.string().nullable().optional(),
   }) }),
   z.object({ id: z.string().uuid(), groupId: z.string().uuid().optional(), localBindings: localBindingsSchema, type: z.literal("command"), label: z.string().max(200).optional(), payload: z.record(z.string(), z.unknown()) }),
   z.object({ id: z.string().uuid(), groupId: z.string().uuid().optional(), localBindings: localBindingsSchema, type: z.literal("move-root"), label: z.string().max(200).optional(), target: z.string().regex(/^(primitive|effect|capability|heritage|item):.+$/), path: z.array(z.string()).length(1), category: z.enum(["LINEAGE", "UPBRINGING", "MANIFEST", "ITEM"]) }),
+  z.object({
+    id: z.string().uuid(), groupId: z.string().uuid().optional(), type: z.literal("companion"), label: z.string().max(200).optional(),
+    payload: z.discriminatedUnion("action", [
+      z.object({ action: z.literal("add"), templateId: z.string().uuid(), version: z.number().int().min(1).max(2147483647), name: z.string().trim().max(200).optional() }).strict(),
+      z.object({ action: z.literal("remove"), attachmentId: z.string().uuid() }).strict(),
+    ]),
+  }),
 ])).max(100).superRefine((ops, ctx) => {
   if (new Set(ops.map(op => op.id)).size !== ops.length) ctx.addIssue({ code: "custom", message: "Each draft action needs a unique ID." });
 });
@@ -86,6 +95,8 @@ export async function saveWorkspaceDraft(characterId: string, userId: string, ra
   return withDatabaseTransaction(async () => {
     const character = await lockCharacter(characterId);
     await access(characterId, userId);
+    if (body.operations.some(operation => operation.type === "companion"))
+      await requireCharacterCompanionOwner(characterId, userId, character);
     const existing = body.draftId ? await readStoredDraft(characterId, userId, body.draftId) : null;
     if (!body.draftId && await getWorkspaceDraft(characterId, userId))
       throw new WorkspaceConflict("There is already a saved draft for this character. Reload it to continue safely.");
@@ -135,19 +146,22 @@ async function moveRoot(characterId: string, operation: Extract<DraftOperation, 
 
 /** Called after permission validation by owner apply / proposal approval. Every
  * child service joins this ONE transaction through AsyncLocalStorage. */
-export async function executeDraftOperations(characterId: string, userId: string, baseRevision: number, rawOperations: DraftOperation[], preview = false, verifiedBase?: { graph: WorkspaceGraph; character: typeof s.characters.$inferSelect }): Promise<WorkspaceDraftPreview> {
+export async function executeDraftOperations(characterId: string, userId: string, baseRevision: number, rawOperations: DraftOperation[], preview = false, verifiedBase?: { graph: WorkspaceGraph; character: typeof s.characters.$inferSelect; verifiedAuthorId?: string; scopedForks?: readonly CharacterForkGrant[] }): Promise<WorkspaceDraftPreview> {
   const operations = draftOperationsSchema.parse(rawOperations) as DraftOperation[];
   return withDatabaseTransaction(async () => withDraftExecution(characterId, userId, async () => {
     const initialCharacter = verifiedBase?.character ?? await lockCharacter(characterId);
     const initial = verifiedBase?.graph ?? await readWorkspace(characterId);
     if (initial.revision !== baseRevision) throw new WorkspaceConflict("The character changed. Review the current sheet before applying this draft.");
     const beforeSheet = await readDraftSheet(characterId, initial);
+    const companionOperations = operations.filter(operation => operation.type === "companion");
+    if (companionOperations.length) await requireCharacterCompanionOwner(characterId, userId, initialCharacter);
     const aliases = new Map<string, string>();
     const results: WorkspaceDraftPreview["results"] = [];
     const changedKeys = new Set<string>();
     let latest = initial;
     let latestCharacter = initialCharacter;
     for (const operation of compactDraftReplay(operations,initial)) {
+      if (operation.type === "companion") continue;
       const current = latest;
       const currentNodes = new Map(current.nodes.map(node => [String(node.key), node]));
       const op = mapDraftIdentities(operation, aliases);
@@ -198,6 +212,15 @@ export async function executeDraftOperations(characterId: string, userId: string
       result["localAuthoredKeys"] = after.nodes.filter(node=>createdIds.has(node.id)&&!currentNodes.has(node.key)).map(node=>node.key);
       results.push({ operationId: operation.id, result });
     }
+    const companions = companionOperations.length
+      ? await executeCharacterCompanionOperations(characterId, userId, initialCharacter, companionOperations, preview)
+      : undefined;
+    if (companions?.changes.length) {
+      const revision = latest.revision + 1;
+      if (!preview) await db.insert(s.characterWorkspaceState).values({ characterId, revision })
+        .onConflictDoUpdate({ target: s.characterWorkspaceState.characterId, set: { revision } });
+      latest = { ...latest, revision };
+    }
     const graph = latest;
     const sheet = await readDraftSheet(characterId, graph);
     // Existing character rules allow an over-budget build with a visible warning.
@@ -206,33 +229,49 @@ export async function executeDraftOperations(characterId: string, userId: string
       warnings.push("This character has conflicting or unavailable pinned versions. Choose a valid version for those pieces before editing their rules or memberships.");
     if (!preview && sheet.volatility.exceeded) throw new Error("This draft exceeds the character’s drawback credit limit.");
     const output: WorkspaceDraftPreview = { graph, revision: graph.revision, buSpent: sheet.buBalance.progressionSpent, beforeSheet, sheet, results, applied: !preview, warnings };
+    if (companions) output.companionChanges = companions.changes;
     {
       const finalCharacter = await lockCharacter(characterId);
       const snapshotFields = ["name", "notes", "backstory", "portraitUrl", "portraitFrame", "lineageName", "lineageDescription", "upbringingName", "upbringingDescription", "manifestName", "level", "startingBu", "dmBonusBu", "attrPhysical", "attrMental", "attrMagical", "attrProficient", "practiceSlices", "size"];
       const foundation = (row: Record<string, unknown>) => Object.fromEntries(snapshotFields.map(key => [key, row[key]]));
       output.beforeSnapshot = { foundation: foundation(initialCharacter), graph: initial };
       output.afterSnapshot = { foundation: foundation(finalCharacter), graph };
+      if (!preview && companions?.changes.length) {
+        output.beforeSnapshot.companions = companions.before;
+        output.afterSnapshot.companions = companions.after;
+      }
       if (!preview) return output;
     }
     const reverse = new Map([...aliases].map(([alias, actual]) => [actual, alias]));
     return { ...output, graph: mapDraftIdentities(graph, reverse), results: mapDraftIdentities(results, reverse), afterSnapshot: mapDraftIdentities(output.afterSnapshot, reverse) };
-  }));
+  }, verifiedBase?.verifiedAuthorId === userId, verifiedBase?.scopedForks));
 }
-class PreviewRollback extends Error { constructor(readonly result: WorkspaceDraftPreview) { super("Rollback successful draft preview"); } }
+class PreviewRollback<T> extends Error { constructor(readonly result: T) { super("Rollback successful draft preview"); } }
+
+/** Owns a transaction or savepoint. Catch only after the preview has rolled back. */
+export async function rollbackWorkspacePreview<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    await getDb().transaction(tx => withExistingTransaction(tx, async () => {
+      throw new PreviewRollback(await work());
+    }));
+  } catch (error) {
+    if (error instanceof PreviewRollback) return error.result as T;
+    throw error;
+  }
+  throw new Error("Draft preview did not complete.");
+}
+
 export async function previewWorkspaceDraft(characterId: string, userId: string, draftId: string, expectedVersion: number): Promise<WorkspaceDraftPreview> {
   await access(characterId, userId);
-  try {
-    await withDatabaseTransaction(async () => {
-      const character = await lockCharacter(characterId);
-      await access(characterId, userId);
-      const draft = await readStoredDraft(characterId, userId, draftId);
-      if (draft.version !== expectedVersion || draft.status !== "editing") throw new WorkspaceConflict("The saved draft changed. Reload it.");
-      const graph = await readWorkspace(characterId);
-      if (workspaceBuildFingerprint(graph, character) !== draft.baseHash) throw new WorkspaceConflict("The character or a referenced rule changed. Your draft is saved; review it before applying.");
-      throw new PreviewRollback(await executeDraftOperations(characterId, userId, draft.baseRevision, draft.operations, true, {graph, character}));
-    });
-  } catch (error) { if (error instanceof PreviewRollback) return error.result; throw error; }
-  throw new Error("Draft preview did not complete.");
+  return rollbackWorkspacePreview(async () => {
+    const character = await lockCharacter(characterId);
+    await access(characterId, userId);
+    const draft = await readStoredDraft(characterId, userId, draftId);
+    if (draft.version !== expectedVersion || draft.status !== "editing") throw new WorkspaceConflict("The saved draft changed. Reload it.");
+    const graph = await readWorkspace(characterId);
+    if (workspaceBuildFingerprint(graph, character) !== draft.baseHash) throw new WorkspaceConflict("The character or a referenced rule changed. Your draft is saved; review it before applying.");
+    return executeDraftOperations(characterId, userId, draft.baseRevision, draft.operations, true, { graph, character });
+  });
 }
 export async function applyWorkspaceDraft(characterId: string, userId: string, draftId: string, expectedVersion: number): Promise<WorkspaceDraftPreview> {
   await access(characterId, userId, true);
@@ -241,6 +280,8 @@ export async function applyWorkspaceDraft(characterId: string, userId: string, d
     await access(characterId, userId, true);
     const draft = await readStoredDraft(characterId, userId, draftId);
     if (draft.version !== expectedVersion) throw new WorkspaceConflict("The draft changed. Review it again.");
+    if (draft.operations.some(operation => operation.type === "companion"))
+      await requireCharacterCompanionOwner(characterId, userId, character);
     if (draft.status === "applied" && draft.appliedResult) return draft.appliedResult;
     const graph = await readWorkspace(characterId);
     if (workspaceBuildFingerprint(graph, character) !== draft.baseHash) throw new WorkspaceConflict("The character or a referenced rule changed. Your draft is saved; review it before applying.");
@@ -273,6 +314,9 @@ export async function undoWorkspaceDraft(characterId: string, userId: string, dr
     const draft = await readStoredDraft(characterId, userId, draftId);
     if (draft.version !== expectedVersion || draft.status !== "applied" || !draft.appliedResult?.beforeSnapshot || !draft.appliedResult.afterSnapshot)
       throw new WorkspaceConflict("This applied draft cannot be restored from a complete snapshot.");
+    const { beforeSnapshot, afterSnapshot } = draft.appliedResult;
+    if (draft.operations.some(operation => operation.type === "companion"))
+      await requireCharacterCompanionOwner(characterId, userId, character);
     const receiptId = `undo-draft:${draftId}`;
     const [receipt] = await db.select().from(s.characterWorkspaceCommands).where(and(eq(s.characterWorkspaceCommands.characterId, characterId), eq(s.characterWorkspaceCommands.commandId, receiptId)));
     if (receipt) return receipt.result as unknown as WorkspaceDraftPreview;
@@ -280,8 +324,13 @@ export async function undoWorkspaceDraft(characterId: string, userId: string, dr
     if (graph.revision !== draft.appliedResult.revision || workspaceBuildFingerprint(graph, character) !== workspaceBuildFingerprint(draft.appliedResult.afterSnapshot.graph, draft.appliedResult.afterSnapshot.foundation))
       throw new WorkspaceConflict("The character changed since this draft was applied. Make a new draft to revise it safely.");
     const beforeSheet = await readDraftSheet(characterId);
-    const { restoreWorkspaceSnapshot } = await import("./restore-snapshot");
-    await restoreWorkspaceSnapshot(characterId, userId, draft.appliedResult.beforeSnapshot);
+    if (beforeSnapshot.companions && afterSnapshot.companions) {
+      await undoCharacterCompanionAttachments(characterId, userId, character, beforeSnapshot.companions, afterSnapshot.companions);
+    }
+    if (draft.operations.some(operation => operation.type !== "companion")) {
+      const { restoreWorkspaceSnapshot } = await import("./restore-snapshot");
+      await restoreWorkspaceSnapshot(characterId, userId, beforeSnapshot);
+    }
     const revision = graph.revision + 1;
     await db.insert(s.characterWorkspaceState).values({ characterId, revision }).onConflictDoUpdate({ target: s.characterWorkspaceState.characterId, set: { revision } });
     const restored = await readWorkspace(characterId);

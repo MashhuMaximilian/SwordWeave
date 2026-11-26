@@ -1,5 +1,6 @@
 import { sql, type SQL } from "drizzle-orm";
 import { db } from "@/db/client";
+import { monsterTemplateVisibility } from "@/lib/monsters/visibility";
 import { visibilityCondition } from "@/lib/publishing/library-query";
 import { verifiedUploadAliases } from "@/lib/runtime/deployment";
 import { isUploadKey } from "./upload-path";
@@ -44,15 +45,11 @@ export async function canReadUploadedArtwork(pathname: string, viewer: string | 
     const historic = versionTable ? sql`OR EXISTS (SELECT 1 FROM ${sql.identifier(versionTable)} v WHERE v.${sql.identifier(fk)}=e.id AND (${snapshotMatches}))` : sql``;
     return sql`SELECT 1 AS allowed FROM ${sql.identifier(table)} e WHERE ((${matches}) ${historic}) AND (${visible} ${shared}) ${kind}`;
   });
+  // Only the upload owner may expose their portrait by publishing a template.
+  const uploader = pathname.split("/")[1];
   queries.push(sql`
     SELECT 1 AS allowed FROM monsters m
-    WHERE (m.visibility = 'PUBLIC' OR m.user_id = ${viewer}
-      OR (m.visibility = 'FOLLOWERS_ONLY' AND EXISTS (
-        SELECT 1 FROM follows f
-        JOIN users a ON a.id = f.following_id
-        JOIN users v ON v.id = f.follower_id
-        WHERE a.clerk_user_id = m.user_id AND v.clerk_user_id = ${viewer}
-      )))
+    WHERE m.user_id = ${uploader} AND ${monsterTemplateVisibility(viewer, sql`m.user_id`, sql`m.visibility`)}
     AND (${matchesReference(sql`m.definition->>'imageUrl'`)} OR EXISTS (
       SELECT 1 FROM monster_versions mv WHERE mv.monster_id = m.id
       AND ${matchesReference(sql`mv.definition->>'imageUrl'`)}

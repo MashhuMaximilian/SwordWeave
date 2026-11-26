@@ -220,6 +220,12 @@ def available_bu(character):
     return max(0, remaining) if isinstance(remaining, (int, float)) else None
 
 
+def ordinary_bu_spent(character):
+    spent = (character.get('buBalance') or {}).get('progressionSpent')
+    used_credit = debt_account(character)['used']
+    return max(0, spent - used_credit) if used_credit is not None else spent
+
+
 def supporting_records(character, primitives):
     """Keep source ownership and full authored text; private DM notes never print."""
     groups = {'capabilities': [], 'effects': [], 'items': [], 'identity': [], 'full_rules': []}
@@ -390,8 +396,10 @@ def supporting_records(character, primitives):
         groups['identity'].append({'ref': '', 'name': 'Player notes', 'body': clean(character['notes'])})
     balance = character.get('buBalance') or {}
     debt = debt_account(character)
+    ordinary_spent = ordinary_bu_spent(character)
     account = unique_text([f"Level / Budget {number(character.get('level')) or '?'} / {number(balance.get('progressionPool')) or '?'} BU.",
-                           f"Character BU spent {number(balance.get('progressionSpent')) or '?'}; {number(available_bu(character)) or '?'} available. Separate Item BU {number(balance.get('itemBuSpent')) or '?'}.",
+                           f"Ordinary BU spent {number(ordinary_spent) or '?'}. {number(available_bu(character)) or '?'} ordinary BU available. Separate Item BU {number(balance.get('itemBuSpent')) or '?'}.",
+                           f"Positive purchases total {number(balance.get('progressionSpent'))} BU." if debt['used'] else '',
                            f"Debt BU: {number(debt['used'])} used / {number(debt['available'])} available / {number(debt['max'])} max ({debt['bracket']}).",
                            f"Agreed bonus BU: {number(balance.get('dmBonusBu'))}." if balance.get('dmBonusBu') is not None else '',
                            'Reusing owned references is not another acquisition. Record agreed changes and their source.'])
@@ -492,6 +500,8 @@ class RuntimeFolio(APPROVED_FOLIO):
         key = kind+':'+source_id
         if kind == 'character':
             payload = self.media_map.get('character')
+        elif portrait and kind == 'companion':
+            payload = (self.media_map.get('companions') or {}).get(source_id)
         elif portrait and kind == 'heritage':
             mapping = self.media_map.get('heritages') or {}
             payload = mapping.get(key+':'+str(version)) if version else None
@@ -767,7 +777,7 @@ class RuntimeFolio(APPROVED_FOLIO):
         self.text(self.one_line(name, 373-name_left, 'Display', 17), name_left, 82, 17, 'Display')
         budget = character.get('buBalance') or {}
         self.text('LEVEL / BU', 388, 79, 6.1, 'Head')
-        value = f"{number(character.get('level')) or '?'} / {number(budget.get('progressionSpent')) or '?'} of {number(budget.get('progressionPool')) or '?'} BU"
+        value = f"{number(character.get('level')) or '?'} / {number(ordinary_bu_spent(character)) or '?'} of {number(budget.get('progressionPool')) or '?'} BU"
         self.plain(value, 388, 90, self.right-388, 8, 9.2)
         self.text(f"Available {number(available_bu(character)) or '?'}  /  Item BU {number(budget.get('itemBuSpent')) or '?'}", 388, 102, 7.2, 'Body')
         self.text(self.debt_text(), 388, 113, 6.6, 'Body')
@@ -849,8 +859,9 @@ class RuntimeFolio(APPROVED_FOLIO):
                                           'kind': kind, 'value': value, 'color': list(rgb), 'baseline': baseline,
                                           'box': self.absolute_box([start, y-unit, x, baseline+size*.25])})
 
-    def attribute_value(self, name, x, y, radius, size):
-        value = number(self.stats['attributes'].get(name.lower()), True) or '?'
+    def attribute_value(self, name, x, y, radius, size, stats=None):
+        stats = self.stats if stats is None else stats
+        value = number(stats['attributes'].get(name.lower()), True) or '?'
         # A safe inner rectangle fits even the narrow diamond/leaf seals. Fit
         # the signed string with the embedded font, preserving whitespace on
         # both sides rather than treating every modifier as one digit.
@@ -890,7 +901,9 @@ class RuntimeFolio(APPROVED_FOLIO):
             words.pop()
         return (' '.join(words) + ' ...') if words else 'See identity record'
 
-    def attribute_card(self, which, x, y, width, height, c=None, dense=False):
+    def attribute_card(self, which, x, y, width, height, c=None, dense=False, stats=None):
+        character_card = stats is None
+        stats = self.stats if character_card else stats
         name, practices = GROUPS[which]
         self.molding(x, y, width, height, .982)
         rx, cy = x + (23 if dense else 27), y + (20 if dense else 25)
@@ -899,24 +912,28 @@ class RuntimeFolio(APPROVED_FOLIO):
         labelx = x + (43 if dense else 53)
         self.strap(labelx, y + (5 if dense else 7), width - (labelx-x) - 6, 14 if dense else 17)
         self.text(name.upper(), labelx+5, y+(8 if dense else 11), 7.5, 'Head', 1)
-        self.attribute_value(name, rx, cy, radius, 14)
+        self.attribute_value(name, rx, cy, radius, 14, stats)
         card = [x, y, x+width, y+height]
         self.paired_metric('SAVE', labelx+4, y+(25 if dense else 30),
                            pdfmetrics.stringWidth('SAVE', 'Head', 6.1),
-                           number(self.stats['saves'].get(name.lower()), True) or '?',
+                           number(stats['saves'].get(name.lower()), True) or '?',
                            9 if dense else 10, 'save_'+name.lower(), card, 6.1, 'Head', cell_width=22)
-        lookup = {row.get('practice', '').lower(): row for row in self.stats['practices']}
+        lookup = {row.get('practice', '').lower(): row for row in stats['practices']}
         label_size = 7.8 if dense else 8.5
         label_width = max(pdfmetrics.stringWidth(p.title(), 'Body', label_size) for p in practices)
         for index, practice in enumerate(practices):
             px, yy = x+12, y+(37+index*9.2 if dense else 51+index*11.5)
             row = lookup.get(practice) or {}
-            self.practice_mark(px+2, yy+3.5, practice, training_level(row, self.stats['pb']))
+            if not character_card and not row:
+                continue
+            if character_card or 'training' in row:
+                self.practice_mark(px+2, yy+3.5, practice, training_level(row, stats['pb']))
             self.paired_metric(practice.title(), px+10, yy, label_width,
                                number(row.get('total'), True) or '?', 8.2 if dense else 9,
                                'practice_'+practice, card, label_size, cell_width=20)
-            end = self.metric_pairs[-1]['cell'][2]-self.origin_x
-            self.axis_marks('skill_practice_check.'+practice, end+3, yy+label_size*.8, x+width-7-end-3)
+            if character_card:
+                end = self.metric_pairs[-1]['cell'][2]-self.origin_x
+                self.axis_marks('skill_practice_check.'+practice, end+3, yy+label_size*.8, x+width-7-end-3)
 
     def attribute(self, which, x, y, width, height, c=None):
         self.attribute_card(which, x, y, width, height+4, c)
@@ -1098,7 +1115,10 @@ class RuntimeFolio(APPROVED_FOLIO):
                 if draw:
                     if entry['continued']:
                         reference = entry['record'].get('ref') or entry['record']['name']
-                        self.text(reference+' / continued', x+4, y, 6.8, 'Head', g=.3)
+                        label = reference+' / continued'
+                        if area == 'companion_details':
+                            label = self.one_line(label, width-8, 'Head', 6.8)
+                        self.text(label, x+4, y, 6.8, 'Head', g=.3)
                     body_y = y+continuation_height
                     if portrait:
                         self.paint_media(portrait, x+4, body_y, entry['portrait_width'], entry['portrait_height'],
@@ -1231,20 +1251,22 @@ class RuntimeFolio(APPROVED_FOLIO):
         self.end()
         self.flow_continuations(pending, 'primitive continuation', 'PRIMITIVES / CONTINUED', primitive=True)
 
-    def landscape_attribute(self, which, y):
+    def landscape_attribute(self, which, y, stats=None):
+        character_card = stats is None
+        stats = self.stats if character_card else stats
         x, width = self.left, self.right-self.left
         name, practices = GROUPS[which]
         self.molding(x, y, width, 43, .982)
         self.seal(x+23, y+21, 17)
-        self.attribute_value(name, x+23, y+21, 17, 13)
+        self.attribute_value(name, x+23, y+21, 17, 13, stats)
         self.strap(x+44, y+5, 53, 14)
         self.text(name.upper(), x+49, y+8, 7.2, 'Head', 1)
         card = [x, y, x+width, y+43]
         self.paired_metric('SAVE', x+46, y+27,
                            pdfmetrics.stringWidth('SAVE', 'Head', 6.1),
-                           number(self.stats['saves'].get(name.lower()), True) or '?',
+                           number(stats['saves'].get(name.lower()), True) or '?',
                            9.2, 'save_'+name.lower(), card, 6.1, 'Head', cell_width=22)
-        lookup = {row.get('practice', '').lower(): row for row in self.stats['practices']}
+        lookup = {row.get('practice', '').lower(): row for row in stats['practices']}
         label_size = 8.1
         column_width = (width-107)/2
         label_widths = [max(pdfmetrics.stringWidth(p.title(), 'Body', label_size)
@@ -1253,13 +1275,17 @@ class RuntimeFolio(APPROVED_FOLIO):
         for index, practice in enumerate(practices):
             xx, yy = x+103+(index%2)*column_width, y+9+(index//2)*18
             row = lookup.get(practice) or {}
-            self.practice_mark(xx, yy+3.5, practice, training_level(row, self.stats['pb']))
+            if not character_card and not row:
+                continue
+            if character_card or 'training' in row:
+                self.practice_mark(xx, yy+3.5, practice, training_level(row, stats['pb']))
             self.paired_metric(practice.title(), xx+8, yy, label_widths[index % 2],
                                number(row.get('total'), True) or '?', 8.8,
                                'practice_'+practice, card, label_size, cell_width=18)
-            end = self.metric_pairs[-1]['cell'][2]-self.origin_x
-            self.axis_marks('skill_practice_check.'+practice, end+3, yy+label_size*.8,
-                            xx+column_width-3-end-3)
+            if character_card:
+                end = self.metric_pairs[-1]['cell'][2]-self.origin_x
+                self.axis_marks('skill_practice_check.'+practice, end+3, yy+label_size*.8,
+                                xx+column_width-3-end-3)
 
     def landscape_access(self, y):
         x, width = self.left, self.right-self.left
@@ -1312,7 +1338,7 @@ class RuntimeFolio(APPROVED_FOLIO):
                              self.character.get('portraitFrame') or {})
         self.text(self.one_line(self.character.get('name') or 'Unnamed character', self.right-identity_left, 'Display', 17), identity_left, 83, 17, 'Display')
         balance = self.character.get('buBalance') or {}
-        self.text(f"LEVEL / BU  {number(self.character.get('level')) or '?'} / {number(balance.get('progressionSpent')) or '?'} of {number(balance.get('progressionPool')) or '?'} BU  /  Available {number(available_bu(self.character)) or '?'}", identity_left+4, 110, 7.6, 'Head')
+        self.text(f"LEVEL / BU  {number(self.character.get('level')) or '?'} / {number(ordinary_bu_spent(self.character)) or '?'} of {number(balance.get('progressionPool')) or '?'} BU  /  Available {number(available_bu(self.character)) or '?'}", identity_left+4, 110, 7.6, 'Head')
         self.text(self.debt_text()+f"  /  Item BU {number(balance.get('itemBuSpent')) or '?'}", identity_left+4, 120, 6.7, 'Body')
         heritages = ' / '.join(clean((link.get('heritage') or {}).get('name')) for link in self.character.get('heritageLinks') or [])
         concept = unique_text([self.character.get('concept'), heritages]).replace('\n', ' / ')
@@ -1394,6 +1420,152 @@ class RuntimeFolio(APPROVED_FOLIO):
         if not records:
             return
         self.flow_continuations(self.make_queue(records), role, title)
+
+    def companion_consequences(self, companion):
+        records = []
+        for entry in companion['consequences']:
+            body = [entry['duration'], entry['description'], entry['effect']]
+            if entry['recovery']:
+                body.append('Recovery: ' + entry['recovery'])
+            records.append({'name': entry['title'], 'body': '\n\n'.join(filter(None, body))})
+        return records
+
+    def companion_records(self, companion):
+        records = []
+        known = {practice for _, practices in GROUPS for practice in practices}
+        extra_practices = [entry for entry in companion['practices'] if entry['name'].lower() not in known]
+        if extra_practices:
+            body = '\n'.join(f"- {entry['name'].replace('_', ' ').title()}: {number(entry['total'], signed=True)}"
+                             for entry in extra_practices)
+            records.append({'name': 'Additional practices', 'body': body})
+        for entry in companion['components']:
+            kind, name = entry['kind'], entry['name']
+            label = 'Equipment' if kind == 'item' else kind.title()
+            quantity = f" x{entry['quantity']}" if entry['quantity'] > 1 else ''
+            records.append({'name': f'{label} / {name}{quantity}', 'body': entry['description']})
+        for entry in companion['rules']:
+            quantity = f" x{entry['quantity']}" if entry['quantity'] > 1 else ''
+            variant = ' / mirrored' if entry['mirrored'] else ''
+            details = [entry['source'] and 'From ' + entry['source'], entry['description']]
+            records.append({'name': entry['name'] + quantity + variant, 'body': '\n\n'.join(filter(None, details))})
+        if companion['concept']:
+            records.append({'name': 'Creature story', 'body': companion['concept']})
+        return records
+
+    def companion_identity(self, companion, name, width):
+        key = companion.get('portraitKey')
+        portrait = self.media({'entity_kind': 'companion', 'source_id': key}, portrait=True) if key else None
+        size = 64 if self.landscape else 72
+        if portrait:
+            self.paint_media(portrait, self.left, 81, size, size, 'companion_portrait', True,
+                             companion.get('portraitFrame') or {})
+        name_left = self.left + (size + 13 if portrait else 4)
+        name_width = self.right - name_left - 4
+        parent = ' '.join(clean(self.character.get('name') or 'Unnamed character').split())
+        template = ' '.join(clean(companion['templateName']).split())
+        source = f"{template} / version {companion['templateVersion']} / {companion['size'].title()}"
+        identity_overflow = []
+        for value, y, point_size, font in [(name, 88, 17, 'Display'), ('Companion of ' + parent, 113, 10, 'Body'),
+                                          (source, 131, 8.5, 'Body')]:
+            line = self.one_line(value, name_width, font, point_size)
+            self.text(line, name_left, y, point_size, font)
+            if line != value:
+                identity_overflow.append(value)
+
+        vitality = companion['vitality']
+        metrics = [
+            ('Vitality', f"{number(vitality['current'])} / {number(vitality['max'])}", 'companion_vitality'),
+            ('Save DC', number(companion['saveDc']), 'companion_save_dc'),
+            ('PB', number(companion['proficiencyBonus'], True), 'companion_proficiency'),
+            ('Attack', number(companion['attackBonus'], True), 'companion_attack'),
+            ('Speed', number(companion['speed']) + ' ft', 'companion_speed'),
+        ]
+        x, top = self.left, 159
+        self.molding(x, top, width, 44, .982)
+        for index, (label, value, role) in enumerate(metrics):
+            cell = width * (.28 if index == 0 else .18)
+            self.text(label.upper(), x+cell/2, top+8, 6.4, 'Head', align='center')
+            point_size = min(13, (cell-14)/max(pdfmetrics.stringWidth(value, 'Head', 1), 1))
+            self.value(value, x+cell/2, top+20, point_size, role)
+            x += cell
+            if index < len(metrics)-1:
+                self.line(x, top+6, x, top+38, .65, .35)
+
+        stats = {'attributes': companion['attributes'], 'saves': companion['saves'],
+                 'pb': companion['proficiencyBonus'],
+                 'practices': [{**entry, 'practice': entry['name']} for entry in companion['practices']]}
+        if self.landscape:
+            for index in range(3):
+                self.landscape_attribute(index, 211+index*48, stats)
+            top = 360
+        else:
+            card = (width-2*self.gap)/3
+            for index in range(3):
+                self.attribute_card(index, self.left+index*(card+self.gap), 213, card, 76, dense=True, stats=stats)
+            top = 302
+        self.text('VITALITY / SESSION CHANGES', self.left+4, top+5, 6.3, 'Head')
+        self.write(self.left+133, top, width-141, 15, 'companion_vitality_changes')
+        return top+25, identity_overflow
+
+    def companion_section(self, pending, title, x, top, width, bottom, columns=1, empty=''):
+        self.band(title, x, top, width, True)
+        top += 24
+        if not pending:
+            return top + (self.plain(empty, x+4, top, width-8) if empty else 0)
+        size = (width-(columns-1)*self.gap)/columns
+        regions = [(x+i*(size+self.gap), top, size, bottom) for i in range(columns)]
+        before = (sum(len(item['paragraph'].getPlainText()) for item in pending), len(pending))
+        self.flow_queue(pending, regions, 'companion_details')
+        after = (sum(len(item['paragraph'].getPlainText()) for item in pending), len(pending))
+        if after >= before:
+            raise ValueError('A companion rule could not progress through a continuation panel')
+        return max(self.last_flow_ends)
+
+    def companion_field_notes(self, consequences, top, width, bottom, show_empty):
+        top = self.companion_section(consequences, 'ACTIVE CONSEQUENCES AND FIELD NOTES',
+                                     self.left, top, width, bottom-42,
+                                     empty='None recorded.' if show_empty else '')
+        for y in range(math.ceil(top+6), math.floor(bottom-14), 16):
+            self.write(self.left+4, y, width-8, 16, 'companion_notes')
+
+    def companion_pages(self):
+        width = self.right - self.left
+        bottom = self.height - 48
+        for companion in self.character.get('companions') or []:
+            if self.panel:
+                raise RuntimeError('A companion must start on a fresh physical page')
+            name = ' '.join(clean(companion['name']).split())
+            consequences = self.make_queue(self.companion_consequences(companion))
+            abilities = self.make_queue(self.companion_records(companion))
+            first = True
+            needs_field_notes = True
+            while first or consequences or abilities or (self.landscape and self.panel == 1):
+                pending = bool(consequences or abilities)
+                role = 'companion' if first else 'companion continuation' if pending else 'companion notes'
+                title = 'COMPANION' if first else 'COMPANION / CONTINUED' if pending else 'COMPANION / ACTIVE CONSEQUENCES AND FIELD NOTES'
+                self.begin(role, name + ' / ' + title)
+                self.roles[-1]['companion'] = name
+                if first:
+                    top, identity_overflow = self.companion_identity(companion, name, width)
+                    if identity_overflow:
+                        identity = {'name': 'Companion identity', 'body': '\n\n'.join(identity_overflow)}
+                        abilities.appendleft(self.make_queue([identity])[0])
+                else:
+                    top = 85 + self.plain(name, self.left+4, 85, width-8, 13, 15) + 8
+                # The folded front keeps both rules columns below its stat cards.
+                # Field notes start on the facing panel, leaving a useful area
+                # for consequences and handwriting on the same physical page.
+                overview_panel = first and self.landscape
+                has_field_notes = not overview_panel and (needs_field_notes or bool(consequences) or not pending)
+                if abilities:
+                    reserved = (154 if consequences else 76) if has_field_notes else 0
+                    top = self.companion_section(abilities, 'ABILITIES / EQUIPMENT', self.left, top, width,
+                                                 bottom-reserved, columns=2) + 8
+                if has_field_notes:
+                    self.companion_field_notes(consequences, top, width, bottom, needs_field_notes)
+                    needs_field_notes = False
+                self.end()
+                first = False
 
     def equipment_pages(self):
         items = self.groups['items']
@@ -1565,6 +1737,7 @@ class RuntimeFolio(APPROVED_FOLIO):
             for y in range(top, 541, 16):
                 self.write(self.left+5, y, self.right-self.left-10, 16, 'session_notes')
             self.end()
+        self.companion_pages()
         self.c.save()
         reader = PdfReader(BytesIO(self.stream.getvalue()))
         writer = PdfWriter()

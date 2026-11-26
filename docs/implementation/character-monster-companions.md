@@ -1,0 +1,48 @@
+# Monster companions on a character sheet
+
+First-release requirements confirmed 2026-11-24. A character can have one or more monsters as companions. Players add and remove them in character sheet **Edit** mode. Each companion has an independent play sheet with its own Vitality and consequences, and a way to open its Bestiary sheet. Each printable companion starts on a dedicated page in the character PDF. Reuse the existing monster template, play copy and sheet components. The [focused EGM Stage 7 review](character-monster-companions-stage-7.md) records the decision and its trade-offs.
+
+## Player flow
+
+1. In **Edit → Companions**, select an eligible existing monster and optionally name the individual creature. Add several monsters in one draft, including more than one individual from the same template. **Review changes** shows the additions and removals. **Save & return to play** creates and attaches the new play copies. **Discard draft** drops pending changes.
+2. In **Play → Companions**, select **Open play sheet** to open the existing monster play sheet. This is where the player updates that creature's Vitality and consequences. The companion has its own state even when another companion uses the same monster template.
+3. Select **View Bestiary** to open the pinned template in the in-sheet preview when the viewer can access it. The full Bestiary link in the preview uses the same version. Keep the list and reference view available in Play.
+4. Use **Print** or **Download PDF** from the character sheet to get the character pages followed by each authorized companion's own sheet page. A companion that needs more space continues on its own labeled pages.
+
+## Existing pieces to reuse
+
+- The [character sheet](../../src/components/characters/character-sheet-view.tsx) and [workspace](../../src/components/characters/workspace/character-build-workspace.tsx) already distinguish Play from Edit and show revisioned changes before saving. Add companion operations to the draft and commit them through the same save flow.
+- The [monster service](../../src/lib/monsters/service.ts) creates private play copies pinned to an eligible existing template version. The [monster play sheet](../../src/app/monsters/play/%5Bid%5D/page.tsx) and [copy API](../../src/app/api/monsters/copies/%5Bid%5D/route.ts) already track Vitality and consequences per copy. Reuse the [compact template preview](../../src/components/monsters/monster-template-preview.tsx) and the [modal pattern used by encounters](../../src/components/encounters/encounter-preview.tsx) for the Bestiary action.
+- Both **Print** and **Download PDF** use the same character PDF bytes. Add companion pages to that pipeline. [Character PDF controls](../../src/components/characters/character-pdf-actions.tsx) · [PDF data and access](../publications/character-pdf-local-implementation.md#data-and-access)
+
+## Proposed permissions and lifecycle
+
+For the initial implementation, the character owner manages attachments and owns the linked play copies. This fits the existing private play-copy access model. An authenticated collaborator with character access can open a permitted Bestiary reference if the template and its dependencies are readable to them. Private play state and the corresponding PDF pages are visible to the copy owner through the private character sheet. Public character views and their exports omit these attachments. Treat joint editing and shared play-copy access as separate permission decisions if needed.
+
+Create a stable attachment ID and a distinct existing `monster_copies` record per individual on committed Save. Bind the draft to the character revision, selected monster version and requested copy name. Recheck ownership, revision and source access at commit. Write the copies, association changes and receipt in the same transaction so retrying a lost response cannot create duplicates. Keep runtime state outside the character build graph and budget.
+
+Detach by attachment ID and leave the owned play copy available. Plan for workspace Undo to reverse the attachment changes without resetting or erasing any play state. Block explicit deletion of a copy while attached. Character deletion removes the links and preserves the independently owned copies. Character clones and historical build restores leave private copy ownership with the original owner and do not inherit attachments. If the Bestiary source later becomes inaccessible, hide the reference action and preserve the copy through its existing pinned access path. Confirm these lifecycle cases in the implementation-readiness check.
+
+## Dedicated character PDF pages
+
+- On the character's existing private **Print** or **Download PDF** action, append a separate sheet for every authorized saved companion, in character sheet order. Start each companion on a new physical PDF page, including in landscape. Label the page with the companion name and parent character. Add named continuation pages when the content needs more room.
+- Use the companion's pinned monster definition and saved play state at export time. Print its useful sheet details, including attributes, movement, relevant practices, abilities and equipment, current and maximum Vitality, and active consequences with room to track changes during play. State changes in the PDF are paper annotations.
+- Extend the server-owned [character snapshot](../../src/lib/character-pdf/snapshot.ts) and [snapshot type](../../src/lib/character-pdf/types.ts). After authorizing the character, resolve eligible copies and play state with a read-only loader that reuses the [monster play calculation](../../src/lib/monsters/play.ts). Avoid calling the copy GET route from export because that route can initialize state. Omit unauthorized rows before media loading and serialization. Keep export private and no-store.
+- Extend the [PDF renderer](../../scripts/character_pdf/renderer.py) using the character sheet's selected layout and print styling. Check landscape fold margins, portrait flow, stable page order, long Markdown descriptions and consequences, and actual-size paper readability. A character with no authorized companions keeps the usual page set.
+
+## Acceptance checks
+
+- Add two companions from the same accessible template in Edit mode. Save, reload, open both play sheets and the eligible Bestiary preview. Change one companion's Vitality and record a consequence. Reopen both sheets and verify only the intended copy changed.
+- Discard, detach, undo, and retry a lost Save response. Test a failed combined save, competing drafts, and a source change between review and save. Verify no duplicate copies or orphaned attachments and confirm the source and unrelated play state survive.
+- Check owner, collaborator, public reader and wrong-account access. Test character share revocation separately from template or dependency revocation. Verify the private play sheet keeps the current copy policy and no private copy fields appear in public read or export.
+- Print and download the same character with zero, one and two companions, including a state change on one copy and long consequence text. Inspect the returned PDFs for dedicated physical pages, current values, page order and continuation, cross-checked against the play sheet. Verify portrait and landscape, color and monochrome, access filtering, and a physical print sample.
+
+The [ChatGPT companion plan](chatgpt-companion-roadmap.md#phase-35-monster-companions) schedules monster integration for Phase 3.5, after in-session help. `list_character_companions` uses `swordweave:read` and the `MCP_CHARACTER_COMPANIONS_READ_ENABLED` switch. It returns the character's Companions section, eligible pinned Bestiary links, copy-owner play-sheet links and the standard PDF link. The website's existing sheets handle companion management in Edit and Vitality and consequences in Play. Clicking a link rechecks access through the corresponding SwordWeave route.
+
+## Local implementation on November 25
+
+- The character draft, picker, Play tab, Bestiary preview, and companion play-sheet links are wired. The compact Bestiary modal opens the pinned version when permitted. The initial implementation limits a character to 20 companions to bound draft and print work.
+- Migration `0076_character_monster_companions` and the draft transaction were exercised in an isolated in-memory PostgreSQL fixture. Tests covered two copies of one template, separate Vitality and Markdown consequences, retry, rollback, detach, undo, and owner and collaborator projections.
+- Mocked Chromium checks at phone and desktop widths covered the picker, draft review, play links, pinned Bestiary modal, discard, and undo. Fictional portrait and landscape PDF renders were checked for independent physical pages, page flow, saved state and pencil space.
+- An isolated request-level test exercised the MCP tool, real website draft and monster routes, and both PDF download handlers. Two named copies of the same pinned creature kept independent Vitality and consequences. A later template revision stayed separate from the pinned links. A lost save response, stale combined build and companion edit, detach and undo, and share and source revocation preserved the expected sheet state. The owner's standard and ChatGPT PDFs matched byte for byte. The shared export omitted private companion pages, and exporting an unopened copy left its state uninitialized.
+- Deployment, signed-in staging browser use, and actual paper proof remain pending. Apply the additive migration in the selected staging database before exercising attached-companion reads and writes there.

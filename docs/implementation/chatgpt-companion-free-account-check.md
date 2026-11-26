@@ -1,0 +1,35 @@
+# SwordWeave companion on ChatGPT Free
+
+Run on 2026-11-20 using the signed-in Free account in ChatGPT web. The temporary Node app was isolated from SwordWeave, used fictional data, and was reached through a temporary HTTPS tunnel. The preview was based on the official Apps SDK quickstart and used the shared Apps bridge. [OpenAI quickstart](https://developers.openai.com/plugins/build/app-quickstart)
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Plugin discovery and private installation | Passed | The Free account could open the directory, submit **Add custom MCP server**, approve connection, and see the test plugin under Installed. |
+| Invocation after an ordinary chat exchange | Passed | In a new ordinary chat, establish Mira Reedwake and her copper-blue compass, receive a normal reply, then attach the already-installed app using an explicit mention. The second prompt asked for earlier details without reproducing them. The server received both marker values. |
+| Embedded card | Passed | ChatGPT rendered the widget with Mira’s name, her compass, and receipt `02e6d1a8`. The receipt matched the server tool result. The response also gave the same information as text. |
+| Player-provided recap in a separate chat | Passed | A new chat with an explicit recap and app mention invoked the tool and rendered the card with receipt `ec47a870`. Automatic context transfer remains unverified. |
+| Progression PDF via external link | Passed | Free called the PDF tool and returned a clickable link. After the approved ngrok visit prompt, the browser reported a completed download. The downloaded one-page PDF matched the fixture’s SHA-256 hash. Native ChatGPT file delivery remains a separate check. |
+| Synthetic OAuth, write and read-back | Passed on Free web | After the temporary server restarted, the first connection failed with `invalid_client` because the demonstration provider had lost its in-memory registration. A fresh registration of the same endpoint completed synthetic consent and OAuth. The app was installed while the test conversation already existed and called successfully from that conversation without a page reload. The protected read identified Mira Reedwake and found an empty fixture. The first write created receipt `55537ba6`. The second write reported `alreadyExisted: true`, and protected read-back returned the same receipt. Browser output and server logs agreed. |
+| Real SwordWeave account, contents and database | Pending milestone 1 | Real Clerk identity mapping, authorization and writes require a development instance and an isolated database. |
+| Published directory eligibility and other surfaces | Pending release verification | Private custom installation on one Free web account establishes a staging route. Production directory review, mobile, extended chats and automatic context across separate chats remain separate checks. |
+
+The independent SDK client ran `check.mjs` against loopback and the HTTPS tunnel. It exercised initialization, tool listing, card resource read, a preview result with receipt, and PDF bytes. The `check-oauth.mjs` client verified OAuth discovery, PKCE and the protected read/write sequence through HTTPS, with the callback inspected locally inside the client. Both clients completed successfully before the browser OAuth check. The fixture write ran after the chat request without a separate host confirmation. Production still needs an approval mechanism tied to the exact immutable proposal, and the in-memory replay does not verify transactional durability.
+
+The prototype and pinned lockfile are available in the local feasibility harness. The test server and tunnel were stopped after the run. [Build plan](chatgpt-companion-phase-1.md) · [Stage 9 follow-up](chatgpt-companion-stage-9.md)
+
+## November 25. Clerk and the SwordWeave MCP route
+
+The signed-in ChatGPT browser displayed the **Free** plan. A private **SwordWeave Companion Test** plugin connected to the actual SwordWeave MCP handler through the disposable HTTPS fixture. The user-defined Clerk public client used S256 PKCE, the exact registered resource, the stable ChatGPT callback, and the `swordweave:read` and `swordweave:create` scopes. The plugin used the public client without a secret. OIDC email discovery was disabled for this fixture. [ChatGPT OAuth setup](https://developers.openai.com/plugins/build/auth)
+
+| Check | Outcome |
+| --- | --- |
+| Install, link and initialize | The private installation completed OAuth consent in the isolated Clerk development app. The server recorded authenticated initialization and tool discovery. |
+| Player one receipt | The initial read returned `null`. The save, retry, and separate read returned `fba8d4e4` from player one's fixture. |
+| Same client reconnect | The installed account's **Reconnect** flow completed. A fresh authenticated read returned the same player and receipt. |
+| Player two isolation | **Connect another account** linked the separate fictional Clerk identity. A chat selecting its nickname first read `null`, then saved and read back `07182223`. The receipts differed across the two subjects in the actual server trace. |
+| Default write behavior | Under **Allow low-risk tools**, explicit fixture saves executed from the chat request. |
+| Host confirmation | **Allow read-only tools** showed a confirmation naming **Save Test Fixture**. **Deny** made no server call. **Allow once** made no save call in two attempts. A fresh chat briefly showed **Unable to load conversation**, then **Conversation not found** after reloading the result. The established chat returned to the previous read without the pending write. Reads still reached the server. |
+| Starter preview on Free | The read-only fixture returned the four requested catalogue pins. The host called `preview_character` and fetched its app resource. The embedded and expanded views of Gale Reed showed Verb Tier III, Storm (fork), Touch Range and d8, along with 16 BU spent, 9 remaining and the formatted Markdown backstory. The first catalogue attempt surfaced a temporary database-adapter mismatch. Matching the native driver result shape in the disposable fixture resolved it. |
+| Rules and catalogue privacy | Player two's authenticated rules query returned the **Your first character** guide entry. The exact-name search for player one's private fictional domain returned no results. |
+
+Private Free web installation, real Clerk OAuth, two-account routing, idempotent receipt saves and the starter preview passed on the tested account. The host confirmation test leaves the exact-operation approval gate open. Independent staging tested the real SwordWeave approval handler and a private character save using provider-issued credentials. Public directory eligibility and a complete authenticated character save through the ChatGPT host remain release checks. The temporary listener and HTTPS tunnel were stopped after verification. [Staging implementation and results](../integrations/chatgpt-character-companion.md)

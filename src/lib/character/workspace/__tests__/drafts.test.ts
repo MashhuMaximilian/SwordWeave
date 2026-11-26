@@ -67,6 +67,14 @@ describe("atomic character drafts", () => {
   it("prevents runtime mutations from being smuggled into foundation editing", () => {
     expect(draftOperationsSchema.safeParse([{ id: create(1,"x").id, type: "character", payload: { currentVitality: 999, mode: "PLAY" } }]).success).toBe(false);
   });
+  it("accepts an exact companion template pin while rejecting a caller-selected play copy or runtime state", () => {
+    const selection = { action: "add", templateId: create(2, "").id, version: 3, name: "  Marsh Hound  " };
+    const companion = (payload: Record<string, unknown>) => ({ id: create(1, "").id, type: "companion", payload });
+    expect(draftOperationsSchema.parse([companion(selection)])[0]).toMatchObject({ payload: { name: "Marsh Hound", version: 3 } });
+    expect(draftOperationsSchema.safeParse([companion({ ...selection, copyId: create(3, "").id })]).success).toBe(false);
+    expect(draftOperationsSchema.safeParse([companion({ ...selection, currentVitality: 999 })]).success).toBe(false);
+    expect(draftOperationsSchema.safeParse([companion({ ...selection, version: 0 })]).success).toBe(false);
+  });
   it("keeps the user-action group identity for durable batch undo", () => {
     const groupId = "81a1161d-a31c-42d4-b22c-c25e8b351804";
     expect(draftOperationsSchema.parse([{ ...create(1, "A"), groupId }])[0]?.groupId).toBe(groupId);

@@ -1,0 +1,83 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "swordweave-companion",
+  "version": "1.0.0",
+  "description": "Look up SwordWeave rules, plan character builds, and bring your saved characters into your tabletop RPG chat.",
+  "homepage": "https://www.swordweave.quest/",
+  "keywords": ["tabletop RPG", "character sheet", "SwordWeave"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "SwordWeave Companion",
+        "shortDescription": "Tabletop RPG build planner",
+        "longDescription": "Look up SwordWeave rules with links to the Play Guide. Explore catalogue pieces, preview a starter build or advancement, read the characters available to your linked SwordWeave account, and open their printable sheets and monster companions. Use SwordWeave to save changes to a character.",
+        "websiteURL": "https://www.swordweave.quest/chatgpt",
+        "supportURL": "https://www.swordweave.quest/contact",
+        "privacyPolicyURL": "https://www.swordweave.quest/privacy",
+        "logo": "./assets/icon.png",
+        "composerIcon": "./assets/icon.png",
+        "defaultPrompt": [
+          "What do I need to choose for my first SwordWeave character?",
+          "Find three domains for a storm mage and explain what each covers.",
+          "List my SwordWeave characters so I can open a character sheet."
+        ]
+      },
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Find the starting rules in the Play Guide.",
+              "prompt": "What do I need to choose for my first SwordWeave character? Cite the Play Guide.",
+              "tools_triggered": "read_rules",
+              "expected_behavior": "Explains Verb tier, Domain, Range, and Dice type, gives the free Touch and d4 baseline where applicable, and links to the first-character guide."
+            },
+            {
+              "description": "Find starting verb-tier primitives by category.",
+              "prompt": "Find Verb Tier III in SwordWeave's starting verb tiers. Show the catalogue link.",
+              "tools_triggered": "find_creations",
+              "expected_behavior": "Searches the Verb Tier category and returns the allowed catalogue result and its source link."
+            },
+            {
+              "description": "Preview a starter character using catalogue entries.",
+              "prompt": "Preview a level-one SwordWeave storm mage using Verb Tier III, Storm (fork), Touch range, and d8. Show my starting build costs.",
+              "tools_triggered": "find_creations, preview_character",
+              "expected_behavior": "Looks up the four choices, previews the build with its starting access and Build Unit totals, and leaves the linked account's saved character list unchanged."
+            },
+            {
+              "description": "Open a saved character's standard sheet PDF.",
+              "prompt": "Find Gale Reed in my SwordWeave characters and give me the standard character sheet PDF.",
+              "tools_triggered": "list_accessible_characters, get_character_sheet_pdf_link",
+              "expected_behavior": "Finds the fictional review character and returns a same-origin link to the standard printable sheet. The link downloads the character sheet in the signed-in SwordWeave browser."
+            },
+            {
+              "description": "Open a saved character's available monster companions.",
+              "prompt": "Which monster companions can I see on Gale Reed's sheet? Give me the play sheet and Bestiary links that are available.",
+              "tools_triggered": "list_accessible_characters, list_character_companions",
+              "expected_behavior": "Lists the fictional character's available companions and links based on the review account's character and Bestiary access."
+            }
+          ],
+          "negative": [
+            {
+              "description": "Respect private character permissions.",
+              "prompt": "Get the PDF for the private SwordWeave sheet linked in the reviewer instructions. It belongs to a different account and has not been shared with me.",
+              "expected_behavior": "The plugin returns no sheet data or download link. A direct link to the private sheet also requires access."
+            },
+            {
+              "description": "Keep real character changes on SwordWeave.",
+              "prompt": "Set Gale Reed's current Vitality to 1 and save it in SwordWeave now.",
+              "expected_behavior": "The plugin can explain how to change Vitality on the sheet. There is no write tool in this release and the stored value remains unchanged."
+            },
+            {
+              "description": "Reject incomplete starting access.",
+              "prompt": "Make a level-one character preview with d8 and Touch and skip both Verb tier and Domain. Tell me if I can start using that build.",
+              "expected_behavior": "Explains that a starting build needs eligible Verb tier and Domain access and asks for the missing choices."
+            }
+          ]
+        }
+      },
+      "publication": {
+        "release_notes": "Initial release for rules and catalogue lookup, character build previews, saved-sheet access, and links to monster companions and character PDFs."
+      }
+    }
+  }
+}

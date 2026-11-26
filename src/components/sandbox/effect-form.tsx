@@ -1,4 +1,5 @@
 "use client";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { useAtelierExperiment } from "./atelier-experiment";
 import { PhonePiecePicker } from "./phone-piece-picker";
 import {readTableGuidance,writeTableGuidance,type TableGuidance} from "@/lib/capabilities/table-guidance";
@@ -566,10 +567,10 @@ export function EffectForm({
 
       <label className="block text-sm font-medium">
         Verbose Description
-        <textarea
-          className="mt-2 min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
-          value={form.narrativeDescription}
-          onChange={(event) => updateForm("narrativeDescription", event.target.value)}
+        <MarkdownEditor
+          textareaClassName="mt-2 min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
+          ariaLabel="Verbose description" value={form.narrativeDescription}
+          onChange={value => updateForm("narrativeDescription", value)}
           placeholder="What does this effect do and feel like in play?"
         />
       </label>

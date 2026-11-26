@@ -12,6 +12,11 @@ describe('play guide reference search', () => {
     expect(searchGuide('  ECOLOGICAL   Sacred ').map(topic => topic.id)).toEqual(searchGuide('ecological sacred').map(topic => topic.id));
     expect(searchGuide('ecological nonexistentword')).toEqual([]);
   });
+  it('ranks the Vitality chapter before incidental mentions and finds recovery phrases', () => {
+    for (const query of ['Vitality', 'maximum vitality?', 'short-rest recovery', 'long rest']) {
+      expect(searchGuide(query)[0]?.id).toBe('vitality');
+    }
+  });
   it('returns the complete ordered reading path for an empty search', () => {
     expect(searchGuide('  ')).toEqual(PLAY_GUIDE);
   });

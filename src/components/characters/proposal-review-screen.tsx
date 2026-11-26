@@ -1,4 +1,6 @@
 "use client";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
+import { Markdown } from "@/components/ui/markdown";
 
 // =============================================================================
 // ProposalReviewScreen — PLAN Eilxina Part C (Mashu 2026-09-09).
@@ -147,7 +149,7 @@ export function ProposalReviewScreen({
           </div>
           {proposal.rationale && (
             <blockquote className="mt-4 border-l-2 border-border pl-4 text-sm italic text-muted-foreground">
-              {proposal.rationale}
+              <Markdown>{proposal.rationale}</Markdown>
             </blockquote>
           )}
         </div>
@@ -196,11 +198,11 @@ export function ProposalReviewScreen({
       {canApproveReject && (
         <div className="mt-8 border-t border-border pt-6">
           <h2 className="text-lg font-semibold">Decision</h2>
-          <textarea
-            value={reviewNote}
-            onChange={(e) => setReviewNote(e.target.value)}
+          <MarkdownEditor
+            ariaLabel="Review note" value={reviewNote}
+            onChange={setReviewNote}
             placeholder="Optional review note (shown to the proposer)…"
-            className="mt-3 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+            textareaClassName="mt-3 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
             rows={3}
           />
           {error && (
@@ -251,7 +253,7 @@ export function ProposalReviewScreen({
             {proposal.reviewerNote && (
               <>
                 Reviewer note:{" "}
-                <span className="italic">"{proposal.reviewerNote}"</span>
+                <Markdown className="italic">{proposal.reviewerNote}</Markdown>
               </>
             )}
           </p>

@@ -30,6 +30,7 @@ import {
   ChevronDown,
   ChevronLeft,
   RotateCcw,
+  PawPrint,
 } from "lucide-react";
 import { DetailModal } from "@/components/ui/detail-modal";
 import { Markdown } from "@/components/ui/markdown";
@@ -82,6 +83,7 @@ import {
 import { useCharacterDnd } from "@/components/characters/workspace/use-character-dnd";
 import { SheetIdentityHeader } from "@/components/characters/sheet-identity-header";
 import { CharacterPdfActions } from "@/components/characters/character-pdf-actions";
+import { CharacterCompanions } from "@/components/characters/character-companions";
 import { CoreStatsCard } from "@/components/characters/core-stats-card";
 import { onCharacterLogAdded, onVitalityChanged } from "@/lib/character/character-events";
 import { TabErrorBoundary } from "@/components/characters/tab-error-boundary";
@@ -333,6 +335,8 @@ export type CharacterSheetProps = {
   // EDITOR sees Propose flow + (currently) Edit/Clone disabled
   // until Part D wires it. VIEWER sees the sheet read-only.
   viewerPermission?: "OWNER" | "EDITOR" | "SUGGESTER" | "VIEWER";
+  publicView?: boolean;
+  initialSection?: "companions";
   // Active shares for the OWNER's SharePanel. Empty array for
   // non-owners (the panel isn't rendered).
   ownerShares?: Array<{
@@ -504,11 +508,12 @@ export type CharacterSheetProps = {
   }>;
 };
 
-type Tab = "capabilities" | "items" | "backstory" | "notes" | "history";
+type Tab = "capabilities" | "items" | "backstory" | "notes" | "history" | "companions";
 
 const TABS: Array<{ id: Tab; label: string; icon: typeof Edit }> = [
   { id: "capabilities", label: "Capabilities", icon: Swords },
   { id: "items", label: "Items", icon: Package },
+  { id: "companions", label: "Companions", icon: PawPrint },
   { id: "backstory", label: "Backstory", icon: BookOpen },
   { id: "notes", label: "Notes", icon: ScrollText },
   { id: "history", label: "History", icon: History },
@@ -752,7 +757,8 @@ function CharacterSheetContent(initialProps: CharacterSheetProps) {
   const liveConditionContext = useMemo(() => props.conditionContext && confirmedVitality
     ? { ...props.conditionContext, character: { ...props.conditionContext.character, vitality: confirmedVitality.current } }
     : props.conditionContext ?? null, [props.conditionContext, confirmedVitality]);
-  const [tab, setTab] = useState<Tab>("capabilities");
+  const [tab, setTab] = useState<Tab>(!initialProps.publicView && initialProps.initialSection === "companions" ? "companions" : "capabilities");
+  const sheetTabs = props.publicView ? TABS.filter(item => item.id !== "companions") : TABS;
   const permission = props.viewerPermission ?? "VIEWER";
   const canDraft = permission !== "VIEWER";
   useEffect(() => {
@@ -760,7 +766,7 @@ function CharacterSheetContent(initialProps: CharacterSheetProps) {
     return () => { window.dispatchEvent(new CustomEvent("sw-character-view-permission", { detail: null })); };
   }, [props.id, canDraft]);
   const canWrite = permission === "OWNER" || permission === "EDITOR";
-  const [localSheetMode, setLocalSheetMode] = useState<"BUILD" | "PLAY" | null>(null);
+  const [localSheetMode, setLocalSheetMode] = useState<"BUILD" | "PLAY" | null>(initialProps.initialSection === "companions" ? "PLAY" : null);
   const [editorIntent, setEditorIntent] = useState<CharacterEditorIntent>("overview");
   const sheetMode = canDraft ? localSheetMode ?? props.mode ?? "PLAY" : "PLAY";
   const activeSheetMode = useRef(sheetMode);
@@ -1115,7 +1121,7 @@ function CharacterSheetContent(initialProps: CharacterSheetProps) {
       </aside>}
       <nav className="v12-character-lenses" aria-label="Character sheet sections">
         <div>
-          {TABS.map((item) => {
+          {sheetTabs.map((item) => {
             const Icon = item.icon;
             return (
               <button
@@ -1201,7 +1207,7 @@ function CharacterSheetContent(initialProps: CharacterSheetProps) {
             Clone
           </Link>
           ) : <ForkCharacterButton characterId={props.id} roster label="Fork" />}
-          <CharacterPdfActions characterId={props.id} characterName={props.name} />
+          <CharacterPdfActions characterId={props.id} characterName={props.name} publicView={props.publicView === true} />
           {/* PLAN Eilxina Part A (Mashu 2026-09-09): visibility tier
               picker on the character sheet header. Posts to
               /api/creations/visibility with targetType='CHARACTER'.
@@ -1299,7 +1305,7 @@ function CharacterSheetContent(initialProps: CharacterSheetProps) {
         className="mt-6 hidden"
         aria-label="Sheet tabs (desktop top — disabled)"
       >
-        {TABS.map((t) => {
+        {sheetTabs.map((t) => {
           const Icon = t.icon;
           return (
             <button
@@ -1354,6 +1360,11 @@ function CharacterSheetContent(initialProps: CharacterSheetProps) {
             latestVersions={latestVersions}
           />
         )}
+        {tab === "companions" && !props.publicView && (
+          <CharacterCompanions characterId={props.id} {...(permission === "OWNER" ? {
+            onEdit: () => openCharacterEditor(props.id, "companions"),
+          } : {})} />
+        )}
         {tab === "notes" && (
           <NotesTab
             id={props.id}
@@ -1399,7 +1410,7 @@ function CharacterSheetContent(initialProps: CharacterSheetProps) {
             We do NOT inflate height for desktop — that was
             making the quick bar above crowd the tabs. */}
         <div className="flex w-full py-1 md:justify-around md:px-[15%] md:py-1">
-          {TABS.map((t) => {
+          {sheetTabs.map((t) => {
             const Icon = t.icon;
             return (
               <button
@@ -1481,6 +1492,7 @@ function CharacterSheetContent(initialProps: CharacterSheetProps) {
       <SheetIdentityHeader
         sessionControls={canWrite ? <PlaySessionPanel subjectId={props.id} /> : undefined}
         characterId={props.id}
+        publicView={props.publicView === true}
         name={props.name}
         level={props.level}
         size={props.size}
@@ -1506,7 +1518,6 @@ function CharacterSheetContent(initialProps: CharacterSheetProps) {
         buBalance={{
           progressionSpent: props.buBalance.progressionSpent,
           progressionPool: props.buBalance.progressionPool,
-          overBudget: props.buBalance.overBudget,
           dmBonusBu: props.buBalance.dmBonusBu,
           itemBuSpent: props.buBalance.itemBuSpent,
         }}
@@ -2119,7 +2130,7 @@ function Field({
       </dt>
       <dd className="mt-1 text-sm font-medium">{value}</dd>
       {description && (
-        <dd className="mt-1 text-xs text-muted-foreground">{description}</dd>
+        <dd className="mt-1 text-xs text-muted-foreground"><Markdown>{description}</Markdown></dd>
       )}
     </div>
   );

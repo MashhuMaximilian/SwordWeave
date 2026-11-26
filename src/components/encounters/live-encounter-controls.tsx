@@ -1,4 +1,5 @@
 "use client";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { useEffect, useRef, useState } from "react";
 import { Check, Circle, ChevronDown } from "lucide-react";
 import { tracks, type ActorMarker } from "@/lib/encounters/run-state";
@@ -60,7 +61,7 @@ export function RunText({
     },
   };
   return multiline ? (
-    <textarea {...attributes} rows={5} />
+    <MarkdownEditor ariaLabel={props["aria-label"]} placeholder={props.placeholder} maxLength={props.maxLength} disabled={props.disabled} value={text} rows={5} onChange={update} onFocus={attributes.onFocus} onBlur={attributes.onBlur} />
   ) : (
     <input {...attributes} />
   );

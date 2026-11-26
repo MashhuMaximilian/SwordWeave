@@ -127,7 +127,7 @@ export function ConsequencePackageAction({
               {p.behavior.restrictions.map((r, j) => (
                 <p key={j}>{r.reason || `Restricts ${r.kind}`}</p>
               ))}
-              {p.behavior.recovery && <p>Recovery: {p.behavior.recovery}</p>}
+              {p.behavior.recovery && <div>Recovery: <Markdown>{p.behavior.recovery}</Markdown></div>}
               <ul className="space-y-1 text-sm">
                 {p.modifiers.map((modifier, index) => (
                   <li key={index}>

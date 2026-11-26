@@ -1,18 +1,13 @@
 import { auth } from "@clerk/nextjs/server";
 import { z } from "zod";
-import { CharacterAccessDenied } from "@/lib/character/can-resolve-character";
-import { characterPdfFilename, characterPdfOptionsSchema } from "@/lib/character-pdf/options";
+import { characterPdfErrorResponse as errorResponse, characterPdfFailure, downloadCharacterPdf } from "@/lib/character-pdf/download";
+import { characterPdfOptionsSchema } from "@/lib/character-pdf/options";
 import { loadCharacterPdfSnapshot } from "@/lib/character-pdf/snapshot";
-import { CharacterPdfRenderError, renderCharacterPdf } from "@/lib/character-pdf/render";
-import { resolveCharacterPdfMedia } from "@/lib/character-pdf/media";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 const OPTIONS_LIMIT_BYTES = 4096;
-const privateHeaders = { "Cache-Control": "private, no-store, max-age=0", "Vary": "Cookie, Authorization", "X-Content-Type-Options": "nosniff" };
-const errorResponse = (message: string, status: number, extra: Record<string, string> = {}) =>
-  Response.json({ error: message }, { status, headers: { ...privateHeaders, ...extra } });
 
 async function readOptions(request: Request): Promise<unknown> {
   const contentLength = Number(request.headers.get("content-length"));
@@ -44,22 +39,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (request.signal.aborted) return errorResponse("PDF export was cancelled.", 499);
   try {
     const { userId } = await auth();
-    const snapshot = await loadCharacterPdfSnapshot(id, userId);
-    const character = await resolveCharacterPdfMedia(snapshot, { viewerId: userId, signal: request.signal, color: options.color });
-    const bytes = await renderCharacterPdf(character, options, {
-      signal: request.signal,
-      requestUrl: request.url,
-      cookieHeader: request.headers.get("cookie"),
-    });
-    return new Response(new Uint8Array(bytes), { status: 200, headers: {
-      ...privateHeaders, "Content-Type": "application/pdf", "Content-Length": String(bytes.byteLength),
-      "Content-Disposition": `attachment; filename="${characterPdfFilename(character.name, options)}"`,
-      "X-SwordWeave-PDF-Artwork-Warnings": String(character.pdfMedia?.warnings.length ?? 0),
-    } });
+    const publicView = new URL(request.url).searchParams.get("view") === "public";
+    const snapshot = await loadCharacterPdfSnapshot(id, userId, publicView);
+    return await downloadCharacterPdf(request, snapshot, options, publicView ? null : userId);
   } catch (error) {
-    if (error instanceof CharacterAccessDenied) return errorResponse("You do not have access to this character.", 403);
-    if (error instanceof CharacterPdfRenderError) return errorResponse(error.message, error.status, error.code === "BUSY" ? { "Retry-After": "2" } : {});
-    // Keep authored text and access diagnostics out of server/browser logs.
-    return errorResponse("The character PDF could not be prepared. Please try again.", 503);
+    return characterPdfFailure(error);
   }
 }

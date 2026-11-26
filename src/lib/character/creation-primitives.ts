@@ -1,5 +1,7 @@
 import type { BundleExpansionResult, CharacterPrimitiveSource, ExpandedPrimitive } from "@/lib/engine/bundle-expander";
 
+export const STARTER_CHARACTER_ATTRIBUTES = { physical: 4, mental: 3, magical: 3, proficient: "PHYSICAL" } as const;
+
 export type CreationPrimitive = { id: number; category: string; buCost: number; name: string };
 
 /** Creation selects owned definitions. A package reference to a definition
@@ -32,4 +34,9 @@ export function missingCreationAccess(expansion: BundleExpansionResult, definiti
   return [!categories.has("VERB_TIER") ? "verb tier" : "", !categories.has("DOMAIN") ? "domain" : ""].filter(Boolean);
 }
 
-export const FREE_CREATION_PRIMITIVES = ["Touch Range", "Minor Die Block"] as const;
+export const FREE_CREATION_FOUNDATIONS = [
+  { id: 32, name: "Touch Range", category: "RANGE", access: "range" },
+  { id: 19, name: "Minor Die Block", category: "INTENSITY_DICE", access: "dieType" },
+] as const;
+
+export const FREE_CREATION_PRIMITIVES = FREE_CREATION_FOUNDATIONS.map(foundation => foundation.name);

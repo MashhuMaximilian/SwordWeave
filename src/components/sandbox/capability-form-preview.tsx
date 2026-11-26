@@ -1,4 +1,5 @@
 "use client";
+import { Markdown } from "@/components/ui/markdown";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { PhoneDraftPreview, draftEffectLinks } from "./phone-draft-preview";
 import {readTableGuidance,TABLE_AXES,type TableAxis} from "@/lib/capabilities/table-guidance";
@@ -74,7 +75,7 @@ export function CapabilityFormPreview({ form, slots, effects = [] }: {
       {dedicated.map(group => <div className="generated-reference-slot" key={group.role}><h3 className="v12-kicker">{group.label}</h3>{group.slots.length ? <LivePrimitiveRules slots={group.slots} /> : <p className="v12-live-note">{group.role==="DOMAIN" || group.role==="VERB" ? readFlavorReference(form.verboseDescription,group.role==="DOMAIN"?"domain":"verb") ? <><strong>{readFlavorReference(form.verboseDescription,group.role==="DOMAIN"?"domain":"verb")}</strong><br/>Flavor only</> : "Open" : "Open"}</p>}</div>)}
     </section>
     {guidance.table && <section className="generated-idea-preview"><h4>Scaling · suggested intent</h4><dl className="generated-scaling">{Object.entries(TABLE_AXES).map(([key,axis])=><div key={key}><dt>{axis.label}</dt><dd>{guidance.table![key as TableAxis]}</dd></div>)}</dl></section>}
-    {resolved.resolution.mode!=="unspecified" && <section className="generated-resolution"><h4>Who rolls?</h4><p>{resolved.resolution.mode==="automatic"?"No roll":resolved.resolution.mode==="action"?"I roll":resolved.resolution.mode==="opposed"?"Opposed checks":"Target rolls"} · {resolved.resolution.check}{resolved.resolution.dc?` vs ${resolved.resolution.dc}`:""}</p>{resolved.resolution.outcome && <p>{resolved.resolution.outcome}</p>}</section>}
+    {resolved.resolution.mode!=="unspecified" && <section className="generated-resolution"><h4>Who rolls?</h4><p>{resolved.resolution.mode==="automatic"?"No roll":resolved.resolution.mode==="action"?"I roll":resolved.resolution.mode==="opposed"?"Opposed checks":"Target rolls"} · {resolved.resolution.check}{resolved.resolution.dc?` vs ${resolved.resolution.dc}`:""}</p>{resolved.resolution.outcome && <Markdown>{resolved.resolution.outcome}</Markdown>}</section>}
     <details className="v12-live-composition" open><summary>Additional primitives · {regularSlots.length} rules{completeCost ? "" : " loaded"}</summary>
       <LivePrimitiveRules slots={regularSlots} /><LiveEffectRules effects={effects} />
       {!allSlots.length && !effects.length ? <p className="v12-live-note">Add primitives or effects from the Library to compose this capability.</p> : null}

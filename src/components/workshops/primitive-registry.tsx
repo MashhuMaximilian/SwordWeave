@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
+import { Markdown } from "@/components/ui/markdown";
 import type {
   HardModifier,
   JsonValue,
@@ -1146,14 +1147,14 @@ export function PrimitiveRegistry({
 
               <label className="block text-sm font-medium md:col-span-2">
                 Mirror Exposure Notes
-                <textarea
-                  className="mt-2 min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2 disabled:opacity-60"
+                <MarkdownEditor
+                  textareaClassName="mt-2 min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2 disabled:opacity-60"
                   disabled={!form.isMirrorable}
-                  onChange={(event) =>
-                    updateForm("mirrorEligibilityNotes", event.target.value)
+                  onChange={value =>
+                    updateForm("mirrorEligibilityNotes", value)
                   }
                   placeholder="Explain the downside and how a DM can expose it in play. Auto-render of the mirrored modifier is shown in the preview below; this field is for narrative flavor."
-                  value={form.mirrorEligibilityNotes}
+                  ariaLabel="Mirror exposure notes" value={form.mirrorEligibilityNotes}
                 />
               </label>
 
@@ -1571,9 +1572,7 @@ export function PrimitiveRegistry({
                   "This primitive uses its verbose description without mechanical output."}
               </p>
               {form.narrativeRule ? (
-                <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                  {form.narrativeRule}
-                </p>
+                <Markdown className="mt-3 text-sm leading-6 text-muted-foreground">{form.narrativeRule}</Markdown>
               ) : null}
               {form.isMirrorable ? (
                 <div className="mt-4 rounded-md border border-border bg-card p-3">
@@ -1585,9 +1584,7 @@ export function PrimitiveRegistry({
                     {form.mirrorVector}.
                   </p>
                   {form.mirrorEligibilityNotes ? (
-                    <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                      {form.mirrorEligibilityNotes}
-                    </p>
+                    <Markdown className="mt-2 text-xs leading-5 text-muted-foreground">{form.mirrorEligibilityNotes}</Markdown>
                   ) : null}
                 </div>
               ) : null}

@@ -1,48 +1,8 @@
-import { validateVersionProposal } from "@/lib/character/validate-version-proposal";
-import { withCharacterMutation } from "@/lib/character/mutation-transaction";
-// =============================================================================
-// PATCH /api/characters/[id]/proposals/[proposalId] — PLAN Eilxina
-// Part C (Mashu 2026-09-09).
-//
-// Approve or reject a PENDING proposal. Only the OWNER can decide —
-// EDITORs who propose don't get to approve their own proposals
-// (preserves the proposer/reviewer separation).
-//
-// On APPROVE:
-//   1. Status → APPROVED.
-//   2. Find the slot row matching (character, target_kind, target_id).
-//      The slot lives in:
-//        character_primitives   for PRIMITIVE
-//        character_capabilities for CAPABILITY
-//        character_items        for ITEM
-//   3. UPDATE slot's versionId → proposed_version_id.
-//   4. Bust resolver cache + recompute bu_spent.
-//   5. Status → APPLIED, applied_at = now.
-//
-// On REJECT:
-//   1. Status → REJECTED, reviewer_note + reviewed_at.
-//
-// Body: { action: "APPROVE" | "REJECT", note?: string }
-// Response: 200 { status: "APPROVED" | "REJECTED" | "APPLIED", slotUpdated?: boolean }
-//
-// Auth: OWNER only.
-// =============================================================================
-
-import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { and, eq, sql } from "drizzle-orm";
-import { db } from "@/db/client";
-import {
-  characterProposals,
-  characterPrimitives,
-  characterCapabilities,
-  characterItems,
-  characterWorkspaceState,
-} from "@/db/schema";
-import {
-  resolveCharacterAccess,
-} from "@/lib/character/resolve-character-access";
-import { recomputeBuSpentAndBustCache } from "@/lib/engine/recompute-bu-spent";
+import { NextResponse } from "next/server";
+import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
+import { CharacterAccessDenied } from "@/lib/character/can-resolve-character";
+import { decideVersionProposal, VersionProposalError } from "@/lib/character/version-proposals";
 
 function parsePatchBody(body: unknown):
   | { ok: true; value: { action: "APPROVE" | "REJECT"; note?: string | undefined } }
@@ -63,225 +23,20 @@ function parsePatchBody(body: unknown):
   return { ok: true, value: { action, note } };
 }
 
-async function handlePATCH(
-  request: Request,
-  { params }: {
-    params: Promise<{ id: string; proposalId: string }>;
-  },
-) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string; proposalId: string }> }) {
   try {
-    const { userId: clerkUserId } = await auth.protect();
+    const { userId: reviewerUserId } = await auth.protect();
     const { id: characterId, proposalId } = await params;
-    await resolveCharacterAccess(clerkUserId, characterId, {
-      require: "OWNER",
-    });
-
-    const body: unknown = await request.json().catch(() => ({}));
-    const parsed = parsePatchBody(body);
-    if (!parsed.ok) {
-      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    const parsed = parsePatchBody(await request.json().catch(() => ({})));
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    const result = await decideVersionProposal({ characterId, proposalId, reviewerUserId, ...parsed.value });
+    if (result.status === "APPLIED") bustResolverCache(characterId);
+    return NextResponse.json(result);
+  } catch (error) {
+    if (error instanceof VersionProposalError || error instanceof CharacterAccessDenied) {
+      return NextResponse.json({ error: error.message }, { status: error instanceof VersionProposalError ? error.status : 403 });
     }
-    const { action, note } = parsed.value;
-
-    const existing = await db
-      .select({
-        id: characterProposals.id,
-        status: characterProposals.status,
-        targetKind: characterProposals.targetKind,
-        targetId: characterProposals.targetId,
-        proposedVersionId: characterProposals.proposedVersionId,
-        currentVersionId: characterProposals.currentVersionId,
-        proposedDiff: characterProposals.proposedDiff,
-        proposerUserId: characterProposals.proposerUserId,
-      })
-      .from(characterProposals)
-      .where(
-        and(
-          eq(characterProposals.id, proposalId),
-          eq(characterProposals.characterId, characterId),
-        ),
-      )
-      .limit(1);
-    if (existing.length === 0) {
-      return NextResponse.json(
-        { error: "Proposal not found." },
-        { status: 404 },
-      );
-    }
-    const proposal = existing[0]!;
-    if (proposal.status !== "PENDING") {
-      return NextResponse.json(
-        {
-          error: `Cannot review a ${proposal.status} proposal. Only PENDING proposals can be reviewed.`,
-        },
-        { status: 409 },
-      );
-    }
-
-    if (action === "REJECT") {
-      await db
-        .update(characterProposals)
-        .set({
-          status: "REJECTED",
-          reviewerUserId: clerkUserId,
-          reviewerNote: note ?? null,
-          reviewedAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .where(eq(characterProposals.id, proposalId));
-      return NextResponse.json(
-        { status: "REJECTED", proposalId },
-        { status: 200 },
-      );
-    }
-
-    // Revocation and the exact occurrence/version are rechecked at the application boundary.
-    await resolveCharacterAccess(proposal.proposerUserId, characterId, { require: "SUGGESTER" });
-    const instanceId = (proposal.proposedDiff as {instanceId?: string})?.instanceId;
-    const binding = await validateVersionProposal(characterId, proposal.targetKind, proposal.targetId, proposal.currentVersionId, proposal.proposedVersionId, instanceId);
-    if (!binding) return NextResponse.json({ error: "This occurrence changed or is ambiguous. Ask for an updated proposal; nothing was applied." }, { status: 409 });
-    // APPROVE path — write the slot's versionId.
-    const slotUpdated = await writeSlotVersionId({
-      characterId,
-      targetKind: proposal.targetKind,
-      // For primitives, the slot's primitiveId is the integer id.
-      // The proposal's targetId is the same primitive id (we
-      // validated the proposal's versionId belongs to that
-      // primitive when we computed the diff).
-      targetId: proposal.targetId,
-      proposedVersionId: proposal.proposedVersionId,
-      instanceId: binding.instanceId,
-    });
-
-    if (!slotUpdated) {
-      // Slot missing — likely the entity was detached since the
-      // proposal was created. Mark the proposal SUPERSEDED so
-      // the audit trail captures "approved but couldn't apply."
-      await db
-        .update(characterProposals)
-        .set({
-          status: "SUPERSEDED",
-          reviewerUserId: clerkUserId,
-          reviewerNote:
-            (note ? note + " — " : "") +
-            "Approved but slot no longer exists; marked SUPERSEDED.",
-          reviewedAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .where(eq(characterProposals.id, proposalId));
-      return NextResponse.json(
-        {
-          status: "SUPERSEDED",
-          proposalId,
-          reason: "Slot no longer exists on this character.",
-        },
-        { status: 200 },
-      );
-    }
-
-    // Mark APPROVED then APPLIED. We do it in two updates so the
-    // reviewerNote + reviewedAt are captured at the approval moment
-    // even if the slot write fails downstream (it can't, but the
-    // split keeps the audit trail clean).
-    await db
-      .update(characterProposals)
-      .set({
-        status: "APPROVED",
-        reviewerUserId: clerkUserId,
-        reviewerNote: note ?? null,
-        reviewedAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(characterProposals.id, proposalId));
-
-    await db
-      .update(characterProposals)
-      .set({
-        status: "APPLIED",
-        appliedAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(characterProposals.id, proposalId));
-
-    // Recompute BU so the next sheet render shows the new totals.
-    // recomputeBuSpentAndBustCache already busts the resolver cache.
-    await recomputeBuSpentAndBustCache(characterId);
-    await db.insert(characterWorkspaceState).values({ characterId, revision: 1 }).onConflictDoUpdate({ target: characterWorkspaceState.characterId, set: { revision: sql`${characterWorkspaceState.revision} + 1` } });
-
-    return NextResponse.json(
-      { status: "APPLIED", proposalId, slotUpdated: true },
-      { status: 200 },
-    );
-  } catch (e) {
-    if (e instanceof Error && e.name === "CharacterAccessDenied") {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
-    console.error(
-      "[PATCH /api/characters/[id]/proposals/[proposalId]] unexpected:",
-      e,
-    );
-    return NextResponse.json(
-      { error: "Internal server error." },
-      { status: 500 },
-    );
+    console.error("[PATCH /api/characters/[id]/proposals/[proposalId]]", error);
+    return NextResponse.json({ error: "Internal server error." }, { status: 500 });
   }
-}
-
-async function writeSlotVersionId(args: {
-  characterId: string;
-  targetKind: "PRIMITIVE" | "CAPABILITY" | "ITEM";
-  targetId: string;
-  proposedVersionId: string;
-  instanceId?: string | undefined;
-}): Promise<boolean> {
-  const { characterId, targetKind, targetId, proposedVersionId } = args;
-  if (targetKind === "PRIMITIVE") {
-    // targetId is an integer (primitive id). Drizzle bigserial.
-    const primId = Number(targetId);
-    if (!Number.isFinite(primId) || !args.instanceId) return false;
-    const result = await db
-      .update(characterPrimitives)
-      .set({ versionId: proposedVersionId })
-      .where(
-        and(
-          eq(characterPrimitives.characterId, characterId),
-          eq(characterPrimitives.primitiveId, primId),
-          eq(characterPrimitives.instanceId, args.instanceId),
-        ),
-      )
-      .returning({ characterId: characterPrimitives.characterId });
-    return result.length > 0;
-  }
-  if (targetKind === "CAPABILITY") {
-    const result = await db
-      .update(characterCapabilities)
-      .set({ versionId: proposedVersionId })
-      .where(
-        and(
-          eq(characterCapabilities.characterId, characterId),
-          eq(characterCapabilities.capabilityId, targetId),
-        ),
-      )
-      .returning({
-        characterId: characterCapabilities.characterId,
-      });
-    return result.length > 0;
-  }
-  // ITEM
-  const result = await db
-    .update(characterItems)
-    .set({ versionId: proposedVersionId })
-    .where(
-      and(
-        eq(characterItems.characterId, characterId),
-        eq(characterItems.itemId, targetId),
-      ),
-    )
-    .returning({ characterId: characterItems.characterId });
-  return result.length > 0;
-}
-
-export async function PATCH(request: Request, context: {params: Promise<{id: string; proposalId: string}>}) {
- const {id} = await context.params;
- return withCharacterMutation(id, () => handlePATCH(request, context));
 }

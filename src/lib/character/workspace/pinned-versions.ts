@@ -1,4 +1,4 @@
-import { reconstructVersion, type VersionPayload } from "@/lib/versions/delta";
+import { reconstructPinnedVersion } from "@/lib/versions/version-payload";
 import type { EntityKind, WorkspaceGraph } from "./model";
 import type { LoadedNode } from "./load-nodes";
 import { readDependencyPins } from "@/lib/versions/dependency-pins";
@@ -17,15 +17,8 @@ export function resolvePinnedNode(kind: EntityKind, entry: LoadedNode, pins: rea
   const directPins = selected && selected.deltaKind === "FULL" ? readDependencyPins(selected.snapshot) : null;
   if (!selected || (selected.id === latest && !unique.length)) return { row: { ...entry.row, ...metadata }, links: directPins ?? entry.links, versionId, latestVersionId: latest };
   try {
-    const chain = entry.versions.filter(v => v.number <= selected.number).sort((a,b) => a.number-b.number).map(v => ({
-      versionNumber: v.number,
-      payload: v.deltaKind === "DELTA" ? { kind: "DELTA", patch: v.snapshot } : { kind: "FULL", data: v.snapshot },
-    } as { versionNumber: number; payload: VersionPayload }));
-    // A FULL snapshot is self-contained, including when earlier history has
-    // been archived. Only DELTA snapshots require reconstruction of the chain.
-    let snapshot = selected.deltaKind === "DELTA" ? reconstructVersion(chain, selected.number) : selected.snapshot;
-    if (snapshot && "id" in snapshot && snapshot["data"] && typeof snapshot["data"] === "object" && !Array.isArray(snapshot["data"]))
-      snapshot = snapshot["data"] as Record<string, unknown>;
+    const versionRow = (version: typeof selected) => ({ ...version, versionNumber: version.number });
+    const snapshot = reconstructPinnedVersion(versionRow(selected), entry.versions.map(versionRow))?.payload;
     if (!snapshot || typeof snapshot["name"] !== "string") return failure("The pinned version has an incomplete snapshot. Restore it before editing this piece.");
     const row: Record<string, unknown> = {
       ...Object.fromEntries(["id", "userId", "sourceOrigin", "sourceId", "sourceVersionId", "createdAt"].map(key => [key, entry.row[key]])),
