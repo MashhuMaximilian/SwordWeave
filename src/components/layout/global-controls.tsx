@@ -16,7 +16,7 @@
 // =============================================================================
 
 import {useAccount} from "@/components/account/account-provider";
-import { CHATGPT_GUIDE_PATH, CHATGPT_INSTALL_LABEL, CHATGPT_LISTING_URL } from "@/lib/chatgpt-listing";
+import { CHATGPT_GUIDE_PATH, CHATGPT_LISTING_URL } from "@/lib/chatgpt-listing";
 import { DISCORD_INVITE_URL } from "@/lib/community";
 import { DiscordIcon } from "@/components/icons/discord-icon";
 import {
@@ -44,7 +44,6 @@ import { useCharacterModal } from "@/components/character-modal/character-modal-
 import {
   Columns2,
   Maximize2,
-  MessagesSquare,
   Minimize2,
   Moon,
   Sun,
@@ -423,27 +422,26 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
       {
         kind: "link",
         key: "buymeacoffee",
-        label: "Keep the project going",
+        label: "Support",
         href: "https://buymeacoffee.com/mashhul",
-        external: true,
-        icon: <FabIcon iconKey="lorc/campfire" alt="Keep the fire going" />,
+        icon: <FabIcon iconKey="lorc/campfire" alt="" />,
       },
       {
         kind: "link",
         key: "discord",
         label: "Discord",
         href: DISCORD_INVITE_URL,
-        external: true,
         icon: <DiscordIcon />,
       },
       {
         kind: "link",
         key: "chatgpt",
-        label: "ChatGPT",
-        accessibleLabel: CHATGPT_LISTING_URL ? CHATGPT_INSTALL_LABEL : "ChatGPT guide",
+        label: "GPT plugin",
+        accessibleLabel: CHATGPT_LISTING_URL
+          ? "GPT plugin on ChatGPT (opens in a new tab)"
+          : "GPT plugin setup guide (opens in a new tab)",
         href: CHATGPT_LISTING_URL ?? CHATGPT_GUIDE_PATH,
-        external: Boolean(CHATGPT_LISTING_URL),
-        icon: <MessagesSquare aria-hidden="true" />,
+        icon: <span className="sw-fab__gpt-logo" aria-hidden="true" />,
       },
     );
     return workspaceVisibility.build ? list : list.filter(item => item.key !== "build");

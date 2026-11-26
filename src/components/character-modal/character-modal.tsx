@@ -145,7 +145,7 @@ export function CharacterModal({ children }: CharacterModalProps) {
       const anchor = (e.target as HTMLElement | null)?.closest(
         "a[href]",
       ) as HTMLAnchorElement | null;
-      if (!anchor) return;
+      if (!anchor || anchor.target === "_blank") return;
       const href = anchor.getAttribute("href") ?? "";
       // Only handle internal navigation (href starting with /)
       if (!href.startsWith("/")) return;
