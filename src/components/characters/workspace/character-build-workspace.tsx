@@ -11,7 +11,7 @@ import { FabThemeIcon } from "@/components/layout/fab-theme-icon";
 import { resolveComposerHandoff } from "@/lib/character/workspace/composer-handoff";
 import { useCharacterDraft } from "./use-character-draft";
 import { LocalCharacterOverview } from "./local-character-editor";
-import { CharacterFoundationEditor, type CharacterFoundationValues } from "./character-foundation-editor";
+import { CharacterFoundationEditor, type CharacterFoundationValues, type FoundationSection } from "./character-foundation-editor";
 import { BuildLibrary } from "./build-library";
 import { WorkspaceSuggestions } from "./workspace-suggestions";
 import { EntityComposer } from "./entity-composer";
@@ -63,7 +63,6 @@ export function CharacterBuildWorkspace({ characterId, initialRoot = "ALL", perm
   const [base, setBase] = useState<WorkspaceGraph | null>(null);
   const [character, setCharacter] = useState<CharacterInfo | null>(null);
   const [randomizer,setRandomizer] = useState(false);
-  const [companionPanel, setCompanionPanel] = useState(initialIntent === "companions" && permission === "OWNER");
   const [root, setRoot] = useState<WorkspaceCategory>(initialRoot);
   const [path, setPath] = useState<string[]>([]);
   const [source, setSource] = useState<"library" | "owned" | "suggestions">("library");
@@ -84,7 +83,7 @@ export function CharacterBuildWorkspace({ characterId, initialRoot = "ALL", perm
   const [leaveEditor, setLeaveEditor] = useState<{run:()=>void}|null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [foundationDirty, setFoundationDirty] = useState(false);
-  const [foundation, setFoundation] = useState<"concept"|"foundation"|"backstory"|null>(null);
+  const [foundation, setFoundation] = useState<FoundationSection | null>(null);
   const { push: pushPreview, clear: clearPreview } = useModalStack();
   const [inspecting, setInspecting] = useState(false);
   const [inspect, setInspect] = useState<EntityKey | null>(null);
@@ -211,33 +210,31 @@ export function CharacterBuildWorkspace({ characterId, initialRoot = "ALL", perm
   }, [composer,modalComposer,foundationDirty]);
   useEffect(() => {
     // A scoped editor event can change the requested surface while mounted.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (initialIntent === "companions" && permission === "OWNER") {
-      setCompanionPanel(true);
-      setFoundation(null);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setFoundation("companions");
+      setRandomizer(false);
       setMobile("build");
     } else if (initialIntent === "items") {
-      setCompanionPanel(false);
+      setFoundation(section => section === "companions" ? null : section);
       setRoot("ITEM");
     } else if (initialIntent === "concept" || initialIntent === "foundation" || initialIntent === "backstory") {
-      setCompanionPanel(false);
       setFoundation(initialIntent);
     }
   }, [initialIntent, permission]);
-  function changeRoot(value: WorkspaceCategory) { navigate(() => { setCompanionPanel(false); setRandomizer(false); if(localProposal){setFoundation(null);setFoundationDirty(false);} setRoot(value); setPath([]); setComposer(null); setInspect(null); setExternal(null); setSelectedRows([]); setShowCreate(false); setMobile("build"); }); }
+  function changeRoot(value: WorkspaceCategory) { navigate(() => { setRandomizer(false); setFoundation(null); setRoot(value); setPath([]); setComposer(null); setInspect(null); setExternal(null); setSelectedRows([]); setShowCreate(false); setMobile("build"); }); }
   function openCompanions() {
     navigate(() => {
-      setCompanionPanel(true);
       setRandomizer(false);
       setComposer(null);
-      setFoundation(null);
+      setFoundation("companions");
       setPath([]);
       setMobile("build");
     });
   }
   function openRandomizer() {
     navigate(() => {
-      setCompanionPanel(false);
+      setFoundation(null);
       setRandomizer(true);
       setComposer(null);
       setPath([]);
@@ -430,7 +427,7 @@ export function CharacterBuildWorkspace({ characterId, initialRoot = "ALL", perm
       setInspecting(false);setIncomingPiece(null);setLivePreview(null);setRandomizer(false);setPath([...parentPath,edge.id]);setComposer({kind:node.kind,node});setMobile("build");
     });
   }
-  function editFoundation(section:"concept"|"foundation"|"backstory") {navigate(()=>{setComposer(null);setRandomizer(false);setFoundation(section);setMobile("build");});}
+  function editFoundation(section: FoundationSection) {navigate(()=>{setComposer(null);setRandomizer(false);setFoundation(section);setMobile("build");});}
   function newInRoot(nextRoot:Exclude<WorkspaceCategory,"ALL">,kind:EntityKind) {navigate(()=>{setRoot(nextRoot);setPath([]);setFoundation(null);setFoundationDirty(false);setRandomizer(false);setInspecting(false);setIncomingPiece(null);setLivePreview(null);setShowCreate(false);setComposer({kind,sessionId:browserUuid()});setMobile("build");});}
   function row(edge: WorkspaceEdge, parentPath: string[] = path) {
     const node = graph?.nodes.find((entry) => entry.key === edge.child);
@@ -464,10 +461,7 @@ export function CharacterBuildWorkspace({ characterId, initialRoot = "ALL", perm
     <div className="sheet-owned-catalogue" hidden={source !== "owned"}><p>Reuse a rule you already have. Its conditions and source still apply.</p>{graph!.nodes.filter((node) => libraryKinds.includes(node.kind) && supplyPaths(graph!,node.key).length>0).map((node) => <article className="sheet-catalogue-row" key={node.key}><header><span className="sheet-kicker">{node.kind} · {node.bu} BU</span><strong>{node.name}</strong></header><p className="sheet-rule" data-copy-role="mechanical">{String(node.data["mechanicalOutputText"] || node.description)}</p><details className="sheet-piece-menu" open={!phone}><summary aria-label={`Actions for ${node.name}`}>Actions</summary><div className="sheet-row-actions"><button type="button" onClick={() => showPreview(node.key)}>Preview</button><button type="button" disabled={busy} onClick={() => showPreview(node.key,node.name)}>Use this entry</button></div></details></article>)}</div>
     <div hidden={source !== "suggestions" || !kinds.length}><WorkspaceSuggestions heritageCategory={category} characterId={characterId} destinationLabel={destination} kinds={kinds} graph={graph!} destinationIsItem={root === "ITEM"} budget={Math.max(0, remaining)} debtAvailable={Math.max(0,debtMax-credit)} excludedKeys={graph!.nodes.map((node) => node.key)} onAdd={(item) => add(item.key,item.name,item.mirrored)} {...(!composer ? {onAddSet:addSet} : {})} {...(selected && !composer ? {replaceTarget:{key:selected.key,name:selected.name,availableBudget:Math.max(0,remaining + bundleBu(graph!,selected.key))},onReplace:replace} : {})} onPreview={(key) => showPreview(key)} onBuildRule={(seed) => navigate(() => {if(localProposal&&root==="ALL")setRoot("MANIFEST");setRandomizer(false);setInspecting(false);setIncomingPiece(null);setLivePreview(null);setComposer({kind:"primitive",primitiveSeed:seed});setShowCreate(false);setMobile("build");})} onBuildOwn={() => {const run=()=>{if(localProposal&&root==="ALL")setRoot("MANIFEST");setRandomizer(false);setShowCreate(true);setMobile("build");};if(localProposal)navigate(run);else run();}}/></div></div>
   </aside>;
-  const center = companionPanel && permission === "OWNER"
-    ? <main className="sheet-composition"><CompanionDraftPanel characterId={characterId} operations={operations}
-      disabled={compositionBlocked || !controller.ready} onStage={stage} /></main>
-    : <main className="sheet-composition"><header className="sheet-composition-heading" hidden={phone && !path.length && !composer}><div><span className="sheet-kicker">{rootLabel}</span><nav aria-label="Composition path"><button type="button" onClick={() => { navigate(() => { setPath([]); setComposer(null); }); }}>{rootLabel}</button>{path.map((id,index) => { const edge = graph!.edges.find((entry) => entry.id === id); const node = graph!.nodes.find((entry) => entry.key === edge?.child); return node ? <span key={id}><ChevronRight size={13}/><button type="button" onClick={() => { navigate(() => { setPath(path.slice(0,index+1)); setComposer(null); }); }}>{node.name}</button></span> : null; })}</nav></div>{composer && <button type="button" className="sheet-button" onClick={() => navigate(() => setComposer(null))}><ArrowLeft size={14}/> Composition</button>}</header>
+  const center = <main className="sheet-composition"><header className="sheet-composition-heading" hidden={phone && !path.length && !composer}><div><span className="sheet-kicker">{rootLabel}</span><nav aria-label="Composition path"><button type="button" onClick={() => { navigate(() => { setPath([]); setComposer(null); }); }}>{rootLabel}</button>{path.map((id,index) => { const edge = graph!.edges.find((entry) => entry.id === id); const node = graph!.nodes.find((entry) => entry.key === edge?.child); return node ? <span key={id}><ChevronRight size={13}/><button type="button" onClick={() => { navigate(() => { setPath(path.slice(0,index+1)); setComposer(null); }); }}>{node.name}</button></span> : null; })}</nav></div>{composer && <button type="button" className="sheet-button" onClick={() => navigate(() => setComposer(null))}><ArrowLeft size={14}/> Composition</button>}</header>
     {composer && modalComposer && canContain(modalComposer.kind,composer.kind) && <label className="sheet-guidance"><input type="checkbox" checked={sendToModal} onChange={e=>setSendToModal(e.target.checked)}/> Also add this finished piece to the modal {modalComposer.kind} when I save it to draft</label>}
     {randomizer ? <ProceduralRandomizer graph={graph!} budget={Math.max(0,remaining)} category={category === "ITEM" ? "MANIFEST" : category} onChoose={openGenerated}/> : composer ? <EntityComposer key={composer.sessionId ?? `${composer.kind}:${composer.node?.key ?? composer.primitiveSeed?.key ?? "new"}`} graph={graph!} kind={composer.kind} {...(composer.capabilitySeed?{capabilitySeed:composer.capabilitySeed}:{})} {...(composer.node ? { node: composer.node } : {})} category={category === "ITEM" ? "MANIFEST" : category} sessionKey={`middle:${composer.sessionId ?? composer.kind}:${composer.node?.key ?? composer.primitiveSeed?.key ?? "new"}:${path.join("/")}`} incomingPiece={incomingPiece} onPreviewChange={setLivePreview} {...(composer.primitiveSeed ? {primitiveSeed:composer.primitiveSeed} : {})} onChooseEntity={chooseAnotherEntity} integratedSources selection={composer.selection ?? []} selectionEdges={composer.selectionEdges ?? []} saveRequest={saveRequest} onSaved={() => { setComposer(null); setSelectedRows([]); }}/>
      : root === "ALL" && localProposal ? <LocalCharacterOverview name={String(draftCharacter.name)} level={Number(draftCharacter.level)} size={String(draftCharacter.size)} attributes={`Physical ${draftCharacter.attrPhysical} / Mental ${draftCharacter.attrMental} / Magical ${draftCharacter.attrMagical}`} onFoundation={editFoundation} onRoot={changeRoot} onNew={newInRoot} groups={roots.filter(r=>r.key!=="ALL").map(r=>{const pieces=graph!.edges.filter(e=>e.parent===null&&e.category===r.key).sort((a,b)=>a.order-b.order);return {key:r.key as Exclude<WorkspaceCategory,"ALL">,name:r.name,count:pieces.length,children:<div className="sheet-pieces">{pieces.map(e=>row(e,[]))}</div>};})}/>
@@ -479,11 +473,21 @@ export function CharacterBuildWorkspace({ characterId, initialRoot = "ALL", perm
       {selectedRows.length > 0 && !selected && <div className="sheet-guidance"><strong>{selectedRows.length} selected</strong><button className="sheet-button" type="button" disabled={children.some(edge => selectedRows.includes(edge.id) && !canContain("capability", edge.child.split(":")[0] as EntityKind))} onClick={() => { const keys = children.filter((edge) => selectedRows.includes(edge.id)).map((edge) => edge.child); setComposer({kind:"capability",selection:keys,selectionEdges:children.filter(edge => selectedRows.includes(edge.id))}); }}>Use in new capability</button><button className="sheet-button" type="button" disabled={children.some(edge => selectedRows.includes(edge.id) && (!canContain("heritage", edge.child.split(":")[0] as EntityKind) || Number(edge.data?.["quantity"] ?? 1) !== 1))} onClick={() => { const keys = children.filter((edge) => selectedRows.includes(edge.id)).map((edge) => edge.child); setComposer({kind:"heritage",selection:keys,selectionEdges:children.filter(edge => selectedRows.includes(edge.id))}); }}>Use in new heritage</button></div>}
       <div className="sheet-pieces">{children.map((edge) => row(edge))}{!children.length && <div className="sheet-empty"><Sparkles size={24}/><h3>{selected?.kind === "primitive" ? "A single rule" : "Room for your next idea"}</h3><p>{selected?.kind === "primitive" ? "Edit this rule or preview its effect. Rules do not contain other pieces." : "Add only what helps express this character. An empty heritage is fine."}</p></div>}</div></>}
   </main>;
-  const foundationForm = foundation && <CharacterFoundationEditor key={foundation} characterId={characterId} character={character} operations={operations} initialSection={foundation} busy={busy} onDirtyChange={setFoundationDirty} onClose={() => {setFoundationDirty(false);setFoundation(null);}} onSave={async payload => {await stage({id:browserUuid(),type:"character",label:"Update character foundation",payload});setFoundationDirty(false);setFoundation(null);}}/>;
+  const foundationForm = foundation && <CharacterFoundationEditor
+    key={foundation} characterId={characterId} character={character} operations={operations} initialSection={foundation}
+    busy={busy} onDirtyChange={setFoundationDirty}
+    {...(permission === "OWNER" ? { companions: {
+      content: <CompanionDraftPanel characterId={characterId} operations={operations}
+        disabled={compositionBlocked || !controller.ready} onStage={stage}/>,
+      onReview: () => { setFoundation(null); openReview(); },
+    } } : {})}
+    onClose={() => {setFoundationDirty(false);setFoundation(null);}}
+    onSave={async payload => {await stage({id:browserUuid(),type:"character",label:"Update character foundation",payload});setFoundationDirty(false);setFoundation(null);}}
+  />;
   return <section className="sheet-build" data-local-proposal={localProposal} data-mobile-view={mobile} data-preview-collapsed={previewCollapsed}>
     <header className="sheet-build-top" hidden={phone}><div><span className="sheet-kicker">Character workshop</span><h2>{draftCharacter.name}<span>{permission === "SUGGESTER" ? "Proposed changes" : "Build"}</span></h2></div><div className="sheet-top-actions"><span role="status">{draftStatus}</span><button type="button" className="sheet-button sheet-preview-toggle" aria-pressed={!previewCollapsed} onClick={() => setPreviewCollapsed(value => !value)}>{previewCollapsed ? "Show preview" : "Hide preview"}</button><button type="button" className="sheet-button" onClick={() => openDrawer("build")}><FabThemeIcon iconKey="lorc/anvil-impact" dark={dark}/> Build & Preview</button><button type="button" className="sheet-button" onClick={() => navigate(onPlay)}>Back to play</button></div></header>
     {phone && <div className="sheet-phone-context">
-      <select aria-label="Character section" value={companionPanel && permission === "OWNER" ? "companions" : randomizer ? "randomizer" : root}
+      <select aria-label="Character section" value={randomizer ? "randomizer" : root}
         onChange={event => {
           if (event.target.value === "companions") openCompanions();
           else if (event.target.value === "randomizer") openRandomizer();
@@ -496,8 +500,8 @@ export function CharacterBuildWorkspace({ characterId, initialRoot = "ALL", perm
       <span><b>{remaining}</b><small>BU left</small></span><button type="button" className="sheet-phone-tool-button" aria-label="Draft tools" onClick={()=>setPhoneTools(true)}>•••</button><button type="button" className="sheet-phone-play" onClick={()=>navigate(onPlay)}>Play<ArrowRight size={15}/></button>
     </div>}
     <nav className="sheet-root-nav" aria-label="Character roots">
-      {roots.map(entry => <button type="button" key={entry.key} aria-pressed={!companionPanel && !randomizer && root === entry.key} onClick={() => changeRoot(entry.key)}>{entry.key === "ALL" ? <entry.icon size={16}/> : <EntityTypeIcon type={entry.key} size={18}/>}{entry.name}</button>)}
-      {permission === "OWNER" && <button type="button" aria-pressed={companionPanel} onClick={openCompanions}><EntityTypeIcon type="MONSTER" size={18}/>Companions</button>}
+      {roots.map(entry => <button type="button" key={entry.key} aria-pressed={!randomizer && root === entry.key} onClick={() => changeRoot(entry.key)}>{entry.key === "ALL" ? <entry.icon size={16}/> : <EntityTypeIcon type={entry.key} size={18}/>}{entry.name}</button>)}
+      {permission === "OWNER" && <button type="button" onClick={openCompanions}><EntityTypeIcon type="MONSTER" size={18}/>Companions</button>}
       <button type="button" aria-pressed={randomizer} onClick={openRandomizer}><Sparkles size={16}/>Randomizer</button>
     </nav>
     <div className="sheet-build-budget"><span><b>{remaining}</b> BU available</span><span>{spent} allocated · {pool} budget</span><span>Drawbacks {credit}/{debtMax}</span><span className="sheet-budget-note">Leaving BU unspent is fine.</span></div>

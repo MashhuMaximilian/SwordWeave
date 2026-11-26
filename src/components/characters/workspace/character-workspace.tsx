@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useAuth } from "@clerk/nextjs";
 import { ChevronRight, ChevronDown, Dna, Shield, Swords, Layers, ArrowLeft, Eye, Plus, Power, Search, Trash2 } from "lucide-react";
 import { openCharacterEditor, parseCharacterEditorIntent, type CharacterEditorIntent } from "./editor-events";
 import { CharacterBuildWorkspace } from "./character-build-workspace";
@@ -127,6 +128,7 @@ export function CharacterWorkspace(props: {
   initialIntent?: CharacterEditorIntent;
 }) {
   const permission = props.permission ?? "VIEWER";
+  const { userId } = useAuth();
   const searchParams = useSearchParams();
   const localProposal = process.env.NODE_ENV === "development" && searchParams.get("editor") === "guided";
   const [intent, setIntent] = useState<CharacterEditorIntent>(props.initialIntent ?? "overview");
@@ -158,6 +160,7 @@ export function CharacterWorkspace(props: {
   useEffect(() => setLocalMode(null), [props.mode]);
   const mode = localMode ?? (localProposal ? "BUILD" : props.mode);
   if (mode === "BUILD" && permission !== "VIEWER") return <CharacterBuildWorkspace
+    key={`${props.characterId}:${userId ?? ""}`}
     characterId={props.characterId} initialRoot={props.items ? "ITEM" : "ALL"}
     permission={permission} localProposal={localProposal} initialIntent={intent} onPlay={() => { setLocalMode("PLAY"); window.dispatchEvent(new CustomEvent("sw-character-build-mode", {detail:{characterId:props.characterId,mode:"PLAY"}})); }} />;
   return <LegacyCharacterWorkspace {...props} mode="PLAY" />;
