@@ -33,15 +33,15 @@
             },
             {
               "description": "Find starting verb-tier primitives by category.",
-              "prompt": "Find Verb Tier III in SwordWeave's starting verb tiers. Show the catalogue link.",
+              "prompt": "Find Verb Access Tier III in SwordWeave's starting verb tiers. Show the catalogue link.",
               "tools_triggered": "find_creations",
-              "expected_behavior": "Searches the Verb Tier category and returns the allowed catalogue result and its source link."
+              "expected_behavior": "Searches the Verb Tier category and returns Verb Access Tier III and its catalogue link."
             },
             {
               "description": "Preview a starter character using catalogue entries.",
-              "prompt": "Preview a level-one SwordWeave storm mage using Verb Tier III, Storm (fork), Touch range, and d8. Show my starting build costs.",
+              "prompt": "Preview a level-one SwordWeave character using Verb Access Tier III, Domain Access Tier I, Touch Range, and Heavy Die Block (1d8). Show my starting build costs.",
               "tools_triggered": "find_creations, preview_character",
-              "expected_behavior": "Looks up the four choices, previews the build with its starting access and Build Unit totals, and leaves the linked account's saved character list unchanged."
+              "expected_behavior": "Looks up four exact catalogue pins, previews 20 of 25 Build Units spent with 5 remaining, and leaves the linked account's saved character list unchanged."
             },
             {
               "description": "Open a saved character's standard sheet PDF.",

@@ -7,7 +7,7 @@
       "extensions": {
         "com.openai": {
           "auth": {
-            "type": "oauth",
+            "type": "mixed",
             "client": {
               "mode": "provided",
               "tokenEndpointAuthMethod": "none"
