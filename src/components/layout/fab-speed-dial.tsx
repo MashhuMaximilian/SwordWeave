@@ -185,7 +185,29 @@ export function FabSpeedDial({
 
   if (!visible) return null;
   return <div ref={containerRef} className="sw-fab fixed right-3 z-40 flex flex-col items-end gap-3 sm:right-4" data-fab-root style={{ bottom: `calc(${bottomOffset}px + env(safe-area-inset-bottom, 0px))` }}>
-      <svg className="sw-fab__metal-defs" aria-hidden="true"><defs><linearGradient id="sw-fab-gold" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="32" y2="32"><stop stopColor="var(--fab-gold-low, #b68b3f)"/><stop offset=".19" stopColor="var(--fab-gold-mid, #e8c47a)"/><stop offset=".36" stopColor="#fffbe1"/><stop offset=".46" stopColor="var(--fab-gold-low, #a87929)"/><stop offset=".65" stopColor="var(--fab-gold-mid, #e7c780)"/><stop offset=".84" stopColor="var(--fab-gold-low, #ad813c)"/><stop offset="1" stopColor="var(--fab-gold-mid, #f2d994)"/></linearGradient><linearGradient id="sw-fab-silver" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="24" y2="24"><stop stopColor="var(--fab-silver-low, #6e8589)"/><stop offset=".22" stopColor="var(--fab-silver-mid, #d8e3e3)"/><stop offset=".3" stopColor="#fff"/><stop offset=".38" stopColor="var(--fab-silver-low, #82999e)"/><stop offset=".6" stopColor="var(--fab-silver-mid, #edf5f4)"/><stop offset=".65" stopColor="#fff"/><stop offset=".72" stopColor="var(--fab-silver-low, #7e969b)"/><stop offset="1" stopColor="var(--fab-silver-mid, #d8e3e3)"/></linearGradient></defs></svg>
+      <svg className="sw-fab__metal-defs" aria-hidden="true">
+        <defs>
+          <linearGradient id="sw-fab-gold" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="32" y2="32">
+            <stop stopColor="var(--fab-gold-low, #b68b3f)" />
+            <stop offset=".19" stopColor="var(--fab-gold-mid, #e8c47a)" />
+            <stop offset=".36" stopColor="var(--fab-gold-glint, #fffbe1)" />
+            <stop offset=".46" stopColor="var(--fab-gold-low, #a87929)" />
+            <stop offset=".65" stopColor="var(--fab-gold-mid, #e7c780)" />
+            <stop offset=".84" stopColor="var(--fab-gold-low, #ad813c)" />
+            <stop offset="1" stopColor="var(--fab-gold-mid, #f2d994)" />
+          </linearGradient>
+          <linearGradient id="sw-fab-silver" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="24" y2="24">
+            <stop stopColor="var(--fab-silver-low, #6e8589)" />
+            <stop offset=".22" stopColor="var(--fab-silver-mid, #d8e3e3)" />
+            <stop offset=".3" stopColor="var(--fab-silver-glint, #fff)" />
+            <stop offset=".38" stopColor="var(--fab-silver-low, #82999e)" />
+            <stop offset=".6" stopColor="var(--fab-silver-mid, #edf5f4)" />
+            <stop offset=".65" stopColor="var(--fab-silver-glint, #fff)" />
+            <stop offset=".72" stopColor="var(--fab-silver-low, #7e969b)" />
+            <stop offset="1" stopColor="var(--fab-silver-mid, #d8e3e3)" />
+          </linearGradient>
+        </defs>
+      </svg>
     {open && <div className="sw-fab__menu" data-fab-menu id="sw-quick-access" role="region" aria-label="Quick access" style={{ maxHeight: `calc(var(--sw-visible-height, 100dvh) - ${bottomOffset + 82}px - env(safe-area-inset-bottom, 0px))` }}>
 
       {accountOpen ? <AccountMenu back={()=>{setAccountOpen(false);requestAnimationFrame(()=>containerRef.current?.querySelector<HTMLButtonElement>('[data-fab-action="account"]')?.focus());}} close={()=>setOpen(false)} onLink={followLink}/> : <>

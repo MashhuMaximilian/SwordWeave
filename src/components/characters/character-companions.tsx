@@ -174,11 +174,13 @@ export function CompanionDraftPanel({
   characterId,
   operations,
   disabled,
+  onReviewInterruptedDraft,
   onStage,
 }: {
   characterId: string;
   operations: readonly DraftOperation[];
   disabled: boolean;
+  onReviewInterruptedDraft?: () => void;
   onStage: (operation: CompanionOperation) => Promise<unknown>;
 }) {
   const endpoint = `/api/characters/${encodeURIComponent(characterId)}/companions`;
@@ -202,8 +204,9 @@ export function CompanionDraftPanel({
       companions.delete(operation.payload.attachmentId);
     }
   }
-  const blocked = disabled || pending || !saved || Boolean(saved.error);
+  const blocked = disabled || !!onReviewInterruptedDraft || pending || !saved || Boolean(saved.error);
   const canAdd = !blocked && companions.size < MAX_CHARACTER_COMPANIONS;
+  const canBrowse = canAdd || (!!onReviewInterruptedDraft && !!saved && !saved.error);
 
   async function stage(operation: CompanionOperation) {
     setError("");
@@ -240,7 +243,11 @@ export function CompanionDraftPanel({
         </ul>
       )}
       {companions.size >= MAX_CHARACTER_COMPANIONS && <p className="text-sm text-muted-foreground">This draft has the maximum of {MAX_CHARACTER_COMPANIONS} companions.</p>}
-      <button type="button" className="sheet-button is-gold" disabled={!pickerOpen && !canAdd} aria-expanded={pickerOpen} onClick={() => setPickerOpen(value => !value)}>
+      {onReviewInterruptedDraft && <div className="sheet-guidance" role="status">
+        <span>You can browse the Bestiary. Resolve your interrupted draft before adding or removing companions.</span>
+        <button type="button" className="sheet-button" onClick={onReviewInterruptedDraft}>Review interrupted draft</button>
+      </div>}
+      <button type="button" className="sheet-button is-gold" disabled={!pickerOpen && !canBrowse} aria-expanded={pickerOpen} onClick={() => setPickerOpen(value => !value)}>
         <Plus size={16} aria-hidden="true" /> {pickerOpen ? "Close Bestiary picker" : "Add companion"}
       </button>
       {pickerOpen && (

@@ -478,8 +478,9 @@ export function CharacterBuildWorkspace({ characterId, initialRoot = "ALL", perm
     busy={busy} onDirtyChange={setFoundationDirty}
     {...(permission === "OWNER" ? { companions: {
       content: <CompanionDraftPanel characterId={characterId} operations={operations}
-        disabled={compositionBlocked || !controller.ready} onStage={stage}/>,
-      onReview: () => { setFoundation(null); openReview(); },
+        disabled={compositionBlocked || !controller.ready} onStage={stage}
+        {...(controller.pendingRecovery ? { onReviewInterruptedDraft: () => navigate(() => { setFoundation(null); setMobile("build"); }) } : {})}/>,
+      ...(!controller.pendingRecovery ? { onReview: () => { setFoundation(null); openReview(); } } : {}),
     } } : {})}
     onClose={() => {setFoundationDirty(false);setFoundation(null);}}
     onSave={async payload => {await stage({id:browserUuid(),type:"character",label:"Update character foundation",payload});setFoundationDirty(false);setFoundation(null);}}

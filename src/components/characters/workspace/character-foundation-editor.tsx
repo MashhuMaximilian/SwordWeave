@@ -45,7 +45,7 @@ export function CharacterFoundationEditor({ character, characterId, operations =
   operations?: DraftOperation[];
   initialSection?: FoundationSection;
   busy?: boolean;
-  companions?: { content: ReactNode; onReview: () => void };
+  companions?: { content: ReactNode; onReview?: () => void };
   onSave: (payload: CharacterPayload) => Promise<void>;
   onClose: () => void;
   onDirtyChange?: (dirty: boolean) => void;
@@ -148,9 +148,9 @@ export function CharacterFoundationEditor({ character, characterId, operations =
     {section === "companions" && companions && <>
       {companions.content}
       <footer className="sheet-foundation-footer">
-        <span>{dirty ? "Add your foundation changes to the draft before reviewing." : "Review and apply the draft to update your companions."}</span>
+        {companions.onReview && <span>{dirty ? "Add your foundation changes to the draft before reviewing." : "Review and apply the draft to update your companions."}</span>}
         <button type="button" className="sheet-button" disabled={disabled} onClick={requestClose}>Close</button>
-        <button type="button" className="sheet-button is-gold" disabled={disabled || dirty || !operations.length} onClick={companions.onReview}><Check size={15}/>Review draft</button>
+        {companions.onReview && <button type="button" className="sheet-button is-gold" disabled={disabled || dirty || !operations.length} onClick={companions.onReview}><Check size={15}/>Review draft</button>}
       </footer>
     </>}
   </div>;
