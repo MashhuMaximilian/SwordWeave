@@ -13,8 +13,7 @@
               "tokenEndpointAuthMethod": "none"
             },
             "baseScopes": ["swordweave:read"],
-            "defaultScopes": [],
-            "oidcEnabled": false
+            "defaultScopes": []
           }
         }
       }
