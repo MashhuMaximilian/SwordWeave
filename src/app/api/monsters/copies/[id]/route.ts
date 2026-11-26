@@ -6,6 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { playStates, playStateOperations } from "@/db/schema/play-state";
 import { db, withDatabaseTransaction } from "@/db/client";
 import { monsterCopies } from "@/db/schema/monsters";
+import { characterMonsterCompanions } from "@/db/schema/companions";
 import { playMutationSchema, PlayConflict } from "@/lib/play-state/model";
 import { resolveMonsterPlay } from "@/lib/monsters/play";
 import { monsterPackages } from "@/lib/monsters/packages";
@@ -50,6 +51,9 @@ export async function PATCH(request: Request, context: Context) {
 }
 export async function DELETE(_: Request, context: Context) {
   return withOwnedCopy(context, async copy => {
+    const [attachment] = await db.select({ id: characterMonsterCompanions.id }).from(characterMonsterCompanions)
+      .where(eq(characterMonsterCompanions.copyId, copy.id)).limit(1);
+    if (attachment) return privateJson({ error: "Remove this companion from its character sheet before deleting the play copy." }, { status: 409 });
     await db.delete(playStateOperations).where(and(eq(playStateOperations.subjectKind, "MONSTER_PLAY_COPY"), eq(playStateOperations.subjectId, copy.id)));
     await db.delete(playStates).where(and(eq(playStates.subjectKind, "MONSTER_PLAY_COPY"), eq(playStates.subjectId, copy.id)));
     await db.delete(monsterCopies).where(eq(monsterCopies.id, copy.id));

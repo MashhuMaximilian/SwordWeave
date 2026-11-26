@@ -1,4 +1,6 @@
 "use client";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
+import { Markdown } from "@/components/ui/markdown";
 import { browserUuid } from "@/lib/browser-uuid";
 import { readJsonResponse } from "@/lib/http/read-json-response";
 import { useCallback, useEffect, useState } from "react";
@@ -7,7 +9,7 @@ import { DraftChangeReview } from "./draft-change-review";
 import type { ReviewPreview } from "./draft-change-review-model";
 export { DraftChangeReview } from "./draft-change-review";
 import type { CharacterPermission } from "@/lib/character/permission-policy";
-import type { WorkspaceDraft } from "@/lib/character/workspace/draft-types";
+import type { DraftOperation, WorkspaceDraft } from "@/lib/character/workspace/draft-types";
 import type { CharacterCollaborationState, CharacterDraftProposal } from "@/lib/character/workspace/collaboration-types";
 
 type ProposalPreview = ReviewPreview;
@@ -17,6 +19,18 @@ interface Props {
   permission: CharacterPermission;
   draft?: WorkspaceDraft | null | undefined;
   onApplied?: (() => void) | undefined;
+}
+
+function operationLabel(operation: DraftOperation) {
+  if (operation.label) return operation.label;
+  switch (operation.type) {
+    case "companion": return operation.payload.action === "add" ? "Add companion" : "Remove companion";
+    case "create": return `Add ${operation.payload.kind}`;
+    case "relocate":
+    case "move-root": return `Move to ${operation.category.toLowerCase()}`;
+    case "character": return "Update character details";
+    case "command": return String(operation.payload["type"] ?? "Change a rule");
+  }
 }
 
 /** Same character route and same draft: collaborators submit; owners review the entire connected change set. */
@@ -61,7 +75,7 @@ export function DraftCollaborationPanel({ characterId, permission, draft, onAppl
     <div className="mt-4 space-y-4">
       <p className="text-sm text-muted-foreground">Proposals stay separate from the live character until its owner applies them. A review covers one saved build; later changes need another review.</p>
       {permission !== "VIEWER" && <>
-        <label className="block text-sm">A note for your group<textarea className="mt-1 w-full rounded-md border border-border bg-background p-2" rows={2} maxLength={2000} value={note} onChange={event => setNote(event.target.value)} placeholder="What changed, or what you would like checked…"/></label>
+        <label className="block text-sm">A note for your group<MarkdownEditor ariaLabel="A note for your group" textareaClassName="mt-1 w-full rounded-md border border-border bg-background p-2" rows={2} maxLength={2000} value={note} onChange={setNote} placeholder="What changed, or what you would like checked…"/></label>
         <div className="flex flex-wrap gap-2">
           {permission !== "OWNER" && <button className="v12-btn-primary" disabled={busy || !draft?.operations.length} onClick={async () => {
             if (!draft) return;
@@ -74,26 +88,28 @@ export function DraftCollaborationPanel({ characterId, permission, draft, onAppl
       </>}
       {error && <p role="alert" className="text-sm text-red-300">{error}</p>}
       {message && <p role="status" className="text-sm text-teal-200">{message}</p>}
-      {state?.reviews.map(review => <div key={review.reviewerId} className="rounded-md border border-border p-3 text-sm"><strong>{!review.changedSinceReview ? "Reviewed at this revision" : "Changed since review"}</strong> · {review.reviewerName} · Build {review.revision} · {new Date(review.reviewedAt).toLocaleDateString()}{review.note && <p>{review.note}</p>}</div>)}
+      {state?.reviews.map(review => <div key={review.reviewerId} className="rounded-md border border-border p-3 text-sm"><strong>{!review.changedSinceReview ? "Reviewed at this revision" : "Changed since review"}</strong> · {review.reviewerName} · Build {review.revision} · {new Date(review.reviewedAt).toLocaleDateString()}{review.note && <Markdown>{review.note}</Markdown>}</div>)}
       {state?.proposals.length === 0 && <p className="text-sm text-muted-foreground">No proposed changes yet. Use Share to invite someone with “Can suggest” access.</p>}
       {state?.proposals.map(proposal => {
         const stale = proposal.baseRevision !== state.revision;
-        const preview = previews[proposal.id];
+        const inCompanion = proposal.reviewChannel === "companion";
+        const preview = inCompanion ? undefined : previews[proposal.id];
         return <article key={proposal.id} className="rounded-lg border border-border bg-background/60 p-3">
           <div className="flex flex-wrap justify-between gap-2"><strong>{proposal.operations.length} proposed {proposal.operations.length === 1 ? "change" : "changes"}</strong><span className="text-xs uppercase text-muted-foreground">{proposal.status} · {proposal.authorName} · Build {proposal.baseRevision}</span></div>
-          {proposal.rationale && <p className="my-2 text-sm">{proposal.rationale}</p>}
-          <ol className="my-2 list-inside list-decimal text-sm">{proposal.operations.map(operation => <li key={operation.id}>{operation.label ?? (operation.type === "create" ? `Add ${operation.payload.kind}` : (operation.type === "move-root" || operation.type === "relocate") ? `Move to ${operation.category.toLowerCase()}` : operation.type === "character" ? "Update character details" : String(operation.payload["type"] ?? "Change a rule"))}</li>)}</ol>
+          {proposal.rationale && <Markdown className="my-2 text-sm">{proposal.rationale}</Markdown>}
+          <ol className="my-2 list-inside list-decimal text-sm">{proposal.operations.map(operation => <li key={operation.id}>{operationLabel(operation)}</li>)}</ol>
           <p className="text-xs text-muted-foreground">These changes are reviewed together so connected rules and abilities stay intact.</p>
           {stale && proposal.status === "pending" && <p className="mt-2 text-sm text-amber-200">The saved build changed. Refresh and resubmit this proposal before applying it.</p>}
+          {inCompanion && proposal.status === "pending" && <p className="mt-2 text-sm text-muted-foreground">Open your SwordWeave companion conversation to review these changes.</p>}
           {preview && <DraftChangeReview preview={preview}/>}
           {proposal.status === "pending" && <div className="mt-3 flex flex-wrap gap-2">
-            <button className="v12-btn-ghost" disabled={busy || stale} onClick={() => void decide(proposal,"preview")}>Preview changes</button>
+            {!inCompanion && <button className="v12-btn-ghost" disabled={busy || stale} onClick={() => void decide(proposal,"preview")}>Preview changes</button>}
             {permission === "OWNER" ? <>
-              <button className="v12-btn-primary" disabled={busy || stale || !preview} onClick={() => void decide(proposal,"approve")}><Check size={14}/>Apply proposal</button>
+              {!inCompanion && <button className="v12-btn-primary" disabled={busy || stale || !preview} onClick={() => void decide(proposal,"approve")}><Check size={14}/>Apply proposal</button>}
               <button className="v12-btn-ghost" disabled={busy} onClick={() => void decide(proposal,"reject")}><X size={14}/>Decline</button>
             </> : <button className="v12-btn-ghost" disabled={busy} onClick={() => void decide(proposal,"withdraw")}>Withdraw</button>}
           </div>}
-          {proposal.reviewerNote && <p className="mt-2 text-sm">Review note: {proposal.reviewerNote}</p>}
+          {proposal.reviewerNote && <div className="mt-2 text-sm">Review note:<Markdown>{proposal.reviewerNote}</Markdown></div>}
         </article>;
       })}
     </div>

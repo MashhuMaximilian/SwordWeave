@@ -1,4 +1,5 @@
 "use client";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { useAtelierExperiment } from "./atelier-experiment";
 import { readJsonResponse } from "@/lib/http/read-json-response";
 import { EditableNumberInput } from "@/components/ui/editable-number-input";
@@ -1698,11 +1699,11 @@ export function PrimitiveForm({
 
       <label className="v12-field-narrative block text-sm font-medium md:col-span-2">
         Verbose Narrative Rule
-        <textarea
-          className="mt-2 min-h-28 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
-          value={form.narrativeRule}
-              onChange={(event) =>
-                updateForm("narrativeRule", event.target.value)
+        <MarkdownEditor
+          textareaClassName="mt-2 min-h-28 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
+          ariaLabel="Verbose narrative rule" value={form.narrativeRule}
+              onChange={value =>
+                updateForm("narrativeRule", value)
               }
           placeholder="Roots an entity to its current spatial coordinate..."
         />

@@ -1905,9 +1905,9 @@ body[data-ui="v12"] .v12-markdown-table-wrap { max-width:100%; overflow:auto; }
 body[data-ui="v12"] .v12-markdown table { width:100%; border-collapse:collapse; }
 body[data-ui="v12"] .v12-markdown :is(th,td) { padding:5px 7px; border:1px solid var(--v12-line-subtle); text-align:left; }
 body[data-ui="v12"] .v12-markdown th { background:var(--v12-raised); font-family:var(--font-system); }
-body[data-ui="v12"] .v12-markdown-editor { position:relative; }
+body[data-ui="v12"] .v12-markdown-editor { position:relative; display:flex; flex-direction:column; }
 body[data-ui="v12"] .v12-markdown-editor textarea { display:block; width:100%; min-height:86px; resize:vertical; border-radius:0 0 5px 5px; padding:8px 10px; font-size:14px; }
-body[data-ui="v12"] .v12-markdown-toolbar { display:flex; flex-wrap:wrap; gap:2px; padding:4px; border:1px solid var(--v12-silver); border-bottom:0; border-radius:5px 5px 0 0; background:var(--v12-raised); }
+body[data-ui="v12"] .v12-markdown-toolbar { order:-2; display:flex; flex-wrap:wrap; gap:2px; padding:4px; border:1px solid var(--v12-silver); border-bottom:0; border-radius:5px 5px 0 0; background:var(--v12-raised); }
 body[data-ui="v12"] .v12-markdown-toolbar button { min-width:28px; min-height:26px; padding:3px 6px; border:1px solid transparent; border-radius:3px; font-size:11px; }
 body[data-ui="v12"] .v12-markdown-toolbar button:hover { border-color:var(--v12-teal); }
 body[data-ui="v12"] .v12-markdown-command-menu { position:absolute; z-index:20; top:34px; left:4px; display:grid; grid-template-columns:repeat(2,minmax(90px,1fr)); gap:2px; padding:5px; border:1px solid var(--v12-silver); background:var(--card); box-shadow:var(--v12-shadow); }
@@ -9292,3 +9292,8 @@ body[data-ui="v12"] .v12-public-sheet-notice strong {display:block;color:var(--v
 body[data-ui="v12"] .v12-public-sheet-notice span {display:block;margin-top:4px;color:var(--v12-soft);font-size:13px;}
 body[data-ui="v12"] .v12-public-sheet-notice button {min-width:100px;}
 @media(max-width:640px) {body[data-ui="v12"] .v12-public-sheet-notice {align-items:flex-start;padding:12px;}}
+
+body[data-ui="v12"] .v12-markdown-preview { min-height:86px; padding:8px 10px; border:1px solid var(--v12-silver); border-radius:0 0 5px 5px; overflow-wrap:anywhere; }
+body[data-ui="v12"] .v12-markdown-toolbar button:disabled { opacity:.45; cursor:not-allowed; }
+
+body[data-ui="v12"] .v12-markdown-command-menu { order:-1; }

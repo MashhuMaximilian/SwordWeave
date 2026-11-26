@@ -1,4 +1,5 @@
 "use client";
+import { Markdown } from "@/components/ui/markdown";
 import {TargetEngagement} from "@/components/engagement/target-engagement";
 import { useRef, useState } from "react";
 import { useAppAuth } from "@/components/auth/app-auth-provider";
@@ -146,7 +147,7 @@ export function EncounterCard({
             creatures · {row.enemyBu} creature BU
             {row.enemyItemBu === null ? "" : ` + ${row.enemyItemBu} Item BU`}
           </p>
-          {row.note && <p data-copy-role="narrative">{row.note}</p>}
+          {row.note && <Markdown copyRole="narrative">{row.note}</Markdown>}
           <ul className="sw-encounter-quick-roster">
             {row.creatures.slice(0, 8).map((creature, index) => (
               <li key={index}>

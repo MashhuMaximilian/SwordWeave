@@ -32,4 +32,12 @@ describe("uploaded artwork visibility", () => {
     expect(compiled.sql).toContain("cs.revoked_at IS NULL"); expect(compiled.sql).toContain("character_shares");
     expect(compiled.sql).toContain("f.following_id = author_user.id"); expect(compiled.sql).toContain("f.follower_id = viewer_user.id"); expect(compiled.params).toContain("viewer");
   });
+  it("binds pinned monster artwork to its uploader and the current Bestiary audience", async () => {
+    await canReadUploadedArtwork("user-uploads/monster-author/portrait.png", "viewer");
+    const compiled = query();
+    expect(compiled.sql).toContain("FROM monsters m\n    WHERE m.user_id = ");
+    expect(compiled.sql).toContain("m.visibility = 'FOLLOWERS_ONLY'");
+    expect(compiled.sql).toContain("FROM monster_versions mv WHERE mv.monster_id = m.id");
+    expect(compiled.params).toContain("monster-author");
+  });
 });

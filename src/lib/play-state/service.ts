@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { and, eq, lt } from "drizzle-orm";
 import { db, withDatabaseTransaction } from "@/db/client";
 import { playStates, playStateOperations } from "@/db/schema/play-state";
-import { applyPlayMutation, playMutationSchema, type PlayMutation, type PlayState, type SubjectKind } from "./model";
+import { applyPlayMutation, playMutationSchema, projectCanonicalPlayState, type PlayMutation, type PlayState, type SubjectKind } from "./model";
 const whereState = (kind: SubjectKind, id: string) => and(eq(playStates.subjectKind, kind), eq(playStates.subjectId, id));
 /** Call only inside an adapter that has authorized the subject. */
 export async function readPlayState(kind: SubjectKind, id: string): Promise<PlayState> {
@@ -44,10 +44,8 @@ export async function mutatePlayState(kind: SubjectKind, id: string, raw: PlayMu
 /** Absorb writes from established gameplay APIs; adapters must lock the subject. */
 export async function reconcilePlayState(kind: SubjectKind, id: string, canonical: Record<string, unknown>): Promise<PlayState> {
   const current = await readPlayState(kind, id);
-  const changes = Object.entries(canonical).filter(([field, value]) => JSON.stringify(current.overrides[field] ?? null) !== JSON.stringify(value));
-  if (!changes.length) return current;
-  const next = { revision: current.revision + 1, overrides: { ...current.overrides }, fieldRevisions: { ...current.fieldRevisions } };
-  for (const [field, value] of changes) { if (value === null) delete next.overrides[field]; else next.overrides[field] = value; next.fieldRevisions[field] = next.revision; }
+  const next = projectCanonicalPlayState(current, canonical);
+  if (next === current) return current;
   await db.update(playStates).set({ ...next, updatedAt: new Date() }).where(whereState(kind, id));
   return next;
 }

@@ -4,6 +4,20 @@ export type SubjectKind = "CHARACTER" | "MONSTER_PLAY_COPY" | "ENCOUNTER_RUN";
 export type PlayOverrides = Record<string, unknown>;
 export type PlayState = { revision: number; overrides: PlayOverrides; fieldRevisions: Record<string, number> };
 export const emptyPlayState = (): PlayState => ({ revision: 0, overrides: {}, fieldRevisions: {} });
+
+/** Project the legacy gameplay fields onto the session clocks without writing a row. */
+export function projectCanonicalPlayState(stored: PlayState, canonical: Record<string, unknown>): PlayState {
+  const changes = Object.entries(canonical).filter(([field, value]) =>
+    JSON.stringify(stored.overrides[field] ?? null) !== JSON.stringify(value));
+  if (!changes.length) return stored;
+  const next: PlayState = { revision: stored.revision + 1, overrides: { ...stored.overrides }, fieldRevisions: { ...stored.fieldRevisions } };
+  for (const [field, value] of changes) {
+    if (value === null) delete next.overrides[field];
+    else next.overrides[field] = value;
+    next.fieldRevisions[field] = next.revision;
+  }
+  return next;
+}
 const field = z.string().max(240).regex(/^(currentVitality|baselineVitality|shortRestRecoveryUsed|(?:cap|eff|consequence):[a-zA-Z0-9_-]{1,200}|itemcap:[a-zA-Z0-9_-]{1,100}:[a-zA-Z0-9_-]{1,100})$/);
 export const playMutationSchema = z.object({
   opId: z.uuid(), source: z.enum(["manual", "long_rest", "short_rest"]).optional(), baseRevision: z.number().int().min(0).max(2147483646),

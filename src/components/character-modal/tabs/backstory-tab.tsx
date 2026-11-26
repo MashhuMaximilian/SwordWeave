@@ -1,4 +1,5 @@
 "use client";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 
 // =============================================================================
 // BackstoryTab — Tab 2 of the 7-tab character modal.
@@ -160,12 +161,12 @@ export function BackstoryTab({
           <span className="block text-[11px] text-muted-foreground/80">
             {field.help}
           </span>
-          <textarea
-            value={state[field.key]}
-            onChange={(e) => setField(field.key, e.target.value)}
+          <MarkdownEditor
+            ariaLabel={field.label} value={state[field.key]}
+            onChange={value => setField(field.key, value)}
             rows={3}
             placeholder={field.placeholder}
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+            textareaClassName="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
           />
         </label>
         </details>

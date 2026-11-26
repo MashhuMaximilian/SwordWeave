@@ -1,6 +1,6 @@
 import type { GuideBlock, GuideTopic } from './play-guide';
 
-function blockSearchText(block: GuideBlock): string[] {
+export function blockSearchText(block: GuideBlock): string[] {
   return [
     block.title,
     block.body ?? '',

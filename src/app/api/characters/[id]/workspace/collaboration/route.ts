@@ -6,7 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { db, withDatabaseTransaction } from "@/db/client";
 import { characters, characterWorkspaceCommands } from "@/db/schema";
 import { resolveCharacterAccess } from "@/lib/character/resolve-character-access";
-import { CollaborationError, readCollaboration, submitCharacterProposal, decideCharacterProposal, markCharacterReviewed } from "@/lib/character/workspace/collaboration";
+import { CollaborationError, assertWorkspaceProposalReviewChannel, readCollaboration, submitCharacterProposal, decideCharacterProposal, markCharacterReviewed } from "@/lib/character/workspace/collaboration";
 import { executeDraftOperations, getWorkspaceDraft, previewWorkspaceDraft, workspaceBuildFingerprint } from "@/lib/character/workspace/drafts";
 import { readWorkspace } from "@/lib/character/workspace/read";
 import type { WorkspaceDraftPreview } from "@/lib/character/workspace/draft-types";
@@ -49,6 +49,7 @@ export async function POST(request: Request, { params }: {params: Promise<{id: s
       if (!proposal) throw new CollaborationError("Proposal not found.",404);
       if (access.permission !== "OWNER" && proposal.authorId !== userId) throw new CollaborationError("You cannot read this proposal.",403);
       if (proposal.status !== "pending") throw new CollaborationError("This proposal is already resolved.",409);
+      assertWorkspaceProposalReviewChannel(proposal);
       await resolveCharacterAccess(proposal.authorId,id,{require:"SUGGESTER"});
       try {
         await withDatabaseTransaction(async () => {

@@ -6,6 +6,7 @@ import { draftReviewChanges, type ReviewChange, type ReviewPreview, type ReviewP
 export function DraftChangeReview({preview}: {preview: ReviewPreview}) {
   const before = preview.beforeSheet, after = preview.sheet;
   const changes = draftReviewChanges(preview);
+  const companions = preview.companionChanges ?? [];
   const rows: [string,number,number][] = [
     ["Allocated BU",before.buLedger.positiveSpent,after.buLedger.positiveSpent],
     ["Drawback credit",before.volatility.rating,after.volatility.rating],
@@ -23,7 +24,15 @@ export function DraftChangeReview({preview}: {preview: ReviewPreview}) {
     {changedRows.length ? <table className="w-full text-left text-sm"><caption className="sr-only">Changed character totals</caption><thead><tr><th scope="col">Result</th><th scope="col">Before</th><th scope="col">After</th></tr></thead><tbody>{changedRows.map(([label,old,next])=><tr key={label} className="border-t border-border"><th scope="row" className="py-1 font-normal">{label}</th><td>{old}</td><td>{next}</td></tr>)}</tbody></table> : <p className="text-sm text-muted-foreground">{preview.local ? "Complete character totals will be calculated when you check the draft." : "Character totals are unchanged."}</p>}
     <ChangeGroup title="Character details" changes={changes.foundation}/>
     <PieceChanges changes={changes.pieces}/>
-    {changes.hasBeforeGraph && !changes.pieces.length && !changes.foundation.length && <p className="text-sm text-muted-foreground">No net build changes. Edits that were reversed cancel out.</p>}
+    {companions.length > 0 && <section className="space-y-2" aria-label="Companion changes">
+      <h4 className="text-sm font-semibold">Companions</h4>
+      <ul className="space-y-1 text-sm">
+        {companions.map(companion => <li key={companion.id}>
+          <strong>{companion.action === "add" ? "Add" : "Remove"}</strong> {companion.name}
+        </li>)}
+      </ul>
+    </section>}
+    {changes.hasBeforeGraph && !changes.pieces.length && !changes.foundation.length && !companions.length && <p className="text-sm text-muted-foreground">No net build changes. Edits that were reversed cancel out.</p>}
     {!changes.hasBeforeGraph && <p className="text-sm text-muted-foreground">Refresh the preview to compare individual pieces and their placement.</p>}
     {changes.sources.length>0 && <p className="text-xs text-muted-foreground">Source comparison reflects build placement and equipment. Temporary restrictions and local play toggles can still affect live availability.</p>}
     {preview.warnings?.map((warning,index)=><p className="text-sm text-amber-200" key={index}>{warning}</p>)}

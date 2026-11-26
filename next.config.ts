@@ -8,6 +8,13 @@ const localPreviewHosts = Object.values(networkInterfaces()).flatMap(addresses =
   (addresses ?? []).filter(address => !address.internal && address.family === "IPv4").map(address => address.address),
 );
 
+const characterPdfAssets = [
+  "./scripts/render-character-pdf.py",
+  "./scripts/build-character-sheet-v{6,7,8,9,10,11}.py",
+  "./scripts/character_pdf/*.py",
+  "./assets/character-pdf/**/*",
+];
+
 const nextConfig: NextConfig = {
   output: "standalone",
   // The container checks generated route types in its own build step.
@@ -16,12 +23,14 @@ const nextConfig: NextConfig = {
     experimental: { cpus: 2, turbopackMemoryLimit: 1536 * 1024 * 1024 },
   } : {}),
   outputFileTracingIncludes: {
-    "/api/characters/\\[id\\]/pdf": [
-      "./scripts/render-character-pdf.py",
-      "./scripts/build-character-sheet-v{6,7,8,9,10,11}.py",
+    "/api/characters/\\[id\\]/pdf": characterPdfAssets,
+    "/api/companion/characters/\\[id\\]/sheet-pdf": characterPdfAssets,
+    "/api/companion/progression/\\[documentId\\]": [
+      "./scripts/render-progression-pdf.py",
       "./scripts/character_pdf/*.py",
       "./assets/character-pdf/**/*",
     ],
+    "/api/mcp": ["./src/lib/mcp/widgets/character-review.html"],
   },
   reactStrictMode: true,
   // Local testing is commonly opened through either loopback spelling.

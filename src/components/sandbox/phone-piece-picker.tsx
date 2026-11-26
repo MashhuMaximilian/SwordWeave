@@ -1,4 +1,5 @@
 "use client";
+import { Markdown } from "@/components/ui/markdown";
 import { PhoneTypeChoices } from "@/components/library/phone-type-choices";
 import { useState } from "react";
 import { Plus, Search } from "lucide-react";
@@ -15,6 +16,6 @@ export function PhonePiecePicker({entries,onChoose}:{entries:PhonePieceOption[];
  <label className="phone-picker-search"><Search size={16}/><input autoFocus aria-label="Search pieces" placeholder="Search rules, effects, capabilities…" value={search} onChange={event=>setSearch(event.target.value)}/></label>
  {kinds.length>1?<PhoneTypeChoices label="Piece type" value={kind} options={[{value:"all",label:"All"},...kinds.map(type=>({value:type,label:type.charAt(0).toUpperCase()+type.slice(1)}))]} onChange={setKind}/>:null}
  <p className="phone-picker-count">{filtered.length} available</p>
- <div className="phone-picker-results">{filtered.map(entry=><button type="button" key={`${entry.kind}:${entry.id}`} onClick={()=>{onChoose(entry);setOpen(false);}}><span><strong>{entry.name}</strong><small>{entry.kind}{entry.buCost!=null?` · ${entry.buCost} BU`:""}</small>{entry.description?<p>{entry.description}</p>:null}</span><Plus size={18} aria-label="Add"/></button>)}{!filtered.length?<p>No matching pieces. Try another search.</p>:null}</div>
+ <div className="phone-picker-results">{filtered.map(entry=><button type="button" key={`${entry.kind}:${entry.id}`} onClick={()=>{onChoose(entry);setOpen(false);}}><span><strong>{entry.name}</strong><small>{entry.kind}{entry.buCost!=null?` · ${entry.buCost} BU`:""}</small>{entry.description?<p><Markdown inline>{entry.description}</Markdown></p>:null}</span><Plus size={18} aria-label="Add"/></button>)}{!filtered.length?<p>No matching pieces. Try another search.</p>:null}</div>
  </div></DetailModal></>;
 }

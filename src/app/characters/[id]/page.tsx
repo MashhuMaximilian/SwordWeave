@@ -94,11 +94,12 @@ export default async function CharacterSheetPage({
   params, searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ view?: string }>;
+  searchParams: Promise<{ view?: string; section?: string }>;
 }) {
   const { id } = await params;
   if (!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id)) notFound();
-  const publicViewRequested = (await searchParams).view === "public";
+  const { view, section } = await searchParams;
+  const publicViewRequested = view === "public";
   const { userId } = await auth();
 
   const row = await db.query.characters.findFirst({
@@ -131,7 +132,7 @@ export default async function CharacterSheetPage({
   // Library links are always a viewing session, even for the original author.
   const viewerPermission = characterSheetPermission(resolved?.permission ?? null, catalogueReadable, publicViewRequested);
   if (!viewerPermission) notFound();
-  const publicReader = catalogueReadable && (publicViewRequested || !resolved);
+  const publicReader = publicViewRequested || !resolved;
   const savedConsequences = viewerPermission === "VIEWER" ? await db.select({ occurrence: characterConsequences.occurrence })
     .from(characterConsequences).where(and(eq(characterConsequences.characterId, id), isNull(characterConsequences.deletedAt))) : [];
 
@@ -662,6 +663,8 @@ export default async function CharacterSheetPage({
     <div className="flex min-h-screen">
     <CharacterSheetView
       id={row.id}
+      publicView={publicReader}
+      {...(section === "companions" && !publicReader ? { initialSection: "companions" as const } : {})}
       name={row.name}
       level={row.level}
       size={sheet.resolvedSize ?? row.size}

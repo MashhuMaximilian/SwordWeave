@@ -18,6 +18,7 @@ import {
   X,
   BookOpen,
   ChevronRight,
+  ArrowRight,
   ArrowUpRight,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode, type MouseEvent } from "react";
@@ -56,6 +57,7 @@ export type FabLink = {
   kind: "link";
   key: string;
   label: string;
+  accessibleLabel?: string;
   icon: ReactNode;
   href: string;
   external?: boolean;
@@ -205,7 +207,26 @@ export function FabSpeedDial({
           </div>
         </div>
         <div className="sw-fab__community-row">
-          {items.filter((item): item is FabLink => item.kind === "link" && ["buymeacoffee", "discord"].includes(item.key)).map(item => <a key={item.key} onClick={() => track(item.key === "discord" ? { name: "discord_invite_click", params: { placement: "fab" } } : { name: "support_click", params: { placement: "fab" } })} href={item.href} target="_blank" rel="noopener noreferrer" className="sw-fab__support" data-fab-link={item.key}>{item.icon}<span>{item.label}</span><ArrowUpRight size={16} aria-hidden="true" /></a>)}
+          {items.filter((item): item is FabLink => item.kind === "link" && ["buymeacoffee", "discord", "chatgpt"].includes(item.key)).map(item => (
+            <Link
+              key={item.key}
+              onClick={() => {
+                if (item.key === "discord") track({ name: "discord_invite_click", params: { placement: "fab" } });
+                if (item.key === "buymeacoffee") track({ name: "support_click", params: { placement: "fab" } });
+              }}
+              href={item.href}
+              {...(item.external
+                ? { target: "_blank", rel: "noopener noreferrer" }
+                : { onClick: (event: MouseEvent<HTMLAnchorElement>) => followLink(event, item.href) })}
+              className="sw-fab__support"
+              data-fab-link={item.key}
+              aria-label={item.accessibleLabel}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+              {item.external ? <ArrowUpRight size={13} aria-hidden="true" /> : <ArrowRight size={13} aria-hidden="true" />}
+            </Link>
+          ))}
         </div>
       </footer></>}
     </div>}

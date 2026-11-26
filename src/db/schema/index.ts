@@ -11,5 +11,7 @@ export * from "./workspace";
 export * from "./library";
 export * from "./collections";
 export * from "./monsters";
+export * from "./companions";
+export * from "./companion";
 export * from "./play-state";
 export * from "./encounters";

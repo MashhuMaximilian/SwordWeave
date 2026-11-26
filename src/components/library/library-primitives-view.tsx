@@ -1,5 +1,6 @@
 "use client";
 
+import { Markdown } from "@/components/ui/markdown";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Copy, Search, Eye } from "lucide-react";
@@ -198,9 +199,7 @@ export function LibraryPrimitivesView({
                       {p.costTier}
                     </p>
                     {p.narrativeRule && (
-                      <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
-                        {p.narrativeRule}
-                      </p>
+                      <Markdown className="mt-2 line-clamp-2 text-xs text-muted-foreground">{p.narrativeRule}</Markdown>
                     )}
                     {p.isMirrorable && (
                       <span className="mt-2 inline-block rounded-full bg-secondary px-2 py-0.5 text-xs">
@@ -263,9 +262,7 @@ export function LibraryPrimitivesView({
               <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
                 Narrative Rule
               </h3>
-              <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                {detailPrim.narrativeRule || "(no narrative rule)"}
-              </p>
+              <Markdown className="whitespace-pre-wrap text-sm leading-relaxed">{detailPrim.narrativeRule || "(no narrative rule)"}</Markdown>
             </div>
 
             <div className="flex gap-2 border-t border-border pt-4">

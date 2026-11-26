@@ -1,6 +1,10 @@
 import { sql } from "drizzle-orm";
 import { db, withDatabaseTransaction } from "@/db/client";
 
+export async function acquirePublishingLock() {
+  await db.execute(sql`select pg_advisory_xact_lock(hashtextextended('swordweave:publishing', 0))`);
+}
+
 /** Entity endpoints and workspace commands share one transaction boundary.
  * The advisory lock serializes publication graphs, including nested fork saves,
  * before any source hash is read. Character locks still isolate gameplay edits.
@@ -9,9 +13,7 @@ export function withPublishingTransaction<T>(
   work: () => Promise<T>,
 ): Promise<T> {
   return withDatabaseTransaction(async () => {
-    await db.execute(
-      sql`select pg_advisory_xact_lock(hashtextextended('swordweave:publishing', 0))`,
-    );
+    await acquirePublishingLock();
     return work();
   });
 }

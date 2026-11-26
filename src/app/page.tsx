@@ -7,13 +7,14 @@ import type { ComponentProps } from "react";
 import { BookCards } from "@/components/publications/book-cards";
 import "./books/books.css";
 import type { Metadata } from "next";
-import { ArrowRight, ArrowUpRight, BookOpen, Check, GitFork, Hammer, Layers, MessageCircle, Shield, Sparkles, Users } from "lucide-react";
+import { ArrowRight, ArrowUpRight, BookOpen, Check, GitFork, Hammer, Layers, MessageCircle, MessagesSquare, Shield, Sparkles, Users } from "lucide-react";
 import { PublicNav } from "@/components/home/public-nav";
 import { TableIntent } from "@/components/home/table-intent";
 import { ArcaneForge } from "@/components/home/arcane-forge";
 import { HomePieceIcon } from "@/components/home/home-piece-icon";
 import { DISCORD_INVITE_URL } from "@/lib/community";
 import { DiscordIcon } from "@/components/icons/discord-icon";
+import { CHATGPT_GUIDE_PATH, CHATGPT_INSTALL_LABEL, CHATGPT_LISTING_URL } from "@/lib/chatgpt-listing";
 
 export const metadata: Metadata = publicPageMetadata("/");
 
@@ -104,9 +105,32 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="sw-public-section sw-home-chatgpt" aria-labelledby="home-chatgpt-title">
+        <div className="sw-public-duet">
+          <div className="sw-home-chatgpt__copy">
+            <h2 id="home-chatgpt-title">SwordWeave in <em>ChatGPT.</em></h2>
+            <p>Ask a rules question while you play, work through a character idea, or check the Build Units on a sheet you can access.</p>
+            <div className="sw-public-actions">
+              {CHATGPT_LISTING_URL && (
+                <a className="sw-cta-primary" href={CHATGPT_LISTING_URL} target="_blank" rel="noopener noreferrer">
+                  {CHATGPT_INSTALL_LABEL} <ArrowUpRight aria-hidden="true" />
+                </a>
+              )}
+              <Link className={CHATGPT_LISTING_URL ? "sw-cta-ghost" : "sw-cta-primary"} href={CHATGPT_GUIDE_PATH}>
+                {CHATGPT_LISTING_URL ? "Read the guide" : "See how it works"} <ArrowRight aria-hidden="true" />
+              </Link>
+            </div>
+          </div>
+          <figure className="sw-public-panel sw-chatgpt-prompt">
+            <figcaption><MessagesSquare aria-hidden="true" /> Try asking</figcaption>
+            <blockquote>“I want to play a storm caller. Help me choose a verb tier, domain, range, and die type for a first-level build.”</blockquote>
+          </figure>
+        </div>
+      </section>
+
       <section className="sw-home-books" aria-labelledby="home-books-title"><div><p className="sw-public-kicker">Read, make, play · v0.1 alpha</p><h2 id="home-books-title">The books for your table</h2><p>Free illustrated Player’s Handbook and GM Guide PDFs, plus the standalone SRD Reference edition. Learn to play, run a session, or use the open reference to create your own.</p><Link href="/books">Explore the books <ArrowRight size={16} aria-hidden="true" /></Link></div><BookCards placement="home" /></section>
       <section className="sw-public-invitation"><div className="sw-public-invitation__seal" aria-hidden="true"><Sparkles /></div><p className="sw-public-kicker">Bring the idea you cannot stop thinking about.</p><h2>There is room for it<br /><em>at your table.</em></h2><p>Start with a character. A strange gift. One impossible thing.<br />Then give it rules you and your friends can play.</p><div className="sw-public-actions"><Link href="/character" className="sw-cta-primary">Begin your character <ArrowRight aria-hidden="true" /></Link><Link href="/about" className="sw-cta-ghost"><MessageCircle aria-hidden="true" /> Meet the project</Link></div></section>
-      <footer className="sw-public-footer"><Link href="/" className="sw-public-footer__brand">Sword<span>·</span>Weave</Link><p>A framework for the stories you tell together.</p><nav aria-label="Project information"><Link href="/start">Walkthrough</Link><Link href="/combat">Combat</Link><Link href="/books">Books</Link><Link href="/about">About</Link><Link href="/contact">Contact</Link><Link href="/attributions">Credits</Link><TrackLink event={{ name: "discord_invite_click", params: { placement: "footer" } }} className="sw-discord-link" href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer"><DiscordIcon /> Discord <ArrowUpRight size={13} aria-hidden="true" /></TrackLink></nav></footer>
+      <footer className="sw-public-footer"><Link href="/" className="sw-public-footer__brand">Sword<span>·</span>Weave</Link><p>A framework for the stories you tell together.</p><nav aria-label="Project information"><Link href="/start">Walkthrough</Link><Link href="/combat">Combat</Link><Link href="/books">Books</Link><Link href={CHATGPT_GUIDE_PATH}>ChatGPT</Link><Link href="/about">About</Link><Link href="/contact">Contact</Link><Link href="/attributions">Credits</Link><TrackLink event={{ name: "discord_invite_click", params: { placement: "footer" } }} className="sw-discord-link" href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer"><DiscordIcon /> Discord <ArrowUpRight size={13} aria-hidden="true" /></TrackLink></nav></footer>
     </div>
   );
 }

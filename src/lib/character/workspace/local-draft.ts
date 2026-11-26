@@ -31,6 +31,19 @@ export function draftReferenceKeys(operation: DraftOperation): EntityKey[] {
 
 /** Browser-only projection. Server review still validates prices, permissions, versions and debt. */
 export function projectDraftOperation(previous: WorkspaceDraftPreview, operation: DraftOperation, authorId: string): { preview: WorkspaceDraftPreview; operation: DraftOperation } {
+  if (operation.type === "companion") {
+    const change = operation.payload;
+    const changes = previous.companionChanges ?? [];
+    const id = change.action === "add" ? operation.id : change.attachmentId;
+    const name = (change.action === "add" && change.name) || operation.label || "Monster companion";
+    const companionChanges = changes.filter(entry => entry.id !== id);
+    const cancelsAdd = change.action === "remove" && changes.some(entry => entry.id === id && entry.action === "add");
+    if (!cancelsAdd) companionChanges.push({ action: change.action, id, name });
+    return {
+      operation: { ...operation, localBindings: { nodes: [], instances: [] } },
+      preview: { ...previous, companionChanges, local: true, applied: false, results: [...previous.results, { operationId: operation.id, result: {} }] },
+    };
+  }
   const graph = structuredClone(previous.graph);
   const bindings: LocalBindings = { nodes: [], instances: [] };
   const replacements: Record<string, EntityKey> = {};

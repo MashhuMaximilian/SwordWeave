@@ -1,4 +1,5 @@
 "use client";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { EditableNumberInput } from "@/components/ui/editable-number-input";
 
 import { useMemo, useState, useTransition } from "react";
@@ -454,13 +455,13 @@ export function BuildComposer({
                 />
               </Field>
               <Field label="Description">
-                <textarea
-                  value={form.description}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, description: e.target.value }))
+                <MarkdownEditor
+                  ariaLabel="Description" value={form.description}
+                  onChange={value =>
+                    setForm((f) => ({ ...f, description: value }))
                   }
                   rows={2}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  textareaClassName="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                 />
               </Field>
               <div className="grid grid-cols-2 gap-3">
@@ -597,13 +598,13 @@ export function BuildComposer({
                 />
               </Field>
               <Field label="Race Description">
-                <textarea
-                  value={form.lineageDescription}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, lineageDescription: e.target.value }))
+                <MarkdownEditor
+                  ariaLabel="Race description" value={form.lineageDescription}
+                  onChange={value =>
+                    setForm((f) => ({ ...f, lineageDescription: value }))
                   }
                   rows={2}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  textareaClassName="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                 />
               </Field>
             </div>
@@ -638,16 +639,16 @@ export function BuildComposer({
                 />
               </Field>
               <Field label="Background Description">
-                <textarea
-                  value={form.upbringingDescription}
-                  onChange={(e) =>
+                <MarkdownEditor
+                  ariaLabel="Background description" value={form.upbringingDescription}
+                  onChange={value =>
                     setForm((f) => ({
                       ...f,
-                      upbringingDescription: e.target.value,
+                      upbringingDescription: value,
                     }))
                   }
                   rows={2}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  textareaClassName="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                 />
               </Field>
             </div>

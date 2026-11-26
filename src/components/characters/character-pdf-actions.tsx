@@ -170,8 +170,9 @@ export function characterPdfFilename(disposition: string | null, characterName?:
   return filename.toLowerCase().endsWith(".pdf") ? filename : `${filename || "swordweave-character"}.pdf`;
 }
 
-export async function requestCharacterPdf(characterId: string, options: CharacterPdfOptions, signal: AbortSignal, characterName?: string) {
-  const response = await fetch(`/api/characters/${encodeURIComponent(characterId)}/pdf`, {
+export async function requestCharacterPdf(characterId: string, options: CharacterPdfOptions, signal: AbortSignal, characterName?: string, publicView = false) {
+  const preview = publicView ? "?view=public" : "";
+  const response = await fetch(`/api/characters/${encodeURIComponent(characterId)}/pdf${preview}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/pdf" },
     body: JSON.stringify(options), signal,
@@ -261,15 +262,16 @@ interface CharacterPdfActionsProps {
   characterId: string;
   characterName?: string;
   compact?: boolean;
+  publicView?: boolean;
 }
 
 export function CharacterPdfActions(props: CharacterPdfActionsProps) {
   // Route transitions may reuse this component. A prepared PDF, pending request
   // and print window must belong to exactly one character's lifetime.
-  return <CharacterPdfActionsForCharacter key={props.characterId} {...props} />;
+  return <CharacterPdfActionsForCharacter key={`${props.characterId}:${props.publicView ? "public" : "private"}`} {...props} />;
 }
 
-function CharacterPdfActionsForCharacter({ characterId, characterName, compact = false }: CharacterPdfActionsProps) {
+function CharacterPdfActionsForCharacter({ characterId, characterName, compact = false, publicView = false }: CharacterPdfActionsProps) {
   const [intent, setIntent] = useState<"download" | "print" | null>(null);
   const [options, setOptions] = useState<CharacterPdfOptions>(DEFAULT_CHARACTER_PDF_OPTIONS);
   const [busy, setBusy] = useState(false);
@@ -359,10 +361,11 @@ function CharacterPdfActionsForCharacter({ characterId, characterName, compact =
     const request = new AbortController();
     controller.current = request;
     try {
-      const signature = JSON.stringify({ characterId, ...options });
+      const preview = publicView || new URLSearchParams(window.location.search).get("view") === "public";
+      const signature = JSON.stringify({ characterId, preview, ...options });
       let output = artifact.current;
       if (!output || output.signature !== signature) {
-        const { blob, filename, artworkWarnings } = await requestCharacterPdf(characterId, options, request.signal, characterName);
+        const { blob, filename, artworkWarnings } = await requestCharacterPdf(characterId, options, request.signal, characterName, preview);
         if (request.signal.aborted) return;
         if (artifact.current) releaseArtifact(artifact.current);
         output = { url: URL.createObjectURL(blob), filename, signature, printWindows: [], artworkWarnings };

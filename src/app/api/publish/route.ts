@@ -17,9 +17,11 @@ import {
 } from "@/db/schema";
 import { loadWorkspaceNodes } from "@/lib/character/workspace/load-nodes";
 import { captureCharacterSnapshot } from "@/lib/character/capture-character-snapshot";
+import { withCharacterMutation } from "@/lib/character/mutation-transaction";
 import { findLatestVersion as findLatestAuthoredVersion } from "@/lib/versions/auto-snapshot";
 import { resolveContentVersionId } from "@/lib/versions/content-hash";
 import { publishTarget, unpublishTarget } from "@/lib/publishing/publish-service";
+import { withPublishingResponse } from "@/lib/publishing/save-transaction";
 
 const PublishSchema = z.object({
   targetType: z.enum(publishTargetTypeEnum.enumValues),
@@ -100,23 +102,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "User profile not found" }, { status: 404 });
   }
 
-  const snapshot = await loadSnapshot(targetType, targetId, userId); // userId is the Clerk user ID from auth()
-  if (!snapshot) {
-    return NextResponse.json(
-      { error: "Target not found or you don't have permission" },
-      { status: 404 },
-    );
-  }
-
-  try {
-    const result = await publishTarget({
-      targetType,
-      targetId,
-      authorId: user.id,
-      visibility,
-      snapshot,
-    });
+  const save = () => withPublishingResponse(async () => {
+    const snapshot = await loadSnapshot(targetType, targetId, userId);
+    if (!snapshot) return NextResponse.json({ error: "Target not found or you don't have permission" }, { status: 404 });
+    const result = await publishTarget({ targetType, targetId, authorId: user.id, visibility, snapshot });
     return NextResponse.json({ ok: true, ...result });
+  });
+  try {
+    return await (targetType === "CHARACTER" ? withCharacterMutation(targetId, save) : save());
   } catch (err) {
     console.error("[publish] error:", err);
     return NextResponse.json(

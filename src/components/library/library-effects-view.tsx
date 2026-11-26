@@ -1,4 +1,5 @@
 "use client";
+import { Markdown } from "@/components/ui/markdown";
 import { sourceDisplayLabel } from "@/lib/publishing/source-display";
 
 import { useRouter } from "next/navigation";
@@ -144,9 +145,7 @@ export function LibraryEffectsView({
                 </p>
               )}
               {effect.narrativeDescription && (
-                <p className="mt-3 line-clamp-3 text-sm text-muted-foreground">
-                  {effect.narrativeDescription}
-                </p>
+                <Markdown className="mt-3 line-clamp-3 text-sm text-muted-foreground">{effect.narrativeDescription}</Markdown>
               )}
               {effect.tags.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-1">
@@ -212,9 +211,7 @@ export function LibraryEffectsView({
               <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
                 Description
               </h3>
-              <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                {detailEffect.narrativeDescription || "(no description)"}
-              </p>
+              <Markdown className="whitespace-pre-wrap text-sm leading-relaxed">{detailEffect.narrativeDescription || "(no description)"}</Markdown>
             </div>
 
             <div className="flex gap-2 border-t border-border pt-4">

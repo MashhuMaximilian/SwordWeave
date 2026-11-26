@@ -28,7 +28,7 @@ const signed = (value: number) => value >= 0 ? `+${value}` : String(value);
 /** A template is read-only here. Playing creates an independent, pinned copy. */
 export function MonsterTemplatePreview({ id, version, compact = false, actions, actionPlacement = "bottom", hideActions = false, showIdentity = true, initialSection = "practices" }: { id: string; version?:number; compact?: boolean; actions?: PreviewActionProps; actionPlacement?: "top" | "bottom"; hideActions?: boolean; showIdentity?: boolean; initialSection?: "practices"|"abilities"|"story" }) {
   const { userId, isLoaded } = useAppAuth();
-  return <AccountPreview key={`${userId ?? "anonymous"}:${id}`} id={id} {...(version?{version}:{})} compact={compact} {...(actions?{actions}:{})} actionPlacement={actionPlacement} hideActions={hideActions} showIdentity={showIdentity} initialSection={initialSection} ready={isLoaded} />;
+  return <AccountPreview key={`${userId ?? "anonymous"}:${id}:${version ?? "current"}`} id={id} {...(version?{version}:{})} compact={compact} {...(actions?{actions}:{})} actionPlacement={actionPlacement} hideActions={hideActions} showIdentity={showIdentity} initialSection={initialSection} ready={isLoaded} />;
 }
 
 function AccountPreview({ id, version, compact, ready, actions, actionPlacement, hideActions, showIdentity, initialSection }: { id: string; version?:number; compact: boolean; ready: boolean; actions?: PreviewActionProps; actionPlacement: "top" | "bottom"; hideActions: boolean; showIdentity: boolean; initialSection: "practices"|"abilities"|"story" }) {

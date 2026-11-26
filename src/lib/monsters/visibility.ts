@@ -1,8 +1,18 @@
-import { sql } from "drizzle-orm";
+import { sql, type SQLWrapper } from "drizzle-orm";
 import { db } from "@/db/client";
 import * as schema from "@/db/schema";
 import type { EntityKey } from "@/lib/character/workspace/model";
 import { visibilityCondition } from "@/lib/publishing/library-query";
+
+export function monsterTemplateVisibility(viewer: string | null, author: SQLWrapper, visibility: SQLWrapper) {
+  const publicTemplate = sql`${visibility} = 'PUBLIC'`;
+  if (!viewer) return publicTemplate;
+  return sql`(${publicTemplate} OR ${author} = ${viewer} OR (${visibility} = 'FOLLOWERS_ONLY' AND EXISTS (
+    SELECT 1 FROM follows f JOIN users a ON a.id = f.following_id JOIN users v ON v.id = f.follower_id
+    WHERE a.clerk_user_id = ${author} AND v.clerk_user_id = ${viewer}
+  )))`;
+}
+
 export async function readableMonsterComponents(keys:readonly EntityKey[],viewer:string|null|undefined,audience?:"PUBLIC"|"FOLLOWERS_ONLY"):Promise<Set<EntityKey>>{
  const allowed=new Set<EntityKey>();
  await Promise.all((["primitive","capability","effect","heritage","item"] as const).map(async kind=>{

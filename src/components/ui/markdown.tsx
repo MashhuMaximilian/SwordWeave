@@ -3,6 +3,8 @@ import { Fragment } from "react";
 interface MarkdownProps {
   children: string;
   className?: string;
+  /** Compact text inside controls. Render formatting without nested links or blocks. */
+  inline?: boolean;
   /**
    * Semantic copy role used by dense entity cards.  The attribute is placed
    * on the actual rendered block, rather than only on this component's
@@ -63,28 +65,61 @@ function parseBlocks(src:string):Block[] {
   flush();return blocks;
 }
 
-function renderInline(text:string,keyPrefix:string):React.ReactNode {
-  const segments:React.ReactNode[]=[];let counter=0,lastIndex=0;
+type MarkdownSpan = { tag:"text"|"a"|"code"|"strong"|"s"|"u"|"em"; text:string; href?:string };
+
+function parseInline(text:string):MarkdownSpan[] {
+  const segments:MarkdownSpan[]=[];let lastIndex=0;
   const pattern=/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|`([^`]+)`|\*\*([^*]+)\*\*|~~([^~]+)~~|\+\+([^+]+)\+\+|(?<!\*)\*([^*]+)\*(?!\*)|_([^_]+)_/g;
   let match:RegExpExecArray|null;
-  const push=(node:React.ReactNode)=>segments.push(<Fragment key={`${keyPrefix}-${counter++}`}>{node}</Fragment>);
   while((match=pattern.exec(text))!==null){
-    if(match.index>lastIndex)push(text.slice(lastIndex,match.index));
-    if(match[1]&&match[2])push(<a href={match[2]} target="_blank" rel="noopener noreferrer">{match[1]}</a>);
-    else if(match[3])push(<code>{match[3]}</code>);
-    else if(match[4])push(<strong>{match[4]}</strong>);
-    else if(match[5])push(<s>{match[5]}</s>);
-    else if(match[6])push(<u>{match[6]}</u>);
-    else push(<em>{match[7]??match[8]}</em>);
+    if(match.index>lastIndex)segments.push({tag:"text",text:text.slice(lastIndex,match.index)});
+    if(match[1]&&match[2])segments.push({tag:"a",text:match[1],href:match[2]});
+    else if(match[3])segments.push({tag:"code",text:match[3]});
+    else if(match[4])segments.push({tag:"strong",text:match[4]});
+    else if(match[5])segments.push({tag:"s",text:match[5]});
+    else if(match[6])segments.push({tag:"u",text:match[6]});
+    else segments.push({tag:"em",text:match[7]??match[8]??""});
     lastIndex=pattern.lastIndex;
   }
-  if(lastIndex<text.length)push(text.slice(lastIndex));
-  return <>{segments}</>;
+  if(lastIndex<text.length)segments.push({tag:"text",text:text.slice(lastIndex)});
+  return segments;
 }
 
-export function Markdown({children,className="",copyRole}:MarkdownProps) {
+/** Content-only Markdown for surfaces that cannot render the React component. */
+export function markdownDocument(text:string) {
+  // External links remain readable text in the network-free card.
+  const cardInline=(value:string)=>parseInline(value).map(span=>({tag:span.tag==="a"?"text":span.tag,text:span.text}));
+  return parseBlocks(text).map(block => {
+    if(block.type==="table") return {type:block.type,rows:block.content.map(row=>row.map(cardInline))};
+    if(block.type==="code") return {type:block.type,text:block.content[0]??""};
+    if(block.type==="hr") return {type:block.type};
+    const items=block.content.map(cardInline);
+    return block.type==="heading"?{type:block.type,level:block.level,items}:{type:block.type,items};
+  });
+}
+
+function renderInline(text:string,keyPrefix:string,allowLinks=true):React.ReactNode {
+  return <>{parseInline(text).map(({tag:Tag,text,href},index)=>{
+    const key=`${keyPrefix}-${index}`;
+    if(Tag==="a"&&allowLinks)return <a key={key} href={href} target="_blank" rel="noopener noreferrer">{text}</a>;
+    if(Tag==="text"||Tag==="a")return <Fragment key={key}>{text}</Fragment>;
+    return <Tag key={key}>{text}</Tag>;
+  })}</>;
+}
+
+export function Markdown({children,className="",copyRole,inline}:MarkdownProps) {
   if(!children)return null;
-  return <div className={`v12-markdown ${className}`}>{parseBlocks(children).map((block,index)=>{
+  const blocks = parseBlocks(children);
+  if (inline) {
+    return <span className={className} data-copy={copyRole}>{blocks.map((block, index) =>
+      <Fragment key={index}>
+        {index > 0 && " "}
+        {block.type === "code" ? <code>{block.content[0]}</code> :
+          renderInline(block.content.flat().join(" "), `excerpt${index}`, false)}
+      </Fragment>,
+    )}</span>;
+  }
+  return <div className={`v12-markdown ${className}`}>{blocks.map((block,index)=>{
     if(block.type==="hr")return <hr key={index}/>;
     if(block.type==="code")return <pre key={index}><code>{block.content[0]}</code></pre>;
     if(block.type==="heading"){

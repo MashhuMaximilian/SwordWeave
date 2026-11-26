@@ -1,5 +1,5 @@
-import { pgTable, uuid, integer, text, jsonb, primaryKey, timestamp } from "drizzle-orm/pg-core";
-import { characters } from "./characters";
+import { foreignKey, pgTable, uuid, integer, text, jsonb, primaryKey, timestamp } from "drizzle-orm/pg-core";
+import { characterCapabilities, characters } from "./characters";
 import { effects } from "./engine";
 import { timestamps } from "./common";
 import type { ConsequenceOccurrence } from "@/lib/character/consequences/types";
@@ -36,3 +36,16 @@ export const characterEffects = pgTable("character_effects", {
   slotSource: text("slot_source").notNull().default("PINNED"),
   ...timestamps,
 }, t => [primaryKey({ columns: [t.characterId, t.effectId] })]);
+
+/** Exact private copy made by a reviewed workspace edit. Detaching its slot revokes this grant. */
+export const characterWorkspaceForkGrants = pgTable("character_workspace_fork_grants", {
+  characterId: uuid("character_id").notNull(),
+  capabilityId: uuid("capability_id").notNull(),
+  versionId: uuid("version_id").notNull(),
+  rootEdgeId: text("root_edge_id").notNull(),
+  sourceCapabilityId: uuid("source_capability_id").notNull(),
+}, table => [
+  primaryKey({ columns: [table.characterId, table.capabilityId] }),
+  foreignKey({ columns: [table.characterId, table.capabilityId],
+    foreignColumns: [characterCapabilities.characterId, characterCapabilities.capabilityId] }).onDelete("cascade"),
+]);

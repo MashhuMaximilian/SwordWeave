@@ -19,6 +19,7 @@
 //      the primitives, not the heritage chrome.
 // =============================================================================
 
+import { Markdown } from "@/components/ui/markdown";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   useCharacterModal,
@@ -1248,9 +1249,7 @@ return (
       {heritageExpanded && bundle ? (
         <div className="space-y-2 border-t border-border bg-muted/30 px-3 py-2 text-xs">
           {bundle.description ? (
-            <p className="text-muted-foreground line-clamp-3">
-              {bundle.description}
-            </p>
+            <Markdown className="text-muted-foreground line-clamp-3">{bundle.description}</Markdown>
           ) : null}
 
           {bundle.capabilityLinks.length > 0 ? (
@@ -1281,7 +1280,7 @@ return (
                             <CharacterComponentName name={el.effect?.name ?? "(unnamed effect)"} targetType="EFFECT" targetId={el.effectId} />
                             {el.effect?.description ? (
                               <span className="text-xs italic">
-                                — {el.effect.description}
+                                — <Markdown inline>{el.effect.description}</Markdown>
                               </span>
                             ) : null}
                           </li>
@@ -1547,9 +1546,7 @@ return (
                   >
                     <CharacterComponentName name={el.effect?.name ?? "(unnamed effect)"} targetType="EFFECT" targetId={el.effectId} />
                     {el.effect?.description ? (
-                      <div className="text-muted-foreground italic">
-                        {el.effect.description}
-                      </div>
+                      <Markdown className="text-muted-foreground italic">{el.effect.description}</Markdown>
                     ) : null}
                   </li>
                 ))}

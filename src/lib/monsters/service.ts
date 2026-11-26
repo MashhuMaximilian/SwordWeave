@@ -1,5 +1,5 @@
 import {monsterArtwork} from "./art";
-import {assertMonsterAudience} from "./visibility";
+import {assertMonsterAudience, monsterTemplateVisibility} from "./visibility";
 import type {EntityKey} from "@/lib/character/workspace/model";
 import { recordForkAttribution } from "@/lib/publishing/fork-attribution";
 import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
@@ -12,8 +12,19 @@ import { pinMonsterReferences } from "./pins";
 import { monsterDefinitionSchema, pinMonsterSnapshot, sameMonsterSnapshot } from "./model";
 import { resolveMonsterComposition, type MonsterComponentPin } from "./composition";
 import { resolveMonster, type MonsterSlot } from "./resolve";
-const monsterVisibility=(viewer:string|null)=>sql`(${monsters.visibility}='PUBLIC' OR ${monsters.userId}=${viewer} OR (${monsters.visibility}='FOLLOWERS_ONLY' AND EXISTS(SELECT 1 FROM follows f JOIN users a ON a.id=f.following_id JOIN users v ON v.id=f.follower_id WHERE a.clerk_user_id=${monsters.userId} AND v.clerk_user_id=${viewer})))`;
-export async function visibleMonster(id: string, userId: string | null) { const [row] = await db.select().from(monsters).where(and(eq(monsters.id,id), monsterVisibility(userId))); return row; }
+const monsterVisibility = (viewer: string | null) => monsterTemplateVisibility(viewer, monsters.userId, monsters.visibility);
+export async function visibleMonster(id: string, userId: string | null, lockCurrentVersion = false) {
+  const query = db.select().from(monsters).where(and(eq(monsters.id, id), monsterVisibility(userId)));
+  const [row] = await (lockCurrentVersion ? query.for("share") : query);
+  return row;
+}
+
+export async function searchVisibleMonsterTemplates(userId: string, query: string) {
+  return db.select({ id: monsters.id, name: monsters.name, version: monsters.version })
+    .from(monsters)
+    .where(and(monsterVisibility(userId), query ? sql`position(lower(${query}) in lower(${monsters.name})) > 0` : undefined))
+    .orderBy(desc(monsters.updatedAt), monsters.id).limit(24);
+}
 export async function listMonsters(userId: string | null,offset=0) { const rows=await db.select({id:monsters.id,name:monsters.name,description:monsters.description,catalogue:sql<NonNullable<import("./model").MonsterDefinition["catalogue"]>|null>`${monsters.definition}->'catalogue'`,imageUrl:sql<string|null>`${monsters.definition}->>'imageUrl'`,sourceOrigin:sql<string|null>`${monsters.definition}->>'sourceOrigin'`,budget:sql<number>`(${monsters.definition}->>'budget')::double precision`,size:sql<string>`${monsters.definition}->>'size'`,attributes:sql<{physical:number;mental:number;magical:number}>`${monsters.definition}->'attributes'`,baselineVitality:sql<number|null>`(${monsters.definition}->>'baselineVitality')::double precision`,userId:monsters.userId,visibility:monsters.visibility,isPublic:monsters.isPublic,version:monsters.version,sourceCollectionId:monsters.sourceCollectionId,forkedFromId:monsters.forkedFromId,updatedAt:monsters.updatedAt,createdAt:monsters.createdAt}).from(monsters).where(monsterVisibility(userId)).orderBy(desc(monsters.updatedAt)).limit(100).offset(offset); return rows.map(row=>({...row,imageUrl:monsterArtwork({...row,catalogue:row.catalogue??undefined})})); }
 export async function prepareMonster(value: unknown, userId?: string | null) { const definition = await pinMonsterReferences(monsterDefinitionSchema.parse(value)); let componentPins:MonsterComponentPin[]=[];const slots = await resolveMonsterComposition(definition,userId,pins=>{componentPins=pins;}); const sheet = resolveMonster(definition,slots); if (sheet.spent > sheet.availableBudget) throw new Error("Composition exceeds the chosen BU budget. Weakness credit extends the spending budget; items use their separate pool."); const pinned={...definition,componentPins};if(new TextEncoder().encode(JSON.stringify(pinned)).byteLength>524288)throw new Error("Monster snapshot exceeds 512KB. Publish unversioned components before adding them, or split the composition.");return { definition:pinned, slots, sheet }; }
 export type PinnedDefinition = ReturnType<typeof monsterDefinitionSchema.parse> & { resolvedSlots?: MonsterSlot[]; componentPins?:MonsterComponentPin[] };
@@ -32,7 +43,27 @@ export async function publishMonster(id:string,userId:string,value:unknown,isPub
   return row;
  });
 }
-export async function createMonsterCopy(id: string,userId: string,name: string,version?: number) { const template = await visibleMonster(id,userId); if (!template) throw new Error("Monster not found."); const [pin] = await db.select().from(monsterVersions).where(and(eq(monsterVersions.monsterId,id),eq(monsterVersions.version,version ?? template.version))); if (!pin) throw new Error("Template version not found."); const definition = pinMonsterSnapshot(pin.definition as PinnedDefinition); const slots = await resolveMonsterComposition(definition,userId); const sheet = resolveMonster(definition,slots); const [copy] = await db.insert(monsterCopies).values({ userId,name:name.trim() || definition.name,templateId:id,templateVersion:pin.version,templateVersionId:pin.id,definition:null,currentVitality:sheet.maximum }).returning(); return copy; }
+export async function prepareMonsterCopy(id: string, userId: string, name: string, version?: number, requireCurrentVersion = false) {
+  const template = await visibleMonster(id, userId, requireCurrentVersion);
+  if (!template) throw new Error("Monster not found.");
+  if (requireCurrentVersion && version !== template.version) throw new Error("The selected monster version changed.");
+  const [pin] = await db.select().from(monsterVersions).where(and(
+    eq(monsterVersions.monsterId, id), eq(monsterVersions.version, version ?? template.version),
+  ));
+  if (!pin) throw new Error("Template version not found.");
+  const definition = pinMonsterSnapshot(pin.definition as PinnedDefinition);
+  const slots = await resolveMonsterComposition(definition, userId);
+  return {
+    userId, name: name.trim() || definition.name, templateId: id, templateVersion: pin.version,
+    templateVersionId: pin.id, definition: null, currentVitality: resolveMonster(definition, slots).maximum,
+  };
+}
+
+export async function createMonsterCopy(id: string, userId: string, name: string, version?: number) {
+  const prepared = await prepareMonsterCopy(id, userId, name, version);
+  const [copy] = await db.insert(monsterCopies).values(prepared).returning();
+  return copy;
+}
 
 export async function forkMonster(id:string,userId:string) {
  const template=await visibleMonster(id,userId);if(!template)throw new Error("Monster not found.");

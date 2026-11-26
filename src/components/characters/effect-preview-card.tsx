@@ -15,6 +15,7 @@
  * can be plugged into any accordion that has effect data.
  */
 
+import { Markdown } from "@/components/ui/markdown";
 import { useCallback, useEffect, useState } from "react";
 import { Power, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -271,9 +272,7 @@ export function EffectPreviewCard({
       </div>
 
       {effectLink.narrativeDescription ? (
-        <p className="mt-2 text-xs leading-relaxed text-muted-foreground line-clamp-3">
-          {effectLink.narrativeDescription}
-        </p>
+        <Markdown className="mt-2 text-xs leading-relaxed text-muted-foreground line-clamp-3">{effectLink.narrativeDescription}</Markdown>
       ) : null}
 
       <div className="mt-3 flex flex-wrap gap-2">

@@ -8,6 +8,7 @@ import { and, eq, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { follows, publications, users } from "@/db/schema";
 import type { publishTargetTypeEnum } from "@/db/schema";
+import { isUuid } from "@/lib/engagement/version-helpers";
 
 export type Visibility = "PUBLIC" | "FOLLOWERS_ONLY" | "PRIVATE";
 
@@ -75,8 +76,10 @@ export async function checkVisibility(input: {
             where: (table, { eq: eqFn }) => eqFn(table.clerkUserId, viewerId),
             columns: { id: true },
           });
+          // Character rows can store the account's internal UUID or its Clerk ID.
+          const ownerUsesInternalId = targetType === "CHARACTER" && isUuid(ownerId);
           const authorUser = await db.query.users.findFirst({
-            where: (table, { eq: eqFn }) => eqFn(table.clerkUserId, ownerId),
+            where: (table, { eq: eqFn }) => eqFn(ownerUsesInternalId ? table.id : table.clerkUserId, ownerId),
             columns: { id: true },
           });
           if (!viewerUser || !authorUser) {

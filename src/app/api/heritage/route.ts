@@ -1,6 +1,7 @@
 import { visibilityCondition } from "@/lib/publishing/library-query";
 import { redactExpandedContent } from "@/lib/publishing/redact-expanded-content";
 import { withSourceCollection } from "@/lib/collections/source-save";
+import { workspaceAuthoringUserId } from "@/lib/character/workspace/draft-scope";
 import { parseLineageSize, isCharacterSize } from "@/lib/heritage/lineage-size";
 import { withPublishingResponse } from "@/lib/publishing/save-transaction";
 import { NextResponse } from "next/server";
@@ -110,7 +111,7 @@ export async function GET(request: Request) {
  */
 async function handlePOST(request: Request) {
   try {
-    const { userId } = await auth.protect();
+    const userId = workspaceAuthoringUserId(request) ?? (await auth.protect()).userId;
     const body: unknown = await request.json();
 
     if (!body || typeof body !== "object") {

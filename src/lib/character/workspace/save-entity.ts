@@ -1,4 +1,4 @@
-import { shouldIsolateDraftEntity, markDraftAuthoredEntity, hasDraftExecutionScope } from "./draft-scope";
+import { bindWorkspaceAuthoringRequest, shouldIsolateDraftEntity, markDraftAuthoredEntity, hasDraftExecutionScope } from "./draft-scope";
 import type { WorkspaceNode, WorkspaceEdge } from "./model";
 
 /** Adapt canonical junctions to the same payloads the Atelier composers submit.
@@ -66,6 +66,8 @@ export async function saveWorkspaceEntity(
       );
       break;
     case "capability":
+      bindWorkspaceAuthoringRequest(request, payload["intent"] === "fork" && payload["isPublic"] === false
+        ? { id: node.id, pin: node.versionId } : undefined);
       response = await (
         await import("@/app/api/capabilities/[id]/route")
       ).PATCH(request, context);
@@ -126,6 +128,7 @@ export async function createWorkspaceEntity(
       intent: null,
     }),
   });
+  bindWorkspaceAuthoringRequest(request);
   let response: Response;
   switch (kind) {
     case "primitive":

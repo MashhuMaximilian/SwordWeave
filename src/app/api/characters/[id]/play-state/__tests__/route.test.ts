@@ -1,9 +1,9 @@
 import { beforeEach, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ access: vi.fn(), transaction: vi.fn(), mutate: vi.fn(), auth: vi.fn() }));
+const mocks = vi.hoisted(() => ({ access: vi.fn(), transaction: vi.fn(), mutate: vi.fn(), auth: vi.fn(), lock: vi.fn(), readPlayState: vi.fn() }));
 vi.mock("@clerk/nextjs/server", () => ({ auth: mocks.auth }));
-vi.mock("@/db/client", () => ({ db: {}, withDatabaseTransaction: mocks.transaction }));
+vi.mock("@/db/client", () => ({ db: { select: () => ({ from: () => ({ where: () => ({ for: mocks.lock }) }) }) }, withDatabaseTransaction: mocks.transaction }));
 vi.mock("@/lib/character/resolve-character-access", () => ({ resolveCharacterAccess: mocks.access }));
-vi.mock("@/lib/play-state/service", () => ({ readPlayState: vi.fn(), reconcilePlayState: vi.fn(), mutatePlayState: mocks.mutate }));
+vi.mock("@/lib/play-state/service", () => ({ readPlayState: mocks.readPlayState, reconcilePlayState: vi.fn(), mutatePlayState: mocks.mutate }));
 vi.mock("@/lib/character/workspace/read", () => ({ readWorkspace: vi.fn() }));
 vi.mock("@/lib/character/character-vitality", () => ({ loadCharacterMaxVitality: vi.fn(), clampVitality: vi.fn() }));
 vi.mock("@/lib/character/workspace/draft-sheet", () => ({ readDraftSheet: vi.fn() }));
@@ -32,4 +32,19 @@ it("returns an explicit uncached 401 to anonymous session requests", async () =>
   expect(response.headers.get("Cache-Control")).toBe("private, no-store");
   expect(mocks.access).not.toHaveBeenCalled();
   expect(mocks.transaction).not.toHaveBeenCalled();
+});
+
+it.each(["GET", "POST"] as const)("checks current edit access after acquiring the character lock on %s", async method => {
+  mocks.access.mockResolvedValueOnce({ permission: "EDITOR" });
+  mocks.access.mockRejectedValueOnce(Object.assign(new Error("Revoked"), { name: "CharacterAccessDenied" }));
+  mocks.transaction.mockImplementation(work => work());
+  mocks.lock.mockResolvedValue([{ id: "c", currentVitality: null }]);
+  const body = method === "POST" ? JSON.stringify({ opId: "11111111-1111-4111-8111-111111111111", baseRevision: 0,
+    changes: [{ field: "currentVitality", value: 10 }] }) : null;
+  const response = await (method === "GET" ? GET : POST)(new Request("http://localhost", { method, body }), { params: Promise.resolve({ id: "c" }) });
+  expect(response.status).toBe(403);
+  expect(mocks.access).toHaveBeenCalledTimes(2);
+  expect(mocks.lock.mock.invocationCallOrder[0]).toBeLessThan(mocks.access.mock.invocationCallOrder[1]!);
+  expect(mocks.readPlayState).not.toHaveBeenCalled();
+  expect(mocks.mutate).not.toHaveBeenCalled();
 });

@@ -17,12 +17,14 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { publications } from "@/db/schema/engagement";
-import { primitives, effects, capabilities, items, heritage, characters } from "@/db/schema";
+import { primitives, effects, capabilities, items, heritage, characters, builds } from "@/db/schema";
 import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
+import { withCharacterMutation } from "@/lib/character/mutation-transaction";
 import { resolveVirtualVersionId, isUuid } from "@/lib/engagement/version-helpers";
+import { withPublishingResponse } from "@/lib/publishing/save-transaction";
 
 const BodySchema = z.object({
   targetType: z.enum([
@@ -41,50 +43,10 @@ const BodySchema = z.object({
   versionId: z.string().uuid().optional(),
 });
 
-/**
- * Sync the `isPublic` boolean on the entity table to match the visibility tier.
- * PUBLIC / FOLLOWERS_ONLY → isPublic = true
- * PRIVATE → isPublic = false
- */
-async function syncIsPublic(
-  targetType: string,
-  targetId: string,
-  isPublic: boolean,
-) {
-  try {
-    switch (targetType) {
-      case "PRIMITIVE":
-        await db.update(primitives).set({ isPublic }).where(eq(primitives.id, Number(targetId)));
-        break;
-      case "EFFECT":
-        await db.update(effects).set({ isPublic }).where(eq(effects.id, targetId));
-        break;
-      case "CAPABILITY":
-        await db.update(capabilities).set({ isPublic }).where(eq(capabilities.id, targetId));
-        break;
-      case "ITEM":
-        await db.update(items).set({ isPublic }).where(eq(items.id, targetId));
-        break;
-      case "LINEAGE_TEMPLATE":
-      case "UPBRINGING_TEMPLATE":
-      case "MANIFEST_TEMPLATE":
-      case "BUILD_TEMPLATE":
-        await db.update(heritage).set({ isPublic }).where(eq(heritage.id, targetId));
-        break;
-      // PLAN Eilxina Part A (Mashu 2026-09-09): wire CHARACTER into the
-      // dual-write sync. The publications table is the source of truth
-      // for the library visibility filter; characters.isPublic is the
-      // legacy boolean that some legacy callers still read. Keep them
-      // in sync.
-      case "CHARACTER":
-        await db.update(characters).set({ isPublic }).where(eq(characters.id, targetId));
-        break;
-    }
-  } catch (err) {
-    // Log but don't fail the request — publication row is the source of truth
-    console.error("[visibility] syncIsPublic failed:", err);
-  }
-}
+const entityTables = {
+  PRIMITIVE: primitives, EFFECT: effects, CAPABILITY: capabilities, ITEM: items, CHARACTER: characters,
+  LINEAGE_TEMPLATE: heritage, UPBRINGING_TEMPLATE: heritage, MANIFEST_TEMPLATE: heritage, BUILD_TEMPLATE: builds,
+};
 
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
@@ -114,79 +76,47 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  const { targetType, targetId, visibility, versionId } = parsed.data;
-
-  // Verify authorship. We trust the caller-provided targetType/targetId
-  // because the publications table indexes on (target_type, target_id) and
-  // we only update rows where author_id === caller.
-  const existingRows = await db
-    .select()
-    .from(publications)
-    .where(
-      and(
-        eq(publications.targetType, targetType as never),
-        eq(publications.targetId, targetId),
-      ),
-    )
-    .limit(1);
-  const existing = existingRows[0];
-  if (existing && existing.authorId !== authorId) {
-    return NextResponse.json(
-      { error: "Forbidden: not the author of this row" },
-      { status: 403 },
-    );
+  const { targetType, targetId: rawTargetId, visibility, versionId } = parsed.data;
+  const numericId = targetType === "PRIMITIVE" ? Number(rawTargetId) : null;
+  if (numericId !== null ? !/^[1-9][0-9]*$/.test(rawTargetId) || numericId > 2_147_483_647 : !isUuid(rawTargetId)) {
+    return NextResponse.json({ error: "Invalid target ID" }, { status: 400 });
   }
-
-  if (visibility === "PRIVATE") {
-    // Mark any existing publication as unpublished.
-    if (existing) {
-      await db
-        .update(publications)
-        .set({ unpublishedAt: new Date() })
-        .where(eq(publications.id, existing.id));
+  const targetId = rawTargetId.toLowerCase();
+  const setVisibility = () => withPublishingResponse(async () => {
+    const table = entityTables[targetType];
+    const entity = and(eq(sql`${table.id}::text`, targetId),
+      sql`${table.userId} IN (${userId}, ${authorId})`,
+      table === heritage ? sql`${heritage.kind}::text || '_TEMPLATE' = ${targetType}` : undefined);
+    const [owned] = await db.select({ id: table.id }).from(table).where(entity).for("update");
+    if (!owned) return NextResponse.json({ error: "Creation unavailable" }, { status: 404 });
+    const target = and(eq(publications.targetType, targetType), eq(publications.targetId, targetId));
+    const rows = await db.select().from(publications).where(target).orderBy(desc(publications.versionNumber));
+    if (rows.some(row => row.authorId !== authorId)) {
+      return NextResponse.json({ error: "Creation unavailable" }, { status: 404 });
     }
-    // Sync isPublic = false on the entity table
-    await syncIsPublic(targetType, targetId, false);
-    return NextResponse.json({ ok: true, visibility: "PRIVATE" });
-  }
-
-  const finalVersionId =
-    versionId ?? resolveVirtualVersionId(targetType, targetId);
-  if (!isUuid(finalVersionId)) {
-    return NextResponse.json(
-      { error: "versionId must be a UUID" },
-      { status: 400 },
-    );
-  }
-
-  if (existing) {
-    // Update visibility on the current publication.
-    await db
-      .update(publications)
-      .set({ visibility, unpublishedAt: null })
-      .where(eq(publications.id, existing.id));
-    // Sync isPublic = true for PUBLIC/FOLLOWERS_ONLY
-    await syncIsPublic(targetType, targetId, true);
-    return NextResponse.json({ ok: true, visibility, publicationId: existing.id });
-  }
-
-  // Create a new publication.
-  const [created] = await db
-    .insert(publications)
-    .values({
-      targetType: targetType as never,
-      targetId,
-      versionId: finalVersionId,
-      versionNumber: 1,
-      authorId,
-      visibility,
-    })
-    .returning({ id: publications.id });
-  // Sync isPublic = true for PUBLIC/FOLLOWERS_ONLY
-  await syncIsPublic(targetType, targetId, true);
-  return NextResponse.json({
-    ok: true,
-    visibility,
-    publicationId: created?.id ?? null,
+    const active = and(target, isNull(publications.unpublishedAt));
+    const existing = rows.find(row => !row.unpublishedAt) ?? rows[0];
+    let publicationId: string | null = null;
+    if (visibility === "PRIVATE") {
+      await db.update(publications).set({ unpublishedAt: new Date() }).where(active);
+    } else if (existing) {
+      await db.update(publications).set({ visibility, unpublishedAt: null })
+        .where(existing.unpublishedAt ? eq(publications.id, existing.id) : active);
+      publicationId = existing.id;
+    } else {
+      const finalVersionId = versionId ?? resolveVirtualVersionId(targetType, targetId);
+      if (!isUuid(finalVersionId)) return NextResponse.json({ error: "versionId must be a UUID" }, { status: 400 });
+      const [created] = await db.insert(publications).values({
+        targetType, targetId, versionId: finalVersionId, versionNumber: 1, authorId, visibility,
+      }).returning({ id: publications.id });
+      publicationId = created?.id ?? null;
+    }
+    await db.update(table).set({ isPublic: visibility !== "PRIVATE" }).where(entity);
+    return NextResponse.json({ ok: true, visibility, ...(visibility === "PRIVATE" ? {} : { publicationId }) });
   });
+  try {
+    return await (targetType === "CHARACTER" ? withCharacterMutation(targetId, setVisibility) : setVisibility());
+  } catch {
+    return NextResponse.json({ error: "Could not save visibility" }, { status: 500 });
+  }
 }

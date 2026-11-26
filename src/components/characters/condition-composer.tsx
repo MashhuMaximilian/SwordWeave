@@ -1,4 +1,5 @@
 "use client";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { playFieldStorageKey } from "@/lib/play-state/client-sync";
 import { browserUuid } from "@/lib/browser-uuid";
 import { ConsequenceRestrictionsEditor } from "./consequence-restrictions-editor";
@@ -501,7 +502,7 @@ export function ConditionComposer({
           <section className="v12-author-chapter v12-consequence-author-section">
             <div className="v12-consequence-chapter-head"><span>02</span><div><h3>Lifecycle</h3><p>Define what limits the consequence and how it can be resolved.</p></div></div>
           <ConsequenceRestrictionsEditor characterId={characterId} value={restrictions} onChange={setRestrictions} />
-          <label className="block text-sm font-medium">Recovery requirements<textarea className="mt-1 w-full rounded border border-input bg-background p-2" value={recovery} onChange={e => setRecovery(e.target.value)} placeholder="What must happen before this is resolved?" /></label>
+          <label className="block text-sm font-medium">Recovery requirements<MarkdownEditor ariaLabel="Recovery requirements" textareaClassName="mt-1 w-full rounded border border-input bg-background p-2" value={recovery} onChange={value => setRecovery(value)} placeholder="What must happen before this is resolved?" /></label>
 
           <fieldset className="space-y-2">
             <legend className="text-sm font-medium">Duration</legend>

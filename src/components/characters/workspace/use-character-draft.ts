@@ -179,7 +179,26 @@ export function useCharacterDraft(characterId: string) {
     if(frame.current?.preview.local){const checked=await checkReview();if(!checked)throw new Error('Draft checking was cancelled. Your edits are saved.');}
     if(!frame.current?.draft||frame.current.preview.local||!server.current||pendingRecovery)throw new Error('Check this draft before applying it.');
     locked.current=true;setPhase('applying');setError('');
-    try{if(frame.current)persist(frame.current);const result=await json<WorkspaceDraftPreview>(await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'apply',draftId:server.current.id,expectedVersion:server.current.version})}));setAppliedDraft(server.current);clearCopy();history.current=[];server.current=null;frame.current=null;setDraft(null);setPreview(null);setBaseSheet(result.sheet);setFuture([]);baseline.current={draft:null,preview:result};install(baseline.current);return result;}
+    try {
+      if (frame.current) persist(frame.current);
+      const appliedDraft = server.current;
+      const result = await json<WorkspaceDraftPreview>(await fetch(endpoint, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "apply", draftId: appliedDraft.id, expectedVersion: appliedDraft.version }),
+      }));
+      setAppliedDraft(appliedDraft);
+      clearCopy();
+      history.current = [];
+      server.current = null;
+      frame.current = null;
+      setDraft(null);
+      setPreview(null);
+      setBaseSheet(result.sheet);
+      setFuture([]);
+      baseline.current = { draft: null, preview: result };
+      install(baseline.current);
+      return { ...result, appliedDraft: { id: appliedDraft.id, version: appliedDraft.version, authorId: appliedDraft.authorId } };
+    }
     catch(cause){setError(cause instanceof Error?cause.message:'Unable to apply draft.');throw cause;}
     finally{locked.current=false;setPhase('idle');}
   },[checkReview,clearCopy,endpoint,install,pendingRecovery,persist]);

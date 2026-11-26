@@ -311,11 +311,11 @@
     },
     {
       "path": "scripts/character_pdf/markdown.py",
-      "sha256": "f8b885147f53605c3a9407e8516aa8ab2bf03d2afd9ed6a4f54ae98f15197bbe"
+      "sha256": "265c01cf7643b72970ed8cbc7edf28af77f2d7bebafd7f881db35a922524e53d"
     },
     {
       "path": "scripts/character_pdf/renderer.py",
-      "sha256": "f691b4c21912120b6e7cddb5d5c967036af619c8e3dfe03aacb8f8abf8e3fa5d"
+      "sha256": "3f6ca1d03f9946366adb5dfb7037eba345bb9265de984e5cfec567b5ded08517"
     },
     {
       "path": "scripts/character_pdf/requirements.txt",
@@ -335,7 +335,7 @@
     },
     {
       "path": "scripts/character_pdf/test_renderer.py",
-      "sha256": "ac78358148e8152ea79af6d68caa98b348ebf845e069c4335f5fa81594311f44"
+      "sha256": "36773d45872b75e75d134e6a7ebd980666994df81baa48c5ed6052abc6783f22"
     },
     {
       "path": "scripts/character_pdf/theme.py",

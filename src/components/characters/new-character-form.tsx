@@ -19,7 +19,7 @@ import {
   type QuickbuildShuffleLimits,
 } from "@/lib/character/quickbuild";
 import { creationBudget } from "@/lib/character/creation-budget";
-import { missingCreationAccess } from "@/lib/character/creation-primitives";
+import { missingCreationAccess, STARTER_CHARACTER_ATTRIBUTES } from "@/lib/character/creation-primitives";
 import {
   QuickbuildLibraryPicker,
   QuickbuildEntityPreviewDialog,
@@ -223,10 +223,10 @@ const INITIAL_STATE: FormState = {
   portraitFrame: { x: 50, y: 50, zoom: 1 },
   size: "MEDIUM",
   notes: "",
-  attrPhysical: 4,
-  attrMental: 3,
-  attrMagical: 3,
-  attrProficient: "PHYSICAL",
+  attrPhysical: STARTER_CHARACTER_ATTRIBUTES.physical,
+  attrMental: STARTER_CHARACTER_ATTRIBUTES.mental,
+  attrMagical: STARTER_CHARACTER_ATTRIBUTES.magical,
+  attrProficient: STARTER_CHARACTER_ATTRIBUTES.proficient,
   sizingMode: "level",
   level: 1,
   customBu: 25,
@@ -1812,10 +1812,10 @@ function QuickBuildForm({
               label="Backstory"
               hint="One paragraph is enough. You can develop their story on the sheet."
             >
-              <textarea
-                rows={4}
+              <MarkdownEditor
+                ariaLabel="Backstory" rows={4}
                 value={state.concept}
-                onChange={(event) => setField("concept", event.target.value)}
+                onChange={value => setField("concept", value)}
                 placeholder="Who are they, and what brings them to this adventure?"
               />
             </ForgeField>
@@ -1988,14 +1988,14 @@ function QuickBuildForm({
                       </button>
                       <span>{selected.cost} BU</span>
                     </div>
-                    <details className="sw-quickbuild__root-description"><summary>About {selected.name}</summary><p>{selected.description || "Open the preview to explore this heritage."}</p></details>
+                    <details className="sw-quickbuild__root-description"><summary>About {selected.name}</summary><Markdown>{selected.description || "Open the preview to explore this heritage."}</Markdown></details>
                     <details className="sw-quickbuild__rules" open={!phone}>
                       <summary className="sw-quickbuild-rule-heading">Rules & abilities <small>{selected.rules?.length ?? 0}</small></summary>
                       {selected.rules?.length ? (
                         <ul>
                           {selected.rules.slice(0, 4).map((rule, index) => (
                             <li key={`${rule.primitiveId}:${index}`}>
-                              <span data-copy={rule.mechanical ? "mechanical" : "narrative"}>{rule.text}</span>
+                              <Markdown inline copyRole={rule.mechanical ? "mechanical" : "narrative"}>{rule.text}</Markdown>
                               {rule.source !== "primitive" ? (
                                 <small>
                                   In{" "}
@@ -2216,7 +2216,7 @@ function QuickBuildForm({
                                 .join(" · ")}
                         </p>
                         {item?.description ? (
-                          <small>{item.description}</small>
+                          <small><Markdown inline>{item.description}</Markdown></small>
                         ) : null}
                       </div>
                       <button
@@ -2455,10 +2455,10 @@ function IdentityStep({
           hint="What are they, and what is special about them? You can change this later."
           required={!quick}
         >
-          <textarea
-            rows={quick ? 3 : 2}
+          <MarkdownEditor
+            ariaLabel={quick ? "Backstory" : "Character concept"} rows={quick ? 3 : 2}
             value={state.concept}
-            onChange={(event) => setField("concept", event.target.value)}
+            onChange={value => setField("concept", value)}
             placeholder="A bear-like warrior bred for combat who learned to resist magic…"
           />
         </ForgeField>
@@ -2984,7 +2984,7 @@ function FinishingStep({
             Level {effectiveLevel} · {state.size.toLowerCase()} ·{" "}
             {state.attrProficient.toLowerCase()} specialty
           </small>
-          <p>{state.concept}</p>
+          <Markdown>{state.concept}</Markdown>
           <p>
             Physical {state.attrPhysical} · Mental {state.attrMental} · Magical{" "}
             {state.attrMagical}{" "}
@@ -3049,10 +3049,10 @@ function FinishingStep({
         </summary>
         <div className="sw-forge-disclosure__body">
           <ForgeField label="Notes">
-            <textarea
-              rows={4}
+            <MarkdownEditor
+              ariaLabel="Notes" rows={4}
               value={state.notes}
-              onChange={(event) => setField("notes", event.target.value)}
+              onChange={value => setField("notes", value)}
               placeholder="Anything else you want to remember…"
             />
           </ForgeField>
@@ -4109,7 +4109,7 @@ function CanonicalDefinitions({
               <b>{definition.tier === null ? "—" : `T${definition.tier}`}</b>
               <span>
                 <strong>{definition.name}</strong>
-                <small>{definition.verboseDescription}</small>
+                <small><Markdown inline>{definition.verboseDescription}</Markdown></small>
               </span>
               <em>{definition.buCost} BU</em>
             </div>
@@ -4221,7 +4221,7 @@ export function PrimitiveSelectCard({
           <span data-copy="mechanical">{item.mechanicalOutputText}</span>
         ) : null}
         {item.narrativeRule ? (
-          <span data-copy="narrative">{item.narrativeRule}</span>
+          <Markdown inline copyRole="narrative">{item.narrativeRule}</Markdown>
         ) : null}
       </span>
       <span className="sw-access-entry__cost">

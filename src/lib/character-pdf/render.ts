@@ -175,12 +175,12 @@ async function pythonCommand(root: string) {
 /** No shell, no HTTP fetch and no snapshot file. A cancelled or timed-out child
  * is killed before its temporary directory is removed. Child output is never
  * logged: Python diagnostics may contain private authored character text. */
-async function runRenderer(command: string, root: string, output: string, payload: string, signal?: AbortSignal) {
+async function runRenderer(command: string, root: string, script: string, output: string, payload: string, signal?: AbortSignal) {
   if (signal?.aborted) throw cancelled();
   await new Promise<void>((resolve, reject) => {
     let terminalError: CharacterPdfRenderError | null = null;
     let settled = false;
-    const child = spawn(command, [join(root, "scripts", "render-character-pdf.py"), "--output", output], {
+    const child = spawn(command, [script, "--output", output], {
       cwd: root, shell: false, windowsHide: true, stdio: ["pipe", "ignore", "ignore"],
       env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1" },
     });
@@ -211,10 +211,16 @@ async function runRenderer(command: string, root: string, output: string, payloa
 
 export async function renderCharacterPdf(character: CharacterPdfSnapshot, options: CharacterPdfOptions,
   context: CharacterPdfRenderContext = {}): Promise<Buffer> {
+  return renderPdf(JSON.stringify({ character, options }), "render-character-pdf.py", context, process.env["VERCEL"] === "1");
+}
+
+export async function renderProgressionPdf(plan: { title: string; ideas: string[] }, signal?: AbortSignal): Promise<Buffer> {
+  return renderPdf(JSON.stringify(plan), "render-progression-pdf.py", signal ? { signal } : {});
+}
+
+async function renderPdf(payload: string, scriptName: string, context: CharacterPdfRenderContext, hosted = false): Promise<Buffer> {
   if (context.signal?.aborted) throw cancelled();
-  if (activeExports >= MAX_CONCURRENT_EXPORTS) throw new CharacterPdfRenderError("BUSY", "Two character PDFs are already being prepared. Please try again shortly.", 429);
-  const payload = JSON.stringify({ character, options });
-  const hosted = process.env["VERCEL"] === "1";
+  if (activeExports >= MAX_CONCURRENT_EXPORTS) throw new CharacterPdfRenderError("BUSY", "Two PDFs are already being prepared. Please try again shortly.", 429);
   if (hosted && Buffer.byteLength(payload, "utf8") > CHARACTER_PDF_HOSTED_MAX_BYTES) throw tooLarge();
   if (!hosted && Buffer.byteLength(payload, "utf8") > CHARACTER_PDF_MAX_SNAPSHOT_BYTES) {
     throw new CharacterPdfRenderError("TOO_LARGE", "This character is too large for PDF export. No rules were omitted.", 413);
@@ -224,12 +230,13 @@ export async function renderCharacterPdf(character: CharacterPdfSnapshot, option
   try {
     if (hosted) return await renderHosted(payload, context);
     const root = process.cwd();
-    await access(join(root, "scripts", "render-character-pdf.py"), constants.R_OK);
+    const script = join(root, "scripts", scriptName);
+    await access(script, constants.R_OK);
     const command = await pythonCommand(root);
     if (context.signal?.aborted) throw cancelled();
     directory = await mkdtemp(join(tmpdir(), "swordweave-character-pdf-"));
     const output = join(directory, "sheet.pdf");
-    await runRenderer(command, root, output, payload, context.signal);
+    await runRenderer(command, root, script, output, payload, context.signal);
     const file = await stat(output);
     if (!file.isFile() || file.size < 5) throw unavailable();
     if (file.size > CHARACTER_PDF_MAX_OUTPUT_BYTES) throw new CharacterPdfRenderError("TOO_LARGE", "The generated character PDF exceeds the export size limit. No partial PDF was returned.", 413);

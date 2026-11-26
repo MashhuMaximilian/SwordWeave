@@ -1,4 +1,5 @@
 "use client";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { useAtelierExperiment } from "./atelier-experiment";
 import { CHARACTER_SIZES } from "@/lib/heritage/lineage-size";
 import { SIZE_BASE_SPEED, SIZE_CAPACITY } from "@/lib/engine/encumbrance";
@@ -783,10 +784,10 @@ export function HeritageForm({
 
       <label className="block text-sm font-medium">
         Description / Lore
-        <textarea
-          className="mt-2 min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
-          value={form.description}
-          onChange={(e) => updateForm("description", e.target.value)}
+        <MarkdownEditor
+          textareaClassName="mt-2 min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
+          ariaLabel="Description / Lore" value={form.description}
+          onChange={value => updateForm("description", value)}
           placeholder="Lore, mechanics summary, anything notable..."
           rows={4}
         />
@@ -794,10 +795,10 @@ export function HeritageForm({
 
       <label className="block text-sm font-medium">
         Suggested Traits (markdown)
-        <textarea
-          className="mt-2 min-h-20 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
-          value={form.suggestedTraits}
-          onChange={(e) => updateForm("suggestedTraits", e.target.value)}
+        <MarkdownEditor
+          textareaClassName="mt-2 min-h-20 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
+          ariaLabel="Suggested traits" value={form.suggestedTraits}
+          onChange={value => updateForm("suggestedTraits", value)}
           placeholder="Personality traits, hooks, suggested names..."
           rows={3}
         />

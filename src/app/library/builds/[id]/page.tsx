@@ -6,6 +6,7 @@
 // get 404 (handled by loader).
 // =============================================================================
 
+import { Markdown } from "@/components/ui/markdown";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Shield, Sparkles, User as UserIcon } from "lucide-react";
@@ -89,9 +90,7 @@ export default async function BuildDetailPage({ params }: PageProps) {
           )}
 
           {build.description && (
-            <p className="mt-3 text-sm leading-6 text-foreground">
-              {build.description}
-            </p>
+            <Markdown className="mt-3 text-sm leading-6 text-foreground">{build.description}</Markdown>
           )}
         </header>
 
@@ -148,9 +147,7 @@ export default async function BuildDetailPage({ params }: PageProps) {
                     </span>
                   </div>
                   {cap.verboseDescription && (
-                    <p className="mt-1 line-clamp-3 text-xs text-muted-foreground">
-                      {cap.verboseDescription}
-                    </p>
+                    <Markdown className="mt-1 line-clamp-3 text-xs text-muted-foreground">{cap.verboseDescription}</Markdown>
                   )}
                 </li>
               ))}
@@ -183,9 +180,7 @@ function SlotCard({
         <>
           <p className="mt-1 text-base font-semibold">{name}</p>
           {description && (
-            <p className="mt-1 line-clamp-3 text-xs text-muted-foreground">
-              {description}
-            </p>
+            <Markdown className="mt-1 line-clamp-3 text-xs text-muted-foreground">{description}</Markdown>
           )}
         </>
       ) : (

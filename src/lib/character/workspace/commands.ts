@@ -13,6 +13,7 @@ import {
   characterHeritages,
   characterItems,
   characterWorkspaceCommands,
+  characterWorkspaceForkGrants,
   characterWorkspaceState,
 } from "@/db/schema";
 import {
@@ -63,6 +64,10 @@ export const workspaceCommandSchema = z.object({
   draft: z.record(z.string(), z.unknown()).optional(),
 });
 export class WorkspaceConflict extends Error {}
+
+function undoIdentity(node: WorkspaceNode | undefined) {
+  return { afterHash: node?.data["contentHash"] ?? null, afterVersionId: node?.versionId ?? null };
+}
 async function replaceRoot(
   characterId: string,
   root: WorkspaceEdge,
@@ -95,7 +100,12 @@ async function replaceRoot(
           eq(characterPrimitives.instanceId, root.instanceId!),
         ),
       );
-  if (node.kind === "capability")
+  if (node.kind === "capability") {
+    // A replacement changes the composite slot key in place. Retire the old
+    // private-copy grant exactly as a detach would before changing identity.
+    if (newId !== node.id) await db.delete(characterWorkspaceForkGrants).where(and(
+      eq(characterWorkspaceForkGrants.characterId, characterId), eq(characterWorkspaceForkGrants.capabilityId, node.id),
+    ));
     await db
       .update(characterCapabilities)
       .set({ capabilityId: newId, versionId, slotSource })
@@ -105,6 +115,7 @@ async function replaceRoot(
           eq(characterCapabilities.capabilityId, node.id),
         ),
       );
+  }
   if (node.kind === "heritage")
     await db
       .update(characterHeritages)
@@ -733,12 +744,15 @@ export async function executeWorkspaceCommand(
         throw new Error(
           "This command cannot be undone on the selected entity.",
         );
-      const afterVersionId = previous.result["afterVersionId"];
-      const afterHash = previous.result["afterHash"];
-      const changed = typeof afterVersionId === "string"
-        ? afterVersionId !== target.versionId || (afterHash !== null && afterHash !== target.data["contentHash"])
-        : afterHash !== undefined && afterHash !== target.data["contentHash"];
-      if (changed)
+      const { afterHash, afterVersionId } = previous.result;
+      const hasHash = typeof afterHash === "string" && afterHash.length > 0;
+      const hasVersion = typeof afterVersionId === "string" && afterVersionId.length > 0;
+      const current = undoIdentity(target);
+      if (
+        (!hasHash && !hasVersion) ||
+        (afterHash !== undefined && afterHash !== current.afterHash) ||
+        (afterVersionId != null && afterVersionId !== current.afterVersionId)
+      )
         throw new WorkspaceConflict(
           "This bundle changed after that command. Review its newer version before undoing.",
         );
@@ -788,6 +802,7 @@ export async function executeWorkspaceCommand(
         buSpent: character.buSpent,
         memberships: graph.edges,
         before,
+        ...undoIdentity(target),
         target: target.key,
       };
       await db.insert(characterWorkspaceCommands).values({
@@ -843,8 +858,7 @@ export async function executeWorkspaceCommand(
       memberships: updated.edges,
       replacements,
       before,
-      afterHash: savedNode?.data["contentHash"] ?? null,
-      afterVersionId: savedNode?.versionId ?? null,
+      ...undoIdentity(savedNode),
       target: target.key,
     };
     await db.insert(characterWorkspaceCommands).values({

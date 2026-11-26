@@ -7,6 +7,7 @@ export interface CharacterDraftProposal {
   baseRevision: number;
   baseHash: string;
   operations: DraftOperation[];
+  reviewChannel?: "companion";
   rationale: string;
   status: "pending" | "applied" | "rejected" | "withdrawn";
   createdAt: string;

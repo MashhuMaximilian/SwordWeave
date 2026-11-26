@@ -1,13 +1,15 @@
 import type { PortraitFrame } from "@/lib/character/portrait-frame";
 import type { EntityKey, EntityKind, WorkspaceCategory, WorkspaceGraph } from "./model";
 import type { CharacterSheet } from "@/lib/engine/sheet";
+import type { CharacterCompanionAction, CharacterCompanionAttachmentRecord, CharacterCompanionChange } from "@/lib/character/companion-types";
 
 export type DraftOperation = { localBindings?: import("./local-draft").LocalBindings } & (
   | { id: string; groupId?: string; type: "relocate"; label?: string; path: string[]; destinationPath?: string[]; category: Exclude<WorkspaceCategory, "ALL"> }
   | { id: string; groupId?: string; type: "character"; label?: string; payload: { name?: string; portraitUrl?: string | null; portraitFrame?: PortraitFrame; notes?: string | null; backstory?: Record<string, string>; attrPhysical?: number; attrMental?: number; attrMagical?: number; attrProficient?: "PHYSICAL" | "MENTAL" | "MAGICAL" | null; level?: number; startingBu?: number; size?: "TINY" | "SMALL" | "MEDIUM" | "LARGE" | "HUGE" | "GARGANTUAN"; lineageName?: string | null; lineageDescription?: string | null; upbringingName?: string | null; upbringingDescription?: string | null; manifestName?: string | null; } }
-  | { id: string; groupId?: string; type: "create"; label?: string; payload: { kind: EntityKind; category: Exclude<WorkspaceCategory, "ALL">; draft: Record<string, unknown>; mirrored?: boolean; existingId?: string; target?: string; path?: string[]; expectedHash?: string | null } }
+  | { id: string; groupId?: string; type: "create"; label?: string; payload: { kind: EntityKind; category: Exclude<WorkspaceCategory, "ALL">; draft: Record<string, unknown>; mirrored?: boolean; existingId?: string; expectedVersionId?: string; target?: string; path?: string[]; expectedHash?: string | null } }
   | { id: string; groupId?: string; type: "command"; label?: string; payload: Record<string, unknown> }
   | { id: string; groupId?: string; type: "move-root"; label?: string; target: EntityKey; path: string[]; category: Exclude<WorkspaceCategory, "ALL"> }
+  | { id: string; groupId?: string; type: "companion"; label?: string; payload: CharacterCompanionAction }
 );
 
 export interface WorkspaceDraft {
@@ -31,6 +33,7 @@ export interface WorkspaceDraftPreview {
   /** Browser estimate; requires authoritative review before apply. */
   local?: boolean;
   warnings?: string[];
-  beforeSnapshot?: { foundation: Record<string, unknown>; graph: WorkspaceGraph };
-  afterSnapshot?: { foundation: Record<string, unknown>; graph: WorkspaceGraph };
+  companionChanges?: CharacterCompanionChange[];
+  beforeSnapshot?: { foundation: Record<string, unknown>; graph: WorkspaceGraph; companions?: CharacterCompanionAttachmentRecord[] };
+  afterSnapshot?: { foundation: Record<string, unknown>; graph: WorkspaceGraph; companions?: CharacterCompanionAttachmentRecord[] };
 }

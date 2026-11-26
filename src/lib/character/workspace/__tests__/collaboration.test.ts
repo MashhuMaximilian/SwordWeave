@@ -43,6 +43,19 @@ describe("whole-character proposal transaction",()=>{
   it("rejects changed underlying rule versions even if revision did not move",async()=>{const p=await proposal();state.fingerprint="different";await expect(decideCharacterProposal("character","owner",p.id,"approve","",vi.fn())).rejects.toThrow("referenced rule");});
   it("rechecks revoked proposer access before accepting",async()=>{const p=await proposal();state.permissions.delete("dm");await expect(decideCharacterProposal("character","owner",p.id,"approve","",vi.fn())).rejects.toThrow("Access denied");});
   it("records proposer and reviewer and applies retries only once",async()=>{const p=await proposal();const execute=vi.fn(async()=>{state.applied.push("applied");state.revision=5;return {revision:5};});const result=await decideCharacterProposal("character","owner",p.id,"approve","Looks good",execute);await decideCharacterProposal("character","owner",p.id,"approve","",execute);expect(execute).toHaveBeenCalledTimes(1);expect(result).toMatchObject({authorId:"dm",reviewerId:"owner",status:"applied",appliedRevision:5});});
+  it("requires companion review for approval while preserving native decline and withdrawal", async () => {
+    const submit = (requestId: string) => submitCharacterProposal("character", "dm", {
+      baseRevision: 4, operations, requestId, reviewChannel: "companion",
+    });
+    const execute = vi.fn(async () => ({ revision: 5 }));
+    const first = await submit("first");
+    await expect(decideCharacterProposal("character", "owner", first.id, "approve", "", execute))
+      .rejects.toThrow(/open your swordweave companion/i);
+    expect((await decideCharacterProposal("character", "owner", first.id, "reject", "", execute)).status).toBe("rejected");
+    const second = await submit("second");
+    expect((await decideCharacterProposal("character", "dm", second.id, "withdraw", "", execute)).status).toBe("withdrawn");
+    expect(execute).not.toHaveBeenCalled();
+  });
   it("makes submission retry idempotent",async()=>{await proposal();await proposal();expect(state.rows).toHaveLength(1);});
   it("rejects a changed payload reusing the same submission ID",async()=>{await proposal();await expect(submitCharacterProposal("character","dm",{baseRevision:4,operations:[{...operations[0]!,id:"other"}],requestId:"request"})).rejects.toThrow("different changes");});
   it("binds DM review to exact revision",async()=>{await expect(markCharacterReviewed("character","dm",3,"")).rejects.toThrow("changed");const review=await markCharacterReviewed("character","dm",4,"Ready");expect(review.revision).toBe(4);state.revision=5;const read=await readCollaboration("character","owner");expect(read.reviews[0]?.revision).not.toBe(read.revision);});

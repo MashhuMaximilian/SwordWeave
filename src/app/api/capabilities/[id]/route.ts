@@ -2,6 +2,7 @@ import { visibleEntries } from "@/lib/collections/service";
 import { redactExpandedContent } from "@/lib/publishing/redact-expanded-content";
 import { withSourceCollection } from "@/lib/collections/source-save";
 import { withPublishingResponse } from "@/lib/publishing/save-transaction";
+import { workspaceAuthoringUserId, isWorkspaceForkSource } from "@/lib/character/workspace/draft-scope";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { asc, eq, inArray, and, isNull, or, sql } from "drizzle-orm";
@@ -279,6 +280,12 @@ export async function GET(
   }
 }
 
+async function redactCapabilitySave<T extends { primitiveLinks: unknown[]; effectLinks: unknown[]; membershipOrder: unknown; computedBu: number }>(capability: T, viewerId: string) {
+  const visible = await redactExpandedContent(capability, viewerId);
+  return visible.primitiveLinks.length === capability.primitiveLinks.length && visible.effectLinks.length === capability.effectLinks.length
+    ? visible : { ...visible, membershipOrder: null, computedBu: null };
+}
+
 /**
  * PATCH /api/capabilities/[id] — Phase 2 deferred-fork entry point.
  *
@@ -296,8 +303,12 @@ async function handlePATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { userId } = await auth.protect();
+    const workspaceAuthor = workspaceAuthoringUserId(request);
+    const userId = workspaceAuthor ?? (await auth.protect()).userId;
     const { id } = await params;
+    if (!isWorkspaceForkSource(request, id) && !(await visibleEntries([{ targetType: "CAPABILITY", targetId: id }], userId)).length) {
+      return NextResponse.json({ error: "Entry not found." }, { status: 404 });
+    }
     const body: unknown = await request.json();
 
     if (!body || typeof body !== "object") {
@@ -651,7 +662,7 @@ async function handlePATCH(
         }
         return NextResponse.json(
           {
-            capability: { ...result, computedBu },
+            capability: await redactCapabilitySave({ ...result, computedBu }, userId),
             dispatchOutcome: {
               kind: "version-update" as const,
               newId: id,
@@ -847,7 +858,7 @@ async function handlePATCH(
     // attribution. System-authored sources still write the fork row;
     // the helper skips the source-author totalForksReceived bump when
     // sourceClerkUserId is null.
-    if (source !== null) {
+    if (source !== null && !workspaceAuthor) {
       const forkerInternalId = await resolveUserIdByClerkId(userId);
       if (forkerInternalId) {
         await recordForkAttribution({
@@ -892,7 +903,7 @@ async function handlePATCH(
 
     return NextResponse.json(
       {
-        capability: { ...created, computedBu },
+        capability: await redactCapabilitySave({ ...created, computedBu }, userId),
         dispatchOutcome: {
           kind: "forked" as const,
           newId: created.id,

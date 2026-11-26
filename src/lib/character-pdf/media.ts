@@ -19,7 +19,7 @@ const MEDIA_DEADLINE_MS = 14_000;
 const record = (value: unknown): CharacterPdfRecord => value && typeof value === "object" && !Array.isArray(value) ? value as CharacterPdfRecord : {};
 const string = (value: unknown) => typeof value === "string" ? value.trim() : "";
 type Source = { type: "public" | "remote"; url: string } | { type: "upload"; pathname: string } | { type: "game"; author: string; slug: string };
-type Candidate = { target: "character" | "heritages" | "icons"; key: string; source: Source | null; size: number };
+type Candidate = { target: "character" | "companions" | "heritages" | "icons"; key: string; source: Source | null; size: number };
 
 /** Same-site and canonical Blob URLs use the existing private upload reader.
  * Other HTTPS raster URLs go through the DNS-pinned remote image boundary. */
@@ -39,7 +39,8 @@ export function characterPdfArtworkSource(value: unknown): Source | null {
     if (blob) return null;
   }
   if (path.includes("..") || /[%?#]/.test(path)) return null;
-  if (/^\/images\/(characters|lineages|heritages)\/[a-zA-Z0-9/_-]+\.(png|jpe?g|webp)$/i.test(path)) {
+  path = path.replace(/^\/art\/monsters\//, "/images/monsters/");
+  if (/^\/images\/(characters|lineages|heritages|monsters)\/[a-zA-Z0-9/_-]+\.(png|jpe?g|webp)$/i.test(path)) {
     return { type: "public", url: `${PUBLIC_ART_ORIGIN}${path}` };
   }
   const sameSiteKey = uploadKey(path);
@@ -174,6 +175,12 @@ export function characterPdfMediaCandidates(snapshot: CharacterPdfSnapshot): Can
   const result: Candidate[] = [];
   // 512 px also preserves 300 dpi for the saved portrait medallion at 3x zoom.
   if (string(snapshot["portraitUrl"])) result.push({ target: "character", key: "", source: characterPdfArtworkSource(snapshot["portraitUrl"]), size: 512 });
+  const companionPortraits = new Set<string>();
+  for (const { portraitKey, portraitUrl } of snapshot.companions ?? []) {
+    if (!portraitKey || !portraitUrl || companionPortraits.has(portraitKey)) continue;
+    companionPortraits.add(portraitKey);
+    result.push({ target: "companions", key: portraitKey, source: characterPdfArtworkSource(portraitUrl), size: 512 });
+  }
   const graph = new Map((snapshot.readOnlyGraph?.nodes ?? []).map(node => [node.key, node]));
   const seen = new Set<string>();
   function visit(kind: string, entity: CharacterPdfRecord, link: CharacterPdfRecord = {}, depth = 0) {
@@ -212,7 +219,7 @@ export function characterPdfMediaCandidates(snapshot: CharacterPdfSnapshot): Can
 /** Invoke only after the snapshot authorization gate. No private URLs, source
  * bytes or failed image diagnostics are logged or returned as error details. */
 export async function resolveCharacterPdfMedia(snapshot: CharacterPdfSnapshot, context: { viewerId: string | null; signal?: AbortSignal; color?: boolean }): Promise<CharacterPdfSnapshot> {
-  const media: CharacterPdfMedia = { heritages: {}, icons: {}, warnings: [] };
+  const media: CharacterPdfMedia = { companions: {}, heritages: {}, icons: {}, warnings: [] };
   const controller = new AbortController();
   const cancel = () => controller.abort();
   context.signal?.addEventListener("abort", cancel, { once: true });
@@ -228,10 +235,11 @@ export async function resolveCharacterPdfMedia(snapshot: CharacterPdfSnapshot, c
       while (cursor < selected.length) {
         const index = cursor++, candidate = selected[index]!;
         if (!candidate.source || controller.signal.aborted) { results[index] = null; continue; }
-        const key = JSON.stringify([candidate.source, candidate.size, context.color === true]);
+        const portrait = candidate.target === "character" || candidate.target === "companions";
+        const key = JSON.stringify([candidate.source, candidate.size, context.color === true, portrait]);
         let pending = cache.get(key);
         if (!pending) {
-          pending = printableImage(candidate.source, candidate.size, context.viewerId, controller.signal, context.color === true, candidate.target === "character");
+          pending = printableImage(candidate.source, candidate.size, context.viewerId, controller.signal, context.color === true, portrait);
           cache.set(key, pending);
         }
         try { results[index] = await pending; } catch { results[index] = null; }
@@ -248,6 +256,6 @@ export async function resolveCharacterPdfMedia(snapshot: CharacterPdfSnapshot, c
     });
     if (unavailable) media.warnings.push(`${unavailable} artwork or icon entries could not be included because their source was unavailable, unsupported or exceeded the export budget.`);
     if (context.signal?.aborted) throw new CharacterPdfRenderError("CANCELLED", "PDF export was cancelled.", 499);
-    return { ...snapshot, pdfMedia: media };
+    return { ...snapshot, ...(snapshot.companions ? { companions: snapshot.companions.map(({ portraitUrl: _portraitUrl, ...companion }) => companion) } : {}), pdfMedia: media };
   } finally { clearTimeout(timeout); context.signal?.removeEventListener("abort", cancel); }
 }

@@ -53,6 +53,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { splitProgressionSpend } from "@/lib/engine/bu-balance";
 import { CharacterEditButton } from "@/components/characters/character-edit-button";
 import { CharacterVisibilityControl } from "@/components/characters/character-visibility-control";
 import { CharacterSharePanel } from "@/components/characters/character-share-panel";
@@ -115,6 +116,7 @@ export interface SheetIdentityHeaderProps {
   readonly sessionControls?: ReactNode;
   readonly characterId: string;
   readonly name: string;
+  readonly publicView?: boolean;
   readonly level: number;
   readonly size: string;
   readonly lineageName: string | null;
@@ -162,7 +164,6 @@ export interface SheetIdentityHeaderProps {
   readonly buBalance: {
     readonly progressionSpent: number;
     readonly progressionPool: number;
-    readonly overBudget: boolean;
     readonly dmBonusBu: number;
     readonly itemBuSpent: number;
   };
@@ -205,6 +206,7 @@ export interface SheetIdentityHeaderProps {
 export function SheetIdentityHeader({
   characterId,
   name,
+  publicView = false,
   level,
   size,
   lineageName,
@@ -253,11 +255,8 @@ export function SheetIdentityHeader({
 
   if (!hydrated) return null;
 
-  const budgetOverBy = buBalance.progressionSpent - buBalance.progressionPool;
-  // Phase 8.4 v26.8: debt absorbs overflow up to total mirror credit.
-  const debtUsedValue = Math.min(Math.max(0, budgetOverBy), volatility.rating);
-  const budgetVisible = Math.max(0, buBalance.progressionSpent - debtUsedValue);
-  const budgetOverflowRemainder = Math.max(0, budgetVisible - buBalance.progressionPool);
+  const { ordinarySpent: budgetVisible, debtUsed, uncoveredExcess: budgetOverflowRemainder, remaining: remainingBu } =
+    splitProgressionSpend(buBalance.progressionSpent, buBalance.progressionPool, volatility.rating);
   const trulyOverBudget = budgetOverflowRemainder > 0;
   const buDisplay = `${budgetVisible}/${buBalance.progressionPool}`;
   // Phase 8.4: the debt display shows used / available / max with
@@ -265,11 +264,9 @@ export function SheetIdentityHeader({
   // piece is `ceiling - rating` (clamped to 0).
   // Phase 8.4 v26.8: show actual debt used (capped at overflow),
   // not total mirror credit.
-  const debtUsed = debtUsedValue;
   const debtAvailable = Math.max(0, Math.min(volatility.rating, volatility.ceiling) - debtUsed);
   const debtMax = volatility.ceiling;
   const debtDisplay = `${debtUsed} / ${debtMax} (${volatility.levelBracket})`;
-  const remainingBu = Math.max(0, buBalance.progressionPool - buBalance.progressionSpent);
 
   return (
     <div
@@ -590,7 +587,7 @@ export function SheetIdentityHeader({
               ) : null}
             </div>
             <div className="v12-identity-action-group is-pdf">
-              <CharacterPdfActions characterId={characterId} characterName={name} compact />
+              <CharacterPdfActions characterId={characterId} characterName={name} publicView={publicView} compact />
             </div>
             <div className="v12-identity-action-group is-access">
             {/* PLAN Eilxina Part A (Mashu 2026-09-09): mobile visibility
@@ -679,7 +676,6 @@ export function SheetIdentityHeader({
           volatilityCeiling={volatility.ceiling}
           volatilityRemaining={volatility.remaining}
           levelBracket={volatility.levelBracket}
-          overBudget={buBalance.overBudget}
           mirroredPrimitives={volatility.mirroredPrimitives ?? []}
           onClose={() => setBuPopup(null)}
         />
@@ -718,7 +714,6 @@ interface BuHeaderFormulaModalProps {
   readonly volatilityCeiling: number;
   readonly volatilityRemaining: number;
   readonly levelBracket: string;
-  readonly overBudget: boolean;
   readonly mirroredPrimitives: ReadonlyArray<{
     readonly id: number;
     readonly name: string;
@@ -739,28 +734,28 @@ function BuHeaderFormulaModal({
   volatilityCeiling,
   volatilityRemaining,
   levelBracket,
-  overBudget,
   mirroredPrimitives,
   onClose,
 }: BuHeaderFormulaModalProps) {
   const baseBu = 25 + 10 * (level - 1);
   const lifetimeBu = cumulativeBuForLevel(level);
   const spikesTotal = lifetimeBu - baseBu;
+  const { ordinarySpent, debtUsed, uncoveredExcess, remaining: remainingBu } =
+    splitProgressionSpend(progressionSpent, progressionPool, volatilityRating);
 
   if (mode === "pools") {
-    const remainingBu = Math.max(0, progressionPool - progressionSpent);
-    const debtUsed = Math.min(Math.max(0, progressionSpent - progressionPool), volatilityRating);
     const debtAvailable = Math.max(0, Math.min(volatilityRating, volatilityCeiling) - debtUsed);
     return (
       <FormulaModal
         title="BU pools"
         subtitle={`What each number means at level ${level}`}
         total={remainingBu}
-        formula="Remaining progression BU = progression pool − progression spend. Item BU stays separate."
+        formula="Remaining progression BU = progression pool − ordinary BU spent, with a minimum of 0. Item BU stays separate."
         breakdown={[
           { label: "Progression pool", value: progressionPool },
-          { label: "Progression spent", value: -progressionSpent },
+          { label: "Ordinary BU spent", value: -ordinarySpent },
           { label: "Progression BU remaining", value: remainingBu },
+          { label: "Drawback credit used", value: debtUsed },
           { label: "Item BU (separate)", value: itemBuSpent },
         ]}
         info={{
@@ -840,16 +835,13 @@ function BuHeaderFormulaModal({
                 the lifetime BU shown above is a <em>suggested</em> budget, not
                 a hard limit. You can spend BU mid-session to enable
                 primitives on-the-fly (e.g. a Tier 1 Light domain = 4 BU).{" "}
-                {overBudget ? (
+                {uncoveredExcess > 0 ? (
                   <>
-                    Your current usage{" "}
-                    <strong className="text-destructive">
-                      ({progressionSpent}/{progressionPool})
-                    </strong>{" "}
-                    exceeds the pool — the bar shows red.
+                    Your build has{" "}
+                    <strong className="text-destructive">{uncoveredExcess} BU of uncovered spending</strong>.
                   </>
                 ) : (
-                  <>The bar stays green while you're under the pool.</>
+                  <>Your build uses {ordinarySpent} of {progressionPool} ordinary BU and {debtUsed} BU of drawback credit.</>
                 )}
               </p>
               <p className="mt-3 text-[11px] text-muted-foreground border-t border-border pt-3">

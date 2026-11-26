@@ -1,4 +1,5 @@
 "use client";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { useAtelierExperiment } from "./atelier-experiment";
 import { PhonePiecePicker } from "./phone-piece-picker";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
@@ -1040,10 +1041,10 @@ export function CapabilityForm({
 
       <label className="v12-capability-description block text-sm font-medium">
         Verbose Description
-        <textarea
-          className="mt-2 min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
-          value={form.verboseDescription}
-          onChange={(e) => updateForm("verboseDescription", e.target.value)}
+        <MarkdownEditor
+          textareaClassName="mt-2 min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
+          ariaLabel="Verbose description" value={form.verboseDescription}
+          onChange={value => updateForm("verboseDescription", value)}
           placeholder="What does this capability do and feel like in play?"
           rows={3}
         />

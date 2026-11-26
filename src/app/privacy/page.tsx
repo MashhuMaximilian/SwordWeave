@@ -14,7 +14,7 @@ export default function PrivacyPage() {
     <article id="main-content" className="sw-privacy">
       <h1 className="sw-public-title">Privacy & <em>cookies.</em></h1>
       <p className="sw-public-deck">A guide to the data used by the SwordWeave website.</p>
-      <p>Updated {onHetzner ? "4 November" : "20 October"} 2026.</p>
+      <p>Updated 26 November 2026.</p>
       <h2>Essential storage</h2>
       <p>SwordWeave uses Clerk for accounts and sign-in. Its cookies support authentication and account security. Your browser also stores functional settings such as your theme and tool preferences. CookieConsent stores your privacy choice in a cookie named <code>sw_consent</code> for 180 days.</p>
       <h2>Optional analytics</h2>
@@ -22,6 +22,9 @@ export default function PrivacyPage() {
       <p>You can keep analytics off and still use the game tools. <CookiePreferencesButton />.</p>
       <h2>Accounts and game content</h2>
       <p>Signing in lets you save and manage content in SwordWeave. The site uses {onHetzner ? "Hetzner" : "Vercel"} hosting, Clerk authentication, and Neon database hosting to provide these features. Cloudflare serves public artwork and book downloads{onHetzner && " and stores private uploads"}. Some icons load through jsDelivr. Content you choose to publish or share can be viewed by others according to its sharing settings.</p>
+      <h2>SwordWeave in ChatGPT</h2>
+      <p>When you connect SwordWeave in ChatGPT, Clerk signs you in and issues a token for the permissions you grant. SwordWeave checks your access before returning character sheets, rules, or previews. ChatGPT may send relevant parts of your conversation and enabled memories when you use the integration. Your ChatGPT settings govern how OpenAI handles that information. <a href="https://help.openai.com/en/articles/11487775-connected-apps-in-chatgpt" target="_blank" rel="noopener noreferrer">ChatGPT apps and data controls</a></p>
+      <p>You can disconnect SwordWeave in ChatGPT settings. Characters stored on SwordWeave and copies you have already downloaded remain available. Use ChatGPT’s controls to manage related chats and memories.</p>
       <h2>Contact messages</h2>
       <p>Your email address, optional name, and message are used to read and respond to your enquiry in the project’s Proton Mail inbox. Website form messages are delivered through SMTP2GO. Email sent directly to the project’s domain addresses is forwarded by Porkbun. Please do not include passwords or sensitive account information.</p>
       <h2>Questions and requests</h2>

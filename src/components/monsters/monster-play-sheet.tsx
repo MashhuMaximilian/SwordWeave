@@ -1,4 +1,5 @@
 "use client";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import {useEffect,useRef,useState} from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -30,7 +31,7 @@ import {Swords, Package, BookOpen, Activity, Heart, ChevronDown} from "lucide-re
 import {EntityTypeIcon} from "@/components/icons/entity-type-icon";
 import "./monster-ui.css";
 import "./monster-sheet.css";
-export function MonsterPlaySheet({id,embedded=false}:{id:string;embedded?:boolean}){
+export function MonsterPlaySheet({id,embedded=false,returnCharacterId}:{id:string;embedded?:boolean;returnCharacterId?:string}){
  const phone=useIsMobile();
  const [phonePanel,setPhonePanel]=useState<"rolls"|"resources">("rolls");
  const [identityOpen,setIdentityOpen]=useState(false);
@@ -57,7 +58,8 @@ export function MonsterPlaySheet({id,embedded=false}:{id:string;embedded?:boolea
  const artwork=displayMonsterArtwork({...copy.definition,name:copy.definition.name});
  return <main className="sw-monster-page monster-character-sheet v12-character-page" data-character-surface data-encounter-embedded={embedded||undefined}>
  <header className="creature-identity v12-sheet-identity v12-instrument sticky">
-  <Link href="/monsters" className="creature-back v12-metal-button">← Monsters &amp; NPCs</Link>
+  <Link href={returnCharacterId ? `/characters/${encodeURIComponent(returnCharacterId)}?section=companions` : "/monsters"}
+    className="creature-back v12-metal-button">{returnCharacterId ? "← Character companions" : "← Monsters & NPCs"}</Link>
   <div className="creature-identity-row v12-sheet-identity-summary"><div className="creature-identity-glyph">{artwork?<Image unoptimized width={40} height={40} src={artwork} alt={copy.name} style={portraitFrameStyle(copy.definition.portraitFrame)} className="h-full w-full object-cover"/>:<EntityTypeIcon type="MONSTER" size={32}/>}</div><div><p className="creature-eyebrow">Private play copy · Version {copy.templateVersion}</p><h1>{copy.name}</h1><p className="creature-identity-meta">{copy.definition.size.toLowerCase()} · Rank {Number(sheet.rank.toFixed(2))} · {copy.definition.budget} BU</p></div><button className="creature-sheet-button inline-flex items-center justify-center gap-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium hover:bg-secondary ml-auto" onClick={()=>setIdentityOpen(!identityOpen)} aria-expanded={identityOpen} aria-controls="creature-identity-deck"><span className="font-mono">{sheet.spent}/{sheet.availableBudget} BU</span><ChevronDown size={14}/></button></div>
  {identityOpen&&<div className="v12-sheet-identity-deck creature-identity-deck" id="creature-identity-deck"><div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-border border border-border rounded overflow-hidden"><IdentityCell label="Budget" value={`${sheet.spent} / ${sheet.availableBudget} BU`}/><IdentityCell label="Remaining" value={`${Math.max(0,sheet.availableBudget-sheet.spent)} BU`}/><IdentityCell label="Item BU" value={`${sheet.itemBu} BU`} note="Separate item pool"/><IdentityCell label="Rank" value={Number(sheet.rank.toFixed(2)).toString()} note={`Proficient in ${copy.definition.proficientAttribute}`}/></div><div className="v12-identity-meter mt-3"><div className="flex justify-between text-[10px] uppercase tracking-wider"><span>Budget usage</span><span>{sheet.spent} / {copy.definition.budget} BU</span></div><div className="h-1.5 mt-2 rounded-full bg-secondary overflow-hidden"><div className="h-full bg-primary" style={{width:`${Math.min(100,sheet.spent/copy.definition.budget*100)}%`}}/></div></div><div className="v12-identity-actions mt-3 flex gap-2"><Link className="creature-sheet-button inline-flex items-center justify-center gap-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium hover:bg-secondary" href={`/monsters/${copy.templateId}`}>Open template / Edit</Link><Link className="creature-sheet-button inline-flex items-center justify-center gap-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium hover:bg-secondary" href={`/library/item/MONSTER:${copy.templateId}`}>View source</Link></div><p className="mt-2 text-xs text-muted-foreground">This private copy keeps version {copy.templateVersion}. Template edits are used by new copies.</p> <section className="creature-session"><h2>Saved session</h2><p className="creature-section-intro">Manage synchronization, conflicts, offline changes, and backups for this private copy.</p><PlaySessionPanel subjectKind="MONSTER_PLAY_COPY" subjectId={id} endpoint={syncEndpoint} method="PATCH"/>
  {deleteConfirmOpen&&deleteConfirmAccount===accountId?<section className="monster-panel monster-delete-confirm" aria-labelledby="monster-delete-heading"><h2 id="monster-delete-heading">Delete {copy.name}?</h2><p>This permanently deletes this private play copy and its saved session.</p><div className="monster-actions"><button type="button" disabled={deletePending} onClick={()=>setDeleteConfirmOpen(false)}>Keep this copy</button><button className="monster-delete-copy" type="button" disabled={deletePending} onClick={()=>void deleteCopy()}>{deletePending?"Deleting…":"Delete finished copy"}</button></div>{deletePending&&<p role="status">Deleting private play copy…</p>}</section>:<button className="monster-delete-copy" type="button" onClick={()=>{setDeleteConfirmAccount(accountId);setDeleteConfirmOpen(true);}}>Delete finished copy</button>}</section></div>}
@@ -76,7 +78,7 @@ export function MonsterPlaySheet({id,embedded=false}:{id:string;embedded?:boolea
   <h2>Consequences</h2>
   {occurrences.length===0&&<p className="creature-empty">No consequences yet. Applied abilities and custom consequences appear here.</p>}
   {occurrences.map(c=><article className="monster-consequence" key={c.id}>
-   <div><strong>{c.title}</strong><span className="creature-status">{c.status==="resolved"?"Resolved":c.source==="sheet-auto"?"Automatic":"Ongoing"}</span>{c.description&&<p>{c.description}</p>}</div>
+   <div><strong>{c.title}</strong><span className="creature-status">{c.status==="resolved"?"Resolved":c.source==="sheet-auto"?"Automatic":"Ongoing"}</span>{c.description&&<Markdown>{c.description}</Markdown>}</div>
    <div className="monster-actions"><label className="monster-check"><input type="checkbox" checked={c.status!=="resolved"&&(c.manualOverride??(c.source==="sheet-auto"?evaluateCondition(c.modifiers[0]?.condition as never,context):c.active))} onChange={e=>change(`consequence:${c.id}`,{...c,manualOverride:e.target.checked})}/>Active</label>
     <button onClick={()=>change(`consequence:${c.id}`,{...c,status:"resolved",active:false,manualOverride:false,resolvedAt:Date.now()})}>Resolve</button>
     {c.source==="custom"&&<button onClick={()=>change(`consequence:${c.id}`,null)}>Delete</button>}
@@ -85,7 +87,7 @@ export function MonsterPlaySheet({id,embedded=false}:{id:string;embedded?:boolea
   <h3>Add a consequence</h3>
   <div className="monster-settings-grid">
    <label className="monster-field">Title<input aria-label="Consequence title" placeholder="Consequence" value={title} onChange={e=>setTitle(e.target.value)}/></label>
-   <label className="monster-field">Description<textarea aria-label="Consequence description" value={description} onChange={e=>setDescription(e.target.value)}/></label>
+   <label className="monster-field">Description<MarkdownEditor ariaLabel="Consequence description" value={description} onChange={value =>setDescription(value)}/></label>
   </div>
   <label className="monster-field">Optional modifier<div className="monster-modifier-row"><select aria-label="Modifier target" value={consequenceTarget} onChange={e=>setConsequenceTarget(e.target.value)}>{["attack_bonus","save_dc","max_vitality","speed","physical_saving_throw","mental_saving_throw","magical_saving_throw","attribute.physical","attribute.mental","attribute.magical",...sheet.practices.map(p=>`skill_practice_check.${p.practice}`)].map(k=><option key={k}>{k}</option>)}</select><input aria-label="Modifier amount" type="number" value={consequenceAmount} onChange={e=>setConsequenceAmount(Number(e.target.value))}/></div></label>
   <button disabled={!title.trim()} onClick={()=>{const c=customMonsterConsequence(title.trim(),description);if(Number.isSafeInteger(consequenceAmount)&&consequenceAmount!==0)c.modifiers=[{kind:"modify",target:consequenceTarget,operation:"add",value:consequenceAmount,stacking:"stack"}];change(`consequence:${c.id}`,c);setTitle("");setDescription("");}}>Add consequence</button>

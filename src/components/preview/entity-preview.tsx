@@ -641,9 +641,9 @@ function ModifierCards({
     return (
       <Section heading="Behavior">
         <div className="v12-behavior-empty">
-          {row.isMirrorable
+          <Markdown>{row.isMirrorable
             ? `Mirrorable through the ${vectorLabel} rule${row.mirrorEligibilityNotes ? `: ${row.mirrorEligibilityNotes}` : "."}`
-            : "This primitive is not mirrorable."}
+            : "This primitive is not mirrorable."}</Markdown>
         </div>
       </Section>
     );

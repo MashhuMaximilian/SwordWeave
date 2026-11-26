@@ -11,7 +11,7 @@ import {
   type SetStateAction,
   type ReactNode,
 } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronRight, ChevronDown, Dna, Shield, Swords, Layers, ArrowLeft, Eye, Plus, Power, Search, Trash2 } from "lucide-react";
 import { openCharacterEditor, parseCharacterEditorIntent, type CharacterEditorIntent } from "./editor-events";
 import { CharacterBuildWorkspace } from "./character-build-workspace";
@@ -127,6 +127,8 @@ export function CharacterWorkspace(props: {
   initialIntent?: CharacterEditorIntent;
 }) {
   const permission = props.permission ?? "VIEWER";
+  const searchParams = useSearchParams();
+  const localProposal = process.env.NODE_ENV === "development" && searchParams.get("editor") === "guided";
   const [intent, setIntent] = useState<CharacterEditorIntent>(props.initialIntent ?? "overview");
   useEffect(() => { if (props.initialIntent) setIntent(props.initialIntent); }, [props.initialIntent]);
   const [localMode, setLocalMode] = useState<"BUILD" | "PLAY" | null>(null);
@@ -154,10 +156,10 @@ export function CharacterWorkspace(props: {
     };
   }, [props.characterId, permission]);
   useEffect(() => setLocalMode(null), [props.mode]);
-  const mode = localMode ?? props.mode;
+  const mode = localMode ?? (localProposal ? "BUILD" : props.mode);
   if (mode === "BUILD" && permission !== "VIEWER") return <CharacterBuildWorkspace
     characterId={props.characterId} initialRoot={props.items ? "ITEM" : "ALL"}
-    permission={permission} initialIntent={intent} onPlay={() => { setLocalMode("PLAY"); window.dispatchEvent(new CustomEvent("sw-character-build-mode", {detail:{characterId:props.characterId,mode:"PLAY"}})); }} />;
+    permission={permission} localProposal={localProposal} initialIntent={intent} onPlay={() => { setLocalMode("PLAY"); window.dispatchEvent(new CustomEvent("sw-character-build-mode", {detail:{characterId:props.characterId,mode:"PLAY"}})); }} />;
   return <LegacyCharacterWorkspace {...props} mode="PLAY" />;
 }
 
@@ -182,8 +184,7 @@ function PhonePlayLibrary({ graph, items, permission, toggles, restrictions }: {
     const generated = Array.isArray(modifiers) ? mechanicalDescriptionFromModifiers(modifiers as HardModifier[]) : "";
     const mechanical = stored || generated;
     const text = mechanical ? workspaceRuleText({...node, data:{...node.data, mechanicalOutputText: mechanical}}, mirrored) : node.description;
-    const clean = (text || "").replace(/[*#_]/g, "").trim();
-    return { mechanical: !!mechanical, text: mechanical ? clean : clean.split(/\s+/).slice(0,28).join(" ") + (clean.split(/\s+/).length > 28 ? "…" : "") };
+    return { mechanical: !!mechanical, text: (text || "").trim() };
   };
   const actions = (node: WorkspaceNode) => {
     if (node.kind === "effect") return <button disabled={readOnly} className="v12-phone-play-toggle" aria-pressed={!toggles.offEffectIds.has(node.id)} onClick={() => {
@@ -225,7 +226,7 @@ function PhonePlayLibrary({ graph, items, permission, toggles, restrictions }: {
 
       </div>
       <div className="v12-phone-play-facts"><div className="v12-phone-play-record-meta">{node.kind} · {bundleBu(graph,node.key)} BU{!ancestors.length ? " · Direct" : node.kind === "capability" || node.kind === "effect" ? ` · in ${ancestors.at(-1)?.name}` : ""}{mirrored && <span className="v12-phone-mirrored-badge">Mirrored</span>}{!available ? " · Unavailable" : ""}</div>{(canExpand || node.kind === "capability" || node.kind === "effect") && <div className="v12-phone-play-record-actions">{actions(node)}{canExpand && <button className="v12-phone-play-expand" aria-label={`${expanded.has(id) ? "Collapse" : "Expand"} ${node.name}`} aria-expanded={expanded.has(id)} onClick={() => setExpanded(current => { const next = new Set(current); if(next.has(id)) next.delete(id); else next.add(id); return next; })}>{expanded.has(id) ? <ChevronDown/> : <ChevronRight/>}<span>{nested.length}</span></button>}</div>}</div>
-      {rule.text && rule.text !== "null" && <p className="v12-phone-play-record-rule" data-copy-role={rule.mechanical ? "mechanical" : "narrative"}>{rule.text}</p>}
+      {rule.text && rule.text !== "null" && <p className="v12-phone-play-record-rule" data-copy-role={rule.mechanical ? "mechanical" : "narrative"}><Markdown inline className={rule.mechanical ? "" : "line-clamp-3"}>{rule.text}</Markdown></p>}
     </article>;
   };
   // Render actual parent/child groups. Group borders connect the pieces, while

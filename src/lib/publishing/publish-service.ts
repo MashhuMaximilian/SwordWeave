@@ -14,7 +14,8 @@
 
 import { withDependencyPins } from "@/lib/versions/capture-dependency-pins";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { db, withDatabaseTransaction } from "@/db/client";
+import { db } from "@/db/client";
+import { withPublishingTransaction } from "./save-transaction";
 import {
   capabilityVersions,
   characterVersions,
@@ -244,8 +245,8 @@ export async function publishTarget(
   input: PublishInput,
 ): Promise<PublishResult> {
   const kind = input.targetType === "PRIMITIVE" ? "primitive" : input.targetType === "CHARACTER" ? "character" : input.targetType === "CAPABILITY" ? "capability" : input.targetType === "EFFECT" ? "effect" : input.targetType === "ITEM" ? "item" : "template";
-  return withDatabaseTransaction(async tx => {
-    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${kind + ":" + input.targetId}))`);
+  return withPublishingTransaction(async () => {
+    await db.execute(sql`select pg_advisory_xact_lock(hashtext(${kind + ":" + input.targetId}))`);
     return publishTargetLocked(input);
   });
 }
@@ -341,7 +342,8 @@ export async function unpublishTarget(
   publicationId: string,
   userId: string,
 ): Promise<void> {
-  await db
+  await withPublishingTransaction(async () => {
+    await db
     .update(publications)
     .set({ unpublishedAt: sql`NOW()` })
     .where(
@@ -351,6 +353,7 @@ export async function unpublishTarget(
         sql`${publications.unpublishedAt} IS NULL`,
       ),
     );
+  });
 }
 
 /**

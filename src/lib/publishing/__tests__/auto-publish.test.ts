@@ -17,6 +17,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 // object that the factory closures reference.
 const { mockDb } = vi.hoisted(() => ({
   mockDb: {
+    execute: vi.fn(),
     select: vi.fn(),
     insert: vi.fn(),
     update: vi.fn(),
@@ -24,7 +25,7 @@ const { mockDb } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("@/db/client", () => ({ db: mockDb }));
+vi.mock("@/db/client", () => ({ db: mockDb, withDatabaseTransaction: async (work: () => unknown) => work() }));
 vi.mock("@/db/schema/engagement", () => ({
   publications: {
     id: "id",

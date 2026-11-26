@@ -25,6 +25,17 @@ describe("workspace version pins", () => {
     const seeded = structuredClone(entry); seeded.versions[0]!.snapshot = { id: 1, data: entry.versions[0]!.snapshot };
     expect(resolvePinnedNode("primitive", seeded, ["old"]).row["name"]).toBe("Old rule");
   });
+  it("resolves a DELTA from the nearest wrapped FULL without requiring an earlier archived base", () => {
+    const seeded = structuredClone(entry);
+    seeded.versions = [
+      { id: "archived", number: 2, latest: false, deltaKind: "DELTA", snapshot: { buCost: { value: 2 } } },
+      { id: "base", number: 3, latest: false, deltaKind: "FULL", snapshot: { kind: "FULL", data: { name: "Earlier rule", buCost: 4 } } },
+      { id: "delta", number: 4, latest: true, deltaKind: "DELTA", snapshot: { data: { value: { name: "Pinned change", buCost: 6 } } } },
+    ];
+    expect(resolvePinnedNode("primitive", seeded, ["delta"]).row).toMatchObject({ name: "Pinned change", buCost: 6 });
+    seeded.versions[2]!.number = 5;
+    expect(resolvePinnedNode("primitive", seeded, ["delta"]).row["workspaceVersionIssue"]).toBeTruthy();
+  });
   it("does not select an arbitrary first occurrence for mixed pins", () => {
     const result = resolvePinnedNode("primitive", entry, ["latest", "old"]);
     expect(result.versionId).toBeNull(); expect(result.row["workspaceVersionIssue"]).toMatch(/different pinned versions/);

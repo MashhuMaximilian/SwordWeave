@@ -1,4 +1,4 @@
-import { inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import type { AnyPgTable, AnyPgColumn } from "drizzle-orm/pg-core";
 import { db } from "@/db/client";
 import * as s from "@/db/schema";
@@ -135,6 +135,7 @@ export type LoadedNode = {
 /** One batch per entity type and depth, independent of character inventory size. */
 export async function loadWorkspaceNodes(
   keys: readonly EntityKey[],
+  currentOnly = false,
 ): Promise<Map<EntityKey, LoadedNode>> {
   const output = new Map<EntityKey, LoadedNode>();
   await Promise.all(
@@ -151,7 +152,7 @@ export async function loadWorkspaceNodes(
         db
           .select()
           .from(config.versions)
-          .where(inArray(config.versionEntity, ids)),
+          .where(and(inArray(config.versionEntity, ids), currentOnly ? eq(config.versions.isLatest, true) : undefined)),
         ...config.relations.map((r) =>
           db
             .select()

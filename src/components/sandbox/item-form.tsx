@@ -1,4 +1,5 @@
 "use client";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { useAtelierExperiment } from "./atelier-experiment";
 import { PhonePiecePicker } from "./phone-piece-picker";
 import { PhonePieceDetails } from "./phone-piece-details";
@@ -834,10 +835,10 @@ export function ItemForm({
 
       <label className="block text-sm font-medium">
         Description
-        <textarea
-          className="mt-2 min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
-          value={form.description}
-          onChange={(e) => updateForm("description", e.target.value)}
+        <MarkdownEditor
+          textareaClassName="mt-2 min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
+          ariaLabel="Description" value={form.description}
+          onChange={value => updateForm("description", value)}
           placeholder="Lore, mechanics, anything notable..."
           rows={3}
         />

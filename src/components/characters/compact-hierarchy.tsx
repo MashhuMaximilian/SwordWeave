@@ -13,7 +13,7 @@ function PhoneCompositeRow(props: PhoneComposition & { cost?: number | null | un
   return <><article className="v12-phone-composition-row" data-entity-kind={props.kind}>
     {props.onOpen ? <button type="button" className="v12-phone-composition-open" onClick={props.onOpen}><span><small>{props.kind}{props.state ? ` · ${props.state}` : ""}</small><strong>{props.name}</strong></span><ChevronRight aria-hidden="true"/></button> : <strong>{props.name}</strong>}
     <div className="v12-phone-composition-meta">{props.cost != null && <span>{props.cost} BU</span>}{props.actions}</div>
-    {props.description && <p className="v12-phone-composition-description">{props.description.replace(/[*#_]/g, "").split(/\s+/).slice(0,28).join(" ")}{props.description.split(/\s+/).length > 28 ? "…" : ""}</p>}
+    {props.description && <p className="v12-phone-composition-description"><Markdown inline className="line-clamp-3">{props.description}</Markdown></p>}
     </article>
     {props.children && <details className="v12-phone-composition-contents"><summary>Included pieces</summary>{props.children}</details>}
   </>;

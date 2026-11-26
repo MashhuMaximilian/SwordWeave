@@ -1,4 +1,6 @@
 import { beforeEach, describe, it, expect, vi } from "vitest";
+import { PgDialect } from "drizzle-orm/pg-core";
+import type { SQL } from "drizzle-orm";
 import {
   heritage,
   heritagePrimitives,
@@ -14,6 +16,8 @@ const mocks = vi.hoisted(() => ({
   writes: vi.fn(),
   volatility: vi.fn(),
   created: null as Record<string, unknown> | null,
+  visiblePrimitiveIds: null as number[] | null,
+  primitiveVisibilityCondition: null as unknown,
 }));
 vi.mock("@clerk/nextjs/server", () => ({
   auth: { protect: async () => ({ userId: "creator" }) },
@@ -32,9 +36,18 @@ vi.mock("@/lib/versions/slot-source", () => ({
   resolveSlotSource: () => "PINNED",
 }));
 vi.mock("@/db/client", () => {
-  const select = () => ({
+  const select = (fields?: Record<string, unknown>) => ({
     from: (table: unknown) => ({
-      where: async () => mocks.rows.get(table) ?? [],
+      where: async (condition: unknown) => {
+        const rows = mocks.rows.get(table) ?? [];
+        if (table === primitives && fields && Object.keys(fields).length === 1 && fields["id"] === primitives.id) {
+          mocks.primitiveVisibilityCondition = condition;
+          return mocks.visiblePrimitiveIds === null
+            ? rows
+            : rows.filter((row) => mocks.visiblePrimitiveIds!.includes((row as { id: number }).id));
+        }
+        return rows;
+      },
     }),
   });
   const insert = (table: unknown) => ({
@@ -81,6 +94,8 @@ beforeEach(() => {
   mocks.rows.clear();
   mocks.writes.mockClear();
   mocks.created = null;
+  mocks.visiblePrimitiveIds = null;
+  mocks.primitiveVisibilityCondition = null;
   mocks.volatility.mockResolvedValue({ ok: true });
   mocks.rows.set(heritage, [
     {
@@ -106,6 +121,43 @@ beforeEach(() => {
   ]);
 });
 describe("Quickbuild creation API", () => {
+  it.each([
+    { name: "owner", owner: "creator", legacyPublic: false, visible: true },
+    { name: "follower", owner: "other", legacyPublic: false, visible: true },
+    { name: "non-follower", owner: "other", legacyPublic: true, visible: false },
+    { name: "public viewer", owner: "other", legacyPublic: true, visible: true },
+  ])("uses library visibility for a directly selected primitive: $name", async ({ owner, legacyPublic, visible }) => {
+    mocks.rows.set(primitives, [
+      ...(mocks.rows.get(primitives) as Array<Record<string, unknown>>),
+      { id: 3, name: "Selected rule", category: "OUTPUT", buCost: 1, mirrorBuCredit: 0, userId: owner, isPublic: legacyPublic },
+    ]);
+    mocks.visiblePrimitiveIds = visible ? [3] : [];
+    const response = await POST(request({ creationMode: "complete", primitiveInstances: [{ primitiveId: 3, isMirrored: false }] }));
+    expect(response.status).toBe(visible ? 201 : 400);
+    if (!visible) {
+      expect(await response.json()).toEqual({ error: "A selected starting primitive is unavailable." });
+      expect(mocks.writes).not.toHaveBeenCalled();
+    }
+    const gate = new PgDialect().sqlToQuery(mocks.primitiveVisibilityCondition as SQL);
+    expect(gate.sql).toContain("FOLLOWERS_ONLY");
+    expect(gate.sql).toContain("FROM follows");
+    expect(gate.params).toContain("creator");
+  });
+  it.each([
+    { name: "primitiveInstances", selection: { primitiveInstances: [{ primitiveId: 3, isMirrored: false }] } },
+    { name: "legacy primitiveIds", selection: { primitiveIds: [3] } },
+    { name: "primitivesBySource", selection: { primitivesBySource: { PERSONAL: [{ id: 3 }] } } },
+  ])("rejects inaccessible primitives supplied through $name", async ({ selection }) => {
+    mocks.rows.set(primitives, [
+      ...(mocks.rows.get(primitives) as Array<Record<string, unknown>>),
+      { id: 3, name: "Restricted rule", category: "OUTPUT", buCost: 1, mirrorBuCredit: 0, userId: "other", isPublic: true },
+    ]);
+    mocks.visiblePrimitiveIds = [];
+    const response = await POST(request({ creationMode: "complete", ...selection }));
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "A selected starting primitive is unavailable." });
+    expect(mocks.writes).not.toHaveBeenCalled();
+  });
   it("uses lineage size and authoritative costs instead of caller values, preserving pins", async () => {
     const response = await POST(request());
     expect(response.status).toBe(201);

@@ -34,8 +34,12 @@ def inline(source, size=9.2, depth=0):
         elif groups['link'] is not None:
             label = inline(groups['label'], size, depth+1)
             url = groups['url']
-            parsed = urlsplit(url)
-            if parsed.scheme.lower() in ('http', 'https') and parsed.netloc:
+            try:
+                parsed = urlsplit(url)
+                safe_link = parsed.scheme.lower() in ('http', 'https') and parsed.netloc
+            except ValueError:
+                safe_link = False
+            if safe_link:
                 output.append('<link href='+quoteattr(url)+' color="#222222"><u>'+label+'</u></link>')
             else:
                 output.append(label)

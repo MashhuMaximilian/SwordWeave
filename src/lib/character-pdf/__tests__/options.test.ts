@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readCharacterSheetPdfOptions } from "@/lib/mcp/character-sheet-pdf";
 import { CHARACTER_PDF_STYLES, DEFAULT_CHARACTER_PDF_OPTIONS, characterPdfFilename, characterPdfOptionsSchema } from "../options";
 
 describe("character PDF options", () => {
@@ -17,6 +18,14 @@ describe("character PDF options", () => {
   it("keeps monochrome as the default and gives color downloads distinct names", () => {
     expect(DEFAULT_CHARACTER_PDF_OPTIONS.color).toBe(false);
     expect(characterPdfFilename("Orren", { ...DEFAULT_CHARACTER_PDF_OPTIONS, color: true })).toBe("swordweave-orren-aegis-portrait-color.pdf");
+  });
+  it("accepts the source parameter added to ChatGPT links and still rejects other unknown options", () => {
+    const options = (query: string) => readCharacterSheetPdfOptions(new URLSearchParams(query));
+    expect(options("utm_source=chatgpt.com&orientation=landscape")).toEqual({
+      ...DEFAULT_CHARACTER_PDF_OPTIONS, orientation: "landscape",
+    });
+    expect(options("utm_source=chatgpt.com&utm_source=chatgpt.com")).toBeNull();
+    expect(options("utm_source=chatgpt.com&unknown=1")).toBeNull();
   });
   it("builds bounded attachment filenames without control characters or paths", () => {
     const filename = characterPdfFilename('Éowyn / "Hero"\r\nX-Header: nope', DEFAULT_CHARACTER_PDF_OPTIONS);

@@ -18,6 +18,7 @@
 // =============================================================================
 
 import { and, eq, inArray } from "drizzle-orm";
+import { z } from "zod";
 import { db } from "@/db/client";
 import { forks } from "@/db/schema";
 import type { ForkTargetType } from "@/lib/publishing/forks-query";
@@ -129,9 +130,8 @@ async function resolveForkSourceFromEntity(
   const schema = await import("@/db/schema");
   const { sql } = await import("drizzle-orm");
 
-  // Read just the source_origin column + user_id (for author). One query
-  // per entity type, dispatched by targetType.
-  let entity: { sourceOrigin: string | null; userId: string | null } | null =
+  // Read the fork marker from the entity table.
+  let entity: { sourceOrigin: string | null; userId: string | null; createdAt?: Date } | null =
     null;
   switch (targetType) {
     case "PRIMITIVE": {
@@ -139,6 +139,7 @@ async function resolveForkSourceFromEntity(
         .select({
           sourceOrigin: schema.primitives.sourceOrigin,
           userId: schema.primitives.userId,
+          createdAt: schema.primitives.createdAt,
         })
         .from(schema.primitives)
         .where(sql`${schema.primitives.id} = ${targetId}::bigint`)
@@ -151,6 +152,7 @@ async function resolveForkSourceFromEntity(
         .select({
           sourceOrigin: schema.capabilities.sourceOrigin,
           userId: schema.capabilities.userId,
+          createdAt: schema.capabilities.createdAt,
         })
         .from(schema.capabilities)
         .where(sql`${schema.capabilities.id} = ${targetId}`)
@@ -219,6 +221,21 @@ async function resolveForkSourceFromEntity(
   const parsed = parseForkSourceOrigin(entity.sourceOrigin, targetType);
   if (!parsed) return null;
 
+  let sourceVersionId = "";
+  const primitiveMarker = targetType === "PRIMITIVE" && parsed.type === "PRIMITIVE" && /^fork:[1-9]\d*:[a-f0-9]{64}$/.test(entity.sourceOrigin);
+  const capabilityMarker = targetType === "CAPABILITY" && parsed.type === "CAPABILITY" && z.uuid().safeParse(parsed.id).success &&
+    entity.sourceOrigin.startsWith(`fork:${parsed.id}:`) && /^[a-f0-9]{64}$/.test(entity.sourceOrigin.slice(parsed.id.length + 6));
+  if (primitiveMarker || capabilityMarker) {
+    const versions = primitiveMarker ? schema.primitiveVersions : schema.capabilityVersions;
+    const target = primitiveMarker ? sql`${schema.primitiveVersions.primitiveId} = ${targetId}::bigint` : eq(schema.capabilityVersions.capabilityId, targetId);
+    const [initial] = await db.select({ snapshot: versions.snapshot }).from(versions).where(and(
+      target, eq(versions.versionNumber, 1), eq(versions.deltaKind, "FULL"),
+    )).limit(1);
+    const source = initial?.snapshot;
+    const pin = z.uuid().safeParse(source?.["sourceVersionId"]);
+    if (source?.["sourceId"] === parsed.id && pin.success) sourceVersionId = pin.data;
+  }
+
   // Author of the source (best-effort, same helper as the engagement path).
   let sourceAuthorUsername: string | null = null;
   let sourceAuthorDisplayName: string | null = null;
@@ -236,12 +253,8 @@ async function resolveForkSourceFromEntity(
     id: `synthetic:${targetType}:${targetId}`,
     sourceTargetType: parsed.type,
     sourceTargetId: parsed.id,
-    // Legacy forks don't have a recorded sourceVersionId.
-    sourceVersionId: "",
-    // We don't have a real `forkedAt` timestamp from the engagement
-    // table. Best proxy: the entity's own createdAt. The caller can
-    // ignore this for display if they want — it's informational.
-    forkedAt: new Date(0),
+    sourceVersionId,
+    forkedAt: entity.createdAt ?? new Date(0),
     sourceAuthorUsername,
     sourceAuthorDisplayName,
   };

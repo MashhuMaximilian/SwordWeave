@@ -7,6 +7,10 @@ vi.mock("@/lib/character/workspace/draft-sheet", () => ({ readDraftSheet: mock.s
 vi.mock("@/lib/character/character-log", () => ({ appendCharacterLog: mock.log }));
 vi.mock("@/lib/cache/character-resolver-cache", () => ({ bustResolverCache: mock.bust }));
 vi.mock("@/lib/character/mutation-transaction", () => ({ withCharacterMutation: async (_id: string, work: () => unknown) => work() }));
+vi.mock("@/lib/play-state/service", () => ({
+  readPlayState: async () => ({ overrides: {} }),
+  reconcilePlayState: async (_kind: string, _id: string, overrides: Record<string, unknown>) => ({ overrides }),
+}));
 vi.mock("@/db/client", () => ({ db: { update: () => ({ set: (values: object) => {
   mock.update(values);
   const done = Promise.resolve([{ id: "character", currentVitality: (values as { currentVitality: number }).currentVitality }]);

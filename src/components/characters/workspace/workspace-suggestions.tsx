@@ -1,4 +1,5 @@
 "use client";
+import { Markdown } from "@/components/ui/markdown";
 import { readJsonResponse } from "@/lib/http/read-json-response";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
@@ -190,7 +191,7 @@ export function WorkspaceSuggestions({ characterId, destinationLabel, heritageCa
       </div>
       <p data-copy="mechanical" className="mt-2 text-sm text-orange-200">{item.mirrored ? item.mirrorDescription : item.mechanicalDescription || "No mechanical summary. Preview this entry before choosing."}</p>
       {item.mirrored && <p data-copy="mechanical" className="mt-2 text-xs text-muted-foreground">Original rule: {item.mechanicalDescription}</p>}
-      {item.description && <p data-copy="narrative" className="mt-2 text-sm text-muted-foreground">{item.description}</p>}
+      {item.description && <Markdown copyRole="narrative" className="mt-2 text-sm text-muted-foreground">{item.description}</Markdown>}
       <p data-copy="reason" className="mt-2 text-xs text-amber-100/80">{item.reason}</p>
       {!item.mirrored && item.libraryCost !== undefined && item.cost !== item.libraryCost && <p data-copy="metadata">{destinationIsItem ? "Item rules do not spend character BU." : `Estimated extra cost; ${item.libraryCost} BU in the Library. Already supplied rules are accounted for.`}</p>}
       {!compatible && <p className="discovery-replacement-note">Choose a compatible destination to use this piece.</p>}

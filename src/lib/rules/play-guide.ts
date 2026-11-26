@@ -1,6 +1,6 @@
 import { REUSE_EXAMPLE_BLOCKS } from './reuse-example';
 import { NERIS_SHEET_URL, ORREN_SHEET_URL } from './neris-example';
-import { searchTopics } from './guide-search';
+import { blockSearchText } from './guide-search';
 
 export type GuideBlock = {
   /** Optional stable anchor, unique within this guide. */
@@ -890,7 +890,7 @@ export const PLAY_GUIDE: GuideTopic[] = [
     "id": "vitality",
     "title": "Vitality, collapse & consequences",
     "summary": "Your health and exertion share one resource; consequences record the fiction.",
-    "keywords": "vitality health hp healing collapse death unconscious stabilize cost consequence condition poisoned burning slowed",
+    "keywords": "vitality health hp healing recovery short rest long rest collapse death unconscious stabilize cost consequence condition poisoned burning slowed",
     "blocks": [
       {
         "title": "One resource for survival and exertion",
@@ -1084,7 +1084,21 @@ export const PLAY_GUIDE: GuideTopic[] = [
 ];
 
 export function searchGuide(query: string): GuideTopic[] {
-  return searchTopics(PLAY_GUIDE, query);
+  if (!query.trim()) return PLAY_GUIDE;
+  const words = searchWords(query);
+  if (words.length === 0) return [];
+  return PLAY_GUIDE.flatMap(topic => {
+    const haystack = [topic.title, topic.summary, topic.keywords, ...topic.blocks.flatMap(blockSearchText)].join(' ').toLowerCase();
+    if (!words.every(word => haystack.includes(word))) return [];
+    const title = new Set(searchWords(topic.title));
+    const keywords = new Set(searchWords(topic.keywords));
+    const score = words.reduce((sum, word) => sum + (title.has(word) ? 2 : keywords.has(word) ? 1 : 0), 0);
+    return [{ topic, score }];
+  }).sort((left, right) => right.score - left.score).map(({ topic }) => topic);
+}
+
+function searchWords(text: string) {
+  return text.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
 }
 
 export { searchTopics } from './guide-search';

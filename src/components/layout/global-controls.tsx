@@ -16,6 +16,7 @@
 // =============================================================================
 
 import {useAccount} from "@/components/account/account-provider";
+import { CHATGPT_GUIDE_PATH, CHATGPT_INSTALL_LABEL, CHATGPT_LISTING_URL } from "@/lib/chatgpt-listing";
 import { DISCORD_INVITE_URL } from "@/lib/community";
 import { DiscordIcon } from "@/components/icons/discord-icon";
 import {
@@ -43,6 +44,7 @@ import { useCharacterModal } from "@/components/character-modal/character-modal-
 import {
   Columns2,
   Maximize2,
+  MessagesSquare,
   Minimize2,
   Moon,
   Sun,
@@ -417,7 +419,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         active: dark,
       },
       ...ACCOUNT_LINKS,
-      // Community and support share the bottom row and open in a new tab.
+      // Community links share the bottom row.
       {
         kind: "link",
         key: "buymeacoffee",
@@ -433,6 +435,15 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         href: DISCORD_INVITE_URL,
         external: true,
         icon: <DiscordIcon />,
+      },
+      {
+        kind: "link",
+        key: "chatgpt",
+        label: "ChatGPT",
+        accessibleLabel: CHATGPT_LISTING_URL ? CHATGPT_INSTALL_LABEL : "ChatGPT guide",
+        href: CHATGPT_LISTING_URL ?? CHATGPT_GUIDE_PATH,
+        external: Boolean(CHATGPT_LISTING_URL),
+        icon: <MessagesSquare aria-hidden="true" />,
       },
     );
     return workspaceVisibility.build ? list : list.filter(item => item.key !== "build");
