@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "swordweave-companion",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Look up SwordWeave rules, plan character builds, and bring your saved characters into your tabletop RPG chat.",
   "homepage": "https://www.swordweave.quest/",
   "keywords": ["tabletop RPG", "character sheet", "SwordWeave"],
