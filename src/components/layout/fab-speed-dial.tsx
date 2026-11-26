@@ -18,7 +18,6 @@ import {
   X,
   BookOpen,
   ChevronRight,
-  ArrowRight,
   ArrowUpRight,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode, type MouseEvent } from "react";
@@ -60,7 +59,6 @@ export type FabLink = {
   accessibleLabel?: string;
   icon: ReactNode;
   href: string;
-  external?: boolean;
 };
 
 /** Section divider: a thin label row. */
@@ -175,9 +173,14 @@ export function FabSpeedDial({
     if (!item || item.kind === "divider" || item.kind === "userMenu") return null;
     const label = key === "builds" ? "Characters" : item.label;
     const content = <><span className="sw-fab__destination-icon">{referenceIcon(key) ?? item.icon}</span><span className="sw-fab__copy"><strong>{label}</strong>{description && <small>{description}</small>}</span>{!feature && <ChevronRight className="sw-fab__chevron" size={17}/>}</>;
-    const className = cn("sw-fab__destination", feature && "sw-fab__feature", key === "atelier" && "sw-fab__atelier");
+    const className = cn(
+      "sw-fab__destination",
+      feature && "sw-fab__feature",
+      key === "atelier" && "sw-fab__atelier",
+      (key === "home" || key === "rules") && "sw-fab__utility-destination",
+    );
     return item.kind === "link" ? <Link key={key} data-fab-link={key} aria-label={label} className={className} href={item.href} onClick={event => followLink(event, item.href)}>{content}</Link>
-      : <button key={key} type="button" data-fab-action={key} className={className} disabled={item.disabled} onClick={() => { item.onClick(); setOpen(false); }}>{content}</button>;
+      : <button key={key} type="button" data-fab-action={key} aria-label={label} className={className} disabled={item.disabled} onClick={() => { item.onClick(); setOpen(false); }}>{content}</button>;
   }
 
   if (!visible) return null;
@@ -208,24 +211,23 @@ export function FabSpeedDial({
         </div>
         <div className="sw-fab__community-row">
           {items.filter((item): item is FabLink => item.kind === "link" && ["buymeacoffee", "discord", "chatgpt"].includes(item.key)).map(item => (
-            <Link
+            <a
               key={item.key}
+              href={item.href}
+              target="_blank"
+              rel="noopener noreferrer"
               onClick={() => {
                 if (item.key === "discord") track({ name: "discord_invite_click", params: { placement: "fab" } });
                 if (item.key === "buymeacoffee") track({ name: "support_click", params: { placement: "fab" } });
               }}
-              href={item.href}
-              {...(item.external
-                ? { target: "_blank", rel: "noopener noreferrer" }
-                : { onClick: (event: MouseEvent<HTMLAnchorElement>) => followLink(event, item.href) })}
               className="sw-fab__support"
               data-fab-link={item.key}
               aria-label={item.accessibleLabel}
             >
               {item.icon}
-              <span>{item.label}</span>
-              {item.external ? <ArrowUpRight size={13} aria-hidden="true" /> : <ArrowRight size={13} aria-hidden="true" />}
-            </Link>
+              <span className="sw-fab__support-label">{item.label}</span>
+              <ArrowUpRight size={13} aria-hidden="true" />
+            </a>
           ))}
         </div>
       </footer></>}
@@ -238,7 +240,7 @@ export function FabSpeedDial({
 function referenceIcon(key: string) {
   if (key === "monsters") return <FabIcon iconKey="lorc/gluttonous-smile" alt="Monsters"/>;
   if (key === "home") return <span className="sw-fab__home-logo" aria-hidden="true"/>;
-  if (key === "rules") return <BookOpen size={19} strokeWidth={1.4}/>;
+  if (key === "rules") return <BookOpen size={18} strokeWidth={1.4} aria-hidden="true"/>;
   const paths: Record<string, string> = {
     library: "M3 4h5v25H3z M12 4h5v25h-5z M21 5l4-1 5 23-4 1z",
     atelier: "M4 21l12-12 7 7-12 12z M16 9l4-4 7 7-4 4 M5 8l3-3 18 18-3 3z",
