@@ -35,7 +35,7 @@ export default function ChatGptGuidePage() {
             Look up a rule, preview a character build, or bring up a sheet while you’re talking through an idea.
           </p>
           {!CHATGPT_LISTING_URL && (
-            <p className="sw-chatgpt-guide__status">Public installation is coming. You can read the setup and try the game on SwordWeave today.</p>
+            <p className="sw-chatgpt-guide__status">Public installation is coming.</p>
           )}
           <div className="sw-public-actions">
             {CHATGPT_LISTING_URL ? (
@@ -43,7 +43,7 @@ export default function ChatGptGuidePage() {
                 {CHATGPT_INSTALL_LABEL} <ArrowUpRight aria-hidden="true" />
               </a>
             ) : (
-              <Link className="sw-cta-primary" href="#connect">See setup steps <ArrowRight aria-hidden="true" /></Link>
+              <a className="sw-cta-primary" href="#connect">See setup steps <ArrowRight aria-hidden="true" /></a>
             )}
             <Link className="sw-cta-ghost" href="/rules">Read the rules <ArrowRight aria-hidden="true" /></Link>
           </div>
