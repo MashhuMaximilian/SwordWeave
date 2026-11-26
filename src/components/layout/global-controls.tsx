@@ -422,7 +422,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
       {
         kind: "link",
         key: "buymeacoffee",
-        label: "Support",
+        label: "Fuel the fire",
         href: "https://buymeacoffee.com/mashhul",
         icon: <FabIcon iconKey="lorc/campfire" alt="" />,
       },
