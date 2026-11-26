@@ -77,8 +77,15 @@ body[data-ui="v12"] .sw-fab .sw-fab__support .sw-fab-glyph {width:17px;height:18
 .sw-fab__community-row>.sw-fab__support {min-width:0}
 .sw-fab__support-label {min-width:0;white-space:nowrap}
 /* The supplied OpenAI Blossom includes its own clear space. */
-.sw-fab__gpt-logo {display:block;flex:none;width:32px;height:32px;background:url('/icons/openai-blossom-white.svg') center/contain no-repeat}
+.sw-fab__gpt-logo {position:relative;display:block;flex:none;width:32px;height:32px;background:url('/icons/openai-blossom-white.svg') center/contain no-repeat}
 html:not(.dark) .sw-fab__gpt-logo {background-image:url('/icons/openai-blossom-black.svg')}
+/* The link's ring takes the metallic finish outside the unmodified Blossom. */
+.sw-fab__gpt-logo::after {
+  content:"";position:absolute;inset:-1px;padding:1px;border-radius:50%;pointer-events:none;
+  background:var(--fab-utility-finish);
+  mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
+  mask-composite:exclude;
+}
 @media(max-width:420px) { .sw-fab__community-row>.sw-fab__support>svg:last-child {display:none} }
 /* Feedback changes finish, never type size, weight, wrapping or layout. */
 @media(hover:hover) {
@@ -173,7 +180,8 @@ body[data-ui="v12"] .sw-fab .sw-fab__theme-icon-metal {opacity:1!important;backg
   body[data-ui="v12"] .sw-fab .sw-fab__workspace-grid .sw-fab__create-plus {min-height:44px!important;height:44px!important}
 }
 html:not(.dark) body[data-ui="v12"] .sw-fab {
-  --fab-gold-low:#765019;--fab-gold-mid:#b28b43;--fab-silver-low:#4c6266;--fab-silver-mid:#91a4a5;
+  --fab-gold-low:#68451c;--fab-gold-mid:#805721;--fab-gold-glint:#8b6326;
+  --fab-silver-low:#3c545a;--fab-silver-mid:#4c6266;--fab-silver-glint:#596d70;
 }
 @media(min-width:360px) {
   body[data-ui="v12"] .sw-fab .sw-fab__workspace-grid:has(.sw-fab__create-wrap) [data-fab-action]:not(.sw-fab__create-plus) {padding:8px!important;gap:6px!important}
@@ -213,36 +221,51 @@ body[data-ui="v12"] .sw-fab .sw-fab__create-menu .sw-fab-glyph {background:var(-
 body[data-ui="v12"] .sw-fab :is(a,button) {transition-property:box-shadow,border-color!important}
 body[data-ui="v12"] .sw-fab [data-fab-trigger] svg {stroke:url(#sw-fab-gold)!important;filter:none!important}
 body[data-ui="v12"] .sw-fab [data-fab-trigger]:focus-visible {background:var(--fab-gold)!important;color:#17140f!important}
-/* The footer shares one ink for each label, silhouette and line icon. */
+/* Labels, silhouettes and line icons switch finishes together. */
+body[data-ui="v12"] .sw-fab .sw-fab__utilities {
+  --fab-utility-silver:var(--fab-silver);
+  --fab-utility-gold:var(--sw-metal-gold);
+}
+html:not(.dark) body[data-ui="v12"] .sw-fab .sw-fab__utilities {
+  --fab-utility-silver:linear-gradient(125deg,#3c545a,#53696d 25%,#345057 42%,#596d70 65%,#3c545a);
+  --fab-utility-gold:linear-gradient(125deg,#68451c,#805721 24%,#8b6326 38%,#67441b 52%,#886023 70%,#68451c);
+}
 body[data-ui="v12"] .sw-fab .sw-fab__utilities :is(.sw-fab__utility-destination,.sw-fab__support,.sw-fab__utility-grid [data-fab-action]) {
-  --fab-utility-ink:var(--fab-muted);
+  --fab-utility-finish:var(--fab-utility-silver);
+  --fab-utility-stroke:url(#sw-fab-silver);
   --fab-utility-surface:transparent;
-  color:var(--fab-utility-ink)!important;
   background:var(--fab-utility-surface)!important;
   border:1px solid transparent!important;
   box-shadow:none!important;
   transition:none!important;
 }
-body[data-ui="v12"] .sw-fab .sw-fab__utilities .sw-fab__community-row .sw-fab__support {--fab-utility-ink:var(--fab-ink)}
-body[data-ui="v12"] .sw-fab .sw-fab__utilities .sw-fab__community-row [data-fab-link="buymeacoffee"] {--fab-utility-ink:var(--fab-brass)}
-body[data-ui="v12"] .sw-fab .sw-fab__utilities .sw-fab__utility-grid [aria-pressed="true"] {--fab-utility-ink:var(--fab-teal)}
+body[data-ui="v12"] .sw-fab .sw-fab__utilities .sw-fab__utility-grid [aria-pressed="true"] {
+  --fab-utility-surface:color-mix(in srgb,var(--fab-teal) 10%,transparent);
+}
 body[data-ui="v12"] .sw-fab .sw-fab__utilities :is(.sw-fab__utility-destination,.sw-fab__support,.sw-fab__utility-grid [data-fab-action]):focus-visible {
-  --fab-utility-ink:var(--fab-brass);
+  --fab-utility-finish:var(--fab-utility-gold);
+  --fab-utility-stroke:url(#sw-fab-gold);
   --fab-utility-surface:color-mix(in srgb,var(--fab-brass) 12%,transparent);
 }
 @media(hover:hover) and (pointer:fine) {
   body[data-ui="v12"] .sw-fab .sw-fab__utilities :is(.sw-fab__utility-destination,.sw-fab__support,.sw-fab__utility-grid [data-fab-action]):hover {
-    --fab-utility-ink:var(--fab-brass);
+    --fab-utility-finish:var(--fab-utility-gold);
+    --fab-utility-stroke:url(#sw-fab-gold);
     --fab-utility-surface:color-mix(in srgb,var(--fab-brass) 12%,transparent);
   }
 }
-body[data-ui="v12"] .sw-fab .sw-fab__utilities :is(a,button) :is(strong,.sw-fab__support-label) {color:var(--fab-utility-ink)!important}
+body[data-ui="v12"] .sw-fab .sw-fab__utilities :is(a,button) :is(strong,.sw-fab__support-label) {
+  background:var(--fab-utility-finish);
+  background-clip:text;
+  -webkit-background-clip:text;
+  color:transparent!important;
+}
 body[data-ui="v12"] .sw-fab .sw-fab__utilities :is(.sw-fab__utility-destination,.sw-fab__support,.sw-fab__utility-grid [data-fab-action]) svg {
-  stroke:var(--fab-utility-ink)!important;filter:none;
+  stroke:var(--fab-utility-stroke)!important;filter:none;
 }
 body[data-ui="v12"] .sw-fab .sw-fab__utilities :is(.sw-fab__utility-destination,.sw-fab__support,.sw-fab__utility-grid [data-fab-action])
   :is(.sw-fab__home-logo,.sw-fab-glyph,[data-discord-icon],.sw-fab__account-rim) {
-  background:var(--fab-utility-ink)!important;
+  background:var(--fab-utility-finish)!important;
 }
 .sw-fab__support>[data-discord-icon] {width:19px;height:15px}
 @media(hover:hover) and (pointer:fine) {
