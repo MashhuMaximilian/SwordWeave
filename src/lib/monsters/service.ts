@@ -24,7 +24,10 @@ export async function searchVisibleMonsterTemplates(userId: string, query: strin
   const budget = sql`(${monsters.definition}->>'budget')::numeric`;
   const canonical = sql<boolean>`(
     starts_with(${monsters.userId}, 'system:') AND ${monsters.forkedFromId} IS NULL
-    OR EXISTS (SELECT 1 FROM users WHERE users.clerk_user_id = ${monsters.userId} AND users.is_admin)
+    OR EXISTS (
+      SELECT 1 FROM users WHERE users.clerk_user_id = ${monsters.userId}
+        AND users.is_admin AND NOT users.is_anonymized AND users.deleted_at IS NULL
+    )
   )`;
   const searchable = sql`concat_ws(' ', ${monsters.name}, ${monsters.description},
     ${monsters.definition}->'catalogue'->>'role', ${monsters.definition}->'catalogue'->>'environment',
