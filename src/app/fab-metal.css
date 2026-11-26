@@ -54,7 +54,7 @@ body[data-ui="v12"] .sw-fab .sw-fab__workspace-grid [data-fab-action] {
 }
 body[data-ui="v12"] .sw-fab .sw-fab__action-label {display:block;font:600 13px/1.2 Arial,sans-serif!important;letter-spacing:0!important;text-transform:none!important}
 .sw-fab__utilities {flex:none;border-top:1px solid var(--fab-line);padding-top:6px}
-.sw-fab__utility-strip {display:flex;align-items:center;gap:2px}
+.sw-fab__utility-strip {display:flex;align-items:center;gap:10px}
 body[data-ui="v12"] .sw-fab .sw-fab__utility-strip>.sw-fab__destination {flex:none;width:auto;gap:5px!important;min-height:44px!important;padding:5px 3px!important;border:1px solid transparent!important;background:transparent!important;box-shadow:none!important;color:var(--fab-muted)!important}
 body[data-ui="v12"] .sw-fab .sw-fab__utility-strip .sw-fab__copy strong {font:400 10px/1.2 Arial,sans-serif!important}
 body[data-ui="v12"] .sw-fab .sw-fab__utility-strip .sw-fab__destination-icon {width:18px;height:22px;color:inherit!important}
@@ -75,10 +75,12 @@ body[data-ui="v12"] .sw-fab .sw-fab__support {
 }
 body[data-ui="v12"] .sw-fab .sw-fab__support .sw-fab-glyph {width:17px;height:18px;background:currentColor!important}
 .sw-fab__support>svg {margin-left:auto;flex:none}
-.sw-fab__community-row {display:grid;grid-template-columns:minmax(0,1.6fr) repeat(2,minmax(0,1fr));gap:6px}
+.sw-fab__community-row {display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) minmax(0,1.25fr);gap:6px}
 .sw-fab__community-row>.sw-fab__support {min-width:0}
-.sw-fab__community-row>.sw-fab__support>span {min-width:0}
-.sw-fab__community-row>.sw-fab__support>svg:first-child {margin-left:0;flex:none;width:17px;height:18px}
+.sw-fab__support-label {min-width:0;white-space:nowrap}
+/* The supplied OpenAI Blossom includes its own clear space. */
+.sw-fab__gpt-logo {display:block;flex:none;width:32px;height:32px;background:url('/icons/openai-blossom-white.svg') center/contain no-repeat}
+html:not(.dark) .sw-fab__gpt-logo {background-image:url('/icons/openai-blossom-black.svg')}
 @media(max-width:420px) { .sw-fab__community-row>.sw-fab__support>svg:last-child {display:none} }
 /* Feedback changes finish, never type size, weight, wrapping or layout. */
 @media(hover:hover) {
@@ -130,7 +132,7 @@ body[data-ui="v12"] .sw-fab :is(.sw-fab__destination,[data-fab-action],.sw-fab__
 body[data-ui="v12"] .sw-fab :is(a,button):focus-visible :is(strong,small,.sw-fab__chevron,.sw-fab__destination-icon,.sw-fab__action-label) {color:#302611!important}
 body[data-ui="v12"] .sw-fab [data-fab-action="account"]:focus-visible .sw-fab__account-avatar {border-color:#d3b773!important}
 @media(max-width:359px) {
-  body[data-ui="v12"] .sw-fab .sw-fab__utility-strip {flex-wrap:nowrap;gap:0}
+  body[data-ui="v12"] .sw-fab .sw-fab__utility-strip {flex-wrap:nowrap;gap:6px}
   body[data-ui="v12"] .sw-fab .sw-fab__utility-strip>.sw-fab__destination {width:44px;justify-content:center;padding:8px!important}
   body[data-ui="v12"] .sw-fab .sw-fab__utility-strip>.sw-fab__destination .sw-fab__copy {display:none}
   body[data-ui="v12"] .sw-fab .sw-fab__utility-strip .sw-fab__utility-grid {width:auto;margin-left:auto}
@@ -170,13 +172,14 @@ body[data-ui="v12"] .sw-fab .sw-fab__account-avatar {border:2px solid transparen
 .sw-fab__account-rim {display:flex;padding:2px;border-radius:50%;background:var(--fab-silver)}
 body[data-ui="v12"] .sw-fab .sw-fab__account-rim .sw-fab__account-avatar {border:0!important;width:23px;height:23px;box-shadow:none;background:var(--fab-archive)!important}
 body[data-ui="v12"] .sw-fab [data-fab-action="account"]:is(:hover,:focus-visible) .sw-fab__account-rim {background:var(--sw-metal-gold)}
-body[data-ui="v12"] .sw-fab :is([data-fab-link="home"],[data-fab-link="rules"],.sw-fab__support):is(:hover,:focus-visible) {background:transparent!important;border-color:transparent!important;box-shadow:none!important}
-body[data-ui="v12"] .sw-fab :is([data-fab-link="home"],[data-fab-link="rules"]):is(:hover,:focus-visible) strong,
-body[data-ui="v12"] .sw-fab .sw-fab__support>span {background:var(--sw-metal-gold);background-clip:text;-webkit-background-clip:text;color:transparent!important}
+body[data-ui="v12"] .sw-fab :is(.sw-fab__utility-destination,.sw-fab__support):is(:hover,:focus-visible) {background:transparent!important;border-color:transparent!important;box-shadow:none!important}
+body[data-ui="v12"] .sw-fab .sw-fab__utility-destination:is(:hover,:focus-visible) strong,
+body[data-ui="v12"] .sw-fab .sw-fab__support-label {background:var(--sw-metal-gold);background-clip:text;-webkit-background-clip:text;color:transparent!important}
 body[data-ui="v12"] .sw-fab .sw-fab__support .sw-fab-glyph,
 body[data-ui="v12"] .sw-fab [data-fab-link="home"]:is(:hover,:focus-visible) .sw-fab__home-logo {background:var(--sw-metal-gold)!important}
 body[data-ui="v12"] .sw-fab .sw-fab__support>svg {stroke:url(#sw-fab-gold)}
-body[data-ui="v12"] .sw-fab [data-fab-link="rules"]:not(:hover):not(:focus-visible) svg {stroke:currentColor}
+body[data-ui="v12"] .sw-fab .sw-fab__utility-destination svg {filter:none}
+body[data-ui="v12"] .sw-fab .sw-fab__utility-destination:not(:hover):not(:focus-visible) svg {stroke:currentColor}
 body[data-ui="v12"] .sw-fab .sw-fab__theme-icon-default,body[data-ui="v12"] .sw-fab .sw-fab__theme-icon-gold {opacity:0!important}
 body[data-ui="v12"] .sw-fab .sw-fab__theme-icon-metal {opacity:1!important;background:var(--sw-metal-gold)!important}
 @media(max-width:359px) {
@@ -192,8 +195,8 @@ html:not(.dark) body[data-ui="v12"] .sw-fab {
   --fab-gold-low:#765019;--fab-gold-mid:#b28b43;--fab-silver-low:#4c6266;--fab-silver-mid:#91a4a5;
   --fab-metal-text:linear-gradient(125deg,#705018,#a77b31 22%,#d8b967 36%,#765019 46%,#a77b31 65%,#705018);
 }
-html:not(.dark) body[data-ui="v12"] .sw-fab .sw-fab__support>span,
-html:not(.dark) body[data-ui="v12"] .sw-fab :is([data-fab-link="home"],[data-fab-link="rules"]):is(:hover,:focus-visible) strong {background-image:var(--fab-metal-text)}
+html:not(.dark) body[data-ui="v12"] .sw-fab .sw-fab__support-label,
+html:not(.dark) body[data-ui="v12"] .sw-fab .sw-fab__utility-destination:is(:hover,:focus-visible) strong {background-image:var(--fab-metal-text)}
 html:not(.dark) body[data-ui="v12"] .sw-fab .sw-fab__support .sw-fab-glyph {background:var(--fab-metal-text)!important}
 @media(min-width:360px) {
   body[data-ui="v12"] .sw-fab .sw-fab__workspace-grid:has(.sw-fab__create-wrap) [data-fab-action]:not(.sw-fab__create-plus) {padding:8px!important;gap:6px!important}
@@ -213,7 +216,7 @@ body[data-ui="v12"] .sw-fab .sw-fab__create-menu :is(button,a) {display:flex;ali
 body[data-ui="v12"] .sw-fab .sw-fab__create-menu .sw-fab-glyph {width:22px;height:22px;flex:none}
 body[data-ui="v12"] .sw-fab :is(a,button):is(:hover,:focus-visible) :is(.sw-fab-glyph,.sw-fab__theme-icon-metal,.sw-fab__home-logo) {background:var(--fab-silver)!important}
 body[data-ui="v12"] .sw-fab :is(a,button):is(:hover,:focus-visible) svg {stroke:url(#sw-fab-silver)}
-body[data-ui="v12"] .sw-fab .sw-fab__support:is(:hover,:focus-visible)>span {background:var(--fab-silver)!important;background-clip:text!important;-webkit-background-clip:text!important;color:transparent!important}
+body[data-ui="v12"] .sw-fab .sw-fab__support:is(:hover,:focus-visible) .sw-fab__support-label {background:var(--fab-silver)!important;background-clip:text!important;-webkit-background-clip:text!important;color:transparent!important}
 @media(hover:hover) {
   body[data-ui="v12"] .sw-fab :is(.sw-fab__atelier,.sw-fab__creators [data-fab-action]):hover {background:var(--fab-gold)!important;color:#302611!important}
 }
@@ -233,7 +236,7 @@ body[data-ui="v12"] .sw-fab .sw-fab__support .sw-fab-glyph {background-clip:bord
 body[data-ui="v12"] .sw-fab .sw-fab__support:is(:hover,:focus-visible) .sw-fab-glyph {background:var(--fab-silver)!important;background-clip:border-box!important;-webkit-background-clip:border-box!important}
 body[data-ui="v12"] .sw-fab .sw-fab__utility-grid [data-fab-action="account"]:is(:hover,:focus-visible) {background:transparent!important;border-color:transparent!important;box-shadow:none!important}
 body[data-ui="v12"] .sw-fab .sw-fab__utility-grid [data-fab-action="account"]:is(:hover,:focus-visible) .sw-fab__account-rim {background:var(--sw-metal-gold)!important}
-body[data-ui="v12"] .sw-fab .sw-fab__utility-strip [data-fab-link="rules"]:is(:hover,:focus-visible) svg {stroke:url(#sw-fab-gold)!important}
+body[data-ui="v12"] .sw-fab .sw-fab__utility-strip .sw-fab__utility-destination:is(:hover,:focus-visible) svg {stroke:url(#sw-fab-gold)!important}
 body[data-ui="v12"] .sw-fab .sw-fab__utility-grid :is([data-fab-action="dark"],[data-fab-action="fullscreen"]):is(:hover,:focus-visible) svg {stroke:url(#sw-fab-gold)!important}
 
 /* Gradient definitions stay mounted with the trigger, including closed state. */
@@ -242,7 +245,7 @@ body[data-ui="v12"] .sw-fab [data-fab-trigger] svg {stroke:url(#sw-fab-gold)!imp
 body[data-ui="v12"] .sw-fab [data-fab-trigger]:focus-visible {background:var(--fab-gold)!important;color:#17140f!important}
 /* Community links use silver at rest and gold feedback. */
 body[data-ui="v12"] .sw-fab .sw-fab__support:is([data-fab-link="discord"],[data-fab-link="chatgpt"]) {--community-finish:var(--fab-silver)}
-body[data-ui="v12"] .sw-fab .sw-fab__support:is([data-fab-link="discord"],[data-fab-link="chatgpt"])>span {
+body[data-ui="v12"] .sw-fab .sw-fab__support:is([data-fab-link="discord"],[data-fab-link="chatgpt"]) .sw-fab__support-label {
   background:var(--community-finish)!important;background-clip:text!important;-webkit-background-clip:text!important;color:transparent!important;
 }
 body[data-ui="v12"] .sw-fab .sw-fab__support[data-fab-link="discord"]>[data-discord-icon] {
