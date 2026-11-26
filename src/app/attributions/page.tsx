@@ -53,7 +53,7 @@ export default function AttributionsPage() {
           <article className="sw-public-panel"><ScrollText aria-hidden="true" /><h3>Creative Commons Attribution 3.0</h3><p>Most icons in this collection use CC BY 3.0. Their artists are credited here and in icon tooltips. Refer to the license for the full terms when reusing an icon in your own work.</p><a className="sw-public-link" href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener noreferrer">Read CC BY 3.0 <ArrowUpRight aria-hidden="true" /></a></article>
           <article className="sw-public-panel"><Palette aria-hidden="true" /><h3>Creative Commons Zero</h3><p>Icons by Viscious Speed and Zeromancer use the CC0 public domain dedication. We include their names here as a thank you for sharing their work.</p><a className="sw-public-link" href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noopener noreferrer">Read CC0 1.0 <ArrowUpRight aria-hidden="true" /></a></article>
         </div>
-        <p>The Blossom logo used for the ChatGPT link is a trademark of <a className="sw-public-link" href="https://openai.com/brand/">OpenAI</a>.</p>
+        <p>ChatGPT and GPT are trademarks of <a className="sw-public-link" href="https://openai.com/brand/">OpenAI</a>.</p>
         <div className="sw-public-actions"><Link className="sw-cta-ghost" href="/about">About SwordWeave <ArrowRight aria-hidden="true" /></Link><Link className="sw-cta-ghost" href="/">Return to the homepage <ArrowRight aria-hidden="true" /></Link></div>
       </section>
     </div>

@@ -21,6 +21,8 @@ interface ColumnSearchBarProps {
   onOpenFilters?: () => void;
   hasActiveFilters?: boolean;
   placeholder?: string;
+  label?: string;
+  maxLength?: number;
   view?: LibraryView;
   onViewChange?: (view: LibraryView) => void;
 }
@@ -31,6 +33,8 @@ export function ColumnSearchBar({
   onOpenFilters,
   hasActiveFilters = false,
   placeholder = "Search…",
+  label,
+  maxLength,
   view,
   onViewChange,
 }: ColumnSearchBarProps) {
@@ -56,6 +60,8 @@ export function ColumnSearchBar({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder={placeholder}
+          aria-label={label}
+          maxLength={maxLength}
           className="w-full rounded-md border border-input bg-background py-2 pl-9 pr-3 text-sm outline-none focus:border-primary"
         />
       </div>

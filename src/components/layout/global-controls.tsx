@@ -42,6 +42,7 @@ import { BuildPreviewDrawer } from "./build-preview-drawer";
 import { usePathname } from "next/navigation";
 import { useCharacterModal } from "@/components/character-modal/character-modal-store";
 import {
+  BotMessageSquare,
   Columns2,
   Maximize2,
   Minimize2,
@@ -441,7 +442,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
           ? "GPT plugin on ChatGPT (opens in a new tab)"
           : "GPT plugin setup guide (opens in a new tab)",
         href: CHATGPT_LISTING_URL ?? CHATGPT_GUIDE_PATH,
-        icon: <span className="sw-fab__gpt-logo" aria-hidden="true" />,
+        icon: <BotMessageSquare size={18} strokeWidth={1.5} aria-hidden="true" />,
       },
     );
     return workspaceVisibility.build ? list : list.filter(item => item.key !== "build");

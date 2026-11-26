@@ -15,8 +15,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (query.get("picker") === "1") {
       const search = z.string().trim().max(120).safeParse(query.get("q") ?? "");
       if (!search.success) return privateJson({ error: "Search for a shorter monster name." }, { status: 400 });
-      const candidates = await listCharacterCompanionCandidates(id.data, userId, search.data);
-      return privateJson({ candidates });
+      const offset = z.coerce.number().int().min(0).max(100_000).safeParse(query.get("offset") ?? 0);
+      if (!offset.success) return privateJson({ error: "Invalid Bestiary page." }, { status: 400 });
+      return privateJson(await listCharacterCompanionCandidates(id.data, userId, search.data, offset.data));
     }
     return privateJson({ companions: await listCharacterCompanions(id.data, userId) });
   } catch (error) {

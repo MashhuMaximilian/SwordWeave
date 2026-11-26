@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { DraftOperation, WorkspaceDraft, WorkspaceDraftPreview } from "@/lib/character/workspace/draft-types";
 import { popDraftAction } from "@/lib/character/workspace/draft-history";
 import { draftReferenceKeys, projectDraftOperation } from "@/lib/character/workspace/local-draft";
-import { draftRecoveryKey, parseDraftRecovery, sameDraftRecovery, type DraftRecoveryJournal } from "@/lib/character/workspace/draft-recovery";
+import { archiveDraftRecovery, draftRecoveryArchiveKey, draftRecoveryKey, parseDraftRecovery, readDraftRecoveryArchive, sameDraftRecovery, type DraftRecoveryJournal } from "@/lib/character/workspace/draft-recovery";
 import type { WorkspaceGraph } from "@/lib/character/workspace/model";
 
 async function json<T>(response: Response): Promise<T> {
@@ -20,6 +20,19 @@ type LocalCopy = { schema:2; authorId:string; characterId:string; stamp:string; 
 export type DraftPhase = "idle" | "loading" | "saving" | "checking" | "applying" | "discarding" | "undoing";
 const copyKey=(author:string,character:string)=>`sw:local-build:v2:${author}:${character}`;
 
+function liveFrame(data: DraftRead): Frame {
+  const { graph, sheet, foundation } = data;
+  const snapshot = { graph, foundation };
+  return {
+    draft: null,
+    preview: {
+      graph, sheet, beforeSheet: sheet, revision: graph.revision,
+      buSpent: sheet.buLedger.netSpent, results: [], applied: false, local: true,
+      beforeSnapshot: snapshot, afterSnapshot: snapshot,
+    },
+  };
+}
+
 /** Local working copy. Only explicit review syncs/checks a draft; apply commits the live character. */
 export function useCharacterDraft(characterId: string) {
   const [draft,setDraft]=useState<WorkspaceDraft|null>(null);
@@ -31,11 +44,13 @@ export function useCharacterDraft(characterId: string) {
   const [persistenceWarning,setPersistenceWarning]=useState('');
   const [future,setFuture]=useState<Frame[]>([]);
   const [pendingRecovery,setPendingRecovery]=useState<DraftRecoveryJournal|null>(null);
+  const [archivedRecovery,setArchivedRecovery]=useState<DraftRecoveryJournal[]>([]);
   const [recoveryConflict,setRecoveryConflict]=useState('');
   const [appliedDraft,setAppliedDraft]=useState<WorkspaceDraft|null>(null);
   const frame=useRef<Frame|null>(null), baseline=useRef<Frame|null>(null), history=useRef<Frame[]>([]);
   const server=useRef<WorkspaceDraft|null>(null), author=useRef<string|null>(null), locked=useRef(false), stamp=useRef<string|null>(null);
   const reviewAbort=useRef<AbortController|null>(null);
+  const conflictedCopy=useRef<{ key: string; original: string } | null>(null);
   const cancelReview=useCallback(()=>{reviewAbort.current?.abort();},[]);
   const baseHash=useRef<string|undefined>(undefined);
   const endpoint=`/api/characters/${characterId}/workspace/draft`;
@@ -45,7 +60,7 @@ export function useCharacterDraft(characterId: string) {
     const key=copyKey(author.current,characterId);
     try {
       const previous=JSON.parse(localStorage.getItem(key)??'null') as LocalCopy|null;
-      if(previous && previous.stamp!==stamp.current) throw new Error('This character has newer edits in another tab. Reload to continue that draft.');
+      if((previous?.stamp??null)!==stamp.current) throw new Error('This character has newer edits in another tab. Reload to continue that draft.');
     } catch(cause) { if(cause instanceof Error && cause.message.startsWith('This character'))throw cause; }
     const nextStamp=browserUuid();
     const copy:LocalCopy={schema:2,authorId:author.current,characterId,stamp:nextStamp,...(baseHash.current?{baseHash:baseHash.current}:{}),serverId:server.current?.id??null,serverVersion:server.current?.version??0,baseRevision:value.draft?.baseRevision??value.preview.graph.revision,frame:value,history:history.current.slice(-3)};
@@ -59,23 +74,32 @@ export function useCharacterDraft(characterId: string) {
     stamp.current=null;
   },[characterId]);
   const verify=useCallback(async(value:WorkspaceDraft,signal?:AbortSignal)=>json<WorkspaceDraftPreview>(await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'preview',draftId:value.id,expectedVersion:value.version}),...(signal?{signal}:{})})),[endpoint]);
+  const readCurrent = useCallback(async (signal?: AbortSignal) =>
+    json<DraftRead>(await fetch(endpoint, { cache: "no-store", signal: signal ?? null })), [endpoint]);
   const reload=useCallback(async(signal?:AbortSignal)=>{
     setPhase('loading');setError('');setFuture([]);history.current=[];stamp.current=null;
     try{
-      const data=await json<DraftRead>(await fetch(endpoint,{cache:'no-store',...(signal?{signal}:{})}));
+      const data=await readCurrent(signal);
       if(signal?.aborted)return;
       author.current=data.authorId;baseHash.current=data.baseHash;server.current=data.draft?.status==='editing'?data.draft:null;setBaseSheet(data.sheet);
-      const empty:WorkspaceDraftPreview={graph:data.graph,sheet:data.sheet,beforeSheet:data.sheet,revision:data.graph.revision,buSpent:data.sheet.buLedger.netSpent,results:[],applied:false,local:true,beforeSnapshot:{graph:data.graph,foundation:data.foundation},afterSnapshot:{graph:data.graph,foundation:data.foundation}};
-      baseline.current={draft:null,preview:empty};
+      baseline.current=liveFrame(data);
+      conflictedCopy.current=null;
+      try {
+        setArchivedRecovery(readDraftRecoveryArchive(localStorage.getItem(draftRecoveryArchiveKey(data.authorId, characterId))).map(copy => copy.journal));
+      } catch { setArchivedRecovery([]); }
       let copy:LocalCopy|null=null;
-      try{copy=JSON.parse(localStorage.getItem(copyKey(data.authorId,characterId))??'null');}catch{setPersistenceWarning('The browser draft could not be read. The saved account draft is still available.');}
-      if(copy?.schema===2&&copy.authorId===data.authorId&&copy.characterId===characterId&&copy.frame?.preview?.graph?.characterId===characterId&&(!copy.frame.draft||Array.isArray(copy.frame.draft.operations))&&Array.isArray(copy.history)) {
+      let original:string|null=null;
+      const key=copyKey(data.authorId,characterId);
+      try{original=localStorage.getItem(key);copy=JSON.parse(original??'null');}catch{setPersistenceWarning('The browser draft could not be read. The saved account draft is still available.');}
+      if(original&&copy?.schema===2&&copy.authorId===data.authorId&&copy.characterId===characterId&&copy.frame?.preview?.graph?.characterId===characterId&&(!copy.frame.draft||Array.isArray(copy.frame.draft.operations))&&Array.isArray(copy.history)) {
         stamp.current=copy.stamp;
         if((!copy.baseHash || copy.baseHash===data.baseHash)&&copy.baseRevision===data.graph.revision&&((copy.serverId===(server.current?.id??null)&&copy.serverVersion===(server.current?.version??0)) || JSON.stringify(copy.frame.draft?.operations)===JSON.stringify(server.current?.operations))) {
+          setPendingRecovery(null);setRecoveryConflict('');
           history.current=copy.history;install({...copy.frame,...(server.current?{draft:{...server.current,operations:copy.frame.draft?.operations??[]}}:{}),preview:{...copy.frame.preview,local:true}});return;
         }
         install(copy.frame);
-        setRecoveryConflict('The live character or account draft changed after this browser copy was saved. Your local edits are preserved. Discard this local copy to load the current character.');
+        conflictedCopy.current={key,original};
+        setRecoveryConflict('The character or account draft changed while you were editing. Keep a copy of these edits in this browser so you can continue from the current draft.');
         setPendingRecovery({schema:1,authorId:data.authorId,characterId,savedAt:new Date().toISOString(),request:{expectedVersion:copy.serverVersion,baseRevision:copy.baseRevision,operations:copy.frame.draft?.operations??[],...(copy.serverId?{draftId:copy.serverId}:{})}});return;
       }
       let legacy:DraftRecoveryJournal|null=null;
@@ -85,8 +109,52 @@ export function useCharacterDraft(characterId: string) {
       else install(baseline.current);
     }catch(cause){if(!signal?.aborted)setError(cause instanceof Error?cause.message:'Unable to load draft.');}
     finally{if(!signal?.aborted){setPhase('idle');setReady(true);}}
-  },[characterId,endpoint,install,verify]);
+  },[characterId,install,readCurrent,verify]);
   useEffect(()=>{const abort=new AbortController();setReady(false);void reload(abort.signal);return()=>abort.abort();},[reload]); // eslint-disable-line react-hooks/set-state-in-effect
+
+  const continueCurrentDraft=useCallback(async () => {
+    const copy=conflictedCopy.current;
+    if (!copy || !pendingRecovery || locked.current) return;
+    locked.current=true;
+    setPhase("loading");
+    setError("");
+    try {
+      const data=await readCurrent();
+      if (data.authorId!==pendingRecovery.authorId) throw new Error("Sign in with the account that owns this browser draft.");
+      const base=liveFrame(data);
+      const saved=data.draft?.status==="editing" ? data.draft : null;
+      const next=saved ? { draft:saved, preview:await verify(saved) } : base;
+      const archived=archiveDraftRecovery(localStorage, copy.key, copy.original, pendingRecovery);
+      conflictedCopy.current=null;
+      history.current=[];
+      stamp.current=null;
+      server.current=saved;
+      baseline.current=base;
+      baseHash.current=data.baseHash;
+      setBaseSheet(data.sheet);
+      install(next);
+      setFuture([]);
+      setArchivedRecovery(archived.map(entry => entry.journal));
+      setPendingRecovery(null);
+      setRecoveryConflict("");
+      setPersistenceWarning("");
+    } finally {
+      locked.current=false;
+      setPhase("idle");
+    }
+  },[install,pendingRecovery,readCurrent,verify]);
+
+  const downloadArchivedRecovery=useCallback(() => {
+    if (!author.current) return;
+    const raw=localStorage.getItem(draftRecoveryArchiveKey(author.current, characterId));
+    if (!raw) throw new Error("The archived draft could not be found in this browser.");
+    const url=URL.createObjectURL(new Blob([raw], { type:"application/json" }));
+    const link=document.createElement("a");
+    link.href=url;
+    link.download="swordweave-interrupted-drafts.json";
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  },[characterId]);
 
   const stageMany=useCallback(async(operations:DraftOperation[],baseRevision:number)=>{
     if(locked.current||!frame.current||!author.current)throw new Error('Wait for the draft to finish loading.');
@@ -109,7 +177,7 @@ export function useCharacterDraft(characterId: string) {
       const groupId=operations.length>1?browserUuid():undefined;
       const staged:DraftOperation[]=[];
       for(const operation of operations){const result=projectDraftOperation(next,{...operation,...(groupId?{groupId}:{})},author.current);next=result.preview;staged.push(result.operation);}
-      const value:WorkspaceDraft={...(original.draft??{id:browserUuid(),authorId:author.current,baseRevision,version:0,status:'editing' as const}),operations:[...(original.draft?.operations??[]),...staged],updatedAt:new Date().toISOString()};
+      const value:WorkspaceDraft={...(original.draft??{id:browserUuid(),authorId:author.current,baseRevision:baseline.current?.preview.graph.revision??baseRevision,version:0,status:'editing' as const}),operations:[...(original.draft?.operations??[]),...staged],updatedAt:new Date().toISOString()};
       const updated={draft:value,preview:next};
       history.current.push(original);
       try{persist(updated);}catch(cause){history.current.pop();throw cause;}
@@ -216,5 +284,5 @@ export function useCharacterDraft(characterId: string) {
     finally{locked.current=false;setPhase('idle');}
   },[dismissPending,endpoint,install,pendingRecovery,recoveryConflict,verify]);
   const undoApplied=useCallback(async()=>{if(!appliedDraft||locked.current)return null;locked.current=true;setPhase('undoing');try{const result=await json<WorkspaceDraftPreview>(await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'undo',draftId:appliedDraft.id,expectedVersion:appliedDraft.version})}));setAppliedDraft(null);await reload();return result;}finally{locked.current=false;setPhase('idle');}},[appliedDraft,endpoint,reload]);
-  return {draft,preview,baseSheet,stageMany,stage,ready,busy:phase!=='idle',phase,error,pendingRecovery,recoveryConflict,persistenceWarning,recoverPending,dismissPending,canReview,checkReview,cancelReview,undo,redo,apply,discard,reload,undoApplied,canUndoApplied:!!appliedDraft,canRedo:future.length>0};
+  return {draft,preview,baseSheet,stageMany,stage,ready,busy:phase!=='idle',phase,error,pendingRecovery,recoveryConflict,archivedRecovery,continueCurrentDraft,downloadArchivedRecovery,persistenceWarning,recoverPending,dismissPending,canReview,checkReview,cancelReview,undo,redo,apply,discard,reload,undoApplied,canUndoApplied:!!appliedDraft,canRedo:future.length>0};
 }

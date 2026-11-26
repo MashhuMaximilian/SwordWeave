@@ -2,6 +2,7 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import { characterMonsterCompanions, monsterCopies, playStates } from "@/db/schema";
 import { resolveAuthorByClerkId } from "@/lib/auth/author-resolver";
+import { monsterArtwork } from "@/lib/monsters/art";
 import { prepareMonsterCopy, searchVisibleMonsterTemplates } from "@/lib/monsters/service";
 import { canResolveCharacter, CharacterAccessDenied } from "./can-resolve-character";
 import {
@@ -10,6 +11,8 @@ import {
   type CharacterCompanionAttachmentRecord,
   type CharacterCompanionCandidate,
   type CharacterCompanionChange,
+  type CharacterCompanionPickerEntry,
+  type CharacterCompanionPickerPage,
   type CharacterCompanionSummary,
 } from "./companion-types";
 
@@ -63,15 +66,19 @@ async function readCompanionRows(characterId: string, owner?: string) {
     .orderBy(asc(characterMonsterCompanions.position), asc(characterMonsterCompanions.id));
 }
 
-async function readBestiaryReference(templateId: string, version: number, viewerClerkId: string): Promise<CharacterCompanionCandidate | null> {
+async function readAttachableMonster(templateId: string, version: number, viewerClerkId: string) {
   try {
-    const prepared = await prepareMonsterCopy(templateId, viewerClerkId, "", version);
-    return { id: templateId, version, name: prepared.name };
+    return await prepareMonsterCopy(templateId, viewerClerkId, "", version);
   } catch {
     // The play copy may survive independently when the source or any of its
     // components cannot be viewed by this caller.
     return null;
   }
+}
+
+async function readBestiaryReference(templateId: string, version: number, viewerClerkId: string): Promise<CharacterCompanionCandidate | null> {
+  const prepared = await readAttachableMonster(templateId, version, viewerClerkId);
+  return prepared ? { id: templateId, version, name: prepared.name } : null;
 }
 
 export async function listCharacterCompanions(characterId: string, clerkUserId: string): Promise<CharacterCompanionSummary[]> {
@@ -95,11 +102,27 @@ export async function listCharacterCompanions(characterId: string, clerkUserId: 
   return summaries.filter((entry): entry is CharacterCompanionSummary => entry !== null);
 }
 
-export async function listCharacterCompanionCandidates(characterId: string, clerkUserId: string, query: string) {
+const COMPANION_PICKER_PAGE_SIZE = 24;
+
+export async function listCharacterCompanionCandidates(characterId: string, clerkUserId: string, query: string, offset: number): Promise<CharacterCompanionPickerPage> {
   await requireCharacterCompanionOwner(characterId, clerkUserId);
-  const templates = await searchVisibleMonsterTemplates(clerkUserId, query);
-  const candidates = await Promise.all(templates.map(template => readBestiaryReference(template.id, template.version, clerkUserId)));
-  return candidates.filter((entry): entry is CharacterCompanionCandidate => entry !== null);
+  const templates = await searchVisibleMonsterTemplates(clerkUserId, query, offset, COMPANION_PICKER_PAGE_SIZE + 1);
+  const candidates = await Promise.all(templates.slice(0, COMPANION_PICKER_PAGE_SIZE).map(async (template): Promise<CharacterCompanionPickerEntry | null> => {
+    const prepared = await readAttachableMonster(template.id, template.version, clerkUserId);
+    if (!prepared) return null;
+    return {
+      id: template.id, name: prepared.name, version: template.version,
+      description: template.definition.concept ?? "", size: template.definition.size,
+      imageUrl: monsterArtwork({ ...template.definition, id: template.id }),
+      vitality: prepared.currentVitality, budget: template.definition.budget,
+    };
+  }));
+  return {
+    candidates: candidates.filter(entry => entry !== null),
+    // Offsets follow source rows. An inaccessible component can hide a card,
+    // but must not hide the rest of the search results.
+    nextOffset: templates.length > COMPANION_PICKER_PAGE_SIZE ? offset + COMPANION_PICKER_PAGE_SIZE : null,
+  };
 }
 
 interface CompanionDraftResult {
