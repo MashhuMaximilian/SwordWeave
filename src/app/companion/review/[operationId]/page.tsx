@@ -66,7 +66,7 @@ export default async function CompanionReviewPage({ params }: { params: Promise<
   const privateDraft = !!confirmation && (isCharacter || isCompanion);
   const expiry = expiryFormat.format(new Date(status.expiresAt));
 
-  return <main className={styles["page"]}>
+  return <article className={styles["page"]} aria-labelledby="draft-title">
     <header className={styles["header"]}>
       <div className={styles["headerTop"]}>
         <p>SwordWeave · ChatGPT Companion</p>
@@ -76,7 +76,7 @@ export default async function CompanionReviewPage({ params }: { params: Promise<
           {statuses[status.state]}
         </span>
       </div>
-      <h1>{title}</h1>
+      <h1 id="draft-title">{title}</h1>
       {(title !== action.title || facts.length > 0 || privateDraft) && <ul className={styles["meta"]}>
         {title !== action.title && <li>{action.title}</li>}
         {facts.map(fact => <li key={fact}>{fact}</li>)}
@@ -129,5 +129,5 @@ export default async function CompanionReviewPage({ params }: { params: Promise<
         {status.sheetPdfUrl && <a className={styles["secondary"]} href={status.sheetPdfUrl}>Download character PDF <Download size={18} aria-hidden="true" /></a>}
       </div>}
     </div>}
-  </main>;
+  </article>;
 }

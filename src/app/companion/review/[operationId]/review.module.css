@@ -40,7 +40,10 @@
 .header h1 {
   margin: 0.625rem 0 0;
   color: var(--review-gold);
-  font: 650 clamp(2rem, 4.5vw, 3.45rem) / 1.13 var(--font-display), system-ui, sans-serif;
+  font-family: var(--font-sword-display, system-ui), sans-serif;
+  font-size: clamp(2rem, 4.5vw, 3.45rem);
+  font-weight: 650;
+  line-height: 1.13;
 }
 
 .status,
@@ -182,11 +185,18 @@
 }
 
 .ruleGroups {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
 }
 
-.rule h3 {
-  margin-bottom: 0.25rem;
+.rule {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0.35rem 1rem;
+}
+
+.page :is(.header, .layout, .result) p {
+  font-family: inherit;
 }
 
 .pieces {
@@ -516,7 +526,7 @@
     padding-inline: 0.5rem;
   }
 
-  .ruleGroups,
+  .rule,
   .changeValues {
     grid-template-columns: minmax(0, 1fr);
   }
