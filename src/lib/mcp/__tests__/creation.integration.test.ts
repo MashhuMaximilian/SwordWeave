@@ -1353,6 +1353,42 @@ describe.skipIf(!pglitePath)("isolated starter build database", () => {
     }
   });
 
+  it("attaches a companion whose pinned capability reaches a legacy effect with live memberships", async () => {
+    enableStaging();
+    vi.stubEnv("MCP_CHARACTER_EDIT_READ_ENABLED", "true");
+    vi.stubEnv("MCP_CHARACTER_EDIT_WRITE_ENABLED", "true");
+    const owner = { ...linked, scopes: [...linked.scopes, "swordweave:edit"] };
+    try {
+      const [character] = await db.insert(characters).values({ name: "Moor Guide", userId: actor.clerkId,
+        attrPhysical: 4, attrMental: 3, attrMagical: 3 }).returning();
+      const [effect] = await db.insert(schema.effects).values({ name: "Legacy Field Treatment", userId: actor.clerkId }).returning();
+      const [capability] = await db.insert(schema.capabilities).values({ name: "Legacy Trail Medic",
+        type: "ACTIVE", sourceType: "PHYSICAL", userId: actor.clerkId }).returning();
+      const [version] = await db.insert(schema.capabilityVersions).values({
+        capabilityId: capability!.id, versionNumber: 1, isLatest: true, deltaKind: "FULL",
+        snapshot: { name: capability!.name, effectIds: [effect!.id] },
+      }).returning();
+      // This older effect has no immutable dependency list and reads its live link.
+      await db.insert(schema.effectVersions).values({ effectId: effect!.id, versionNumber: 1,
+        isLatest: true, deltaKind: "FULL", snapshot: { name: effect!.name } });
+      await db.insert(schema.effectPrimitives).values({ effectId: effect!.id, primitiveId: ids.die });
+      const definition = { name: "Moor Medic", size: "SMALL", budget: 25,
+        attributes: { physical: 1, mental: 1, magical: 1 }, proficientAttribute: "mental",
+        references: [{ kind: "CAPABILITY", id: capability!.id, versionId: version!.id }] };
+      const preview = await callCreationTool("preview_monster_companion", { definition }, owner);
+      expect(preview.structuredContent).toMatchObject({ name: definition.name, spentBu: 4 });
+      const result = await callCreationTool("prepare_monster_companion_save", {
+        characterId: character!.id, expectedRevision: 0, definition,
+      }, owner);
+      const { operationId } = result.structuredContent as { operationId: string };
+      await approve(operationId, owner);
+      const save = await callCreationTool("apply_monster_companion_save", { operationId }, owner);
+      expect(save.structuredContent).toMatchObject({ state: "completed", receipt: { appliedRevision: 1, version: 1 } });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("opens only authorized companions and their exact Bestiary pins, and exports both independent sheets", async () => {
     enableStaging();
     vi.stubEnv("MCP_CHARACTER_COMPANIONS_READ_ENABLED", "true");

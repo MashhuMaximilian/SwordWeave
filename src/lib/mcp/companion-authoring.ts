@@ -77,6 +77,13 @@ export async function previewCompanion(actor: McpActor, input: z.infer<typeof pr
   return readOnlyCharacterContext(async () => summarize(await resolveCompanion(actor, input.definition, true)));
 }
 
+function companionFingerprint(definition: unknown) {
+  // Legacy memberships may carry database timestamps as Dates. Hash the
+  // JSON representation the Bestiary actually stores and reads back.
+  const storedDefinition: unknown = JSON.parse(JSON.stringify(definition));
+  return digestJson(storedDefinition);
+}
+
 async function requireCurrentCharacter(actor: McpActor, characterId: string, expectedRevision: number) {
   const { character } = await requireCharacterAccess(actor, characterId, "OWNER");
   if ((await readWorkspace(characterId)).revision !== expectedRevision) throw new OperationBlockError("STALE_REVIEW");
@@ -90,7 +97,7 @@ export async function prepareCompanion(actor: McpActor, input: z.infer<typeof pr
   return prepareOperation({
     actor, kind: "companion_create", subject: { kind: "character", characterId },
     summary: { character: character.name, ...summarize(resolved) },
-    payload: { characterId, expectedRevision, definition, fingerprint: digestJson(resolved.definition) },
+    payload: { characterId, expectedRevision, definition, fingerprint: companionFingerprint(resolved.definition) },
     ...(supersedesOperationId ? { supersedesOperationId } : {}),
   });
 }
@@ -101,7 +108,7 @@ export async function assertCompanionReviewCurrent(actor: McpActor, characterId:
   await requireCurrentCharacter(actor, reviewed.data.characterId, reviewed.data.expectedRevision);
   try {
     const resolved = await resolveCompanion(actor, reviewed.data.definition);
-    if (digestJson(resolved.definition) === reviewed.data.fingerprint) return reviewed.data;
+    if (companionFingerprint(resolved.definition) === reviewed.data.fingerprint) return reviewed.data;
   } catch {
     throw new OperationBlockError("STALE_REVIEW");
   }
@@ -117,7 +124,7 @@ export async function applyCompanion(actor: McpActor, operationId: string) {
       const { characterId, expectedRevision, definition, fingerprint } = reviewed;
       try {
         const monster = await createMonster(actor.clerkId, definition, false, undefined, undefined, "PRIVATE");
-        if (digestJson(monster.definition) !== fingerprint) throw new OperationBlockError("STALE_REVIEW");
+        if (companionFingerprint(monster.definition) !== fingerprint) throw new OperationBlockError("STALE_REVIEW");
         const result = await executeDraftOperations(characterId, actor.clerkId, expectedRevision, [
           { id: operationId, type: "companion", payload: { action: "add", templateId: monster.id, version: monster.version } },
         ]);
