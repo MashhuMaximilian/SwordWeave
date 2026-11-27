@@ -28,6 +28,7 @@ import { readCharacterConsequencePackage } from "@/lib/character/consequences/ap
 import { PATCH as decideWebsiteProposal } from "@/app/api/characters/[id]/proposals/[proposalId]/route";
 import { POST as decideWebsiteWorkspaceProposal } from "@/app/api/characters/[id]/workspace/collaboration/route";
 import { getMcpConfig } from "../config";
+import { withMcpRequestConfig } from "../request-config";
 import { createSwordWeaveMcpServer } from "../server";
 
 type Database = ReturnType<typeof drizzle<typeof schema>>;
@@ -152,6 +153,29 @@ describe.skipIf(!fixturePath)("isolated companion character workflows", () => {
     await expect(readCharacterBuild(outsider, {characterId:id}, config)).rejects.toBeInstanceOf(CharacterContextUnavailable);
     await pg.query("UPDATE character_shares SET revoked_at=now() WHERE shared_with_user_id=$1", [viewer.id]);
     expect((await listAccessibleCharacters(viewer, {}, config)).items).toEqual([]);
+  });
+
+  it("shows only characters created and approved through the private pilot", async () => {
+    const pilot = {
+      ...config, issuer: "https://clerk.example.test", metadataUrl: "https://example.test/metadata",
+      readEnabled: true, writeEnabled: true, fixtureUserIds: [],
+      privateTest: { clientId: "private_test_client", userIds: [owner.id, editor.id] },
+    };
+    await withMcpRequestConfig(pilot, async () => {
+      expect((await listAccessibleCharacters(owner, {}, config)).items).toEqual([]);
+      await expect(readCharacterBuild(owner, { characterId: plain }, config)).rejects.toBeInstanceOf(CharacterContextUnavailable);
+      const operationId = randomUUID();
+      await database.insert(schema.companionOperations).values({
+        id: operationId, ownerId: owner.id, kind: "character_create", schemaVersion: 1,
+        subjectKind: "creation_series", subjectId: operationId, proposalDigest: "fixture",
+        status: "completed", approvalSource: "private_test_browser", terminalReceipt: { receipt: { characterId: plain } },
+        lastActivityAt: new Date(), expiresAt: new Date(Date.now() + 60_000),
+      });
+      expect((await listAccessibleCharacters(owner, {}, config)).items.map(sheet => sheet.characterId)).toEqual([plain]);
+      expect((await readCharacterBuild(owner, { characterId: plain }, config)).name).toBe("B owner UUID");
+      await expect(readCharacterBuild(editor, { characterId: plain }, config)).rejects.toBeInstanceOf(CharacterContextUnavailable);
+      await expect(readCharacterBuild(owner, { characterId: id }, config)).rejects.toBeInstanceOf(CharacterContextUnavailable);
+    });
   });
   it("filters nested private details and budget, and projects absent or divergent play rows without writes", async () => {
     const build = await readCharacterBuild(editor, {characterId:id}, config);

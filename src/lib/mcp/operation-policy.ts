@@ -3,7 +3,7 @@ import { z } from "zod";
 import { meetsCharacterPermission, type CharacterPermission } from "@/lib/character/permission-policy";
 import { canonicalJsonStringify } from "@/lib/publishing/hash-content";
 import type { McpActor } from "./auth";
-import type { McpConfig } from "./config";
+import { characterToolsEnabled, type McpConfig } from "./config";
 
 const creation = { scope: "swordweave:create", group: null, permission: null } as const;
 const editing = { scope: "swordweave:edit", group: "EDIT", permission: "EDITOR" } as const;
@@ -96,8 +96,9 @@ export function isOperationKind(value: string): value is OperationKind {
   return Object.hasOwn(policies, value);
 }
 
-export function allowsOperationRole(kind: OperationKind, permission: CharacterPermission | null): boolean {
+export function allowsOperationRole(kind: OperationKind, permission: CharacterPermission | null, config?: McpConfig): boolean {
   const required = policies[kind].permission;
+  if (required && config?.privateTest) return permission === "OWNER";
   return required === null || (permission !== null && meetsCharacterPermission(permission, required));
 }
 
@@ -125,6 +126,18 @@ export function isStagingOperationActor(config: McpConfig, actor: McpActor): boo
   return stagingReviewEnabled(config) && config.fixtureUserIds.includes(actor.id);
 }
 
+export function browserReviewEnabled(config: McpConfig): boolean {
+  return stagingReviewEnabled(config) || !!config.privateTest;
+}
+
+export function canUseBrowserReview(config: McpConfig, actor: McpActor): boolean {
+  return config.privateTest ? config.privateTest.userIds.includes(actor.id) : isStagingOperationActor(config, actor);
+}
+
+export function browserApprovalSource(config: McpConfig): "staging_browser" | "private_test_browser" {
+  return config.privateTest ? "private_test_browser" : "staging_browser";
+}
+
 export function versionProposalWritesEnabled(config: McpConfig, env = globalThis.process.env): boolean {
   return stagingReviewEnabled(config, env) && config.readEnabled && config.writeEnabled &&
     env["MCP_CHARACTER_EDIT_READ_ENABLED"] === "true" && env["MCP_CHARACTER_EDIT_WRITE_ENABLED"] === "true" &&
@@ -140,17 +153,17 @@ export function permitsOperation(
 ): boolean {
   const { scope, group } = policies[kind];
   if (!config.readEnabled || (channel === "mcp" && !actor.scopes.includes("swordweave:read"))) return false;
-  if (group && globalThis.process.env[`MCP_CHARACTER_${group}_READ_ENABLED`] !== "true") return false;
+  if (group && !characterToolsEnabled(config, group, "READ")) return false;
+  if (config.privateTest && (!canUseBrowserReview(config, actor) || isWorkspaceProposalOperation(kind) || isVersionProposalOperation(kind))) return false;
   if (isVersionProposalOperation(kind) && (!isStagingOperationActor(config, actor) ||
     globalThis.process.env["MCP_CHARACTER_VERSION_PROPOSAL_READS_ENABLED"] !== "true" ||
     (action === "write" && !versionProposalWritesEnabled(config)))) return false;
-  if (channel === "browser" && !isStagingOperationActor(config, actor)) return false;
+  if (channel === "browser" && !canUseBrowserReview(config, actor)) return false;
   if (action === "read") return true;
-  // No verified host user-approval proof exists yet. Real data cannot enter the writer.
-  return isStagingOperationActor(config, actor) && config.writeEnabled &&
+  return canUseBrowserReview(config, actor) && config.writeEnabled &&
     (channel === "browser" || (actor.scopes.includes(scope) &&
       (kind !== "character_piece" || actor.scopes.includes(creation.scope)))) &&
-    (!group || globalThis.process.env[`MCP_CHARACTER_${group}_WRITE_ENABLED`] === "true");
+    (!group || characterToolsEnabled(config, group, "WRITE"));
 }
 
 export function digestText(value: string): string {

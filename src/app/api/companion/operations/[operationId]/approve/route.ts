@@ -1,6 +1,7 @@
 import { resolveCompanionBrowserActor } from "@/lib/mcp/browser-approval";
-import { getMcpConfig } from "@/lib/mcp/config";
+import { getBrowserReviewMcpConfig } from "@/lib/mcp/config";
 import { approveStagingOperation, operationReviewPath, OperationUnavailableError } from "@/lib/mcp/operations";
+import { withMcpRequestConfig } from "@/lib/mcp/request-config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,11 +12,11 @@ function unavailable() {
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ operationId: string }> }) {
-  const config = getMcpConfig();
+  const config = getBrowserReviewMcpConfig();
   const origin = request.headers.get("origin");
   if (!config || origin !== new URL(config.resource).origin ||
       request.headers.get("content-type")?.split(";")[0] !== "application/x-www-form-urlencoded") return unavailable();
-  const actor = await resolveCompanionBrowserActor();
+  const actor = await resolveCompanionBrowserActor(config);
   if (!actor || !request.body) return unavailable();
   const reader = request.body.getReader();
   const pieces: Uint8Array[] = [];
@@ -40,7 +41,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ope
   const digest = form.get("digest");
   if (!operationId || !nonce || !digest || operationId !== (await params).operationId) return unavailable();
   try {
-    const id = await approveStagingOperation(actor, { operationId, nonce, digest, origin });
+    const id = await withMcpRequestConfig(config, () => approveStagingOperation(actor, { operationId, nonce, digest, origin }));
     return new Response(null, { status: 303, headers: { ...privateHeaders, Location: operationReviewPath(id) } });
   } catch (error) {
     if (error instanceof OperationUnavailableError) return unavailable();

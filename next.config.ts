@@ -31,6 +31,7 @@ const nextConfig: NextConfig = {
       "./assets/character-pdf/**/*",
     ],
     "/api/mcp": ["./src/lib/mcp/widgets/character-review.html"],
+    "/api/mcp/private-test": ["./src/lib/mcp/widgets/character-review.html"],
   },
   reactStrictMode: true,
   // Local testing is commonly opened through either loopback spelling.

@@ -10,10 +10,10 @@ import { listCharacterCompanionLinks, listCharacterCompanionsInput } from "./cha
 import { applyCharacterEdit, applyCharacterEditInput, prepareCharacterEdit, prepareCharacterEditInput, previewCharacterEdit, previewCharacterEditInput } from "./character-edits";
 import { CharacterProposalUnavailable, listCharacterProposals, listCharacterProposalsInput, readCharacterProposal, readCharacterProposalInput, resolveVersionProposalRef } from "./character-proposals";
 import { characterSheetPdfInput, getCharacterSheetPdfLink } from "./character-sheet-pdf";
-import { configuredScopes, MCP_EDIT_SCOPE, MCP_PLAY_SCOPE, MCP_SCOPES, type McpConfig } from "./config";
+import { characterToolsEnabled, configuredScopes, MCP_EDIT_SCOPE, MCP_PLAY_SCOPE, MCP_SCOPES, type McpConfig } from "./config";
 import { CharacterContextUnavailable, ContextCursorError } from "./context-shared";
 import { readFixture } from "./fixtures";
-import { characterAdvancementReceipt, operationUuid, stagingReviewEnabled, versionProposalWritesEnabled } from "./operation-policy";
+import { browserReviewEnabled, characterAdvancementReceipt, operationUuid, stagingReviewEnabled, versionProposalWritesEnabled } from "./operation-policy";
 import { executeApprovedOperation, getOperationStatus, OperationAttemptTimeout, OperationBlockError, OperationUnavailableError, prepareOperation } from "./operations";
 import { applyPlayAction, applyPlayActionInput, preparePlayAction, preparePlayActionInput, previewPlayAction, previewPlayActionInput } from "./play-actions";
 import { characterHistoryInput, readCharacterHistory, readCharacterPlayState } from "./play-context";
@@ -149,7 +149,8 @@ export function createSwordWeaveMcpServer(config: McpConfig, identity: McpIdenti
     }
     try {
       const actor = await resolveMcpActor(identity);
-      return actor && (!config.fixtureUserIds.length || config.fixtureUserIds.includes(actor.id))
+      const allowed = config.privateTest?.userIds ?? config.fixtureUserIds;
+      return actor && (!allowed.length || allowed.includes(actor.id))
         ? await action(actor) : failure("The linked SwordWeave account is unavailable.");
     } catch (error) {
       if (error instanceof OperationUnavailableError || error instanceof CharacterContextUnavailable || error instanceof CharacterProposalUnavailable) {
@@ -204,7 +205,7 @@ export function createSwordWeaveMcpServer(config: McpConfig, identity: McpIdenti
       const data = await getCharacterSheetPdfLink(actor, input, config.resource);
       return result(data, `[Download the character sheet PDF](${data.downloadUrl}).`);
     }));
-    if (process.env["MCP_CHARACTER_COMPANIONS_READ_ENABLED"] === "true") {
+    if (characterToolsEnabled(config, "COMPANIONS", "READ")) {
       server.registerTool("list_character_companions", {
         title: "Open a character's monster companions",
         description: "List permitted links for a selected character's attached monster companions. Use the play sheet to track that creature's Vitality and consequences, the pinned Bestiary link for its rules, and the standard PDF for printable companion pages. Manage attachments in character sheet Edit mode.",
@@ -269,7 +270,7 @@ export function createSwordWeaveMcpServer(config: McpConfig, identity: McpIdenti
         cursorSecret,
         versionProposalReads: stagingReviewEnabled(config) && process.env["MCP_CHARACTER_VERSION_PROPOSAL_READS_ENABLED"] === "true",
       };
-      if (process.env["MCP_CHARACTER_EDIT_READ_ENABLED"] === "true") {
+      if (characterToolsEnabled(config, "EDIT", "READ")) {
         server.registerTool("list_accessible_characters", {
           description: "List the linked player's own or actively shared SwordWeave characters.",
           inputSchema: listAccessibleCharactersInput, annotations: readOnly, _meta: toolSecurity(MCP_SCOPES.read),
@@ -304,7 +305,7 @@ export function createSwordWeaveMcpServer(config: McpConfig, identity: McpIdenti
           return result(data, `Proposal is ${data.status}.${diffStatus} [${sheetAction}](${data.sheetUrl}).${data.description ? `\n\n${data.description}` : ""}`);
         }));
       }
-      if (process.env["MCP_CHARACTER_PLAY_READ_ENABLED"] === "true") {
+      if (characterToolsEnabled(config, "PLAY", "READ")) {
         server.registerTool("read_character_history", {
           description: "Read recent play events for a character owned by the linked player.",
           inputSchema: characterHistoryInput, annotations: readOnly, _meta: toolSecurity(MCP_SCOPES.read),
@@ -321,7 +322,7 @@ export function createSwordWeaveMcpServer(config: McpConfig, identity: McpIdenti
         }));
       }
     }
-    if (process.env["MCP_CHARACTER_EDIT_READ_ENABLED"] === "true") {
+    if (characterToolsEnabled(config, "EDIT", "READ")) {
       server.registerTool("preview_character_advancement", {
         description: "Preview a character you own advancing to an exact higher level. Get the character and latest revision from read_character_build first. Show the before and after Build Units, proficiency and Vitality. This does not buy new abilities or change the sheet.",
         inputSchema: previewCharacterAdvancementInput, annotations: readOnly, _meta: toolSecurity(MCP_SCOPES.read),
@@ -334,7 +335,7 @@ export function createSwordWeaveMcpServer(config: McpConfig, identity: McpIdenti
         annotations: readOnly, inputSchema: editToolInput, _meta: toolSecurity(MCP_SCOPES.read),
       }, input => withActor(MCP_SCOPES.read, async actor => {
         if (input.intent === "propose") {
-          if (!cursorSecret) return failure("Proposal tools are unavailable.", "UNAVAILABLE");
+          if (!cursorSecret || config.privateTest) return failure("Proposal tools are unavailable.", "UNAVAILABLE");
           const { rationale: _rationale, ...fields } = input;
           const data = await previewCharacterProposal(actor, previewCharacterProposalInput.parse(fields), { resource: config.resource, cursorSecret });
           return result(data, data.blockers.length ? data.blockers.join("\n") : `Previewed ${data.changes.length} proposed changes to [the character](${data.sheetUrl}).`);
@@ -351,7 +352,7 @@ export function createSwordWeaveMcpServer(config: McpConfig, identity: McpIdenti
         ].join("\n\n"));
       }));
     }
-    if (process.env["MCP_CHARACTER_PLAY_READ_ENABLED"] === "true") {
+    if (characterToolsEnabled(config, "PLAY", "READ")) {
       server.registerTool("read_character_play_state", {
         description: "Read one selected character's Current and Maximum Vitality. Owners also get visible active consequences and authorized consequence package source keys.",
         inputSchema: characterContextInput, annotations: readOnly, _meta: toolSecurity(MCP_SCOPES.read),
@@ -387,7 +388,7 @@ export function createSwordWeaveMcpServer(config: McpConfig, identity: McpIdenti
       }));
     }
 
-    const hasReviewedSave = config.writeEnabled && stagingReviewEnabled(config);
+    const hasReviewedSave = config.writeEnabled && browserReviewEnabled(config);
     const canPreparePieces = hasReviewedSave && configuredScopes(config).includes(MCP_EDIT_SCOPE);
     server.registerTool("preview_character", {
       description: [
@@ -405,7 +406,7 @@ export function createSwordWeaveMcpServer(config: McpConfig, identity: McpIdenti
       return { ...result(data, content), _meta: characterReviewResultMeta(data) };
     }));
 
-    if (stagingReviewEnabled(config)) {
+    if (browserReviewEnabled(config)) {
       server.registerTool("get_operation_status", {
         description: "Recover the status and authorized links for a previously prepared SwordWeave operation.",
         inputSchema: operationInput, annotations: readOnly, _meta: toolSecurity(MCP_SCOPES.read),
@@ -511,7 +512,7 @@ export function createSwordWeaveMcpServer(config: McpConfig, identity: McpIdenti
           annotations: { ...reviewedWrite, idempotentHint: false }, inputSchema: editToolInput.extend({ supersedesOperationId }), _meta: toolSecurity(...editScopes),
         }, input => withActor(editScopes, async actor => {
           if (input.intent === "propose") {
-            if (!cursorSecret) return failure("Proposal tools are unavailable.", "UNAVAILABLE");
+            if (!cursorSecret || config.privateTest) return failure("Proposal tools are unavailable.", "UNAVAILABLE");
             const data = await prepareCharacterProposal(actor, prepareCharacterProposalInput.parse(input));
             return result(data, `[Review the exact proposal before submitting it](${data.approvalUrl}).`);
           }
@@ -527,7 +528,7 @@ export function createSwordWeaveMcpServer(config: McpConfig, identity: McpIdenti
           const data = await applyCharacterEdit(actor, input);
           return result(data, operationMessage(data));
         }));
-        if (cursorSecret) {
+        if (cursorSecret && !config.privateTest) {
           const versionWrites = versionProposalWritesEnabled(config);
           const proposalContext = { resource: config.resource, cursorSecret, versionProposalReads: versionWrites };
           if (versionWrites) {

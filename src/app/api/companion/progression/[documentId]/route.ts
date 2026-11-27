@@ -1,7 +1,9 @@
 import { CharacterPdfRenderError, renderProgressionPdf } from "@/lib/character-pdf/render";
 import { resolveCompanionBrowserActor } from "@/lib/mcp/browser-approval";
+import { getBrowserReviewMcpConfig } from "@/lib/mcp/config";
 import { operationUuid } from "@/lib/mcp/operation-policy";
 import { getApprovedProgressionDocument, OperationUnavailableError } from "@/lib/mcp/operations";
+import { withMcpRequestConfig } from "@/lib/mcp/request-config";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -16,9 +18,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ docu
   const parsed = operationUuid.safeParse((await params).documentId);
   if (!parsed.success) return new Response(null, { status: 404, headers });
   try {
-    const actor = await resolveCompanionBrowserActor();
+    const config = getBrowserReviewMcpConfig();
+    if (!config) return new Response(null, { status: 404, headers });
+    const actor = await resolveCompanionBrowserActor(config);
     if (!actor) return new Response(null, { status: 404, headers });
-    const document = await getApprovedProgressionDocument(actor, parsed.data, "browser");
+    const document = await withMcpRequestConfig(config, () => getApprovedProgressionDocument(actor, parsed.data, "browser"));
     const pdf = await renderProgressionPdf(document, request.signal);
     return new Response(new Uint8Array(pdf), { headers: {
       ...headers,

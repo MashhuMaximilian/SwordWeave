@@ -2,11 +2,12 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, withDatabaseTransaction } from "@/db/client";
-import { characters, characterShares, characterWorkspaceCommands } from "@/db/schema";
+import { characters, characterShares, characterWorkspaceCommands, companionOperations } from "@/db/schema";
 import { resolveAuthorByClerkId } from "@/lib/auth/author-resolver";
 import { meetsCharacterPermission, permissionFromShare, type CharacterPermission } from "@/lib/character/permission-policy";
 import type { McpActor } from "./auth";
 import { getCatalogueCursorSecret } from "./catalogue";
+import { getMcpRequestConfig } from "./request-config";
 
 export type CharacterActor = Pick<McpActor, "id" | "clerkId">;
 export type ContextConfig = { resource: string; cursorSecret: string; versionProposalReads?: boolean };
@@ -51,6 +52,18 @@ export const characterShareRole = () => and(
   eq(characterWorkspaceCommands.commandId, sql`'share-role:' || ${characterShares.id}::text`),
 );
 
+export function privateTestCharacterFilter(actor: CharacterActor) {
+  if (!getMcpRequestConfig()?.privateTest) return undefined;
+  return sql`exists (
+    select 1 from ${companionOperations}
+    where ${companionOperations.ownerId} = ${actor.id}
+      and ${companionOperations.kind} = 'character_create'
+      and ${companionOperations.status} = 'completed'
+      and ${companionOperations.approvalSource} = 'private_test_browser'
+      and ${companionOperations.terminalReceipt}->'receipt'->>'characterId' = ${characters.id}::text
+  )`;
+}
+
 /** Resolves an exact verified actor without the website's development identity fallback. */
 export async function requireCharacterAccess(
   actor: CharacterActor,
@@ -66,7 +79,7 @@ export async function requireCharacterAccess(
   }).from(characters)
     .leftJoin(characterShares, activeCharacterShare(actor))
     .leftJoin(characterWorkspaceCommands, characterShareRole())
-    .where(eq(characters.id, characterId)).limit(1);
+    .where(and(eq(characters.id, characterId), privateTestCharacterFilter(actor))).limit(1);
   const permission = row && (ownsCharacter(actor, row.character.userId)
     ? "OWNER"
     : row.share ? permissionFromShare(row.share.canEdit, row.shareRole?.["canSuggest"] === true) : null);

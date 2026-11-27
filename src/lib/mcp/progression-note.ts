@@ -2,7 +2,7 @@ import { z } from "zod";
 import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
 import { appendApprovedNote, ApprovedNoteRejected, projectApprovedNoteAppend, readPlayerNotesForAppend } from "@/lib/character/append-approved-note";
 import type { McpActor } from "./auth";
-import { getMcpConfig } from "./config";
+import { getMcpRequestConfig } from "./request-config";
 import { operationUuid, permitsOperation } from "./operation-policy";
 import { executeApprovedOperation, getApprovedProgressionDocument, OperationBlockError, OperationUnavailableError, prepareOperation } from "./operations";
 
@@ -19,7 +19,7 @@ export function progressionNoteMarkdown(plan: { title: string; ideas: string[] }
 }
 
 export async function prepareProgressionNote(actor: McpActor, { characterId, documentId, supersedesOperationId }: z.infer<typeof progressionNoteInput>) {
-  const config = getMcpConfig();
+  const config = getMcpRequestConfig();
   if (!config || !permitsOperation(config, actor, "progression_note", "write", "mcp")) throw new OperationUnavailableError();
   const document = await getApprovedProgressionDocument(actor, documentId);
   const { notes, notesDigest } = await readPlayerNotesForAppend(actor, characterId);

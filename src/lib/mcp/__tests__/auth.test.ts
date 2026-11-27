@@ -1,8 +1,10 @@
 import { generateKeyPairSync, sign } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/mcp/route";
+import { POST as privateTest } from "@/app/api/mcp/private-test/route";
 import { GET as metadata } from "@/app/.well-known/oauth-protected-resource/api/mcp/route";
-import { getMcpConfig, MCP_SCOPES } from "../config";
+import { GET as privateMetadata } from "@/app/.well-known/oauth-protected-resource/api/mcp/private-test/route";
+import { getMcpConfig, MCP_EDIT_SCOPE, MCP_PLAY_SCOPE, MCP_SCOPES } from "../config";
 
 const { authenticateRequest, resolveAuthorByClerkId } = vi.hoisted(() => ({
   authenticateRequest: vi.fn(),
@@ -27,9 +29,9 @@ function bearer(sub = "user_alpha", changes: Record<string, unknown> = {}) {
   return `eyJ0eXAiOiJhdCtqd3QifQ.${claims}.fixture`;
 }
 
-function grant(token: string, userId = "user_alpha", scopes: readonly string[] = Object.values(MCP_SCOPES)) {
+function grant(token: string, userId = "user_alpha", scopes: readonly string[] = Object.values(MCP_SCOPES), clientId?: string) {
   authenticateRequest.mockResolvedValue({
-    isAuthenticated: true, token, toAuth: () => ({ userId, scopes }),
+    isAuthenticated: true, token, toAuth: () => ({ userId, scopes, ...(clientId ? { clientId } : {}) }),
   });
 }
 
@@ -71,6 +73,37 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe("isolated Companion authorization", () => {
+  it("keeps the submitted connection read-only while requiring the private test client and audience", async () => {
+    vi.stubEnv("MCP_FIXTURE_ENABLED", "false");
+    vi.stubEnv("MCP_WRITE_ENABLED", "false");
+    vi.stubEnv("CLERK_SECRET_KEY", "sk_live_fixture");
+    expect(privateMetadata().status).toBe(404);
+    vi.stubEnv("MCP_PRIVATE_TEST_ENABLED", "true");
+    vi.stubEnv("MCP_PRIVATE_TEST_USER_IDS", first);
+    vi.stubEnv("MCP_PRIVATE_TEST_CLIENT_ID", "client_private_example");
+    vi.stubEnv("MCP_CHARACTER_EDIT_READ_ENABLED", "false");
+    vi.stubEnv("MCP_CHARACTER_PLAY_READ_ENABLED", "false");
+
+    const privateResource = `${resource}/private-test`;
+    expect(await metadata().json()).toMatchObject({ resource, scopes_supported: [MCP_SCOPES.read] });
+    expect(await privateMetadata().json()).toMatchObject({
+      resource: privateResource, scopes_supported: [MCP_SCOPES.read, MCP_SCOPES.create, MCP_EDIT_SCOPE, MCP_PLAY_SCOPE],
+    });
+    const listing = async (post: typeof POST) => (await (await post(request("tools/list"))).json()).result.tools;
+    expect(await listing(POST)).not.toContainEqual(expect.objectContaining({ name: "prepare_character_save" }));
+    expect(await listing(POST)).not.toContainEqual(expect.objectContaining({ name: "preview_play_action" }));
+    expect(await listing(privateTest)).toContainEqual(expect.objectContaining({ name: "prepare_character_save" }));
+    expect(await listing(privateTest)).toContainEqual(expect.objectContaining({ name: "preview_play_action" }));
+    const token = bearer("user_alpha", { aud: privateResource });
+    grant(token, "user_alpha", Object.values(MCP_SCOPES), "client_other_example");
+    expect((await privateTest(request("tools/list", {}, token))).status).toBe(401);
+    const oldAudience = bearer();
+    grant(oldAudience, "user_alpha", Object.values(MCP_SCOPES), "client_private_example");
+    expect((await privateTest(request("tools/list", {}, oldAudience))).status).toBe(401);
+    grant(token, "user_alpha", Object.values(MCP_SCOPES), "client_private_example");
+    expect((await privateTest(request("tools/list", {}, token))).status).toBe(200);
+  });
+
   it("publishes exact protected-resource discovery and lists only enabled tools", async () => {
     expect(await metadata().json()).toEqual({
       resource,

@@ -1,10 +1,13 @@
 import { notFound } from "next/navigation";
 import { Markdown } from "@/components/ui/markdown";
 import { resolveCompanionBrowserActor } from "@/lib/mcp/browser-approval";
+import { getBrowserReviewMcpConfig } from "@/lib/mcp/config";
 import { getOperationReview, OperationUnavailableError } from "@/lib/mcp/operations";
+import { withMcpRequestConfig } from "@/lib/mcp/request-config";
 
 export const dynamic = "force-dynamic";
-export const metadata = { robots: "noindex, nofollow", referrer: "no-referrer" } as const;
+// Keep the Origin on same-origin form submissions while withholding the review URL from other sites.
+export const metadata = { robots: "noindex, nofollow", referrer: "same-origin" } as const;
 
 const statusText = {
   pending_approval: "Waiting for your approval",
@@ -40,9 +43,11 @@ function ReviewValue({ value, field = "" }: { value: unknown; field?: string }) 
 
 export default async function CompanionReviewPage({ params }: { params: Promise<{ operationId: string }> }) {
   const { operationId } = await params;
-  const actor = await resolveCompanionBrowserActor();
+  const config = getBrowserReviewMcpConfig();
+  if (!config) notFound();
+  const actor = await resolveCompanionBrowserActor(config);
   if (!actor) notFound();
-  const { status, confirmation } = await getOperationReview(actor, operationId).catch(error => {
+  const { status, confirmation } = await withMcpRequestConfig(config, () => getOperationReview(actor, operationId)).catch(error => {
     if (error instanceof OperationUnavailableError) notFound();
     throw error;
   });

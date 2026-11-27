@@ -42,6 +42,7 @@ export async function verifyMcpIdentity(request: Request, config: McpConfig): Pr
       typeof claims.exp !== "number" || !Number.isFinite(claims.exp) || claims.exp * 1000 <= Date.now() ||
       (claims.nbf !== undefined && (typeof claims.nbf !== "number" || claims.nbf * 1000 > Date.now())) ||
       typeof auth.userId !== "string" || auth.userId !== claims.sub || !Array.isArray(auth.scopes)) return null;
+  if (config.privateTest && auth.clientId !== config.privateTest.clientId) return null;
   return { clerkId: auth.userId, scopes: auth.scopes };
 }
 

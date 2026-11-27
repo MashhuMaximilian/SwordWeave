@@ -4,6 +4,9 @@ export const MCP_SCOPES = {
 } as const;
 export const MCP_PLAY_SCOPE = "swordweave:play";
 export const MCP_EDIT_SCOPE = "swordweave:edit";
+export const MCP_PRIVATE_TEST_PATH = "/api/mcp/private-test";
+
+type PrivateTest = { userIds: readonly string[]; clientId: string };
 
 export interface McpConfig {
   resource: string;
@@ -12,17 +15,45 @@ export interface McpConfig {
   readEnabled: boolean;
   writeEnabled: boolean;
   fixtureUserIds: readonly string[];
+  privateTest?: PrivateTest;
+}
+
+export function characterToolsEnabled(
+  config: McpConfig,
+  group: "EDIT" | "PLAY" | "COMPANIONS",
+  action: "READ" | "WRITE",
+  env = globalThis.process.env,
+): boolean {
+  return !!config.privateTest || env[`MCP_CHARACTER_${group}_${action}_ENABLED`] === "true";
 }
 
 export function configuredScopes(config: McpConfig, env = globalThis.process.env): string[] {
   const scopes: string[] = [];
   if (config.readEnabled) scopes.push(MCP_SCOPES.read);
-  if (config.writeEnabled && config.fixtureUserIds.length) scopes.push(MCP_SCOPES.create);
-  if (config.readEnabled && config.writeEnabled && config.fixtureUserIds.length && env["MCP_STAGING_REVIEW_ENABLED"] === "true") {
-    if (env["MCP_CHARACTER_EDIT_READ_ENABLED"] === "true" && env["MCP_CHARACTER_EDIT_WRITE_ENABLED"] === "true") scopes.push(MCP_EDIT_SCOPE);
-    if (env["MCP_CHARACTER_PLAY_READ_ENABLED"] === "true" && env["MCP_CHARACTER_PLAY_WRITE_ENABLED"] === "true") scopes.push(MCP_PLAY_SCOPE);
+  if (config.writeEnabled && (config.fixtureUserIds.length || config.privateTest)) scopes.push(MCP_SCOPES.create);
+  if (config.readEnabled && config.writeEnabled && (config.privateTest || (config.fixtureUserIds.length && env["MCP_STAGING_REVIEW_ENABLED"] === "true"))) {
+    if (characterToolsEnabled(config, "EDIT", "READ", env) && characterToolsEnabled(config, "EDIT", "WRITE", env)) scopes.push(MCP_EDIT_SCOPE);
+    if (characterToolsEnabled(config, "PLAY", "READ", env) && characterToolsEnabled(config, "PLAY", "WRITE", env)) scopes.push(MCP_PLAY_SCOPE);
   }
   return scopes;
+}
+
+export function getPrivateTestMcpConfig(env = globalThis.process.env): McpConfig | null {
+  if (env["MCP_PRIVATE_TEST_ENABLED"] !== "true" || env["MCP_FIXTURE_ENABLED"] === "true" ||
+      !env["CLERK_SECRET_KEY"]?.startsWith("sk_live_")) return null;
+  const live = getMcpConfig(env);
+  const clientId = env["MCP_PRIVATE_TEST_CLIENT_ID"]?.trim();
+  const userIds = (env["MCP_PRIVATE_TEST_USER_IDS"] ?? "").split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
+  if (!live?.readEnabled || !live.resource.startsWith("https://") || !clientId || !/^[a-zA-Z0-9_-]{8,128}$/.test(clientId) ||
+      !userIds.length || userIds.length > 2 || new Set(userIds).size !== userIds.length ||
+      userIds.some(id => !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/.test(id))) return null;
+  const resource = new URL(MCP_PRIVATE_TEST_PATH, live.resource);
+  return { ...live, resource: resource.href, writeEnabled: true, privateTest: { clientId, userIds },
+    metadataUrl: new URL("/.well-known/oauth-protected-resource" + resource.pathname, resource).href };
+}
+
+export function getBrowserReviewMcpConfig(): McpConfig | null {
+  return getPrivateTestMcpConfig() ?? getMcpConfig();
 }
 
 function protectedUrl(input: string | undefined): URL | null {

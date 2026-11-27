@@ -6,10 +6,11 @@ import { drizzle } from "drizzle-orm/pg-proxy";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST as approveReviewRequest } from "@/app/api/companion/operations/[operationId]/approve/route";
 import { companionOperations, companionOperationSteps } from "@/db/schema";
-import { getMcpConfig } from "../config";
+import { getMcpConfig, getPrivateTestMcpConfig } from "../config";
 import { CharacterContextUnavailable } from "../context-shared";
 import { digestJson, digestText, operationExpiry, permitsOperation } from "../operation-policy";
 import { prepareSessionNote } from "../session-notes";
+import { withMcpRequestConfig } from "../request-config";
 import {
   approveStagingOperation, executeApprovedOperation, expireCompanionOperations, getApprovedProgressionDocument,
   getOperationReview, getOperationStatus, OperationBlockError, OperationUnavailableError, prepareOperation,
@@ -172,6 +173,31 @@ describe.skipIf(!pglitePath)("durable save with an in-memory PostgreSQL fixture"
     await expect(getOperationStatus(other, operationId)).rejects.toBeInstanceOf(OperationUnavailableError);
     operationsFixture.characterAccess.mockRejectedValue(new CharacterContextUnavailable());
     await expect(getOperationStatus(owner, operationId)).rejects.toBeInstanceOf(OperationUnavailableError);
+  });
+
+  it("requires same-origin approval and ownership for private test writes", async () => {
+    vi.stubEnv("MCP_FIXTURE_ENABLED", "false");
+    vi.stubEnv("MCP_WRITE_ENABLED", "false");
+    vi.stubEnv("CLERK_SECRET_KEY", "sk_live_fixture");
+    vi.stubEnv("MCP_PRIVATE_TEST_ENABLED", "true");
+    vi.stubEnv("MCP_PRIVATE_TEST_USER_IDS", owner.id);
+    vi.stubEnv("MCP_PRIVATE_TEST_CLIENT_ID", "client_private_example");
+    const config = getPrivateTestMcpConfig()!;
+    await withMcpRequestConfig(config, async () => {
+      const edit = () => prepareOperation({ actor: owner, kind: "session_note", subject: { kind: "character", characterId }, summary: {}, payload: {} });
+      const { operationId } = await prepare();
+      const confirmation = await getConfirmation(operationId);
+      await expect(execute(operationId)).rejects.toBeInstanceOf(OperationUnavailableError);
+      await expect(approveStagingOperation(other, confirmation)).rejects.toBeInstanceOf(OperationUnavailableError);
+      await expect(approveStagingOperation(owner, { ...confirmation, origin: "null" })).rejects.toBeInstanceOf(OperationUnavailableError);
+      await approveStagingOperation(owner, confirmation);
+      const [approved] = await testDb.select().from(companionOperations);
+      expect(approved).toMatchObject({ approvalSource: "private_test_browser", status: "approved" });
+      await expect(execute(operationId)).resolves.toMatchObject({ state: "completed", receipt: { characterId } });
+      await expect(edit()).resolves.toHaveProperty("approvalUrl");
+      operationsFixture.characterAccess.mockResolvedValue({ permission: "EDITOR" });
+      await expect(edit()).rejects.toBeInstanceOf(OperationUnavailableError);
+    });
   });
 
   it("serves a private 303 only after an authenticated same-origin form approval", async () => {

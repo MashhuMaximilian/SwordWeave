@@ -5,13 +5,14 @@ import { db, withDatabaseTransaction } from "@/db/client";
 import { capabilities, capabilityVersions, characters, companionOperations, companionOperationSteps, companionProgressionDocuments, primitives, primitiveVersions, users } from "@/db/schema";
 import { acquirePublishingLock } from "@/lib/publishing/save-transaction";
 import { resolveMcpActor, type McpActor } from "./auth";
-import { getMcpConfig, type McpConfig } from "./config";
+import type { McpConfig } from "./config";
+import { getMcpRequestConfig } from "./request-config";
 import { getCatalogueCursorSecret } from "./catalogue";
 import { characterSheetPdfPath } from "./character-sheet-pdf";
 import { assertPinnedCreationReviewCurrent, StaleCharacterCreationError } from "./proposal";
 import { CharacterContextUnavailable, characterSheetUrl, requireCharacterAccess } from "./context-shared";
 import {
-  allowsOperationPayload, allowsOperationRole, digestJson, digestText, isOperationKind, isOwnerOnlyPlayPayload, isVersionProposalOperation, isWorkspaceProposalOperation, operationExpiry, operationNonceLifetime,
+  allowsOperationPayload, allowsOperationRole, browserApprovalSource, digestJson, digestText, isOperationKind, isOwnerOnlyPlayPayload, isVersionProposalOperation, isWorkspaceProposalOperation, operationExpiry, operationNonceLifetime,
   operationUuid, parseOperationReceipt, permitsOperation, sameDigest, workspaceProposalReceipt, type OperationChannel,
   type OperationKind, type OperationReceipt,
 } from "./operation-policy";
@@ -78,7 +79,7 @@ function parseId(id: string): string {
 }
 
 function readConfig(): McpConfig {
-  return getMcpConfig() ?? unavailable();
+  return getMcpRequestConfig() ?? unavailable();
 }
 
 async function activeActor(actor: McpActor, lock = false): Promise<void> {
@@ -229,7 +230,7 @@ export async function prepareOperation(args: PrepareOperationArgs) {
         (await operationSteps(previous.id)).some(step => step.status === "committed"))) unavailable();
     await activeActor(actor);
     const permission = await subjectPermission(actor, subject.characterId);
-    if (!allowsOperationRole(kind, permission) || !allowsOperationPayload(kind, args.payload, permission)) unavailable();
+    if (!allowsOperationRole(kind, permission, config) || !allowsOperationPayload(kind, args.payload, permission)) unavailable();
     const id = randomUUID();
     const expiresAt = operationExpiry(kind, "prepare", now);
     const document = kind === "progression_pdf" ? documentSchema.parse(args.document) : undefined;
@@ -263,7 +264,7 @@ async function projectOperation(config: McpConfig, actor: McpActor, row: Operati
   await activeActor(actor);
   const permission = await subjectPermission(actor, row.characterId);
   if ((kind === "session_note" || kind === "session_play_action" || kind === "character_advancement" || kind === "character_piece") &&
-    !allowsOperationRole(kind, permission)) unavailable();
+    !allowsOperationRole(kind, permission, config)) unavailable();
   const storedReceipt = versionedReceipt.safeParse(row.terminalReceipt);
   const receipt = storedReceipt.success ? parseOperationReceipt(kind, storedReceipt.data.receipt) : null;
   const failure = failedReceipt.safeParse(row.terminalReceipt);
@@ -306,10 +307,10 @@ async function projectOperation(config: McpConfig, actor: McpActor, row: Operati
       result: visible ? result : null,
       failureCode: failureCodes.safeParse(step.failureCode).data ?? null });
   }
-  const progressionReady = kind === "progression_pdf" && state === "approved" && row.approvalSource === "staging_browser" &&
+  const progressionReady = kind === "progression_pdf" && state === "approved" && row.approvalSource === browserApprovalSource(config) &&
     (await progressionDocument(row, reviewFor(row))).ideas.length > 0;
   const writable = permitsOperation(config, actor, kind, "write", channel);
-  const canAct = writable && allowsOperationRole(kind, permission) && (state === "pending_approval" || state === "approved") &&
+  const canAct = writable && allowsOperationRole(kind, permission, config) && (state === "pending_approval" || state === "approved") &&
     (!row.proposal || allowsOperationPayload(kind, reviewFor(row).payload, permission));
   const nextStep = state === "approved" && canAct ? visibleSteps.find(step => step.state === "pending") ?? null : null;
   let projectedReceipt: OperationReceipt | ProjectedProposalReceipt | ProjectedVersionProposalReceipt | null = receipt;
@@ -353,7 +354,7 @@ export async function getOperationReview(actor: McpActor, operationId: string) {
     await lockReviewedSubject(row);
     await activeActor(actor, true);
     const permission = await subjectPermission(actor, row.characterId);
-    if (!allowsOperationRole(kind, permission) || !allowsOperationPayload(kind, review.payload, permission)) unavailable();
+    if (!allowsOperationRole(kind, permission, config) || !allowsOperationPayload(kind, review.payload, permission)) unavailable();
     await verifyReviewDependencies(actor, review);
     if (row.expiresAt.getTime() <= Date.now()) unavailable();
     const document = row.kind === "progression_pdf" ? await progressionDocument(row, review) : null;
@@ -377,9 +378,9 @@ export async function approveStagingOperation(actor: McpActor, input: { operatio
     await lockReviewedSubject(row);
     await activeActor(actor, true);
     const permission = await subjectPermission(actor, row.characterId);
-    if (!allowsOperationRole(kind, permission)) unavailable();
+    if (!allowsOperationRole(kind, permission, config)) unavailable();
     if (!sameDigest(row.proposalDigest, input.digest)) unavailable();
-    if (["approved", "completed", "blocked"].includes(row.status) && row.approvedAt && row.approvalSource === "staging_browser") {
+    if (["approved", "completed", "blocked"].includes(row.status) && row.approvedAt && row.approvalSource === browserApprovalSource(config)) {
       await projectOperation(config, actor, row, "browser");
       return row.id;
     }
@@ -392,7 +393,7 @@ export async function approveStagingOperation(actor: McpActor, input: { operatio
     if (kind === "progression_pdf") await progressionDocument(row, review);
     const now = new Date();
     if (row.expiresAt <= now || row.nonceExpiresAt <= now) unavailable();
-    await db.update(companionOperations).set({ status: "approved", approvedAt: now, approvalSource: "staging_browser", nonceDigest: null,
+    await db.update(companionOperations).set({ status: "approved", approvedAt: now, approvalSource: browserApprovalSource(config), nonceDigest: null,
       nonceExpiresAt: null, lastActivityAt: now, expiresAt: operationExpiry(kind, "approve", now, row.expiresAt) })
       .where(eq(companionOperations.id, row.id));
     return row.id;
@@ -404,7 +405,7 @@ export async function getApprovedProgressionDocument(actor: McpActor, operationI
   policy(config, actor, "progression_pdf", "read", channel);
   return lockedOperation(async () => {
     const row = await ownedOperation(actor, operationId, true);
-    if (row.kind !== "progression_pdf" || row.status !== "approved" || row.approvalSource !== "staging_browser" || !row.approvedAt) unavailable();
+    if (row.kind !== "progression_pdf" || row.status !== "approved" || row.approvalSource !== browserApprovalSource(config) || !row.approvedAt) unavailable();
     await activeActor(actor);
     const document = await progressionDocument(row, reviewFor(row));
     if (row.expiresAt.getTime() <= Date.now()) unavailable();
@@ -429,7 +430,7 @@ interface Attempt {
 async function eligibleForExecution(args: ExecuteOperationArgs, config: McpConfig, lock: boolean) {
   policy(config, args.actor, args.expectedKind, "write", "mcp");
   const row = await ownedOperation(args.actor, args.operationId, lock);
-  if (row.kind !== args.expectedKind || row.kind === "progression_pdf" || row.approvalSource !== "staging_browser" || !row.approvedAt ||
+  if (row.kind !== args.expectedKind || row.kind === "progression_pdf" || row.approvalSource !== browserApprovalSource(config) || !row.approvedAt ||
       !["approved", "completed", "blocked"].includes(row.status)) unavailable();
   return row;
 }
@@ -461,7 +462,7 @@ export async function executeApprovedOperation(args: ExecuteOperationArgs) {
       await lockReviewedSubject(row);
       await activeActor(args.actor, true);
       const permission = await subjectPermission(args.actor, row.characterId);
-      if (!allowsOperationRole(args.expectedKind, permission) || !allowsOperationPayload(args.expectedKind, review.payload, permission)) unavailable();
+      if (!allowsOperationRole(args.expectedKind, permission, config) || !allowsOperationPayload(args.expectedKind, review.payload, permission)) unavailable();
       if (row.expiresAt.getTime() <= Date.now()) unavailable();
       attempted = { digest: row.proposalDigest, stepId: step?.stepId ?? null };
       const result = await args.execute({ payload: review.payload, actor: args.actor, subject: review.subject,
@@ -503,7 +504,7 @@ async function recordTerminalBlock(args: ExecuteOperationArgs, config: McpConfig
     await activeActor(args.actor);
     const permission = await subjectPermission(args.actor, row.characterId);
     const review = reviewFor(row);
-    if (!allowsOperationRole(args.expectedKind, permission) || !allowsOperationPayload(args.expectedKind, review.payload, permission)) unavailable();
+    if (!allowsOperationRole(args.expectedKind, permission, config) || !allowsOperationPayload(args.expectedKind, review.payload, permission)) unavailable();
     const ownerOnly = args.expectedKind === "session_play_action" && isOwnerOnlyPlayPayload(review.payload);
     if (step) await db.update(companionOperationSteps).set({ status: "blocked", failureCode })
       .where(and(eq(companionOperationSteps.operationId, row.id), eq(companionOperationSteps.stepId, step.stepId)));

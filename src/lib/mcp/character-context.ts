@@ -11,7 +11,7 @@ import { visibleDefinitionKeys } from "@/lib/publishing/definition-visibility";
 import { splitProgressionSpend } from "@/lib/engine/bu-balance";
 import {
   activeCharacterShare, assertCharacterActor, characterIdSchema, characterShareRole, characterSheetUrl,
-  contextCursor, contextCursorSchema, ownsCharacter, readOnlyCharacterContext, requireCharacterAccess,
+  contextCursor, contextCursorSchema, ownsCharacter, privateTestCharacterFilter, readOnlyCharacterContext, requireCharacterAccess,
   type CharacterActor, type ContextConfig,
 } from "./context-shared";
 
@@ -40,6 +40,7 @@ export async function listAccessibleCharacters(
       .leftJoin(characterWorkspaceCommands, characterShareRole())
       .where(and(
         or(inArray(characters.userId, [actor.id, actor.clerkId]), sql`${characterShares.id} IS NOT NULL`),
+        privateTestCharacterFilter(actor),
         after ? sql`(${sortedName}, ${characters.id}) > (${after.name}::text COLLATE "C", ${after.id}::uuid)` : undefined,
       ))
       .orderBy(sortedName, characters.id).limit(pageSize + 1);
