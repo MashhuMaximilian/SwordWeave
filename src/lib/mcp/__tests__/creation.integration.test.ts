@@ -1308,6 +1308,51 @@ describe.skipIf(!pglitePath)("isolated starter build database", () => {
     }
   }, 30000);
 
+  it("creates and attaches a private Bestiary monster through the reviewed MCP tools exactly once", async () => {
+    enableStaging();
+    vi.stubEnv("MCP_CHARACTER_EDIT_READ_ENABLED", "true");
+    vi.stubEnv("MCP_CHARACTER_EDIT_WRITE_ENABLED", "true");
+    vi.stubEnv("MCP_CHARACTER_COMPANIONS_READ_ENABLED", "true");
+    vi.stubEnv("MCP_CURSOR_HMAC_SECRET", opts.cursorSecret);
+    const owner = { ...linked, scopes: [...linked.scopes, "swordweave:edit"] };
+    try {
+      const [character] = await db.insert(characters).values({ name: "Grove Guide", userId: actor.clerkId,
+        attrPhysical: 4, attrMental: 3, attrMagical: 3 }).returning();
+      const characterId = character!.id;
+      const definition = { name: "Drift Fox", concept: "**Scout** and companion.", size: "SMALL", budget: 25,
+        attributes: { physical: 1, mental: 1, magical: 1 }, proficientAttribute: "mental",
+        references: [{ kind: "PRIMITIVE", id: String(ids.domain), versionId: pin(ids.domain).versionId }] };
+      const prepare = () => callCreationTool("prepare_monster_companion_save", { characterId, expectedRevision: 0, definition }, owner);
+      const before = (await db.select().from(schema.monsters)).length;
+      expect((await callCreationTool("preview_monster_companion", { definition }, owner)).structuredContent)
+        .toMatchObject({ name: definition.name, visibility: "PRIVATE", startingVitality: 13 });
+      const find = () => callCreationTool("find_monster_components", { kind: "primitive", query: "Storm" }, owner);
+      expect((await find()).structuredContent).toMatchObject({ items: [expect.objectContaining({ pin: pin(ids.domain) })] });
+      const pending = await prepare();
+      expect(pending.isError).not.toBe(true);
+      const { operationId } = pending.structuredContent as { operationId: string };
+      expect((await callCreationTool("apply_monster_companion_save", { operationId }, owner)).isError).toBe(true);
+      expect(await db.select().from(schema.monsters)).toHaveLength(before);
+      await db.delete(follows).where(eq(follows.followerId, actor.id));
+      expect((await find()).structuredContent).toMatchObject({ items: [] });
+      await expect(getOperationReview(owner, operationId)).rejects.toThrow();
+      await db.insert(follows).values({ followerId: actor.id, followingId: author.id });
+      await approve(operationId, owner);
+      const apply = () => callCreationTool("apply_monster_companion_save", { operationId }, owner);
+      const saved = await apply();
+      expect(saved.structuredContent).toMatchObject({ state: "completed", receipt: { appliedRevision: 1, characterId, version: 1 } });
+      expect((await apply()).structuredContent).toEqual(saved.structuredContent);
+      const [monster] = await db.select().from(schema.monsters).where(eq(schema.monsters.name, definition.name));
+      expect(monster).toMatchObject({ userId: actor.clerkId, visibility: "PRIVATE", isPublic: false, version: 1 });
+      expect(await db.select().from(schema.monsters)).toHaveLength(before + 1);
+      const links = await callCreationTool("list_character_companions", { characterId }, owner);
+      expect(links.structuredContent).toMatchObject({ companions: [{ name: definition.name,
+        bestiary: { version: 1 }, playSheetUrl: expect.stringContaining("/monsters/play/") }] });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("opens only authorized companions and their exact Bestiary pins, and exports both independent sheets", async () => {
     enableStaging();
     vi.stubEnv("MCP_CHARACTER_COMPANIONS_READ_ENABLED", "true");

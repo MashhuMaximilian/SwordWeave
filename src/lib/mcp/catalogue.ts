@@ -6,6 +6,10 @@ import { capabilities, effects, heritage, items, primitives, primitiveVersions }
 import { loadAttachableContainers } from "@/lib/character/attachable-container";
 import { loadCreationCapabilities } from "@/lib/character/creation-capability";
 import { directPrimitivePinCondition } from "@/lib/character/direct-primitive-pin";
+import { loadWorkspaceNodes } from "@/lib/character/workspace/load-nodes";
+import { resolveMonsterComposition } from "@/lib/monsters/composition";
+import { monsterCost } from "@/lib/monsters/resolve";
+import { referenceSchema } from "@/lib/monsters/model";
 import { visibilityCondition } from "@/lib/publishing/library-query";
 import type { McpActor } from "./auth";
 
@@ -106,7 +110,7 @@ function createCursor(payload: CursorPayload, secret: string) {
 }
 
 async function scanRoots(kind: CreationKind, query: string, clerkId: string, after: OrderingKey | null,
-  category?: z.infer<typeof startingCategory>) {
+  category?: z.infer<typeof startingCategory>, monster = false) {
   const { table, target } = rootTables[kind];
   const visible = visibilityCondition(target, sql`${table.id}`, sql`${table.userId}`, clerkId, sql`${table.isPublic}`);
   const keyset = after
@@ -145,7 +149,7 @@ async function scanRoots(kind: CreationKind, query: string, clerkId: string, aft
     SELECT matched.*, ${pin} AS "versionId" FROM matched
     ORDER BY rank, "normalizedName" COLLATE "C", id COLLATE "C"
   `);
-  if (isPrimitive) return result.rows;
+  if (isPrimitive || monster) return result.rows;
   const ids = result.rows.map(row => row.id).filter(id => z.uuid().safeParse(id).success);
   if (!ids.length) return result.rows;
   const roots = kind === "capability"
@@ -162,7 +166,7 @@ async function scanRoots(kind: CreationKind, query: string, clerkId: string, aft
 export async function findCreations(
   input: FindCreationsInput,
   actor: CatalogueActor,
-  options: { resource: string; cursorSecret: string },
+  options: { resource: string; cursorSecret: string; monster?: boolean },
 ) {
   const { kind, minBu, maxBu, cursor, startingCategory: category } = findCreationsInput.parse(input);
   const query = input.query.trim().replace(/\s+/gu, " ").toLowerCase();
@@ -171,10 +175,11 @@ export async function findCreations(
     throw new Error("Catalogue discovery is unavailable.");
   }
   const viewer = createHmac("sha256", cursorSecret).update(JSON.stringify([actor.id, actor.clerkId])).digest("hex");
-  const queryDigest = createHash("sha256").update(JSON.stringify([resource, kind, query, minBu ?? null, maxBu ?? null, category ?? null])).digest("hex");
+  const queryDigest = createHash("sha256").update(JSON.stringify([resource, kind, query, minBu ?? null, maxBu ?? null, category ?? null, ...(options.monster ? ["monster"] : [])])).digest("hex");
   const now = Date.now();
   const after = cursor ? parseCursor(cursor, cursorSecret, viewer, queryDigest, now) : null;
-  const rows = await scanRoots(kind, query, actor.clerkId, after, category);
+  const rows = await scanRoots(kind, query, actor.clerkId, after, category, options.monster);
+  const monsterNodes = options.monster ? await loadWorkspaceNodes(rows.map(row => `${kind}:${row.id}` as const)) : null;
   const items: Array<{
     name: string;
     kind: CreationKind;
@@ -187,9 +192,24 @@ export async function findCreations(
   }> = [];
   let examined = 0;
   let last: OrderingKey | undefined;
-  for (const row of rows) {
+  for (const original of rows) {
+    let row = original;
     examined++;
     last = { rank: row.rank, normalizedName: row.normalizedName, id: row.id };
+    if (monsterNodes) {
+      const versions = monsterNodes.get(`${kind}:${row.id}`)?.versions.filter(version => version.latest) ?? [];
+      const candidate = referenceSchema.parse({ kind: kind.toUpperCase(), id: row.id, versionId: versions.length === 1 ? versions[0]!.id : null });
+      row = { ...row, versionId: null, buCost: null };
+      if (candidate.versionId) {
+        try {
+          const slots = await resolveMonsterComposition({ references: [candidate] }, actor.clerkId);
+          const cost = monsterCost(slots);
+          row = { ...row, versionId: candidate.versionId, buCost: kind === "item" ? cost.itemBu : cost.spent };
+        } catch {
+          // A visible root may contain an inaccessible or unresolved dependency.
+        }
+      }
+    }
     const cost = row.buCost;
     const knownCost = typeof cost === "number" && Number.isFinite(cost);
     if ((minBu !== undefined || maxBu !== undefined) &&

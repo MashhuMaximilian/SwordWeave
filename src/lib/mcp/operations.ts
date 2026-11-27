@@ -93,6 +93,10 @@ async function activeActor(actor: McpActor, lock = false): Promise<void> {
 async function verifyReviewDependencies(actor: McpActor, review: Review) {
   try {
     if (review.kind === "character_create") await assertPinnedCreationReviewCurrent(review.payload, actor);
+    if (review.kind === "companion_create") {
+      const { assertCompanionReviewCurrent } = await import("./companion-authoring");
+      await assertCompanionReviewCurrent(actor, review.subject.characterId, review.payload);
+    }
     if (review.kind === "character_edit") {
       const { assertCharacterEditReviewCurrent } = await import("./character-edits");
       await assertCharacterEditReviewCurrent(review.payload, actor);
@@ -129,7 +133,7 @@ async function verifyReviewDependencies(actor: McpActor, review: Review) {
 
 async function lockReviewedSubject(row: OperationRow) {
   if (row.characterId) await db.select({ id: characters.id }).from(characters).where(eq(characters.id, row.characterId)).for("update");
-  if (row.kind === "character_create" || row.kind === "character_edit" || row.kind === "character_advancement" || row.kind === "character_piece" || row.kind === "session_play_action" ||
+  if (row.kind === "character_create" || row.kind === "character_edit" || row.kind === "character_advancement" || row.kind === "character_piece" || row.kind === "companion_create" || row.kind === "session_play_action" ||
     isWorkspaceProposalOperation(row.kind) || isVersionProposalOperation(row.kind)) {
     await acquirePublishingLock();
   }
@@ -263,7 +267,7 @@ async function projectOperation(config: McpConfig, actor: McpActor, row: Operati
   const state = statuses.parse(row.status);
   await activeActor(actor);
   const permission = await subjectPermission(actor, row.characterId);
-  if ((kind === "session_note" || kind === "session_play_action" || kind === "character_advancement" || kind === "character_piece") &&
+  if ((kind === "session_note" || kind === "session_play_action" || kind === "character_advancement" || kind === "character_piece" || kind === "companion_create") &&
     !allowsOperationRole(kind, permission, config)) unavailable();
   const storedReceipt = versionedReceipt.safeParse(row.terminalReceipt);
   const receipt = storedReceipt.success ? parseOperationReceipt(kind, storedReceipt.data.receipt) : null;

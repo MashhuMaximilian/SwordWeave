@@ -15,6 +15,7 @@ const policies = {
   progression_note: { ...creation, permission: "EDITOR" },
   character_edit: editing,
   character_piece: { ...editing, permission: "OWNER" },
+  companion_create: { ...editing, permission: "OWNER" },
   character_advancement: { ...editing, permission: "OWNER" },
   character_proposal_submit: { ...editing, permission: "SUGGESTER" },
   character_proposal_decide: { ...editing, permission: "SUGGESTER" },
@@ -63,12 +64,15 @@ export const characterPieceReceipt = character.extend({
   entityId: z.string().min(1).max(36), versionPin: operationUuid,
 });
 
+export const companionCreationReceipt = character.extend({ monsterId: operationUuid, version: z.number().int().positive(), appliedRevision: revision });
+
 const receiptSchemas = {
   character_create: character,
   progression_pdf: z.object({ documentId: operationUuid }),
   progression_note: note,
   character_edit: character.extend({ appliedRevision: revision, changedSlotIds: z.array(z.string().max(160)).max(MAX_CHANGED_SLOT_IDS) }),
   character_piece: characterPieceReceipt,
+  companion_create: companionCreationReceipt,
   character_advancement: characterAdvancementReceipt,
   character_proposal_submit: workspaceProposalReceipt,
   character_proposal_decide: workspaceProposalReceipt,
@@ -162,7 +166,7 @@ export function permitsOperation(
   if (action === "read") return true;
   return canUseBrowserReview(config, actor) && config.writeEnabled &&
     (channel === "browser" || (actor.scopes.includes(scope) &&
-      (kind !== "character_piece" || actor.scopes.includes(creation.scope)))) &&
+      ((kind !== "character_piece" && kind !== "companion_create") || actor.scopes.includes(creation.scope)))) &&
     (!group || characterToolsEnabled(config, group, "WRITE"));
 }
 

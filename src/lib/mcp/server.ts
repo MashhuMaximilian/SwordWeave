@@ -11,9 +11,10 @@ import { applyCharacterEdit, applyCharacterEditInput, prepareCharacterEdit, prep
 import { CharacterProposalUnavailable, listCharacterProposals, listCharacterProposalsInput, readCharacterProposal, readCharacterProposalInput, resolveVersionProposalRef } from "./character-proposals";
 import { characterSheetPdfInput, getCharacterSheetPdfLink } from "./character-sheet-pdf";
 import { characterToolsEnabled, configuredScopes, MCP_EDIT_SCOPE, MCP_PLAY_SCOPE, MCP_SCOPES, type McpConfig } from "./config";
+import { applyCompanion, companionBestiaryUrl, prepareCompanion, prepareCompanionInput, previewCompanion, previewCompanionInput } from "./companion-authoring";
 import { CharacterContextUnavailable, ContextCursorError } from "./context-shared";
 import { readFixture } from "./fixtures";
-import { browserReviewEnabled, characterAdvancementReceipt, operationUuid, stagingReviewEnabled, versionProposalWritesEnabled } from "./operation-policy";
+import { browserReviewEnabled, characterAdvancementReceipt, companionCreationReceipt, operationUuid, stagingReviewEnabled, versionProposalWritesEnabled } from "./operation-policy";
 import { executeApprovedOperation, getOperationStatus, OperationAttemptTimeout, OperationBlockError, OperationUnavailableError, prepareOperation } from "./operations";
 import { applyPlayAction, applyPlayActionInput, preparePlayAction, preparePlayActionInput, previewPlayAction, previewPlayActionInput } from "./play-actions";
 import { characterHistoryInput, readCharacterHistory, readCharacterPlayState } from "./play-context";
@@ -476,6 +477,37 @@ export function createSwordWeaveMcpServer(config: McpConfig, identity: McpIdenti
         }));
       }
       if (configuredScopes(config).includes(MCP_EDIT_SCOPE)) {
+        if (cursorSecret) server.registerTool("find_monster_components", {
+          description: "Find exact Bestiary component pins among public, owned, or eligible followers-only creations. Use this search for monster builds, including templated primitives. Quote costs with preview_monster_companion before preparing a save.",
+          inputSchema: findCreationsInput, annotations: readOnly, _meta: toolSecurity(MCP_SCOPES.read),
+        }, input => withActor(MCP_SCOPES.read, async actor => {
+          const data = await findCreations(input, actor, { resource: config.resource, cursorSecret, monster: true });
+          return result(data, data.items.map(item => item.name).join("\n") || "No matching monster components.");
+        }));
+        server.registerTool("preview_monster_companion", {
+          description: "Price a private Bestiary monster built from exact catalogue versions. Choose the complete mechanics first, then use the resolved Build Units, weakness credit, Item BU, rank and Vitality to fit a budget. This preview saves nothing.",
+          inputSchema: previewCompanionInput, annotations: readOnly, _meta: toolSecurity(MCP_SCOPES.read),
+        }, input => withActor(MCP_SCOPES.read, async actor => {
+          const data = await previewCompanion(actor, input);
+          return result(data, `${data.name}: ${data.spentBu} BU, ${data.itemBu} Item BU, ${data.startingVitality} starting Vitality.`);
+        }));
+        server.registerTool("prepare_monster_companion_save", {
+          description: "Prepare a reviewed private Bestiary template and attach its independent play copy to a character you own. Read the current character revision and verify exact component pins first. Ask the player to open and approve the SwordWeave review.",
+          inputSchema: prepareCompanionInput, annotations: { ...reviewedWrite, idempotentHint: false }, _meta: toolSecurity(...pieceScopes),
+        }, input => withActor(pieceScopes, async actor => {
+          const data = await prepareCompanion(actor, input);
+          return result(data, `[Review the private Bestiary save and companion attachment](${data.approvalUrl}).`);
+        }));
+        server.registerTool("apply_monster_companion_save", {
+          description: "Save the exact approved private Bestiary template and attach its independent play copy. Retry with the same operation ID after an uncertain response. After saving, use list_character_companions for the play sheet and character PDF.",
+          inputSchema: operationInput, annotations: reviewedWrite, _meta: toolSecurity(...pieceScopes),
+        }, ({ operationId }) => withActor(pieceScopes, async actor => {
+          const data = await applyCompanion(actor, operationId);
+          const receipt = companionCreationReceipt.safeParse(data.receipt).data;
+          const monster = receipt
+            ? ` [Open the pinned Bestiary sheet](${companionBestiaryUrl(config.resource, receipt.monsterId, receipt.version)}).` : "";
+          return result(data, operationMessage(data) + monster);
+        }));
         server.registerTool("prepare_character_advancement", {
           description: "Prepare the owner's exact level advancement for review. Use a current character revision and the player's explicitly requested target level. Ask the player to open and approve the review before applying it.",
           inputSchema: prepareCharacterAdvancementInput, annotations: { ...reviewedWrite, idempotentHint: false }, _meta: toolSecurity(...editScopes),

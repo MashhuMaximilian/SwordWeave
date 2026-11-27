@@ -36,7 +36,7 @@ function ReviewValue({ value, field = "" }: { value: unknown; field?: string }) 
     ))}</dl>;
   }
   if (value === null || value === undefined || value === "") return <span>None</span>;
-  if (typeof value === "string" && /backstory|description|markdown|narrativeRule|mechanicalOutputText|note|reason|rationale|^recovery$|^text$|^addition$/i.test(field)) return <Markdown>{value}</Markdown>;
+  if (typeof value === "string" && /backstory|description|markdown|narrativeRule|mechanicalOutputText|note|reason|rationale|^concept$|^recovery$|^text$|^addition$/i.test(field)) return <Markdown>{value}</Markdown>;
   if (typeof value === "boolean") return <span>{value ? "Yes" : "No"}</span>;
   return <span className="whitespace-pre-wrap">{String(value)}</span>;
 }
