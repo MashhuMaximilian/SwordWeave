@@ -1,4 +1,4 @@
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { GET } from "@/app/api/companion/progression/[documentId]/route";
 import { playerNotesDigest, projectApprovedNoteAppend } from "@/lib/character/append-approved-note";
 import { OperationUnavailableError } from "../operations";
@@ -17,9 +17,13 @@ const params = { params: Promise.resolve({ documentId }) };
 
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.stubEnv("MCP_READ_ENABLED", "true");
+  vi.stubEnv("MCP_RESOURCE_URL", "https://swordweave.test/api/mcp");
+  vi.stubEnv("MCP_CLERK_ISSUER", "https://clerk.swordweave.test");
   fixture.actor.mockResolvedValue(actor);
   fixture.render.mockResolvedValue(Buffer.from("%PDF-test"));
 });
+afterEach(() => vi.unstubAllEnvs());
 
 it("downloads the exact approved plan with a private attachment response", async () => {
   fixture.load.mockResolvedValue(plan);
